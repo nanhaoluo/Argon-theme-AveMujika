@@ -9,11 +9,6 @@
  * @link https://www.gnu.org/licenses/gpl-3.0.html
  */
 
-// 强制使用本地资源（修复 JavaScript 错误）
-add_filter('option_argon_assets_path', function($value) {
-    return ''; // 空值表示使用本地资源
-});
-
 if (version_compare( $GLOBALS['wp_version'], '4.4-alpha', '<' )) {
 	echo "<div style='background: #5e72e4;color: #fff;font-size: 30px;padding: 50px 30px;position: fixed;width: 100%;left: 0;right: 0;bottom: 0;z-index: 2147483647;'>" . __("Argon 主题不支持 Wordpress 4.4 以下版本，请更新 Wordpress", 'argon') . "</div>";
 }
@@ -26,33 +21,9 @@ add_action('after_setup_theme','theme_slug_setup');
 
 $argon_version = !(wp_get_theme() -> Template) ? wp_get_theme() -> Version : wp_get_theme(wp_get_theme() -> Template) -> Version;
 $GLOBALS['theme_version'] = $argon_version;
-$argon_assets_path = get_option("argon_assets_path");
-switch ($argon_assets_path) {
-    case "jsdelivr":
-	    $GLOBALS['assets_path'] = "https://cdn.jsdelivr.net/gh/solstice23/argon-theme@" . $argon_version;
-        break;
-    case "fastgit":
-	    $GLOBALS['assets_path'] = "https://raw.fastgit.org/solstice23/argon-theme/v" . $argon_version;
-        break;
-    case "sourcegcdn":
-	    $GLOBALS['assets_path'] = "https://gh.sourcegcdn.com/solstice23/argon-theme/v" . $argon_version;
-        break;
-	case "jsdelivr_gcore":
-	    $GLOBALS['assets_path'] = "https://gcore.jsdelivr.net/gh/solstice23/argon-theme@" . $argon_version;
-        break;
-	case "jsdelivr_fastly":
-	    $GLOBALS['assets_path'] = "https://fastly.jsdelivr.net/gh/solstice23/argon-theme@" . $argon_version;
-        break;
-	case "jsdelivr_cf":
-	    $GLOBALS['assets_path'] = "https://testingcf.jsdelivr.net/gh/solstice23/argon-theme@" . $argon_version;
-        break;
-	case "custom":
-		$GLOBALS['assets_path'] = preg_replace('/\/$/', '', get_option("argon_custom_assets_path"));
-		$GLOBALS['assets_path'] = preg_replace('/%theme_version%/', $argon_version, $GLOBALS['assets_path']);
-		break;
-    default:
-	    $GLOBALS['assets_path'] = get_bloginfo('template_url');
-}
+
+// 强制使用本地资源，避免 CDN 加载问题
+$GLOBALS['assets_path'] = get_bloginfo('template_url');
 
 //翻译 Hook
 function argon_locate_filter($locate){
@@ -135,6 +106,11 @@ if (version_compare($argon_last_version, $GLOBALS['theme_version'], '<' )){
 	update_option("argon_last_version", $GLOBALS['theme_version']);
 }
 
+
+//引入邮件模板系统
+require_once(get_template_directory() . '/email-templates/base.php');
+require_once(get_template_directory() . '/email-templates/comment-notify.php');
+require_once(get_template_directory() . '/email-templates/reply-notify.php');
 
 //检测更新
 require_once(get_template_directory() . '/theme-update-checker/plugin-update-checker.php');
@@ -1847,57 +1823,30 @@ function comment_mail_notify($comment){
 			$content = htmlspecialchars(get_comment_meta($id, "comment_content_source", true));
 			$link = get_permalink($commentPostID) . "#comment-" . $id;
 			$unsubscribeLink = site_url("unsubscribe-comment-mailnotice?comment=" . $parentID . "&token=" . get_comment_meta($parentID, "mailnotice_unsubscribe_key", true));
-			$html = '
-					<!DOCTYPE html>
-					<html>
-						<head>
-							<meta http-equiv="Content-Type" content="text/html charset=UTF-8" />
-						</head>
-						<body>
-							<div style="background: #fff;box-shadow: 0 15px 35px rgba(50,50,93,.1), 0 5px 15px rgba(0,0,0,.07);border-radius: 6px;margin: 15px auto 50px auto;padding: 35px 30px;max-width: min(calc(100% - 100px), 1200px);">
-								<div style="font-size:30px;text-align:center;margin-bottom:15px;">' . htmlspecialchars($fullTitle)  .'</div>
-								<div style="background: rgba(0, 0, 0, .15);height: 1px;width: 300px;margin: auto;margin-bottom: 35px;"></div>
-								<div style="font-size: 18px;border-left: 4px solid rgba(0, 0, 0, .15);width: max-content;width: -moz-max-content;margin: auto;padding: 20px 30px;background: rgba(0,0,0,.08);border-radius: 6px;box-shadow: 0 2px 4px rgba(0,0,0,.075)!important;min-width: 60%;max-width: 90%;margin-bottom: 40px;">
-									<div style="margin-bottom: 10px;"><strong><span style="color: #5e72e4;">@' . htmlspecialchars($commentAuthor) . '</span> ' . __('回复了你', "argon") . ':</strong></div>
-									' . str_replace('\n', '<div></div>', $content) . ' 
-								</div>
-								<table width="100%" style="border-collapse:collapse;border:none;empty-cells:show;max-width:100%;box-sizing:border-box" cellspacing="0" cellpadding="0">
-									<tbody style="box-sizing:border-box">
-										<tr style="box-sizing:border-box" align="center">
-											<td style="min-width:5px;box-sizing:border-box">
-												<table style="border-collapse:collapse;border:none;empty-cells:show;max-width:100%;box-sizing:border-box" cellspacing="0" cellpadding="0">
-													<tbody style="box-sizing:border-box">
-														<tr style="box-sizing:border-box">
-															<td style="box-sizing:border-box">
-																<a href="' . $link . '" style="display: block; line-height: 1; color: #fff;background-color: #5e72e4;border-color: #5e72e4;box-shadow: 0 4px 6px rgba(50,50,93,.11), 0 1px 3px rgba(0,0,0,.08);padding: 15px 25px;font-size: 18px;border-radius: 4px;text-decoration: none; margin: 10px;">' . __('前往查看', "argon") . '</a>
-															</td>
-														</tr>
-													</tbody>
-												</table>
-											</td>
-										</tr>
-									</tbody>
-								</table>
-								<table width="100%" style="border-collapse:collapse;border:none;empty-cells:show;max-width:100%;box-sizing:border-box" cellspacing="0" cellpadding="0">
-									<tbody style="box-sizing:border-box">
-										<tr style="box-sizing:border-box" align="center">
-											<td style="min-width:5px;box-sizing:border-box">
-												<table style="border-collapse:collapse;border:none;empty-cells:show;max-width:100%;box-sizing:border-box" cellspacing="0" cellpadding="0">
-													<tbody style="box-sizing:border-box">
-														<tr style="box-sizing:border-box">
-															<td style="box-sizing:border-box">
-																<a href="' . $unsubscribeLink . '" style="display: block; line-height: 1;color: #5e72e4;font-size: 16px;text-decoration: none; margin: 10px;">' . __('退订该评论的邮件提醒', "argon") . '</a>
-															</td>
-														</tr>
-													</tbody>
-												</table>
-											</td>
-										</tr>
-									</tbody>
-								</table>
-							</div>
-						</body>
-					</html>';
+			
+			// 使用新的邮件模板系统
+			$settings = argon_get_email_settings();
+			$post = get_post($commentPostID);
+			
+			// 生成新模板内容
+			$email_content = argon_get_reply_notify_content(array(
+				'post_title' => $post->post_title,
+				'post_url' => get_permalink($post->ID),
+				'original_comment' => wp_trim_words($parentComment->comment_content, 50, '...'),
+				'replier_name' => $commentAuthor,
+				'reply_content' => $content,
+				'comment_url' => $link,
+				'theme_color' => $settings['theme_color']
+			));
+			
+			// 添加退订链接
+			$email_content .= '<p style="margin-top: 24px; text-align: center;">
+				<a href="' . esc_url($unsubscribeLink) . '" style="color: #8898aa; font-size: 12px; text-decoration: none;">' . __('退订该评论的邮件提醒', 'argon') . '</a>
+			</p>';
+			
+			// 渲染完整邮件
+			$html = argon_render_email($email_content, array('subject' => $title));
+			
 			$html = apply_filters("argon_comment_mail_notification_content", $html); 
 			send_mail($emailTo, $title, $html);
 		}

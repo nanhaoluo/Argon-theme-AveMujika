@@ -4007,6 +4007,114 @@ window.pjaxLoaded = function(){
 
 					</tr>
 
+					<!-- ========== 邮件模板设置 ========== -->
+					<tr><th class="subtitle"><h3 id="subsection-email-template"><?php _e('邮件模板', 'argon');?></h3></th></tr>
+
+					<tr>
+						<th><label><?php _e('邮件主题色', 'argon');?></label></th>
+						<td>
+							<input type="text" class="regular-text" name="argon_email_theme_color" value="<?php echo esc_attr(get_option('argon_email_theme_color', '#5e72e4')); ?>" style="width: 100px;" />
+							<input type="color" value="<?php echo esc_attr(get_option('argon_email_theme_color', '#5e72e4')); ?>" onchange="document.querySelector('input[name=argon_email_theme_color]').value = this.value;" style="vertical-align: middle; cursor: pointer;" />
+							<p class="description"><?php _e('邮件中按钮、链接和强调色的颜色', 'argon');?></p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('邮件 Logo', 'argon');?></label></th>
+						<td>
+							<input type="text" class="regular-text" name="argon_email_logo_url" value="<?php echo esc_attr(get_option('argon_email_logo_url', '')); ?>" placeholder="https://example.com/logo.png" />
+							<button type="button" class="button" onclick="argonUploadEmailLogo();"><?php _e('上传图片', 'argon');?></button>
+							<p class="description"><?php _e('邮件页眉显示的 Logo 图片 URL，留空则显示博客名称文字', 'argon');?></p>
+							<script>
+								function argonUploadEmailLogo() {
+									var mediaUploader = wp.media({
+										title: '<?php _e('选择 Logo 图片', 'argon');?>',
+										button: { text: '<?php _e('使用此图片', 'argon');?>' },
+										multiple: false
+									});
+									mediaUploader.on('select', function() {
+										var attachment = mediaUploader.state().get('selection').first().toJSON();
+										document.querySelector('input[name=argon_email_logo_url]').value = attachment.url;
+									});
+									mediaUploader.open();
+								}
+							</script>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('邮件显示名称', 'argon');?></label></th>
+						<td>
+							<input type="text" class="regular-text" name="argon_email_blog_name" value="<?php echo esc_attr(get_option('argon_email_blog_name', '')); ?>" placeholder="<?php echo esc_attr(get_bloginfo('name')); ?>" />
+							<p class="description"><?php _e('邮件中显示的博客名称，留空则使用站点名称', 'argon');?></p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('页脚版权信息', 'argon');?></label></th>
+						<td>
+							<input type="text" class="regular-text" name="argon_email_footer_text" value="<?php echo esc_attr(get_option('argon_email_footer_text', '')); ?>" placeholder="© <?php echo date('Y'); ?> <?php echo esc_attr(get_bloginfo('name')); ?>. All rights reserved." />
+							<p class="description"><?php _e('邮件页脚显示的版权信息，留空则使用默认格式', 'argon');?></p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('社交链接', 'argon');?></label></th>
+						<td>
+							<?php $social_links = get_option('argon_email_social_links', array()); ?>
+							<div style="margin-bottom: 8px;">
+								<label style="display: inline-block; width: 80px;">Twitter:</label>
+								<input type="text" name="argon_email_social_twitter" value="<?php echo esc_attr(isset($social_links['twitter']) ? $social_links['twitter'] : ''); ?>" placeholder="https://twitter.com/username" style="width: 300px;" />
+							</div>
+							<div style="margin-bottom: 8px;">
+								<label style="display: inline-block; width: 80px;">GitHub:</label>
+								<input type="text" name="argon_email_social_github" value="<?php echo esc_attr(isset($social_links['github']) ? $social_links['github'] : ''); ?>" placeholder="https://github.com/username" style="width: 300px;" />
+							</div>
+							<div style="margin-bottom: 8px;">
+								<label style="display: inline-block; width: 80px;"><?php _e('微博', 'argon');?>:</label>
+								<input type="text" name="argon_email_social_weibo" value="<?php echo esc_attr(isset($social_links['weibo']) ? $social_links['weibo'] : ''); ?>" placeholder="https://weibo.com/username" style="width: 300px;" />
+							</div>
+							<p class="description"><?php _e('邮件页脚显示的社交链接，留空则不显示', 'argon');?></p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('邮件预览', 'argon');?></label></th>
+						<td>
+							<button type="button" class="button" onclick="argonPreviewEmail('comment');"><?php _e('预览评论通知邮件', 'argon');?></button>
+							<button type="button" class="button" onclick="argonPreviewEmail('reply');"><?php _e('预览回复通知邮件', 'argon');?></button>
+							<p class="description"><?php _e('预览当前设置下的邮件效果', 'argon');?></p>
+							<div id="argon_email_preview_modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000;">
+								<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; border-radius: 8px; width: 90%; max-width: 700px; max-height: 90vh; overflow: auto;">
+									<div style="padding: 16px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+										<strong><?php _e('邮件预览', 'argon');?></strong>
+										<button type="button" onclick="document.getElementById('argon_email_preview_modal').style.display='none';" style="border: none; background: none; font-size: 20px; cursor: pointer;">&times;</button>
+									</div>
+									<iframe id="argon_email_preview_iframe" style="width: 100%; height: 500px; border: none;"></iframe>
+								</div>
+							</div>
+							<script>
+								function argonPreviewEmail(type) {
+									var formData = new FormData();
+									formData.append('action', 'argon_preview_email');
+									formData.append('type', type);
+									formData.append('nonce', '<?php echo wp_create_nonce('argon_preview_email'); ?>');
+									
+									fetch(ajaxurl, {
+										method: 'POST',
+										body: formData
+									})
+									.then(function(response) { return response.text(); })
+									.then(function(html) {
+										var iframe = document.getElementById('argon_email_preview_iframe');
+										iframe.srcdoc = html;
+										document.getElementById('argon_email_preview_modal').style.display = 'block';
+									});
+								}
+							</script>
+						</td>
+					</tr>
+
 					<tr><th class="subtitle"><h3 id="subsection-friend-links"><?php _e('友情链接', 'argon');?></h3></th></tr>
 
 					<tr>
@@ -5163,6 +5271,20 @@ function argon_update_themeoptions(){
 		argon_update_option('argon_friend_link_captcha');
 		argon_update_option('argon_friend_link_hide_no_backlink');
 		argon_update_option_allow_tags('argon_friend_link_requirements');
+
+		// 邮件模板相关配置
+		argon_update_option('argon_email_theme_color');
+		argon_update_option('argon_email_logo_url');
+		argon_update_option('argon_email_blog_name');
+		argon_update_option('argon_email_footer_text');
+		
+		// 保存社交链接为数组
+		$social_links = array(
+			'twitter' => isset($_POST['argon_email_social_twitter']) ? sanitize_url($_POST['argon_email_social_twitter']) : '',
+			'github' => isset($_POST['argon_email_social_github']) ? sanitize_url($_POST['argon_email_social_github']) : '',
+			'weibo' => isset($_POST['argon_email_social_weibo']) ? sanitize_url($_POST['argon_email_social_weibo']) : ''
+		);
+		update_option('argon_email_social_links', $social_links);
 
 		argon_update_option('argon_hide_footer_author');
 
