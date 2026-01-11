@@ -271,7 +271,7 @@
 		wp_enqueue_style("style", $GLOBALS['assets_path'] . "/style.css", null, $GLOBALS['theme_version']);
 		
 		// 集成外部资源备用机制
-		wp_enqueue_script("resource_loader", $GLOBALS['assets_path'] . "/assets/vendor/external/resource-loader.js", null, $GLOBALS['theme_version']);
+		wp_enqueue_script("resource_loader", $GLOBALS['assets_path'] . "/assets/vendor/external/resource-loader.js", null, $GLOBALS['theme_version'], false);
 
 		if (get_option('argon_disable_googlefont') != 'true') {
 			// 使用备用机制加载Google Fonts
@@ -284,8 +284,8 @@
 			</script>';
 		}
 
-		// 加载 argon_js_merged（包含 jQuery 和其他库）
-		wp_enqueue_script("argon_js_merged", $GLOBALS['assets_path'] . "/assets/argon_js_merged.js", null, $GLOBALS['theme_version']);
+		// 加载 argon_js_merged（包含 jQuery 和其他库）- 在头部加载以确保后续脚本可用
+		wp_enqueue_script("argon_js_merged", $GLOBALS['assets_path'] . "/assets/argon_js_merged.js", null, $GLOBALS['theme_version'], false);
 
 	?>
 	

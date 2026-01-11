@@ -431,15 +431,12 @@ $author_desc = get_option('argon_sidebar_author_description');
 								<div id="leftbar_catalog"></div>
 
 								<script type="text/javascript">
-									// 延迟执行，等待 footer 重新注册插件
-									(function() {
-										var retryCount = 0;
-										var maxRetries = 50; // 最多重试 5 秒
-										
-										function initCatalog() {
-											// 检查 jQuery 和 headIndex 插件是否都准备好
-											if (typeof jQuery !== 'undefined' && typeof jQuery.fn.headIndex === 'function') {
-												jQuery(document).headIndex({
+									// 桌面端目录初始化 - 等待 jQuery 和 headIndex 插件加载完成
+									(function initDesktopCatalog() {
+										// 检查 jQuery 和 headIndex 是否都已加载
+										if (typeof jQuery !== 'undefined' && typeof jQuery.fn.headIndex === 'function') {
+											jQuery(document).ready(function($) {
+												$(document).headIndex({
 													articleWrapSelector: '#post_content',
 													indexBoxSelector: '#leftbar_catalog',
 													subItemBoxClass: "index-subItem-box",
@@ -447,23 +444,10 @@ $author_desc = get_option('argon_sidebar_author_description');
 													linkClass: "index-link",
 													offset: 80,
 												});
-											} else {
-												retryCount++;
-												if (retryCount < maxRetries) {
-													setTimeout(initCatalog, 100);
-												} else {
-													console.error('[Sidebar] 插件初始化超时，headIndex 可能未正确加载');
-												}
-											}
-										}
-										
-										// 等待 DOM ready 后开始尝试初始化
-										if (document.readyState === 'loading') {
-											document.addEventListener('DOMContentLoaded', function() {
-												setTimeout(initCatalog, 100); // 额外延迟 100ms
 											});
 										} else {
-											setTimeout(initCatalog, 100); // 额外延迟 100ms
+											// 如果还没加载完成，等待后重试
+											setTimeout(initDesktopCatalog, 50);
 										}
 									})();
 								</script>
