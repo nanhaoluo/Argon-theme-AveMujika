@@ -10240,6 +10240,12 @@ html.darkmode.amoled-dark #content:after {
 		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 		position: relative;
 		z-index: 1;
+		transition: all var(--animation-normal) var(--ease-spring);
+	}
+	
+	.leftbar-mobile-avatar:active {
+		transform: scale(0.95);
+		border-color: rgba(255, 255, 255, 0.6);
 	}
 	
 	.leftbar-mobile-avatar img {
@@ -10258,6 +10264,11 @@ html.darkmode.amoled-dark #content:after {
 		font-size: 22px;
 		font-weight: 700;
 		margin-bottom: 6px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-wrap: wrap;
+		gap: 4px;
 		letter-spacing: -0.3px;
 	}
 	
@@ -11162,6 +11173,22 @@ html.darkmode.amoled-dark #content:after {
 	
 	html.leftbar-opened .leftbar-mobile-user-info {
 		animation: fadeInUp 0.35s var(--ease-emphasized) 0.2s both;
+	}
+	
+	/* 多邻国连胜徽章入场动画 */
+	html.leftbar-opened .leftbar-mobile-user-name .duolingo-streak {
+		animation: duolingoBadgeIn 0.4s var(--ease-spring) 0.35s both;
+	}
+	
+	@keyframes duolingoBadgeIn {
+		from {
+			opacity: 0;
+			transform: scale(0.5) translateX(-10px);
+		}
+		to {
+			opacity: 1;
+			transform: scale(1) translateX(0);
+		}
 	}
 	
 	html.leftbar-opened .leftbar-mobile-stats {
@@ -12895,6 +12922,7 @@ html.darkmode .todo-add-form input:focus {
 	color: #FF9600;
 	margin-left: 6px;
 	vertical-align: middle;
+	animation: duolingoFadeIn 0.5s var(--ease-emphasized-decelerate) both;
 }
 
 .duolingo-streak.not-done {
@@ -12904,6 +12932,54 @@ html.darkmode .todo-add-form input:focus {
 .duolingo-flame {
 	width: 14px;
 	height: 17px;
+	animation: duolingoFlameGlow 2s ease-in-out infinite;
+}
+
+.duolingo-streak.not-done .duolingo-flame {
+	animation: none;
+	opacity: 0.6;
+}
+
+/* 多邻国火焰动画 */
+@keyframes duolingoFlameGlow {
+	0%, 100% {
+		filter: drop-shadow(0 0 2px rgba(255, 150, 0, 0.4));
+		transform: scale(1);
+	}
+	50% {
+		filter: drop-shadow(0 0 6px rgba(255, 150, 0, 0.8));
+		transform: scale(1.05);
+	}
+}
+
+@keyframes duolingoFadeIn {
+	from {
+		opacity: 0;
+		transform: translateX(-5px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+/* 移动端多邻国连胜样式优化 */
+.leftbar-mobile-user-name .duolingo-streak {
+	font-size: 16px;
+	margin-left: 8px;
+	padding: 2px 8px;
+	background: rgba(255, 150, 0, 0.15);
+	border-radius: 12px;
+	gap: 4px;
+}
+
+.leftbar-mobile-user-name .duolingo-streak.not-done {
+	background: rgba(150, 150, 150, 0.15);
+}
+
+.leftbar-mobile-user-name .duolingo-flame {
+	width: 16px;
+	height: 19px;
 }
 
 
