@@ -1,0 +1,355 @@
+/* ===== 基础样式与背景 ===== */
+body.login {
+	background: linear-gradient(-45deg, #667eea, #764ba2, #6B8DD6, #8E37D7);
+	background-size: 400% 400%;
+	animation: gradientBG 15s ease infinite;
+	min-height: 100vh;
+	position: relative;
+	overflow-x: hidden;
+}
+
+@keyframes gradientBG {
+	0% { background-position: 0% 50%; }
+	50% { background-position: 100% 50%; }
+	100% { background-position: 0% 50%; }
+}
+
+/* 背景装饰元素 */
+body.login::before,
+body.login::after {
+	content: '';
+	position: fixed;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.06);
+	pointer-events: none;
+}
+
+body.login::before {
+	width: 400px;
+	height: 400px;
+	top: -150px;
+	left: -150px;
+}
+
+body.login::after {
+	width: 300px;
+	height: 300px;
+	bottom: -100px;
+	right: -100px;
+}
+
+/* ===== 登录容器 ===== */
+#login {
+	width: 380px;
+	max-width: calc(100% - 40px);
+	padding: 3% 0 0;
+}
+
+/* ===== Logo 区域 - 隐藏 ===== */
+.login h1 {
+	display: none !important;
+}
+
+/* ===== 登录表单 ===== */
+.login form {
+	background: #fff;
+	border: none;
+	border-radius: 16px;
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+	padding: 40px 32px 32px;
+	margin-top: 0;
+}
+
+/* ===== 标签样式 ===== */
+.login label {
+	color: #4a5568;
+	margin-bottom: 6px;
+	font-size: 14px;
+	font-weight: 500;
+	display: block;
+}
+
+/* ===== 输入框样式 ===== */
+.login form .input,
+.login input[type=password],
+.login input[type=text] {
+	background: #f7fafc;
+	font-size: 15px;
+	display: block;
+	width: 100%;
+	height: 48px;
+	padding: 12px 14px;
+	font-weight: 400;
+	line-height: 1.5;
+	color: #2d3748;
+	border-radius: 10px;
+	border: 2px solid #e2e8f0;
+	transition: all 0.2s ease;
+	margin-bottom: 20px;
+	box-shadow: none;
+}
+
+.login form .input:focus,
+.login input[type=password]:focus,
+.login input[type=text]:focus {
+	background: #fff;
+	border-color: #667eea;
+	box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+	outline: none;
+}
+
+/* ===== 密码显示按钮 ===== */
+.login .button.wp-hide-pw {
+	color: #667eea;
+	height: 48px;
+	border: none;
+	background: transparent;
+}
+
+.login .button.wp-hide-pw:hover {
+	color: #764ba2;
+}
+
+/* ===== 记住我区域 ===== */
+.login form .forgetmenot {
+	float: none;
+	display: flex;
+	align-items: center;
+	margin-bottom: 0;
+}
+
+/* ===== 复选框样式 ===== */
+input[type=checkbox] {
+	position: relative;
+	border: transparent !important;
+	background: transparent !important;
+	color: transparent !important;
+	box-shadow: none !important;
+	width: 18px !important;
+	height: 18px !important;
+	min-width: 18px;
+	cursor: pointer;
+	margin: 0 !important;
+	flex-shrink: 0;
+}
+
+input[type=checkbox]:before {
+	content: '' !important;
+	position: absolute;
+	top: 0;
+	left: 0;
+	display: block !important;
+	width: 18px !important;
+	height: 18px !important;
+	background: #f7fafc;
+	border-radius: 4px;
+	border: 2px solid #cbd5e0;
+	transition: all 0.2s ease;
+	margin: 0 !important;
+	box-sizing: border-box;
+}
+
+input[type=checkbox]:checked:before {
+	background: linear-gradient(135deg, #667eea, #764ba2);
+	border-color: transparent;
+}
+
+input[type=checkbox]:after {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	display: block;
+	width: 18px;
+	height: 18px;
+	box-sizing: border-box;
+	background: no-repeat 50%/50% 50%;
+}
+
+input[type=checkbox]:checked:after {
+	background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath fill='%23fff' d='M6.564.75l-3.59 3.612-1.538-1.55L0 4.26l2.974 2.99L8 2.193z'/%3E%3C/svg%3E");
+}
+
+input[type=checkbox] + label {
+	font-size: 14px !important;
+	font-weight: 400 !important;
+	color: #718096;
+	margin: 0 0 0 8px !important;
+	cursor: pointer;
+	display: inline !important;
+	white-space: nowrap;
+}
+
+/* ===== 提交按钮 ===== */
+p.submit {
+	display: block;
+	width: 100%;
+	margin-top: 24px !important;
+	margin-bottom: 0 !important;
+}
+
+.button-primary {
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+	color: #fff !important;
+	box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4) !important;
+	font-size: 15px !important;
+	font-weight: 600 !important;
+	padding: 12px 24px !important;
+	border: none !important;
+	border-radius: 10px !important;
+	cursor: pointer;
+	transition: all 0.2s ease !important;
+}
+
+.button-primary:hover {
+	transform: translateY(-1px);
+	box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5) !important;
+}
+
+.button-primary:active {
+	transform: translateY(0);
+}
+
+.login .button-primary {
+	float: none;
+	margin: auto;
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
+/* ===== 底部链接 ===== */
+.login #backtoblog a,
+.login #nav a {
+	color: rgba(255, 255, 255, 0.9) !important;
+	font-size: 14px;
+	text-decoration: none;
+	transition: color 0.2s ease;
+}
+
+.login #backtoblog a:hover,
+.login #nav a:hover {
+	color: #fff !important;
+}
+
+.login #backtoblog,
+.login #nav {
+	text-align: center;
+}
+
+.login #nav {
+	margin-top: 24px;
+	color: rgba(255, 255, 255, 0.6);
+}
+
+.login #backtoblog {
+	margin-top: 12px;
+}
+
+/* ===== 消息提示框 ===== */
+.login #login_error,
+.login .message,
+.login .success {
+	background: #fff;
+	border-radius: 10px;
+	box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+	padding: 14px 18px;
+	border-left: 4px solid;
+	margin-bottom: 20px;
+	font-size: 14px;
+}
+
+.login #login_error {
+	border-left-color: #e53e3e;
+	color: #c53030;
+}
+
+.login .message {
+	border-left-color: #667eea;
+	color: #4a5568;
+}
+
+.login .success {
+	border-left-color: #48bb78;
+	color: #276749;
+}
+
+/* ===== 隐私政策链接 ===== */
+.login .privacy-policy-page-link {
+	text-align: center;
+	width: 100%;
+	margin: 2em 0 1.5em;
+}
+
+.login .privacy-policy-page-link .privacy-policy-link {
+	color: rgba(255, 255, 255, 0.6);
+	font-size: 13px;
+	text-decoration: none;
+}
+
+.login .privacy-policy-page-link .privacy-policy-link:hover {
+	color: rgba(255, 255, 255, 0.9);
+}
+
+/* ===== 语言切换器 ===== */
+.login .language-switcher {
+	position: absolute;
+	bottom: 20px;
+	left: 50%;
+	transform: translateX(-50%);
+}
+
+.login .language-switcher label {
+	color: rgba(255, 255, 255, 0.7);
+	font-size: 13px;
+	margin-bottom: 0;
+}
+
+.login .language-switcher select {
+	background: rgba(255, 255, 255, 0.15);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	border-radius: 6px;
+	color: #fff;
+	padding: 6px 10px;
+	font-size: 13px;
+}
+
+.login .language-switcher .button {
+	background: rgba(255, 255, 255, 0.2) !important;
+	border: none !important;
+	color: #fff !important;
+	padding: 6px 12px !important;
+	border-radius: 6px !important;
+	font-size: 13px !important;
+}
+
+/* ===== 响应式设计 ===== */
+@media screen and (max-width: 480px) {
+	#login {
+		width: 100%;
+		max-width: calc(100% - 30px);
+		padding: 5% 0 0;
+	}
+	
+	.login form {
+		padding: 32px 24px 28px;
+		border-radius: 14px;
+	}
+	
+	.login form .input,
+	.login input[type=password],
+	.login input[type=text] {
+		height: 46px;
+		font-size: 16px;
+	}
+	
+	body.login::before {
+		width: 250px;
+		height: 250px;
+	}
+	
+	body.login::after {
+		width: 180px;
+		height: 180px;
+	}
+}
