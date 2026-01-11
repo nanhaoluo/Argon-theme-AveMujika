@@ -15438,3 +15438,316 @@ html.style-neumorphism #fabtn_blog_settings_popup {
         box-shadow var(--animation-slow) var(--ease-standard),
         backdrop-filter var(--animation-slow) var(--ease-standard);
 }
+
+
+/* ========== 页面模板卡片样式修复 ========== */
+/* 页面卡片背景模糊效果 - 与文章页保持一致 */
+article.post.post-full.card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 
+        0 4px 24px rgba(0, 0, 0, 0.06),
+        0 1px 3px rgba(0, 0, 0, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+html.darkmode article.post.post-full.card {
+    background: rgba(66, 66, 66, 0.85);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 
+        0 4px 24px rgba(0, 0, 0, 0.2),
+        0 1px 3px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* 玻璃风格下的页面卡片 */
+html.style-glass article.post.post-full.card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(24px) saturate(200%);
+    -webkit-backdrop-filter: blur(24px) saturate(200%);
+}
+
+html.darkmode.style-glass article.post.post-full.card {
+    background: rgba(40, 40, 40, 0.75);
+}
+
+/* ========== 移动端侧边栏优化 ========== */
+@media screen and (max-width: 900px) {
+    /* 移动端侧边栏整体布局优化 */
+    .leftbar-mobile-nav {
+        padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+    
+    /* 用户信息区域优化 */
+    .leftbar-mobile-profile {
+        padding: 24px 20px 20px;
+        padding-top: calc(24px + env(safe-area-inset-top, 0));
+    }
+    
+    /* 头像尺寸优化 */
+    .leftbar-mobile-avatar {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 12px;
+    }
+    
+    /* 用户名优化 */
+    .leftbar-mobile-user-name {
+        font-size: 20px;
+        margin-bottom: 4px;
+    }
+    
+    /* 描述文字优化 */
+    .leftbar-mobile-user-desc {
+        font-size: 12px;
+        opacity: 0.85;
+        line-height: 1.5;
+        max-width: 200px;
+        margin: 0 auto;
+    }
+    
+    /* 统计数据区域优化 */
+    .leftbar-mobile-stats {
+        padding: 10px 6px;
+        margin-top: 16px;
+        border-radius: 14px;
+    }
+    
+    .leftbar-mobile-stat .stat-num {
+        font-size: 18px;
+    }
+    
+    .leftbar-mobile-stat .stat-label {
+        font-size: 10px;
+        margin-top: 2px;
+    }
+    
+    /* 搜索框优化 */
+    .leftbar-mobile-search {
+        padding: 12px 16px 6px;
+    }
+    
+    .leftbar-mobile-search-inner {
+        padding: 10px 14px;
+        border-radius: 12px;
+        gap: 10px;
+    }
+    
+    .leftbar-mobile-search-inner input {
+        font-size: 14px;
+    }
+    
+    /* 菜单区域优化 */
+    .leftbar-mobile-menu-section {
+        padding: 8px 12px 6px;
+    }
+    
+    .leftbar-mobile-section-title {
+        font-size: 10px;
+        padding: 6px 12px 10px;
+        letter-spacing: 1px;
+    }
+    
+    /* 菜单项优化 */
+    .leftbar-mobile-menu-item {
+        margin-bottom: 2px;
+    }
+    
+    .leftbar-mobile-menu-item > a {
+        padding: 12px 14px;
+        border-radius: 12px;
+        font-size: 14px;
+    }
+    
+    /* 折叠面板优化 */
+    .leftbar-mobile-collapse-section {
+        margin: 3px 12px;
+        border-radius: 12px;
+    }
+    
+    .leftbar-mobile-collapse-section.expanded {
+        margin: 4px 12px;
+    }
+    
+    .leftbar-mobile-collapse-header {
+        padding: 8px 12px;
+    }
+    
+    .collapse-icon {
+        width: 26px;
+        height: 26px;
+        border-radius: 7px;
+        font-size: 11px;
+    }
+    
+    .collapse-title {
+        font-size: 13px;
+    }
+    
+    .collapse-badge {
+        font-size: 9px;
+        padding: 2px 6px;
+        border-radius: 6px;
+    }
+    
+    /* 文章目录容器优化 */
+    .mobile-catalog-container {
+        padding: 2px 10px 10px;
+    }
+    
+    #leftbar_mobile_catalog {
+        max-height: 220px;
+    }
+    
+    #leftbar_mobile_catalog .index-link {
+        padding: 7px 9px;
+        font-size: 12px;
+        border-radius: 6px;
+    }
+    
+    /* TODO 容器优化 */
+    .mobile-todo-container {
+        padding: 2px 10px 10px;
+    }
+    
+    .mobile-todo-add-form input {
+        padding: 7px 10px;
+        font-size: 12px;
+        border-radius: 8px;
+    }
+    
+    .mobile-todo-add-form button {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        font-size: 12px;
+    }
+    
+    .mobile-todo-item {
+        padding: 8px 10px;
+        border-radius: 8px;
+        margin-bottom: 4px;
+    }
+    
+    .mobile-todo-content {
+        font-size: 12px;
+    }
+    
+    .mobile-todo-complete-btn,
+    .mobile-todo-urge-btn,
+    .mobile-todo-delete-btn {
+        width: 26px;
+        height: 26px;
+        border-radius: 6px;
+        font-size: 10px;
+        margin-left: 6px;
+    }
+    
+    /* 底部操作区优化 */
+    .leftbar-mobile-footer {
+        padding: 10px 14px 16px;
+        padding-bottom: calc(16px + env(safe-area-inset-bottom, 0));
+    }
+    
+    .leftbar-mobile-actions {
+        gap: 6px;
+    }
+    
+    .leftbar-mobile-action {
+        padding: 12px 10px;
+        border-radius: 12px;
+        gap: 5px;
+    }
+    
+    .leftbar-mobile-action i {
+        font-size: 18px;
+    }
+    
+    .leftbar-mobile-action span {
+        font-size: 10px;
+    }
+    
+    /* 关闭按钮优化 */
+    .leftbar-mobile-close {
+        width: 32px;
+        height: 32px;
+        top: 14px;
+        right: 14px;
+    }
+    
+    .leftbar-mobile-close i {
+        font-size: 14px;
+    }
+    
+    /* 侧边栏宽度优化 - 适配不同屏幕 */
+    #leftbar {
+        width: min(280px, 85vw);
+    }
+    
+    /* 子菜单优化 */
+    .leftbar-mobile-submenu {
+        margin: 2px 0 2px 12px;
+        padding-left: 10px;
+    }
+    
+    .leftbar-mobile-submenu .leftbar-mobile-menu-item > a {
+        padding: 9px 12px;
+        font-size: 13px;
+        border-radius: 8px;
+    }
+}
+
+/* 小屏幕进一步优化 */
+@media screen and (max-width: 375px) {
+    .leftbar-mobile-profile {
+        padding: 20px 16px 16px;
+    }
+    
+    .leftbar-mobile-avatar {
+        width: 56px;
+        height: 56px;
+    }
+    
+    .leftbar-mobile-user-name {
+        font-size: 18px;
+    }
+    
+    .leftbar-mobile-stats {
+        padding: 8px 4px;
+    }
+    
+    .leftbar-mobile-stat .stat-num {
+        font-size: 16px;
+    }
+    
+    .leftbar-mobile-action {
+        padding: 10px 8px;
+    }
+    
+    .leftbar-mobile-action i {
+        font-size: 16px;
+    }
+    
+    #leftbar {
+        width: min(260px, 80vw);
+    }
+}
+
+/* ========== 移动端页面卡片背景模糊 ========== */
+@media screen and (max-width: 900px) {
+    article.post.post-full.card {
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(16px) saturate(150%);
+        -webkit-backdrop-filter: blur(16px) saturate(150%);
+    }
+    
+    html.darkmode article.post.post-full.card {
+        background: rgba(66, 66, 66, 0.9);
+        backdrop-filter: blur(16px) saturate(130%);
+        -webkit-backdrop-filter: blur(16px) saturate(130%);
+    }
+}
