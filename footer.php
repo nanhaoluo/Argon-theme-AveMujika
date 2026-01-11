@@ -190,7 +190,15 @@
 
 			</script>
 
-			<script src="<?php echo get_option('argon_mathjax_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js' : get_option('argon_mathjax_cdn_url'); ?>" id="MathJax-script" async></script>
+			<script src="<?php echo get_option('argon_mathjax_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js' : get_option('argon_mathjax_cdn_url'); ?>" id="MathJax-script" async onerror="
+			var fallbackScript = document.createElement('script');
+			fallbackScript.src = '<?php echo $GLOBALS['assets_path']; ?>/assets/vendor/external/mathjax3/tex-chtml-full.js';
+			fallbackScript.async = true;
+			document.head.appendChild(fallbackScript);
+			if (typeof ArgonLogger !== 'undefined') {
+				ArgonLogger.warn('MathJax 3 CDN失败，使用本地备用');
+			}
+		"></script>
 
 		<?php }?>
 
@@ -232,17 +240,24 @@
 
 			</script>
 
-			<script src="<?php echo get_option('argon_mathjax_v2_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/mathjax@2.7.5/MathJax.js?config=TeX-AMS_HTML' : get_option('argon_mathjax_v2_cdn_url'); ?>"></script>
+			<script src="<?php echo get_option('argon_mathjax_v2_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/mathjax@2.7.5/MathJax.js?config=TeX-AMS_HTML' : get_option('argon_mathjax_v2_cdn_url'); ?>" onerror="
+			var fallbackScript = document.createElement('script');
+			fallbackScript.src = '<?php echo $GLOBALS['assets_path']; ?>/assets/vendor/external/mathjax2/MathJax.js';
+			document.head.appendChild(fallbackScript);
+			if (typeof ArgonLogger !== 'undefined') {
+				ArgonLogger.warn('MathJax 2 CDN失败，使用本地备用');
+			}
+		"></script>
 
 		<?php }?>
 
 		<?php if (get_option('argon_math_render') == 'katex') { /*Katex*/?>
 
-			<link rel="stylesheet" href="<?php echo get_option('argon_katex_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/katex@0.11.1/dist/' : get_option('argon_katex_cdn_url'); ?>katex.min.css">
+			<link rel="stylesheet" href="<?php echo get_option('argon_katex_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/katex@0.11.1/dist/' : get_option('argon_katex_cdn_url'); ?>katex.min.css" onerror="this.href='<?php echo $GLOBALS['assets_path']; ?>/assets/vendor/external/katex/katex.min.css'">
 
-			<script src="<?php echo get_option('argon_katex_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/katex@0.11.1/dist/' : get_option('argon_katex_cdn_url'); ?>katex.min.js"></script>
+			<script src="<?php echo get_option('argon_katex_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/katex@0.11.1/dist/' : get_option('argon_katex_cdn_url'); ?>katex.min.js" onerror="this.src='<?php echo $GLOBALS['assets_path']; ?>/assets/vendor/external/katex/katex.min.js'"></script>
 
-			<script src="<?php echo get_option('argon_katex_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/katex@0.11.1/dist/' : get_option('argon_katex_cdn_url'); ?>contrib/auto-render.min.js"></script>
+			<script src="<?php echo get_option('argon_katex_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/katex@0.11.1/dist/' : get_option('argon_katex_cdn_url'); ?>contrib/auto-render.min.js" onerror="this.src='<?php echo $GLOBALS['assets_path']; ?>/assets/vendor/external/katex/auto-render.min.js'"></script>
 
 			<script>
 

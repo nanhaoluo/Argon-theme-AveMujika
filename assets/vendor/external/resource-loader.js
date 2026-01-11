@@ -8,37 +8,131 @@
             'fonts.googleapis.com/css?family=Open+Sans': '/wp-content/themes/argon/assets/vendor/external/fonts/open-sans.css',
             'fonts.googleapis.com/css?family=Noto+Serif+SC': '/wp-content/themes/argon/assets/vendor/external/fonts/noto-serif-sc.css',
             'static.geetest.com/v4/gt4.js': '/wp-content/themes/argon/assets/vendor/external/geetest/gt4.js',
-            'cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js': '/wp-content/themes/argon/assets/vendor/external/qrcode/qrcode.min.js'
+            'cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js': '/wp-content/themes/argon/assets/vendor/external/qrcode/qrcode.min.js',
+            'cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js': '/wp-content/themes/argon/assets/vendor/external/mathjax3/tex-chtml-full.js',
+            'cdn.jsdelivr.net/npm/mathjax@2.7.5/MathJax.js': '/wp-content/themes/argon/assets/vendor/external/mathjax2/MathJax.js',
+            'cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css': '/wp-content/themes/argon/assets/vendor/external/katex/katex.min.css',
+            'cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js': '/wp-content/themes/argon/assets/vendor/external/katex/katex.min.js',
+            'cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js': '/wp-content/themes/argon/assets/vendor/external/katex/auto-render.min.js'
+        },
+        
+        // 配置选项
+        config: {
+            timeout: 5000,
+            retryCount: 2,
+            enableLogging: true,
+            enableFallbackCSS: true,
+            enableFallbackJS: true
+        },
+        
+        // 初始化
+        init: function() {
+            this.loadFallbackSystems();
+            this.bindGlobalErrorHandlers();
+            this.log('资源加载器已初始化');
+        },
+        
+        // 加载备用系统
+        loadFallbackSystems: function() {
+            if (this.config.enableFallbackCSS) {
+                this.loadCSS('/wp-content/themes/argon/assets/vendor/external/css-fallback.css');
+                this.loadCSS('/wp-content/themes/argon/assets/vendor/external/fonts/font-fallback.css');
+            }
+            
+            if (this.config.enableFallbackJS) {
+                this.loadJS('/wp-content/themes/argon/assets/vendor/external/js-fallback.js');
+                this.loadJS('/wp-content/themes/argon/assets/vendor/external/resource-monitor.js');
+            }
+        },
+        
+        // 绑定全局错误处理
+        bindGlobalErrorHandlers: function() {
+            var self = this;
+            
+            // 监听资源加载错误
+            window.addEventListener('error', function(e) {
+                if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
+                    self.handleResourceError(e.target);
+                }
+            }, true);
+            
+            // 监听未处理的Promise拒绝
+            window.addEventListener('unhandledrejection', function(e) {
+                if (typeof ArgonLogger !== 'undefined') {
+                    ArgonLogger.warn('未处理的Promise拒绝: ' + e.reason);
+                }
+            });
+        },
+        
+        // 处理资源加载错误
+        handleResourceError: function(element) {
+            var url = element.src || element.href;
+            if (url) {
+                if (typeof ArgonLogger !== 'undefined') {
+                    ArgonLogger.warn('资源加载失败: ' + url);
+                }
+                var fallbackUrl = this.getFallbackUrl(url);
+                if (fallbackUrl) {
+                    this.log('尝试加载备用资源: ' + fallbackUrl);
+                    if (element.tagName === 'SCRIPT') {
+                        this.loadJS(fallbackUrl);
+                    } else if (element.tagName === 'LINK') {
+                        this.loadCSS(fallbackUrl);
+                    }
+                }
+            }
+        },
+        
+        // 获取备用URL
+        getFallbackUrl: function(url) {
+            for (var key in this.resourceMap) {
+                if (url.includes(key)) {
+                    return this.resourceMap[key];
+                }
+            }
+            return null;
         },
         
         // 加载CSS资源
         loadCSS: function(url, fallbackUrl) {
+            var self = this;
             return new Promise(function(resolve, reject) {
                 var link = document.createElement('link');
                 link.rel = 'stylesheet';
                 link.href = url;
                 
                 var timeout = setTimeout(function() {
-                    console.warn('CSS资源加载超时，使用本地备用:', url);
+                    self.log('CSS资源加载超时: ' + url);
                     if (fallbackUrl) {
-                        ArgonResourceLoader.loadCSS(fallbackUrl).then(resolve).catch(reject);
+                        self.loadCSS(fallbackUrl).then(resolve).catch(reject);
                     } else {
-                        reject(new Error('CSS加载失败且无备用资源'));
+                        var autoFallback = self.getFallbackUrl(url);
+                        if (autoFallback) {
+                            self.loadCSS(autoFallback).then(resolve).catch(reject);
+                        } else {
+                            reject(new Error('CSS加载失败且无备用资源'));
+                        }
                     }
-                }, 5000);
+                }, self.config.timeout);
                 
                 link.onload = function() {
                     clearTimeout(timeout);
+                    self.log('CSS资源加载成功: ' + url);
                     resolve();
                 };
                 
                 link.onerror = function() {
                     clearTimeout(timeout);
-                    console.warn('CSS资源加载失败，使用本地备用:', url);
+                    self.log('CSS资源加载失败: ' + url);
                     if (fallbackUrl) {
-                        ArgonResourceLoader.loadCSS(fallbackUrl).then(resolve).catch(reject);
+                        self.loadCSS(fallbackUrl).then(resolve).catch(reject);
                     } else {
-                        reject(new Error('CSS加载失败且无备用资源'));
+                        var autoFallback = self.getFallbackUrl(url);
+                        if (autoFallback) {
+                            self.loadCSS(autoFallback).then(resolve).catch(reject);
+                        } else {
+                            reject(new Error('CSS加载失败且无备用资源'));
+                        }
                     }
                 };
                 
@@ -48,32 +142,44 @@
         
         // 加载JS资源
         loadJS: function(url, fallbackUrl) {
+            var self = this;
             return new Promise(function(resolve, reject) {
                 var script = document.createElement('script');
                 script.src = url;
                 script.async = true;
                 
                 var timeout = setTimeout(function() {
-                    console.warn('JS资源加载超时，使用本地备用:', url);
+                    self.log('JS资源加载超时: ' + url);
                     if (fallbackUrl) {
-                        ArgonResourceLoader.loadJS(fallbackUrl).then(resolve).catch(reject);
+                        self.loadJS(fallbackUrl).then(resolve).catch(reject);
                     } else {
-                        reject(new Error('JS加载失败且无备用资源'));
+                        var autoFallback = self.getFallbackUrl(url);
+                        if (autoFallback) {
+                            self.loadJS(autoFallback).then(resolve).catch(reject);
+                        } else {
+                            reject(new Error('JS加载失败且无备用资源'));
+                        }
                     }
-                }, 5000);
+                }, self.config.timeout);
                 
                 script.onload = function() {
                     clearTimeout(timeout);
+                    self.log('JS资源加载成功: ' + url);
                     resolve();
                 };
                 
                 script.onerror = function() {
                     clearTimeout(timeout);
-                    console.warn('JS资源加载失败，使用本地备用:', url);
+                    self.log('JS资源加载失败: ' + url);
                     if (fallbackUrl) {
-                        ArgonResourceLoader.loadJS(fallbackUrl).then(resolve).catch(reject);
+                        self.loadJS(fallbackUrl).then(resolve).catch(reject);
                     } else {
-                        reject(new Error('JS加载失败且无备用资源'));
+                        var autoFallback = self.getFallbackUrl(url);
+                        if (autoFallback) {
+                            self.loadJS(autoFallback).then(resolve).catch(reject);
+                        } else {
+                            reject(new Error('JS加载失败且无备用资源'));
+                        }
                     }
                 };
                 
@@ -83,45 +189,45 @@
         
         // 智能加载资源
         smartLoad: function(url, type) {
-            var fallbackUrl = null;
-            
-            // 查找备用资源
-            for (var key in this.resourceMap) {
-                if (url.indexOf(key) !== -1) {
-                    fallbackUrl = this.resourceMap[key];
-                    break;
-                }
-            }
-            
             if (type === 'css') {
-                return this.loadCSS(url, fallbackUrl);
+                return this.loadCSS(url);
             } else if (type === 'js') {
-                return this.loadJS(url, fallbackUrl);
+                return this.loadJS(url);
+            } else {
+                return Promise.reject(new Error('不支持的资源类型: ' + type));
+            }
+        },
+        
+        // 批量加载资源
+        loadMultiple: function(resources) {
+            var self = this;
+            var promises = resources.map(function(resource) {
+                return self.smartLoad(resource.url, resource.type);
+            });
+            return Promise.all(promises);
+        },
+        
+        // 日志记录
+        log: function(message) {
+            if (this.config.enableLogging) {
+                if (typeof ArgonLogger !== 'undefined') {
+                    ArgonLogger.info('[ResourceLoader] ' + message);
+                } else {
+                    // 仅在管理员模式下输出到控制台
+                    if (typeof window.argonUserRole !== 'undefined' && window.argonUserRole === 'administrator') {
+                        console.log('[ArgonResourceLoader] ' + message);
+                    }
+                }
             }
         }
     };
     
-    // 自动替换现有的资源加载
-    var originalCreateElement = document.createElement;
-    document.createElement = function(tagName) {
-        var element = originalCreateElement.call(document, tagName);
-        
-        if (tagName.toLowerCase() === 'script') {
-            var originalSetAttribute = element.setAttribute;
-            element.setAttribute = function(name, value) {
-                if (name === 'src' && value) {
-                    // 检查是否需要备用资源
-                    for (var key in ArgonResourceLoader.resourceMap) {
-                        if (value.indexOf(key) !== -1) {
-                            console.log('检测到外部JS资源，准备备用方案:', value);
-                            break;
-                        }
-                    }
-                }
-                return originalSetAttribute.call(this, name, value);
-            };
-        }
-        
-        return element;
-    };
+    // 自动初始化
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            ArgonResourceLoader.init();
+        });
+    } else {
+        ArgonResourceLoader.init();
+    }
 })();

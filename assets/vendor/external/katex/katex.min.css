@@ -1,0 +1,47 @@
+/* KaTeX CSS - Local Fallback */
+.katex {
+    font: normal 1.21em KaTeX_Main, "Times New Roman", serif;
+    line-height: 1.2;
+    text-indent: 0;
+    text-rendering: auto;
+    font-style: italic;
+    color: #666;
+}
+
+.katex * {
+    -ms-high-contrast-adjust: none !important;
+}
+
+.katex .katex-version::after {
+    content: "本地备用版本";
+}
+
+.katex .katex-mathml {
+    position: absolute;
+    clip: rect(1px, 1px, 1px, 1px);
+    padding: 0;
+    border: 0;
+    height: 1px;
+    width: 1px;
+    overflow: hidden;
+}
+
+.katex-display {
+    display: block;
+    margin: 1em 0;
+    text-align: center;
+}
+
+.katex-display > .katex {
+    display: block;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* 备用样式提示 */
+.katex::before {
+    content: "[数学公式渲染服务不可用] ";
+    font-size: 0.8em;
+    color: #999;
+    font-style: normal;
+}

@@ -291,6 +291,11 @@
 	
 	<?php wp_head(); ?>
 	
+	<!-- 用户角色检测 - 传递给前端JavaScript -->
+	<script>
+		window.argonUserRole = '<?php echo current_user_can('administrator') ? 'administrator' : (is_user_logged_in() ? 'user' : 'guest'); ?>';
+	</script>
+	
 	<!-- Argon 修复补丁 - 必须在 wp_head() 之后立即执行 -->
 	<script src="<?php echo get_template_directory_uri(); ?>/assets/js/argon.min.js?ver=<?php echo $GLOBALS['theme_version']; ?>&t=<?php echo time(); ?>"></script>
 
