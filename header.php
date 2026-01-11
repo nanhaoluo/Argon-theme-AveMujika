@@ -385,6 +385,9 @@
 
 		function setDarkmode(enable){
 
+			// 添加过渡类以启用平滑切换动画
+			document.documentElement.classList.add("theme-transitioning");
+
 			if (enable == true){
 
 				document.documentElement.classList.add("darkmode");
@@ -394,6 +397,11 @@
 				document.documentElement.classList.remove("darkmode");
 
 			}
+
+			// 过渡完成后移除过渡类
+			setTimeout(function() {
+				document.documentElement.classList.remove("theme-transitioning");
+			}, 300);
 
 			// 延迟触发 scroll 事件，等待 jQuery 加载
 			if (typeof jQuery !== 'undefined') {

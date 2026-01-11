@@ -26,11 +26,17 @@
 	<script>
 		var darkmodeAutoSwitch = "<?php echo (get_option("argon_darkmode_autoswitch") == '' ? 'false' : get_option("argon_darkmode_autoswitch"));?>";
 		function setDarkmode(enable){
+			// 添加过渡类以启用平滑切换动画
+			$("html").addClass("theme-transitioning");
 			if (enable == true){
 				$("html").addClass("darkmode");
 			}else{
 				$("html").removeClass("darkmode");
 			}
+			// 过渡完成后移除过渡类
+			setTimeout(function() {
+				$("html").removeClass("theme-transitioning");
+			}, 300);
 			$(window).trigger("scroll");
 		}
 		function toggleDarkmode(){

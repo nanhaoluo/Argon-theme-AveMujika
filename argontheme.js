@@ -2397,6 +2397,10 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 }).on('pjax:end', function() {
 	waterflowInit();
 	lazyloadInit();
+	// 重置移动端目录状态
+	if (typeof window.resetMobileCatalog === 'function') {
+		window.resetMobileCatalog();
+	}
 	// GT4: PJAX 后确保评论页验证码已初始化
 	try {
 		if ($('#geetest-captcha').length > 0) {
@@ -2523,10 +2527,11 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 	});
 	
 	// ========== 移动端文章目录初始化 ==========
-	var mobileCatalogInitialized = false;
+	// 使用全局变量以便 PJAX 后重置
+	window.mobileCatalogInitialized = false;
 	
 	function initMobileCatalog() {
-		if (mobileCatalogInitialized) return;
+		if (window.mobileCatalogInitialized) return;
 		if ($("#leftbar_mobile_catalog").length === 0) return;
 		if ($("#post_content").length === 0) return;
 		
@@ -2543,7 +2548,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 					linkClass: "index-link",
 					offset: 80,
 				});
-				mobileCatalogInitialized = true;
+				window.mobileCatalogInitialized = true;
 				// 初始化后滚动到当前位置
 				setTimeout(scrollMobileCatalogToActive, 150);
 			} else {
@@ -2556,6 +2561,12 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		
 		setTimeout(tryInit, 50);
 	}
+	
+	// 重置移动端目录状态（供 PJAX 调用）
+	window.resetMobileCatalog = function() {
+		window.mobileCatalogInitialized = false;
+		$("#leftbar_mobile_catalog").empty();
+	};
 	
 	// 滚动目录到当前激活项
 	function scrollMobileCatalogToActive() {
@@ -2576,7 +2587,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 	// 监听页面滚动，实时更新移动端目录高亮并自动滚动
 	var mobileCatalogScrollTimer = null;
 	$(window).on("scroll.mobileCatalog", function() {
-		if (!mobileCatalogInitialized) return;
+		if (!window.mobileCatalogInitialized) return;
 		// 节流处理
 		if (mobileCatalogScrollTimer) return;
 		mobileCatalogScrollTimer = setTimeout(function() {
