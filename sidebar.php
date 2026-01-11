@@ -28,7 +28,22 @@ $author_desc = get_option('argon_sidebar_author_description');
 				</div>
 				<?php endif; ?>
 				<div class="leftbar-mobile-user-info">
-					<div class="leftbar-mobile-user-name"><?php echo esc_html($author_name); ?></div>
+					<div class="leftbar-mobile-user-name">
+						<?php echo esc_html($author_name); ?>
+						<?php 
+						$show_duo = get_option('argon_show_duolingo_streak', 'false');
+						$duo_username = get_option('argon_duolingo_username', '');
+						if ($show_duo == 'true' && !empty($duo_username)) : 
+							$duo_data = argon_get_duolingo_data();
+							if ($duo_data !== false) : 
+								$is_today_done = isset($duo_data['today']) && $duo_data['today'];
+							?>
+						<span class="duolingo-streak<?php echo $is_today_done ? '' : ' not-done'; ?>">
+							<img src="<?php echo get_template_directory_uri(); ?>/assets/icons/duolingo-streak<?php echo $is_today_done ? '' : '-empty'; ?>.svg" class="duolingo-flame" alt="streak">
+							<?php echo $duo_data['streak']; ?>
+						</span>
+						<?php endif; endif; ?>
+					</div>
 					<?php if (!empty($author_desc)) : ?>
 					<div class="leftbar-mobile-user-desc"><?php echo esc_html($author_desc); ?></div>
 					<?php endif; ?>
