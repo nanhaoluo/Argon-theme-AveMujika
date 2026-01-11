@@ -698,7 +698,7 @@ if (argonConfig.waterflow_columns != "1") {
 	$backToTopBtn.on("click" , function(){
 		$("body,html").stop().animate({
 			scrollTop: 0
-		}, 800, 'easeOutExpo');
+		}, 600, 'easeOutExpo');
 	});
 
 	$toggleDarkmode.on("click" , function(){
@@ -923,16 +923,16 @@ if (argonConfig.waterflow_columns != "1") {
 		}
 		$("body,html").animate({
 			scrollTop: $('#post_comment').offset().top - 100
-		}, 500, 'easeOutCirc');
-		$('#post_comment_reply_info').slideDown(500, 'easeOutCirc');
+		}, 400, 'easeOutCirc');
+		$('#post_comment_reply_info').slideDown(350, 'easeOutCirc');
 		setTimeout(function(){
 			$("#post_comment_content").focus();
-		}, 500);
+		}, 350);
 	}
 	function cancelReply(){
 		replying = false;
 		replyID = 0;
-		$('#post_comment_reply_info').slideUp(300, 'easeOutCirc');
+		$('#post_comment_reply_info').slideUp(250, 'easeOutCirc');
 		$("#post_comment").removeClass("post-comment-force-privatemode-on post-comment-force-privatemode-off");
 	}
 	$(document).on("click" , ".comment-reply" , function(){
@@ -968,7 +968,7 @@ if (argonConfig.waterflow_columns != "1") {
 		}
 		$("body,html").animate({
 			scrollTop: $('#post_comment').offset().top - 100
-		}, 500, 'easeOutCirc');
+		}, 400, 'easeOutCirc');
 		$("#post_comment_content").focus();
 	}
 	function cancelEdit(clear){
@@ -1083,9 +1083,9 @@ if (argonConfig.waterflow_columns != "1") {
 	$(document).on("click" , "#post_comment_toggle_extra_input" , function(){
 		$("#post_comment").toggleClass("show-extra-input");
 		if ($("#post_comment").hasClass("show-extra-input")){
-			$("#post_comment_extra_input").slideDown(300, 'easeOutCirc');
+			$("#post_comment_extra_input").slideDown(250, 'easeOutCirc');
 		}else{
-			$("#post_comment_extra_input").slideUp(300, 'easeOutCirc');
+			$("#post_comment_extra_input").slideUp(200, 'easeOutCirc');
 		}
 	});
 
@@ -2776,7 +2776,7 @@ $(document).on("click" , ".collapse-block .collapse-block-title" , function(){
 	$(block).toggleClass("collapsed");
 	let inner = $(".collapse-block-body", block);
 	if (block.hasClass("collapsed")){
-		inner.stop(true, false).slideUp(300, 'easeOutCirc');
+		inner.stop(true, false).slideUp(250, 'easeOutCirc');
 	}else{
 		inner.stop(true, false).slideDown(300, 'easeOutCirc');
 	}

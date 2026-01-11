@@ -204,13 +204,15 @@ Tags: 简约, 两栏, 侧栏在左边, 浮动侧栏, 文章目录, 自适应, �
 
 	--color-selection: #cce2ff;
 
-	/* Animation System - Duration Variables */
+	/* ========== 统一动画系统 - 桌面端和移动端一致 ========== */
+	/* 动画时长 - 基于 Material Design 3 规范 */
+	--animation-instant: 100ms;
 	--animation-fast: 150ms;
 	--animation-normal: 250ms;
 	--animation-slow: 400ms;
 	--animation-slower: 600ms;
 
-	/* Animation System - Material 3 Easing Functions */
+	/* 缓动函数 - Material 3 标准曲线 */
 	--ease-standard: cubic-bezier(0.2, 0, 0, 1);
 	--ease-standard-decelerate: cubic-bezier(0, 0, 0, 1);
 	--ease-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
@@ -218,11 +220,12 @@ Tags: 简约, 两栏, 侧栏在左边, 浮动侧栏, 文章目录, 自适应, �
 	--ease-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
 	--ease-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
 
-	/* Animation System - Spring & Bounce Easing */
+	/* 弹性缓动 - 用于交互反馈 */
 	--ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 	--ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+	--ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 
-	/* State Layer Opacity - Material 3 */
+	/* 状态层透明度 - Material 3 */
 	--state-hover-opacity: 0.08;
 	--state-focus-opacity: 0.12;
 	--state-pressed-opacity: 0.12;
@@ -454,7 +457,7 @@ body {
 
 a {
 
-	transition: color 0.25s ease;
+	transition: color var(--animation-normal) var(--ease-standard);
 
 }
 
@@ -1578,7 +1581,7 @@ html.triple-column #content {
 
 		opacity: 0;
 
-		transform: scale(0.8);
+		transform: scale(0.95) translateY(8px);
 
 	}
 
@@ -1594,13 +1597,13 @@ html.triple-column #content {
 
 #primary {
 
-	transition: all 0.3s ease;
+	transition: all var(--animation-normal) var(--ease-standard);
 
 }
 
 .card {
 
-	animation: card-show 0.25s ease-out;
+	animation: card-show var(--animation-normal) var(--ease-emphasized-decelerate);
 
 	transform-origin: center top;
 
@@ -1714,7 +1717,7 @@ html.darkmode #navbar-main {
 
 	padding-bottom: 0.5rem;
 
-	transition: all 0.3s ease;
+	transition: all var(--animation-normal) var(--ease-standard);
 
 }
 
@@ -1748,7 +1751,7 @@ body.leftbar-can-headroom.headroom---unpinned #navbar-main {
 
 	overflow: hidden;
 
-	transition: all 0.3s ease;
+	transition: all var(--animation-normal) var(--ease-standard);
 
 }
 
@@ -1798,7 +1801,7 @@ body.leftbar-can-headroom.headroom---unpinned #navbar-main {
 
 	color: #fff;
 
-	transition: color 0.3s ease;
+	transition: color var(--animation-normal) var(--ease-standard);
 
 }
 
@@ -1832,7 +1835,7 @@ body.leftbar-can-headroom.headroom---unpinned #navbar-main {
 
 	color: #fff;
 
-	transition: color 0.3s ease;
+	transition: color var(--animation-normal) var(--ease-standard);
 
 }
 
@@ -1840,7 +1843,7 @@ body.leftbar-can-headroom.headroom---unpinned #navbar-main {
 
 	color: rgba(255, 255, 255, 0.7);
 
-	transition: color 0.3s ease;
+	transition: color var(--animation-normal) var(--ease-standard);
 
 }
 
@@ -1868,7 +1871,7 @@ body.leftbar-can-headroom.headroom---unpinned #navbar-main {
 
 #navbar_search_input_container .input-group-text {
 
-	transition: all 0.5s cubic-bezier(0.4, 0, 0, 1);
+	transition: all var(--animation-slow) var(--ease-emphasized);
 
 }
 
@@ -2309,7 +2312,7 @@ html:not(.is-home) .cover-scroll-down {
 
 	font-size: 14px;
 
-	transition: background 0.2s ease-in-out;
+	transition: background var(--animation-fast) var(--ease-standard);
 
 }
 
@@ -2383,9 +2386,9 @@ html:not(.is-home) .cover-scroll-down {
 
 #leftbar_search_container {
 
-	transition: width 0.3s cubic-bezier(0.4, 0, 0, 1), height 0.3s cubic-bezier(0.4, 0, 0, 1), box-shadow 0.15s ease,
+	transition: width var(--animation-normal) var(--ease-emphasized), height var(--animation-normal) var(--ease-emphasized), box-shadow var(--animation-fast) var(--ease-standard),
 
-		transform 0.15s ease;
+		transform var(--animation-fast) var(--ease-standard);
 
 	height: 30px;
 
@@ -2457,7 +2460,7 @@ html.darkmode.amoled-dark #leftbar_search_container {
 
 	margin-top: 10px;
 
-	transition: all 0.3s ease;
+	transition: all var(--animation-normal) var(--ease-standard);
 
 }
 
@@ -2543,7 +2546,7 @@ html.darkmode #leftbar_part2_inner::-webkit-scrollbar-thumb {
 
 	border-bottom: 1px solid transparent;
 
-	transition: border-bottom 0.2s ease;
+	transition: border-bottom var(--animation-fast) var(--ease-standard);
 
 }
 
@@ -2661,7 +2664,7 @@ html.darkmode .sidebar-tab-switcher > a.active {
 
 	text-transform: none;
 
-	transition: background 0.2s ease;
+	transition: background var(--animation-fast) var(--ease-standard);
 
 	background: var(--color-border-on-foreground);
 
@@ -2711,7 +2714,7 @@ html.darkmode .sidebar-tab-switcher > a.active {
 
 	margin-top: 5px;
 
-	transition: background 0.2s ease;
+	transition: background var(--animation-fast) var(--ease-standard);
 
 	background: transparent;
 
@@ -2983,7 +2986,7 @@ html.darkmode #leftbar_announcement {
 
 	font-size: 14px;
 
-	transition: all 0.25s ease;
+	transition: all var(--animation-normal) var(--ease-standard);
 
 	user-select: none;
 
@@ -3083,7 +3086,7 @@ html.darkmode .wp-block-calendar tbody td {
 
 	z-index: 1000;
 
-	transition: all 0.3s ease;
+	transition: all var(--animation-normal) var(--ease-standard);
 
 }
 
@@ -3139,7 +3142,7 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 
 	border: none !important;
 
-	transition: all 0.3s ease;
+	transition: all var(--animation-normal) var(--ease-standard);
 
 }
 
@@ -3925,7 +3928,7 @@ html.filter-grayscale {
 
 .page-link {
 
-	transition: background-color 0.2s ease;
+	transition: background-color var(--animation-fast) var(--ease-standard);
 
 }
 
@@ -3945,7 +3948,7 @@ html.filter-grayscale {
 
 .post-preview {
 
-	transition: all 0.5s ease;
+	transition: all var(--animation-slow) var(--ease-emphasized);
 
 }
 
@@ -3979,7 +3982,7 @@ html.filter-grayscale {
 
 	letter-spacing: 0.5px;
 
-	transition: all 0.35s ease;
+	transition: all var(--animation-normal) var(--ease-standard);
 
 }
 
@@ -3991,7 +3994,7 @@ html.filter-grayscale {
 
 #main.waterflow .post-title {
 
-	transition: all 0.3s ease;
+	transition: all var(--animation-normal) var(--ease-standard);
 
 	display: inline-block;
 
@@ -14938,8 +14941,8 @@ html.darkmode .card {
 
 /* 卡片悬浮提升效果 */
 article.post.card {
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), 
-                box-shadow 0.3s ease;
+    transition: transform var(--animation-normal) var(--ease-spring), 
+                box-shadow var(--animation-normal) var(--ease-standard);
 }
 
 article.post.card:hover {
