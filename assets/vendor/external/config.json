@@ -1,0 +1,59 @@
+{
+  "version": "1.4.0",
+  "resources": {
+    "fonts": {
+      "google_fonts_open_sans": {
+        "primary": "//fonts.googleapis.com/css?family=Open+Sans:300,400,600,700",
+        "fallback": "/wp-content/themes/argon/assets/vendor/external/fonts/open-sans.css",
+        "description": "Open Sans 字体"
+      },
+      "google_fonts_noto_serif": {
+        "primary": "//fonts.googleapis.com/css?family=Noto+Serif+SC:300,600&display=swap",
+        "fallback": "/wp-content/themes/argon/assets/vendor/external/fonts/noto-serif-sc.css",
+        "description": "Noto Serif SC 字体"
+      }
+    },
+    "scripts": {
+      "geetest": {
+        "primary": "https://static.geetest.com/v4/gt4.js",
+        "fallback": "/wp-content/themes/argon/assets/vendor/external/geetest/gt4.js",
+        "description": "极验验证码"
+      },
+      "qrcode": {
+        "primary": "https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js",
+        "fallback": "/wp-content/themes/argon/assets/vendor/external/qrcode/qrcode.min.js",
+        "description": "二维码生成器"
+      },
+      "mathjax3": {
+        "primary": "//cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js",
+        "fallback": null,
+        "description": "MathJax 3.0 数学公式渲染"
+      },
+      "mathjax2": {
+        "primary": "//cdn.jsdelivr.net/npm/mathjax@2.7.5/MathJax.js?config=TeX-AMS_HTML",
+        "fallback": null,
+        "description": "MathJax 2.0 数学公式渲染"
+      },
+      "katex_css": {
+        "primary": "//cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css",
+        "fallback": null,
+        "description": "KaTeX CSS"
+      },
+      "katex_js": {
+        "primary": "//cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js",
+        "fallback": null,
+        "description": "KaTeX JS"
+      },
+      "katex_auto_render": {
+        "primary": "//cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js",
+        "fallback": null,
+        "description": "KaTeX 自动渲染"
+      }
+    }
+  },
+  "settings": {
+    "timeout": 5000,
+    "retry_count": 2,
+    "enable_console_log": true
+  }
+}

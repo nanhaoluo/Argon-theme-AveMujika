@@ -33,7 +33,19 @@
 <html>
 <head>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700" rel="stylesheet">
+	<script>
+		// 备用字体加载
+		(function() {
+			var link = document.createElement('link');
+			link.href = 'https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700';
+			link.rel = 'stylesheet';
+			link.onerror = function() {
+				console.warn('Google Fonts 加载失败，使用系统字体');
+				document.body.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+			};
+			document.head.appendChild(link);
+		})();
+	</script>
 	<link href="<?php bloginfo('template_url'); ?>/assets/vendor/nucleo/css/nucleo.css" rel="stylesheet">
 	<link href="<?php bloginfo('template_url'); ?>/assets/vendor/font-awesome/css/font-awesome.min.css" rel="stylesheet">
 	<link type="text/css" href="<?php bloginfo('template_url'); ?>/assets/css/argon.min.css" rel="stylesheet">

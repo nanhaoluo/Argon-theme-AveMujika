@@ -780,7 +780,19 @@ $author_desc = get_option('argon_sidebar_author_description');
 				?>
 				<div class="todo-captcha-container" style="display:none; margin-top: 10px;">
 					<?php if ($captcha_type == 'geetest') : ?>
-					<script src="https://static.geetest.com/v4/gt4.js"></script>
+					<script>
+						// TODO Geetest 备用加载
+						function loadTodoGeetest() {
+							if (typeof ArgonResourceLoader !== 'undefined') {
+								ArgonResourceLoader.smartLoad('https://static.geetest.com/v4/gt4.js', 'js');
+							} else {
+								var script = document.createElement('script');
+								script.src = '<?php echo get_template_directory_uri(); ?>/assets/vendor/external/geetest/gt4.js';
+								document.head.appendChild(script);
+							}
+						}
+						loadTodoGeetest();
+					</script>
 					<div id="todo-geetest-captcha"></div>
 					<?php else : ?>
 					<div class="input-group input-group-sm">

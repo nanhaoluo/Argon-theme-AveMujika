@@ -1,0 +1,16 @@
+/* Noto Serif SC Font - Local Fallback */
+@font-face {
+  font-family: 'Noto Serif SC';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: local('Noto Serif SC Light'), local('NotoSerifSC-Light');
+}
+
+@font-face {
+  font-family: 'Noto Serif SC';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: local('Noto Serif SC SemiBold'), local('NotoSerifSC-SemiBold');
+}

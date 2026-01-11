@@ -3638,7 +3638,21 @@ add_action('phpmailer_init', function($phpmailer) {
 // 引入二维码库 QRCode.js
 function argon_enqueue_qrcode_script() {
 	if (is_single()) {
-		wp_enqueue_script('qrcodejs', 'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js', array(), '1.0.0', true);
+		// 使用备用机制加载QRCode
+		wp_enqueue_script('resource_loader', get_template_directory_uri() . '/assets/vendor/external/resource-loader.js', array(), '1.4.0', true);
+		wp_add_inline_script('resource_loader', '
+			document.addEventListener("DOMContentLoaded", function() {
+				if (typeof ArgonResourceLoader !== "undefined") {
+					ArgonResourceLoader.smartLoad("https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js", "js")
+						.then(function() {
+							console.log("QRCode 加载成功");
+						})
+						.catch(function(error) {
+							console.warn("QRCode 加载失败，已使用本地备用版本");
+						});
+				}
+			});
+		');
 	}
 }
 add_action('wp_enqueue_scripts', 'argon_enqueue_qrcode_script');

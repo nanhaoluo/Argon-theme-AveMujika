@@ -57,7 +57,36 @@ if (argon_is_comment_captcha_enabled() && get_option('argon_captcha_type', 'math
 	$captcha_id = get_option('argon_geetest_captcha_id', '');
 	if (!empty($captcha_id)) {
 ?>
-<script src="https://static.geetest.com/v4/gt4.js" onerror="handleGeetestLoadError()"></script>
+<script>
+// Geetest 备用加载机制
+function loadGeetestWithFallback() {
+	if (typeof ArgonResourceLoader !== 'undefined') {
+		ArgonResourceLoader.smartLoad('https://static.geetest.com/v4/gt4.js', 'js')
+			.then(function() {
+				console.log('Geetest 加载成功');
+			})
+			.catch(function(error) {
+				console.warn('Geetest 加载失败，已使用本地备用版本');
+			});
+	} else {
+		// 传统加载方式作为最后备用
+		var script = document.createElement('script');
+		script.src = 'https://static.geetest.com/v4/gt4.js';
+		script.onerror = function() {
+			console.warn('Geetest 加载失败');
+		};
+		document.head.appendChild(script);
+	}
+}
+
+function handleGeetestLoadError() {
+	console.warn('Geetest 主资源加载失败，尝试备用方案');
+	loadGeetestWithFallback();
+}
+
+// 立即加载
+loadGeetestWithFallback();
+</script>
 <script>
 var geetestCaptcha = null;
 var geetestLoadFailed = false;
