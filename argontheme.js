@@ -718,23 +718,26 @@ if (argonConfig.waterflow_columns != "1") {
 		var commentsArea = $("#comments");
 		var postCommentArea = $("#post_comment");
 		var wasCollapsed = commentsArea.hasClass("comments-collapsed");
+		var toggleBtn = $("#comments_toggle");
 		
-		if (wasCollapsed) {
+		if (wasCollapsed && toggleBtn.length > 0) {
 			// 折叠状态：先滚动到评论切换按钮位置，再展开
-			var toggleBtn = $("#comments_toggle");
-			if (toggleBtn.length > 0) {
-				gotoHash("#comments_toggle", 600);
-				toggleBtn.find("i").removeClass("fa-comments").addClass("fa-comment-o");
-				toggleBtn.find(".btn-inner--text").text("折叠评论");
-			}
+			$("body,html").stop().animate({
+				scrollTop: toggleBtn.offset().top - 80
+			}, 600);
+			toggleBtn.find("i").removeClass("fa-comments").addClass("fa-comment-o");
+			toggleBtn.find(".btn-inner--text").text("折叠评论");
+			toggleBtn.addClass("expanded");
 			commentsArea.removeClass("comments-collapsed");
 			setTimeout(function() {
 				postCommentArea.removeClass("comments-collapsed");
 				$("#post_comment_content").focus();
 			}, 150);
 		} else {
-			// 已展开：直接滚动到评论框
-			gotoHash("#post_comment" , 600);
+			// 已展开或无切换按钮：直接滚动到评论框
+			$("body,html").stop().animate({
+				scrollTop: postCommentArea.offset().top - 80
+			}, 600);
 			$("#post_comment_content").focus();
 		}
 	});

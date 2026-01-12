@@ -5237,6 +5237,12 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 
 	width: calc(100% - 50px);
 
+	overflow-wrap: break-word;
+
+	word-wrap: break-word;
+
+	word-break: break-word;
+
 }
 
 #comments .comment-item:last-child .comment-item-inner {
@@ -5280,6 +5286,12 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 	min-height: 24px;
 
 	margin-bottom: 1rem;
+
+	overflow-wrap: break-word;
+
+	word-wrap: break-word;
+
+	word-break: break-word;
 
 }
 

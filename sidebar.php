@@ -229,7 +229,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 							<div style="display: flex; align-items: center; gap: 8px;">
 								<span class="mobile-todo-captcha-text" style="font-family: monospace; font-size: 14px; background: #f0f0f0; padding: 6px 10px; border-radius: 6px; letter-spacing: 2px;"><?php echo argon_generate_captcha(); ?></span>
 								<input type="text" id="mobile-todo-captcha-input" placeholder="<?php _e('验证码', 'argon'); ?>" maxlength="10" style="flex: 1; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 13px; background: var(--color-background);">
-								<button type="button" id="mobile-todo-captcha-submit" style="padding: 8px 12px; background: var(--themecolor); color: #fff; border: none; border-radius: 8px; font-size: 12px; cursor: pointer;">
+								<button type="button" id="mobile-todo-captcha-submit" class="btn btn-sm btn-primary" style="padding: 8px 12px; border-radius: 8px; font-size: 12px;">
 									<?php _e('确认', 'argon'); ?>
 								</button>
 							</div>
