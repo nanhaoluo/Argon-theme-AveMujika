@@ -710,9 +710,9 @@ if (argonConfig.waterflow_columns != "1") {
 	})
 
 	if ($("#post_comment").length > 0){
-		$("#fabtn_go_to_comment").removeClass("d-none");
+		$("#fabtn_go_to_comment").removeClass("fabtn-hidden");
 	}else{
-		$("#fabtn_go_to_comment").addClass("d-none");
+		$("#fabtn_go_to_comment").addClass("fabtn-hidden");
 	}
 	$goToComment.on("click" , function(){
 		var commentsArea = $("#comments");

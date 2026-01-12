@@ -1309,7 +1309,7 @@ if (apply_filters('argon_page_background_url', get_option('argon_page_background
 
 	</button>
 
-	<button id="fabtn_go_to_comment" class="btn btn-icon btn-neutral fabtn shadow-sm d-none" type="button" <?php if (get_option('argon_fab_show_gotocomment_button') != 'true') echo " style='display: none;'";?> aria-label="Comment" tooltip="<?php _e('评论', 'argon'); ?>">
+	<button id="fabtn_go_to_comment" class="btn btn-icon btn-neutral fabtn shadow-sm fabtn-hidden" type="button" <?php if (get_option('argon_fab_show_gotocomment_button') != 'true') echo " style='display: none !important;'";?> aria-label="Comment" tooltip="<?php _e('评论', 'argon'); ?>">
 
 		<span class="btn-inner--icon"><i class="fa fa-comment-o"></i></span>
 
