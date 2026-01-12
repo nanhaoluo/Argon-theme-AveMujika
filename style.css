@@ -21,7 +21,7 @@ Tags: 简约, 两栏, 侧栏在左边, 浮动侧栏, 文章目录, 自适应, �
 
 
 @charset "utf-8";
-
+float_action_buttons
 
 
 :root {
@@ -3154,8 +3154,6 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 }
 
 .fabtns-unloaded {
-	opacity: 0;
-	pointer-events: none;
 	transition: opacity var(--animation-normal) var(--ease-standard);
 }
 
@@ -3206,29 +3204,24 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 }
 
 #fabtn_toggle_sides {
-	height: 30px !important;
-	transform: translateY(8px) scale(0.9);
-	opacity: 0;
-	pointer-events: none;
+	height: 42px !important;
+	transform: translateY(0px) scale(1) !important;
+	opacity: 1 !important;
+	pointer-events: auto !important;
 	transition: 
 		transform var(--animation-normal) var(--ease-emphasized-decelerate),
-		opacity var(--animation-normal) var(--ease-standard),
-		pointer-events 0s var(--animation-normal);
+		opacity var(--animation-normal) var(--ease-standard);
 }
 
 #float_action_buttons:hover #fabtn_toggle_sides {
-	height: 30px !important;
-	transform: translateY(0px) scale(1);
-	opacity: 1;
-	pointer-events: auto;
-	transition: 
-		transform var(--animation-normal) var(--ease-emphasized-decelerate),
-		opacity var(--animation-normal) var(--ease-standard),
-		pointer-events 0s 0s;
+	height: 42px !important;
+	transform: translateY(0px) scale(1.05) !important;
+	opacity: 1 !important;
+	pointer-events: auto !important;
 }
 
 #fabtn_reading_progress {
-	height: 30px;
+	height: 42px;
 	overflow: visible;
 	position: relative;
 }
