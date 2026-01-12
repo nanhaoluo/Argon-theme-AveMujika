@@ -3123,13 +3123,10 @@ html.darkmode .wp-block-calendar tbody td {
 	position: fixed;
 	bottom: 35px;
 	right: 20px;
-	height: max-content;
-	height: -moz-max-content;
 	z-index: 1000;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: 0;
 	transition: 
 		opacity var(--animation-normal) var(--ease-standard),
 		transform var(--animation-normal) var(--ease-standard);
@@ -3161,19 +3158,23 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 	transition: opacity var(--animation-normal) var(--ease-standard);
 }
 
-/* 基础按钮样式 */
-.fabtn {
-	width: 44px;
-	height: 44px;
-	padding: 0;
-	margin-top: 10px;
+/* 基础按钮样式 - 重置所有 Bootstrap 样式 */
+#float_action_buttons .fabtn {
+	width: 44px !important;
+	height: 44px !important;
+	min-width: 44px !important;
+	min-height: 44px !important;
+	max-width: 44px !important;
+	max-height: 44px !important;
+	padding: 0 !important;
+	margin: 5px 0 !important;
 	display: flex !important;
-	align-items: center;
-	justify-content: center;
+	align-items: center !important;
+	justify-content: center !important;
 	position: relative;
 	overflow: visible;
 	border: none !important;
-	border-radius: 50%;
+	border-radius: 50% !important;
 	background-color: var(--color-foreground) !important;
 	color: var(--themecolor) !important;
 	box-shadow: 
@@ -3185,16 +3186,14 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 		color var(--animation-fast) var(--ease-standard),
 		transform var(--animation-normal) var(--ease-spring),
 		box-shadow var(--animation-normal) var(--ease-standard),
-		opacity var(--animation-fast) var(--ease-standard),
-		height var(--animation-normal) var(--ease-emphasized),
-		margin var(--animation-normal) var(--ease-emphasized);
+		opacity var(--animation-fast) var(--ease-standard);
 }
 
-.fabtn:first-child {
-	margin-top: 0;
+#float_action_buttons .fabtn:first-child {
+	margin-top: 0 !important;
 }
 
-.fabtn:hover {
+#float_action_buttons .fabtn:hover {
 	color: #fff !important;
 	background-color: var(--themecolor) !important;
 	transform: translateY(-3px) scale(1.05);
@@ -3203,7 +3202,7 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 		0 12px 28px rgba(var(--themecolor-rgbstr), 0.2) !important;
 }
 
-.fabtn:active {
+#float_action_buttons .fabtn:active {
 	color: #fff !important;
 	background-color: var(--themecolor-dark) !important;
 	transform: translateY(-1px) scale(0.98);
@@ -3211,10 +3210,28 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 		0 2px 8px rgba(var(--themecolor-rgbstr), 0.25) !important;
 }
 
+/* 按钮内图标居中 */
+#float_action_buttons .fabtn .btn-inner--icon {
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	width: 100%;
+	height: 100%;
+}
+
+#float_action_buttons .fabtn i {
+	font-size: 16px;
+	line-height: 1;
+}
+
 /* 隐藏状态 */
-.fabtn.fabtn-hidden {
-	height: 0 !important;
+#float_action_buttons .fabtn.fabtn-hidden {
 	width: 0 !important;
+	height: 0 !important;
+	min-width: 0 !important;
+	min-height: 0 !important;
+	max-width: 0 !important;
+	max-height: 0 !important;
 	opacity: 0 !important;
 	margin: 0 !important;
 	padding: 0 !important;
@@ -3224,10 +3241,21 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 	overflow: hidden !important;
 }
 
-/* 左右切换按钮 - 始终显示，尺寸较小 */
-#fabtn_toggle_sides {
-	width: 32px;
-	height: 32px;
+/* 左右切换按钮 - 尺寸较小 */
+#float_action_buttons #fabtn_toggle_sides {
+	width: 32px !important;
+	height: 32px !important;
+	min-width: 32px !important;
+	min-height: 32px !important;
+	max-width: 32px !important;
+	max-height: 32px !important;
+	opacity: 0.6;
+	font-size: 11px;
+}
+
+#float_action_buttons #fabtn_toggle_sides:hover {
+	opacity: 1;
+}
 	opacity: 0.6;
 	font-size: 11px;
 	margin-top: 6px;
@@ -3238,13 +3266,13 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 }
 
 /* 阅读进度按钮 */
-#fabtn_reading_progress {
+#float_action_buttons #fabtn_reading_progress {
 	overflow: visible;
 	font-size: 11px;
 	font-weight: 600;
 }
 
-#fabtn_reading_progress_bar {
+#float_action_buttons #fabtn_reading_progress_bar {
 	position: absolute;
 	left: 0;
 	top: 0;
@@ -3257,37 +3285,26 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 	pointer-events: none;
 }
 
-#fabtn_reading_progress_details {
+#float_action_buttons #fabtn_reading_progress_details {
 	position: relative;
 	z-index: 1;
 }
 
 /* 夜间模式按钮图标切换 */
-#fabtn_toggle_darkmode i.fa {
+#float_action_buttons #fabtn_toggle_darkmode i.fa {
 	margin: 0;
-	font-size: 16px;
 }
 
-#fabtn_toggle_darkmode i.fa-lightbulb-o {
+#float_action_buttons #fabtn_toggle_darkmode i.fa-lightbulb-o {
 	display: none;
 }
 
-html.darkmode #fabtn_toggle_darkmode i.fa-moon-o {
+html.darkmode #float_action_buttons #fabtn_toggle_darkmode i.fa-moon-o {
 	display: none;
 }
 
-html.darkmode #fabtn_toggle_darkmode i.fa-lightbulb-o {
+html.darkmode #float_action_buttons #fabtn_toggle_darkmode i.fa-lightbulb-o {
 	display: inline-block;
-}
-
-/* 回到顶部按钮 */
-#fabtn_back_to_top i {
-	font-size: 16px;
-}
-
-/* 跳转评论按钮 */
-#fabtn_go_to_comment i {
-	font-size: 15px;
 }
 
 /* 侧边栏打开按钮（移动端） */
