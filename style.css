@@ -3159,7 +3159,11 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 }
 
 /* 基础按钮样式 - 重置所有 Bootstrap 样式 */
-#float_action_buttons .fabtn {
+#float_action_buttons .fabtn,
+#float_action_buttons .fabtn.btn,
+#float_action_buttons .fabtn.btn-icon,
+#float_action_buttons .fabtn.btn-neutral,
+#float_action_buttons button.fabtn {
 	width: 44px !important;
 	height: 44px !important;
 	min-width: 44px !important;
@@ -3242,13 +3246,15 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 }
 
 /* 左右切换按钮 - 尺寸较小 */
-#float_action_buttons #fabtn_toggle_sides {
+#float_action_buttons #fabtn_toggle_sides,
+#float_action_buttons #fabtn_toggle_sides.btn {
 	width: 32px !important;
 	height: 32px !important;
 	min-width: 32px !important;
 	min-height: 32px !important;
 	max-width: 32px !important;
 	max-height: 32px !important;
+	border-radius: var(--card-radius) !important;
 	opacity: 0.6;
 	font-size: 11px;
 }
