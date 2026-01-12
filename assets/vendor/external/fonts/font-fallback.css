@@ -59,14 +59,3 @@ code, pre, .monospace {
 .fa, .fas, .far, .fal, .fab {
     font-family: "Font Awesome 5 Free", "Font Awesome 5 Pro", "FontAwesome", sans-serif;
 }
-
-/* 当图标字体不可用时显示文字 */
-.fa-home::after { content: "首页"; }
-.fa-user::after { content: "用户"; }
-.fa-search::after { content: "搜索"; }
-.fa-menu::after { content: "菜单"; }
-.fa-close::after { content: "关闭"; }
-.fa-arrow-left::after { content: "←"; }
-.fa-arrow-right::after { content: "→"; }
-.fa-arrow-up::after { content: "↑"; }
-.fa-arrow-down::after { content: "↓"; }
