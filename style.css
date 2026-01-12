@@ -14124,7 +14124,6 @@ article.post.card:hover {
 
 .float-action-buttons .fabtn:hover {
     box-shadow: var(--m3-elevation-3) !important;
-    transform: scale(1.05);
 }
 
 /* M3 模态框 */
@@ -15158,7 +15157,6 @@ html.darkmode #leftbar_part2 {
 }
 
 #float_action_buttons .fabtn:hover {
-    transform: translateY(-3px) scale(1.05);
     box-shadow: 
         0 6px 16px rgba(var(--themecolor-rgbstr), 0.25),
         0 12px 28px rgba(0, 0, 0, 0.1),
@@ -15388,10 +15386,6 @@ html.darkmode ::-webkit-scrollbar-thumb:hover {
 @media (max-width: 768px) {
     article.post.card:hover {
         transform: translateY(-2px);
-    }
-    
-    #float_action_buttons .fabtn:hover {
-        transform: translateY(-2px) scale(1.02);
     }
 }
 
