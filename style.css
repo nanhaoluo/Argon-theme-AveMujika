@@ -3247,117 +3247,11 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 }
 
 #float_action_buttons .fabtn:before {
-	pointer-events: none;
-	position: absolute;
-	top: 7px;
-	right: 50px;
-	line-height: 22px;
-	font-weight: 500;
-	color: #fff;
-	background: rgba(0, 0, 0, 0.85);
-	backdrop-filter: blur(10px);
-	padding: 4px 12px;
-	font-size: 12px;
-	border-radius: 6px;
-	transition: 
-		transform var(--animation-fast) var(--ease-emphasized-decelerate),
-		opacity var(--animation-fast) var(--ease-standard);
-	transform: translateX(8px);
-	opacity: 0;
-	white-space: nowrap;
-	text-transform: none;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-html.darkmode #float_action_buttons .fabtn:before {
-	background: rgba(255, 255, 255, 0.9);
-	color: #000;
-}
-
-#float_action_buttons .fabtn.fabtn-hidden:before {
-	opacity: 0 !important;
-	display: none;
-}
-
-#float_action_buttons.fabtns-float-left .fabtn:before {
-	left: 50px;
-	right: unset;
-	transform: translateX(-8px);
-}
-
-#float_action_buttons .fabtn:hover:before {
-	transform: translateX(0px);
-	opacity: 1;
-}
-
-#float_action_buttons #fabtn_toggle_sides:before {
-
-	content: attr(tooltip-move-to-left);
-
-	top: 1px;
-
-}
-
-#float_action_buttons.fabtns-float-left #fabtn_toggle_sides:before {
-
-	content: attr(tooltip-move-to-right);
-
-}
-
-#float_action_buttons #fabtn_back_to_top:before {
-
-	content: attr(tooltip);
-
-}
-
-#float_action_buttons #fabtn_reading_progress:before {
-
-	content: attr(tooltip);
-
-	top: 1px;
-
-}
-
-#float_action_buttons #fabtn_open_sidebar:before {
-
-	content: attr(tooltip);
-
-}
-
-#float_action_buttons #fabtn_go_to_comment:before {
-
-	content: attr(tooltip);
-
-}
-
-#float_action_buttons #fabtn_toggle_darkmode:before {
-
-	content: attr(tooltip-darkmode);
-
-}
-
-html.amoled-dark #float_action_buttons #fabtn_toggle_darkmode:before {
-
-	content: attr(tooltip-blackmode);
-
-}
-
-html.darkmode #float_action_buttons #fabtn_toggle_darkmode:before {
-
-	content: attr(tooltip-lightmode);
-
-}
-
-#float_action_buttons #fabtn_toggle_blog_settings_popup:before {
-
-	content: attr(tooltip);
-
+	display: none !important;
 }
 
 #fabtn_toggle_darkmode i.fa {
-
 	margin: 0;
-
 }
 
 #fabtn_toggle_darkmode i.fa-lightbulb-o {

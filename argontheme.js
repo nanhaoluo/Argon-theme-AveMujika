@@ -698,7 +698,7 @@ if (argonConfig.waterflow_columns != "1") {
 	$backToTopBtn.on("click" , function(){
 		$("body,html").stop().animate({
 			scrollTop: 0
-		}, 600, 'easeOutExpo');
+		}, 600);
 	});
 
 	$toggleDarkmode.on("click" , function(){
