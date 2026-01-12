@@ -3118,29 +3118,19 @@ html.darkmode .wp-block-calendar tbody td {
 /*浮动按钮栏 (回顶等)*/
 
 #float_action_buttons {
-
 	position: fixed;
-
 	bottom: 35px;
-
 	right: 20px;
-
 	height: max-content;
-
-	height: -moz-max-content;
-
 	z-index: 1000;
-
-	transition: all var(--animation-normal) var(--ease-standard);
-
+	transition: 
+		opacity var(--animation-normal) var(--ease-standard),
+		transform var(--animation-normal) var(--ease-standard);
 }
 
 #float_action_buttons.fabtns-float-left {
-
 	left: 20px;
-
 	right: auto;
-
 }
 
 #float_action_buttons.fabtns-float-left .fabtn-show-on-right {
@@ -3172,163 +3162,132 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 }
 
 .fabtn {
-
 	width: 42px;
-
 	height: 42px;
-
 	padding: 0;
-
-	overflow: visible;
-
+	overflow: hidden;
 	display: block !important;
-
 	margin-top: 8px;
-
 	border: none !important;
-
-	transition: all var(--animation-normal) var(--ease-standard);
-
+	transition: 
+		background-color var(--animation-fast) var(--ease-standard),
+		color var(--animation-fast) var(--ease-standard),
+		transform var(--animation-fast) var(--ease-spring),
+		box-shadow var(--animation-fast) var(--ease-standard),
+		opacity var(--animation-fast) var(--ease-standard);
 	background-color: var(--color-foreground) !important;
-
 	color: var(--themecolor) !important;
-
+	border-radius: 50%;
+	position: relative;
 }
 
 .fabtn:hover {
-
 	color: #fff !important;
-
 	background-color: var(--themecolor) !important;
-
+	transform: translateY(-2px);
+	box-shadow: 
+		0 4px 12px rgba(var(--themecolor-rgbstr), 0.3),
+		0 8px 24px rgba(var(--themecolor-rgbstr), 0.2) !important;
 }
 
 .fabtn:active {
-
 	color: #fff !important;
-
 	background-color: var(--themecolor-dark) !important;
-
+	transform: translateY(0px) scale(0.95);
+	box-shadow: 
+		0 2px 6px rgba(var(--themecolor-rgbstr), 0.2) !important;
 }
 
 .fabtn.fabtn-hidden {
-
 	height: 0 !important;
-
 	opacity: 0;
-
 	margin-top: 0;
-
 	box-shadow: none;
-
 	pointer-events: none;
-
+	transform: scale(0);
 }
 
 #fabtn_toggle_sides {
-
 	height: 30px !important;
-
-	transform: translateY(8px);
-
+	transform: translateY(8px) scale(0.9);
 	opacity: 0;
-
+	transition: 
+		transform var(--animation-normal) var(--ease-emphasized-decelerate),
+		opacity var(--animation-normal) var(--ease-standard);
 }
 
 #float_action_buttons:hover #fabtn_toggle_sides {
-
 	height: 30px !important;
-
-	transform: translateY(0px);
-
+	transform: translateY(0px) scale(1);
 	opacity: 1;
-
 }
 
 #fabtn_reading_progress {
-
 	height: 30px;
-
+	overflow: visible;
+	position: relative;
 }
 
 #fabtn_reading_progress_bar {
-
 	position: absolute;
-
 	left: 0;
-
 	top: 0;
-
 	height: 100%;
-
-	border-radius: 4px;
-
+	border-radius: 50%;
 	background: var(--themecolor);
+	opacity: 0.15;
+	transition: width var(--animation-fast) var(--ease-standard);
+}
 
-	opacity: 0.08;
-
+#fabtn_reading_progress_details {
+	position: relative;
+	z-index: 1;
+	font-size: 11px;
+	font-weight: 600;
 }
 
 #float_action_buttons .fabtn:before {
-
 	pointer-events: none;
-
 	position: absolute;
-
 	top: 7px;
-
 	right: 50px;
-
 	line-height: 22px;
-
-	font-weight: normal;
-
+	font-weight: 500;
 	color: #fff;
-
-	background: #32325d;
-
-	padding: 3px 10px;
-
+	background: rgba(0, 0, 0, 0.85);
+	backdrop-filter: blur(10px);
+	padding: 4px 12px;
 	font-size: 12px;
-
-	border-radius: 3px;
-
-	transition: all 0.3s ease;
-
-	transform: translateX(5px);
-
+	border-radius: 6px;
+	transition: 
+		transform var(--animation-fast) var(--ease-emphasized-decelerate),
+		opacity var(--animation-fast) var(--ease-standard);
+	transform: translateX(8px);
 	opacity: 0;
-
-	width: max-content;
-
-	width: -moz-max-content;
-
+	white-space: nowrap;
 	text-transform: none;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
 
+html.darkmode #float_action_buttons .fabtn:before {
+	background: rgba(255, 255, 255, 0.9);
+	color: #000;
 }
 
 #float_action_buttons .fabtn.fabtn-hidden:before {
-
 	opacity: 0 !important;
-
+	display: none;
 }
 
 #float_action_buttons.fabtns-float-left .fabtn:before {
-
 	left: 50px;
-
 	right: unset;
-
-	transform: translateX(-5px);
-
+	transform: translateX(-8px);
 }
 
 #float_action_buttons .fabtn:hover:before {
-
 	transform: translateX(0px);
-
-	opacity: 0.7;
-
+	opacity: 1;
 }
 
 #float_action_buttons #fabtn_toggle_sides:before {
