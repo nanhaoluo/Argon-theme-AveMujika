@@ -21,7 +21,6 @@ Tags: 简约, 两栏, 侧栏在左边, 浮动侧栏, 文章目录, 自适应, �
 
 
 @charset "utf-8";
-float_action_buttons
 
 
 :root {
@@ -3124,7 +3123,13 @@ html.darkmode .wp-block-calendar tbody td {
 	position: fixed;
 	bottom: 35px;
 	right: 20px;
+	height: max-content;
+	height: -moz-max-content;
 	z-index: 1000;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0;
 	transition: 
 		opacity var(--animation-normal) var(--ease-standard),
 		transform var(--animation-normal) var(--ease-standard);
@@ -3135,83 +3140,107 @@ html.darkmode .wp-block-calendar tbody td {
 	right: auto;
 }
 
+#float_action_buttons.fabtns-float-left .fabtn-show-on-right {
+	display: none;
+}
+
+#float_action_buttons:not(.fabtns-float-left) .fabtn-show-on-left {
+	display: none;
+}
+
 /* 首页横幅模式下隐藏 */
 html.is-home.banner-as-cover #float_action_buttons.hidden {
 	opacity: 0;
 	pointer-events: none;
 }
 
-/* 加载状态 */
+/* 加载状态 - 初始隐藏 */
 .fabtns-unloaded {
+	opacity: 0;
+	pointer-events: none;
 	transition: opacity var(--animation-normal) var(--ease-standard);
 }
 
 /* 基础按钮样式 */
 .fabtn {
-	width: 42px;
-	height: 42px;
+	width: 44px;
+	height: 44px;
 	padding: 0;
-	margin-top: 8px;
-	display: block !important;
+	margin-top: 10px;
+	display: flex !important;
+	align-items: center;
+	justify-content: center;
 	position: relative;
-	overflow: hidden;
+	overflow: visible;
 	border: none !important;
 	border-radius: 50%;
 	background-color: var(--color-foreground) !important;
 	color: var(--themecolor) !important;
+	box-shadow: 
+		0 2px 8px rgba(0, 0, 0, 0.08),
+		0 4px 16px rgba(0, 0, 0, 0.04);
+	cursor: pointer;
 	transition: 
 		background-color var(--animation-fast) var(--ease-standard),
 		color var(--animation-fast) var(--ease-standard),
-		transform var(--animation-fast) var(--ease-spring),
-		box-shadow var(--animation-fast) var(--ease-standard),
-		opacity var(--animation-fast) var(--ease-standard);
+		transform var(--animation-normal) var(--ease-spring),
+		box-shadow var(--animation-normal) var(--ease-standard),
+		opacity var(--animation-fast) var(--ease-standard),
+		height var(--animation-normal) var(--ease-emphasized),
+		margin var(--animation-normal) var(--ease-emphasized);
+}
+
+.fabtn:first-child {
+	margin-top: 0;
 }
 
 .fabtn:hover {
 	color: #fff !important;
 	background-color: var(--themecolor) !important;
-	transform: translateY(-2px);
+	transform: translateY(-3px) scale(1.05);
 	box-shadow: 
-		0 4px 12px rgba(var(--themecolor-rgbstr), 0.3),
-		0 8px 24px rgba(var(--themecolor-rgbstr), 0.2) !important;
+		0 6px 20px rgba(var(--themecolor-rgbstr), 0.35),
+		0 12px 28px rgba(var(--themecolor-rgbstr), 0.2) !important;
 }
 
 .fabtn:active {
 	color: #fff !important;
 	background-color: var(--themecolor-dark) !important;
-	transform: translateY(0px) scale(0.95);
+	transform: translateY(-1px) scale(0.98);
 	box-shadow: 
-		0 2px 6px rgba(var(--themecolor-rgbstr), 0.2) !important;
+		0 2px 8px rgba(var(--themecolor-rgbstr), 0.25) !important;
 }
 
 /* 隐藏状态 */
 .fabtn.fabtn-hidden {
 	height: 0 !important;
+	width: 0 !important;
 	opacity: 0 !important;
-	margin-top: 0 !important;
+	margin: 0 !important;
+	padding: 0 !important;
 	box-shadow: none !important;
 	pointer-events: none !important;
 	transform: scale(0) !important;
+	overflow: hidden !important;
 }
 
-/* 左右切换按钮 */
+/* 左右切换按钮 - 始终显示 */
 #fabtn_toggle_sides {
-	opacity: 1 !important;
-	pointer-events: auto !important;
+	width: 36px;
+	height: 36px;
+	opacity: 0.7;
+	font-size: 12px;
 }
 
-#float_action_buttons:hover #fabtn_toggle_sides {
-	transform: scale(1.05) !important;
-}
-
-#float_action_buttons.fabtns-float-left .fabtn-show-on-right,
-#float_action_buttons:not(.fabtns-float-left) .fabtn-show-on-left {
-	display: none;
+#fabtn_toggle_sides:hover {
+	opacity: 1;
 }
 
 /* 阅读进度按钮 */
 #fabtn_reading_progress {
 	overflow: visible;
+	font-size: 11px;
+	font-weight: 600;
 }
 
 #fabtn_reading_progress_bar {
@@ -3222,20 +3251,20 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 	height: 100%;
 	border-radius: 50%;
 	background: var(--themecolor);
-	opacity: 0.15;
+	opacity: 0.12;
 	transition: width var(--animation-fast) var(--ease-standard);
+	pointer-events: none;
 }
 
 #fabtn_reading_progress_details {
 	position: relative;
 	z-index: 1;
-	font-size: 11px;
-	font-weight: 600;
 }
 
 /* 夜间模式按钮图标切换 */
 #fabtn_toggle_darkmode i.fa {
 	margin: 0;
+	font-size: 16px;
 }
 
 #fabtn_toggle_darkmode i.fa-lightbulb-o {
@@ -3250,9 +3279,25 @@ html.darkmode #fabtn_toggle_darkmode i.fa-lightbulb-o {
 	display: inline-block;
 }
 
+/* 回到顶部按钮 */
+#fabtn_back_to_top i {
+	font-size: 16px;
+}
+
+/* 跳转评论按钮 */
+#fabtn_go_to_comment i {
+	font-size: 15px;
+}
+
 /* 侧边栏打开按钮（移动端） */
 #float_action_buttons #fabtn_open_sidebar {
 	display: none;
+}
+
+/* 侧边栏遮罩 */
+#sidebar_mask {
+	display: none;
+	opacity: 0;
 }
 
 /* 设置弹窗 */
@@ -3260,27 +3305,33 @@ html.darkmode #fabtn_toggle_darkmode i.fa-lightbulb-o {
 	position: fixed;
 	right: 85px;
 	bottom: 35px;
-	padding: 16px 20px;
+	padding: 20px 24px;
+	width: max-content;
+	width: -moz-max-content;
 	min-width: 350px;
 	max-width: calc(100vw - 170px);
 	max-height: calc(100vh - 70px);
 	opacity: 0;
 	pointer-events: none;
-	transform: translateX(10px) scale(0.95);
-	transition: all var(--animation-normal) var(--ease-emphasized);
-	border-radius: 16px;
+	transform: translateX(12px) scale(0.96);
+	transition: 
+		opacity var(--animation-normal) var(--ease-emphasized),
+		transform var(--animation-normal) var(--ease-emphasized);
+	animation: none !important;
+	border-radius: 20px;
 	background: var(--color-foreground);
 	box-shadow: 
-		0 8px 32px rgba(0, 0, 0, 0.12),
-		0 2px 8px rgba(0, 0, 0, 0.08);
-	backdrop-filter: blur(20px);
-	-webkit-backdrop-filter: blur(20px);
+		0 12px 40px rgba(0, 0, 0, 0.15),
+		0 4px 12px rgba(0, 0, 0, 0.08);
+	backdrop-filter: blur(24px) saturate(180%);
+	-webkit-backdrop-filter: blur(24px) saturate(180%);
+	overflow-y: auto;
 }
 
 #float_action_buttons.fabtns-float-left #fabtn_blog_settings_popup {
 	left: 85px;
 	right: unset;
-	transform: translateX(-10px) scale(0.95);
+	transform: translateX(-12px) scale(0.96);
 }
 
 /* 设置弹窗打开状态 */
@@ -3293,13 +3344,14 @@ html.darkmode #fabtn_toggle_darkmode i.fa-lightbulb-o {
 .blog_settings_opened #fabtn_toggle_blog_settings_popup {
 	opacity: 1 !important;
 	color: #fff !important;
-	background-color: var(--themecolor-dark2) !important;
+	background-color: var(--themecolor) !important;
 	pointer-events: auto !important;
+	transform: scale(1.05);
 }
 
 .blog_settings_opened .fabtn {
 	pointer-events: none;
-	opacity: 0.25;
+	opacity: 0.3;
 }
 
 .blog_settings_opened #fabtn_toggle_sides {
@@ -3311,34 +3363,41 @@ html.darkmode #fabtn_toggle_darkmode i.fa-lightbulb-o {
 	font-size: 12px;
 	margin-right: -12px;
 	cursor: pointer;
+	opacity: 0.6;
+	transition: opacity var(--animation-fast) var(--ease-standard);
 }
 
-/* 暗色模式 */
+#close_blog_settings:hover {
+	opacity: 1;
+}
+
+/* 暗色模式浮动按钮 */
 html.darkmode .fabtn {
-	color: #eee;
+	color: #ddd;
+	box-shadow: 
+		0 2px 8px rgba(0, 0, 0, 0.2),
+		0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 html.darkmode .fabtn:hover {
 	color: #fff !important;
 	background-color: var(--themecolor) !important;
+	box-shadow: 
+		0 6px 20px rgba(var(--themecolor-rgbstr), 0.4),
+		0 12px 28px rgba(0, 0, 0, 0.3) !important;
 }
 
-/* 侧边栏遮罩 */
-#sidebar_mask {
-	display: none;
-	opacity: 0;
+html.darkmode #fabtn_blog_settings_popup {
+	box-shadow: 
+		0 12px 40px rgba(0, 0, 0, 0.4),
+		0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
 .blog-setting-item {
-
 	display: flex;
-
 	flex-flow: row;
-
 	align-items: center;
-	
-	padding: 8px 0;
-
+	padding: 10px 0;
 }
 
 /* 设置面板标题样式 */
@@ -9943,15 +10002,6 @@ html.darkmode .close > span:not(.sr-only) {
 }
 
 
-
-html.darkmode .fabtn {
-	color: #eee;
-}
-
-html.darkmode .fabtn:hover {
-	color: #fff !important;
-	background-color: var(--themecolor) !important;
-}
 
 html.darkmode .tag.badge {
 
