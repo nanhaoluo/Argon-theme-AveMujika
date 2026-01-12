@@ -2181,27 +2181,65 @@ function lazyloadInit(){
 		setTimeout(lazyloadInit, 100);
 		return;
 	}
-	if (argonConfig.lazyload.effect == "none"){
-		delete argonConfig.lazyload.effect;
+	var lazyloadEffect = argonConfig.lazyload.effect;
+	if (lazyloadEffect == "none"){
+		lazyloadEffect = undefined;
 	}
-	$("article img.lazyload:not(.lazyload-loaded) , .related-post-thumbnail.lazyload:not(.lazyload-loaded) , .shuoshuo-preview-container img.lazyload:not(.lazyload-loaded)").lazyload(
-		Object.assign(argonConfig.lazyload, {
-			load: function () {
-				$(this).addClass("lazyload-loaded");
-				$(this).parent().removeClass("lazyload-container-unload");
-			}
-		})
-	);
-	$(".post-thumbnail.lazyload:not(.lazyload-loaded)").lazyload(
-		Object.assign({threshold: argonConfig.lazyload.threshold}, {
-			load: function () {
-				$(this).addClass("lazyload-loaded");
-				$(this).parent().removeClass("lazyload-container-unload");
+	
+	// 文章内图片和相关文章缩略图
+	$("article img.lazyload:not(.lazyload-loaded) , .related-post-thumbnail.lazyload:not(.lazyload-loaded) , .shuoshuo-preview-container img.lazyload:not(.lazyload-loaded)").lazyload({
+		threshold: argonConfig.lazyload.threshold,
+		effect: lazyloadEffect,
+		load: function () {
+			$(this).addClass("lazyload-loaded");
+			$(this).parent().removeClass("lazyload-container-unload");
+		}
+	});
+	
+	// 文章特色图片 - 确保加载后显示
+	$(".post-thumbnail.lazyload:not(.lazyload-loaded)").each(function() {
+		var $img = $(this);
+		var originalSrc = $img.attr("data-original");
+		
+		if (originalSrc) {
+			// 创建一个新图片对象来预加载
+			var img = new Image();
+			img.onload = function() {
+				$img.attr("src", originalSrc);
+				$img.addClass("lazyload-loaded");
+				$img.css("opacity", "1");
+				$img.parent().removeClass("lazyload-container-unload");
 				waterflowInit();
-			}
-		})
-	);
-	$(".comment-item-text .comment-sticker.lazyload").lazyload(Object.assign(argonConfig.lazyload, {load: function(){$(this).removeClass("lazyload")}}));
+			};
+			img.onerror = function() {
+				// 图片加载失败，隐藏图片容器
+				$img.closest(".post-header-with-thumbnail").removeClass("post-header-with-thumbnail");
+				$img.remove();
+				waterflowInit();
+			};
+			img.src = originalSrc;
+		}
+	});
+	
+	// 也保留原有的 lazyload 调用作为备用
+	$(".post-thumbnail.lazyload:not(.lazyload-loaded)").lazyload({
+		threshold: argonConfig.lazyload.threshold,
+		effect: lazyloadEffect,
+		load: function () {
+			$(this).addClass("lazyload-loaded");
+			$(this).css("opacity", "1");
+			$(this).parent().removeClass("lazyload-container-unload");
+			waterflowInit();
+		}
+	});
+	
+	$(".comment-item-text .comment-sticker.lazyload").lazyload({
+		threshold: argonConfig.lazyload.threshold,
+		effect: lazyloadEffect,
+		load: function(){
+			$(this).removeClass("lazyload");
+		}
+	});
 }
 lazyloadInit();
 
