@@ -3115,13 +3115,15 @@ html.darkmode .wp-block-calendar tbody td {
 
 
 
-/*浮动按钮栏 (回顶等)*/
+/* ========================================
+   浮动按钮组件 (Float Action Buttons)
+   ======================================== */
 
+/* 容器样式 */
 #float_action_buttons {
 	position: fixed;
 	bottom: 35px;
 	right: 20px;
-	height: max-content;
 	z-index: 1000;
 	transition: 
 		opacity var(--animation-normal) var(--ease-standard),
@@ -3133,48 +3135,36 @@ html.darkmode .wp-block-calendar tbody td {
 	right: auto;
 }
 
-#float_action_buttons.fabtns-float-left .fabtn-show-on-right {
-
-	display: none;
-
-}
-
-#float_action_buttons:not(.fabtns-float-left) .fabtn-show-on-left {
-
-	display: none;
-
-}
-
+/* 首页横幅模式下隐藏 */
 html.is-home.banner-as-cover #float_action_buttons.hidden {
-
 	opacity: 0;
-
 	pointer-events: none;
-
 }
 
+/* 加载状态 */
 .fabtns-unloaded {
 	transition: opacity var(--animation-normal) var(--ease-standard);
 }
 
+/* 基础按钮样式 */
 .fabtn {
 	width: 42px;
 	height: 42px;
 	padding: 0;
-	overflow: hidden;
-	display: block !important;
 	margin-top: 8px;
+	display: block !important;
+	position: relative;
+	overflow: hidden;
 	border: none !important;
+	border-radius: 50%;
+	background-color: var(--color-foreground) !important;
+	color: var(--themecolor) !important;
 	transition: 
 		background-color var(--animation-fast) var(--ease-standard),
 		color var(--animation-fast) var(--ease-standard),
 		transform var(--animation-fast) var(--ease-spring),
 		box-shadow var(--animation-fast) var(--ease-standard),
 		opacity var(--animation-fast) var(--ease-standard);
-	background-color: var(--color-foreground) !important;
-	color: var(--themecolor) !important;
-	border-radius: 50%;
-	position: relative;
 }
 
 .fabtn:hover {
@@ -3194,42 +3184,41 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 		0 2px 6px rgba(var(--themecolor-rgbstr), 0.2) !important;
 }
 
+/* 隐藏状态 */
 .fabtn.fabtn-hidden {
 	height: 0 !important;
-	opacity: 0;
-	margin-top: 0;
-	box-shadow: none;
-	pointer-events: none;
-	transform: scale(0);
+	opacity: 0 !important;
+	margin-top: 0 !important;
+	box-shadow: none !important;
+	pointer-events: none !important;
+	transform: scale(0) !important;
 }
 
+/* 左右切换按钮 */
 #fabtn_toggle_sides {
-	height: 42px !important;
-	transform: translateY(0px) scale(1) !important;
 	opacity: 1 !important;
 	pointer-events: auto !important;
-	transition: 
-		transform var(--animation-normal) var(--ease-emphasized-decelerate),
-		opacity var(--animation-normal) var(--ease-standard);
 }
 
 #float_action_buttons:hover #fabtn_toggle_sides {
-	height: 42px !important;
-	transform: translateY(0px) scale(1.05) !important;
-	opacity: 1 !important;
-	pointer-events: auto !important;
+	transform: scale(1.05) !important;
 }
 
+#float_action_buttons.fabtns-float-left .fabtn-show-on-right,
+#float_action_buttons:not(.fabtns-float-left) .fabtn-show-on-left {
+	display: none;
+}
+
+/* 阅读进度按钮 */
 #fabtn_reading_progress {
-	height: 42px;
 	overflow: visible;
-	position: relative;
 }
 
 #fabtn_reading_progress_bar {
 	position: absolute;
 	left: 0;
 	top: 0;
+	width: 0;
 	height: 100%;
 	border-radius: 50%;
 	background: var(--themecolor);
@@ -3244,148 +3233,93 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 	font-weight: 600;
 }
 
-#float_action_buttons .fabtn:before {
-	display: none !important;
-}
-
+/* 夜间模式按钮图标切换 */
 #fabtn_toggle_darkmode i.fa {
 	margin: 0;
 }
 
 #fabtn_toggle_darkmode i.fa-lightbulb-o {
-
 	display: none;
-
 }
 
 html.darkmode #fabtn_toggle_darkmode i.fa-moon-o {
-
 	display: none;
-
 }
 
 html.darkmode #fabtn_toggle_darkmode i.fa-lightbulb-o {
-
 	display: inline-block;
-
 }
 
+/* 侧边栏打开按钮（移动端） */
 #float_action_buttons #fabtn_open_sidebar {
-
 	display: none;
-
 }
 
-#sidebar_mask {
-
-	display: none;
-
-	opacity: 0;
-
-}
-
+/* 设置弹窗 */
 #fabtn_blog_settings_popup {
-
 	position: fixed;
-
 	right: 85px;
-
 	bottom: 35px;
-
 	padding: 16px 20px;
-
-	opacity: 0;
-
-	width: max-content;
-
-	width: -moz-max-content;
-
 	min-width: 350px;
-
 	max-width: calc(100vw - 170px);
-
 	max-height: calc(100vh - 70px);
-
+	opacity: 0;
 	pointer-events: none;
-
 	transform: translateX(10px) scale(0.95);
-
 	transition: all var(--animation-normal) var(--ease-emphasized);
-
-	animation: none !important;
-
 	border-radius: 16px;
-
 	background: var(--color-foreground);
-
 	box-shadow: 
 		0 8px 32px rgba(0, 0, 0, 0.12),
 		0 2px 8px rgba(0, 0, 0, 0.08);
-
 	backdrop-filter: blur(20px);
-
 	-webkit-backdrop-filter: blur(20px);
-
 }
 
 #float_action_buttons.fabtns-float-left #fabtn_blog_settings_popup {
-
 	left: 85px;
-
 	right: unset;
-
 	transform: translateX(-10px) scale(0.95);
-
 }
 
+/* 设置弹窗打开状态 */
 .blog_settings_opened #fabtn_blog_settings_popup {
-
 	opacity: 1 !important;
-
 	transform: none !important;
-
-	pointer-events: unset;
-
+	pointer-events: auto !important;
 }
 
 .blog_settings_opened #fabtn_toggle_blog_settings_popup {
-
 	opacity: 1 !important;
-
 	color: #fff !important;
-
 	background-color: var(--themecolor-dark2) !important;
-
-	pointer-events: unset !important;
-
+	pointer-events: auto !important;
 }
 
 .blog_settings_opened .fabtn {
-
 	pointer-events: none;
-
 	opacity: 0.25;
-
-	overflow: hidden;
-
 }
 
 .blog_settings_opened #fabtn_toggle_sides {
-
 	opacity: 0 !important;
-
 }
 
 #close_blog_settings {
-
 	text-align: right;
-
 	font-size: 12px;
-
 	margin-right: -12px;
-
 	cursor: pointer;
+}
 
+/* 暗色模式 */
+html.darkmode .fabtn {
+	color: #eee;
+}
+
+html.darkmode .fabtn:hover {
+	background: var(--color-border-on-foreground-deeper) !important;
 }
 
 .blog-setting-item {
