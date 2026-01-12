@@ -3087,6 +3087,12 @@ html.darkmode .wp-block-calendar tbody td {
 	z-index: 1000;
 
 	transition: all var(--animation-normal) var(--ease-standard);
+	
+	display: flex;
+	
+	flex-direction: column;
+	
+	align-items: center;
 
 }
 
