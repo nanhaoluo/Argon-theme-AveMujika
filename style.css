@@ -14050,7 +14050,7 @@ article.post.card:hover {
 
 /* M3 浮动按钮 */
 .float-action-buttons .fabtn {
-    border-radius: var(--m3-shape-lg) !important;
+    border-radius: var(--card-radius) !important;
     box-shadow: var(--m3-elevation-2) !important;
     transition: all var(--m3-motion-duration-short) var(--m3-motion-standard);
 }
