@@ -12919,17 +12919,19 @@ html.darkmode .todo-add-form input:focus {
 .duolingo-streak {
 	display: inline-flex;
 	align-items: center;
-	gap: 2px;
+	gap: 3px;
 	font-size: 14px;
-	font-weight: bold;
+	font-weight: 700;
 	color: #FF9600;
 	margin-left: 6px;
 	vertical-align: middle;
 	animation: duolingoFadeIn 0.5s var(--ease-emphasized-decelerate) both;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .duolingo-streak.not-done {
 	color: #999;
+	text-shadow: none;
 }
 
 .duolingo-flame {
@@ -12968,21 +12970,28 @@ html.darkmode .todo-add-form input:focus {
 
 /* 移动端多邻国连胜样式优化 */
 .leftbar-mobile-user-name .duolingo-streak {
-	font-size: 16px;
+	font-size: 15px;
 	margin-left: 8px;
-	padding: 2px 8px;
-	background: rgba(255, 150, 0, 0.15);
-	border-radius: 12px;
+	padding: 3px 10px 3px 6px;
+	background: rgba(0, 0, 0, 0.25);
+	border-radius: 14px;
 	gap: 4px;
+	color: #fff;
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
 }
 
 .leftbar-mobile-user-name .duolingo-streak.not-done {
-	background: rgba(150, 150, 150, 0.15);
+	background: rgba(0, 0, 0, 0.2);
+	color: rgba(255, 255, 255, 0.7);
+	text-shadow: none;
 }
 
 .leftbar-mobile-user-name .duolingo-flame {
 	width: 16px;
 	height: 19px;
+	filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
 }
 
 
