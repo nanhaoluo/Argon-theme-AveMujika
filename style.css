@@ -8166,6 +8166,18 @@ body.noscroll:before {
 	padding: 8px 16px;
 	height: 38px;
 	white-space: nowrap;
+	background-color: var(--themecolor) !important;
+	border-color: var(--themecolor) !important;
+}
+
+#comments_toggle:hover {
+	background-color: var(--themecolor-dark) !important;
+	border-color: var(--themecolor-dark) !important;
+}
+
+#comments_toggle:active {
+	background-color: var(--themecolor-dark2) !important;
+	border-color: var(--themecolor-dark2) !important;
 }
 
 #comments_toggle .btn-inner--icon {
@@ -8303,6 +8315,26 @@ body.noscroll:before {
 	justify-content: center;
 
 	transform: translateY(0);
+
+	background-color: var(--themecolor) !important;
+
+	border-color: var(--themecolor) !important;
+
+}
+
+#share_show:hover {
+
+	background-color: var(--themecolor-dark) !important;
+
+	border-color: var(--themecolor-dark) !important;
+
+}
+
+#share_show:active {
+
+	background-color: var(--themecolor-dark2) !important;
+
+	border-color: var(--themecolor-dark2) !important;
 
 }
 
