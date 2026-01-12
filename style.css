@@ -3319,7 +3319,14 @@ html.darkmode .fabtn {
 }
 
 html.darkmode .fabtn:hover {
-	background: var(--color-border-on-foreground-deeper) !important;
+	color: #fff !important;
+	background-color: var(--themecolor) !important;
+}
+
+/* 侧边栏遮罩 */
+#sidebar_mask {
+	display: none;
+	opacity: 0;
 }
 
 .blog-setting-item {
