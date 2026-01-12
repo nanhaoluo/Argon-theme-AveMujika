@@ -3087,12 +3087,6 @@ html.darkmode .wp-block-calendar tbody td {
 	z-index: 1000;
 
 	transition: all var(--animation-normal) var(--ease-standard);
-	
-	display: flex;
-	
-	flex-direction: column;
-	
-	align-items: center;
 
 }
 
@@ -3142,7 +3136,7 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 
 	overflow: visible;
 
-	display: block;
+	display: block !important;
 
 	margin-top: 8px;
 
