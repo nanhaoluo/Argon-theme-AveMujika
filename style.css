@@ -3211,15 +3211,22 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 	height: 30px !important;
 	transform: translateY(8px) scale(0.9);
 	opacity: 0;
+	pointer-events: none;
 	transition: 
 		transform var(--animation-normal) var(--ease-emphasized-decelerate),
-		opacity var(--animation-normal) var(--ease-standard);
+		opacity var(--animation-normal) var(--ease-standard),
+		pointer-events 0s var(--animation-normal);
 }
 
 #float_action_buttons:hover #fabtn_toggle_sides {
 	height: 30px !important;
 	transform: translateY(0px) scale(1);
 	opacity: 1;
+	pointer-events: auto;
+	transition: 
+		transform var(--animation-normal) var(--ease-emphasized-decelerate),
+		opacity var(--animation-normal) var(--ease-standard),
+		pointer-events 0s 0s;
 }
 
 #fabtn_reading_progress {
