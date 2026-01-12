@@ -5235,7 +5235,11 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 
 	position: relative;
 
-	width: calc(100% - 50px);
+	width: calc(100% - 55px);
+
+	flex: 1;
+
+	min-width: 0;
 
 	overflow-wrap: break-word;
 
@@ -5256,6 +5260,10 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 	font-size: 16px;
 
 	display: flex;
+
+	flex-wrap: wrap;
+
+	align-items: center;
 
 	margin-bottom: 3px;
 
@@ -5335,6 +5343,14 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 
 	margin-left: 3px;
 
+	display: flex;
+
+	flex-wrap: wrap;
+
+	align-items: center;
+
+	gap: 8px;
+
 }
 
 .comment-info > div {
@@ -5342,6 +5358,8 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 	display: inline-block;
 
 	white-space: nowrap;
+
+	flex-shrink: 0;
 
 }
 
@@ -5433,7 +5451,9 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 
 .comment-useragent {
 
-	display: inline-block;
+	display: inline-flex;
+
+	align-items: center;
 
 	font-weight: normal;
 
@@ -5441,7 +5461,7 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 
 	font-size: 14px;
 
-	transform: translateY(-1px);
+	flex-shrink: 0;
 
 }
 
@@ -5451,11 +5471,13 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 
 	width: 18px;
 
-	transform: translateY(-2px);
+	transform: translateY(-1px);
 
 	margin-left: 4px;
 
 	margin-right: 1px;
+
+	flex-shrink: 0;
 
 }
 
