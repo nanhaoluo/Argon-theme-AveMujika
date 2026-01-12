@@ -6018,7 +6018,7 @@ html.darkmode .comment-edit-history-item {
 /* 发送评论卡片优化 */
 #post_comment.card {
 	border-radius: 16px;
-	padding: 24px;
+	padding: 20px;
 	background: var(--color-foreground);
 	box-shadow: 
 		0 2px 8px rgba(0, 0, 0, 0.04),
@@ -6026,6 +6026,10 @@ html.darkmode .comment-edit-history-item {
 	transition: 
 		box-shadow var(--animation-normal) var(--ease-standard),
 		transform var(--animation-normal) var(--ease-standard);
+}
+
+#post_comment.card .card-body {
+	padding: 0;
 }
 
 #post_comment.card:hover {
@@ -6048,9 +6052,9 @@ html.darkmode #post_comment.card:hover {
 
 .post-comment-title {
 
-	font-size: 20px;
+	font-size: 18px;
 	font-weight: 600;
-	margin-bottom: 20px;
+	margin-bottom: 12px;
 
 }
 
@@ -6063,13 +6067,14 @@ html.darkmode #post_comment.card:hover {
 
 .post-comment-reply {
 
-	margin-top: 20px;
+	margin-top: 12px;
+	margin-bottom: 12px;
 
 	border: 1px solid rgba(var(--themecolor-rgbstr), 0.15);
 
-	border-radius: 12px;
+	border-radius: 10px;
 
-	padding: 16px 20px;
+	padding: 12px 16px;
 	
 	background: rgba(var(--themecolor-rgbstr), 0.03);
 
@@ -6077,13 +6082,13 @@ html.darkmode #post_comment.card:hover {
 
 .post-comment-reply-preview {
 
-	margin-top: 12px;
+	margin-top: 10px;
 
 	border-left: 3px solid var(--themecolor);
 
-	padding: 12px 16px;
+	padding: 10px 14px;
 
-	max-height: 200px;
+	max-height: 150px;
 
 	overflow: hidden;
 
@@ -6092,6 +6097,8 @@ html.darkmode #post_comment.card:hover {
 	background: rgba(var(--themecolor-rgbstr), 0.02);
 	
 	border-radius: 0 8px 8px 0;
+	
+	font-size: 13px;
 
 }
 
@@ -6109,7 +6116,7 @@ html.darkmode #post_comment.card:hover {
 
 	bottom: 0;
 
-	height: 35px;
+	height: 30px;
 
 	position: absolute;
 
@@ -6121,11 +6128,11 @@ html.darkmode #post_comment.card:hover {
 
 #post_comment_reply_cancel {
 
-	margin-top: 16px;
+	margin-top: 10px;
 	
 	border-radius: 8px;
 	
-	padding: 8px 16px;
+	padding: 6px 14px;
 	
 	font-size: 13px;
 
@@ -6137,7 +6144,7 @@ html.darkmode #post_comment.card:hover {
 
 	overflow: hidden;
 
-	min-height: 100px;
+	min-height: 80px;
 
 	resize: none;
 
@@ -6145,25 +6152,62 @@ html.darkmode #post_comment.card:hover {
 
 	word-wrap: break-word;
 
-	margin-bottom: 18px;
+	margin-bottom: 12px;
 
-	margin-top: 16px;
+	margin-top: 0;
 	
-	border-radius: 12px;
+	border-radius: 10px;
 	
 	border: 1px solid var(--color-border-on-foreground-deeper);
 	
-	padding: 14px 16px;
+	padding: 12px 14px;
 	
 	font-size: 14px;
 	
 	line-height: 1.6;
+	
+	background-color: var(--color-widgets);
 
 }
 
 #post_comment_content:focus {
 	border-color: var(--themecolor);
 	box-shadow: 0 0 0 3px rgba(var(--themecolor-rgbstr), 0.1);
+}
+
+/* 评论表单输入框统一样式 */
+#post_comment .input-group-alternative {
+	margin-bottom: 12px !important;
+	border-radius: 10px;
+	overflow: hidden;
+	border: 1px solid var(--color-border-on-foreground-deeper);
+	box-shadow: none;
+	background-color: var(--color-widgets);
+	transition: border-color var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard);
+}
+
+#post_comment .input-group-alternative:focus-within {
+	border-color: var(--themecolor);
+	box-shadow: 0 0 0 3px rgba(var(--themecolor-rgbstr), 0.1);
+}
+
+#post_comment .input-group-alternative .input-group-text {
+	background-color: transparent;
+	border: none;
+	color: var(--themecolor);
+	padding: 10px 12px;
+}
+
+#post_comment .input-group-alternative .form-control {
+	border: none;
+	background-color: transparent;
+	padding: 10px 12px 10px 0;
+	height: auto;
+	font-size: 14px;
+}
+
+#post_comment .input-group-alternative .form-control:focus {
+	box-shadow: none;
 }
 
 #post_comment_content_hidden {
@@ -6312,17 +6356,19 @@ html.darkmode #post_comment.card:hover {
 
 	display: inline-block;
 
-	margin-top: 15px;
+	margin-top: 8px;
 
-	height: 30px;
+	height: 28px;
 
-	margin-right: 10px;
+	margin-right: 8px;
 
 }
 
 .comment-post-checkbox .custom-control-label {
 
-	line-height: 28px;
+	line-height: 26px;
+	
+	font-size: 13px;
 
 }
 
@@ -6402,7 +6448,7 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 .comment-btn {
 
-	margin-top: 5px;
+	margin-top: 0;
 
 	margin-right: 8px;
 
@@ -6442,13 +6488,13 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 	border-radius: 100px;
 
-	width: 42px;
+	width: 38px;
 
-	height: 42px;
+	height: 38px;
 
 	padding: 0;
 
-	font-size: 25px;
+	font-size: 22px;
 
 	background: transparent !important;
 
@@ -6460,14 +6506,19 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 	transform: none;
 
-	opacity: 0.8;
+	opacity: 0.7;
 
-	margin-top: 6px;
+	margin-top: 0;
 
-	margin-right: 10px;
+	margin-right: 8px;
 
 	transition: all 0.3s ease;
 
+}
+
+#comment_emotion_btn:hover {
+	opacity: 1;
+	color: var(--themecolor);
 }
 
 #comment_emotion_btn.comment-emotion-keyboard-open {
@@ -6475,6 +6526,8 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 	border-radius: 100px;
 
 	color: var(--themecolor);
+	
+	opacity: 1;
 
 }
 
