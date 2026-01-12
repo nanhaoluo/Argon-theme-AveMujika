@@ -683,7 +683,20 @@ if (argonConfig.waterflow_columns != "1") {
 
 /*浮动按钮栏相关 (回顶等)*/
 !function(){
+	// 确保 DOM 和 jQuery 已加载
+	if (typeof jQuery === 'undefined') {
+		console.warn('jQuery not loaded, retrying...');
+		setTimeout(arguments.callee, 50);
+		return;
+	}
+	
 	let $fabtns = $('#float_action_buttons');
+	if ($fabtns.length === 0) {
+		console.warn('Float action buttons not found, retrying...');
+		setTimeout(arguments.callee, 50);
+		return;
+	}
+	
 	let $backToTopBtn = $('#fabtn_back_to_top');
 	let $toggleSidesBtn = $('#fabtn_toggle_sides');
 	let $toggleDarkmode = $('#fabtn_toggle_darkmode');

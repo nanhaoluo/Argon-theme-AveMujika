@@ -3154,11 +3154,9 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 }
 
 .fabtns-unloaded {
-
 	opacity: 0;
-
 	pointer-events: none;
-
+	transition: opacity var(--animation-normal) var(--ease-standard);
 }
 
 .fabtn {
