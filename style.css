@@ -15345,31 +15345,32 @@ html.darkmode .segmented-control-item:hover {
 
 /* ========================================
    主题变体 - 玻璃拟态 (Glassmorphism)
+   使用 CSS 变量，由站长设置控制
    ======================================== */
 
 html.style-glass .card,
 html.style-glass #fabtn_blog_settings_popup {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    background: rgba(255, 255, 255, var(--card-opacity, 0.7));
+    backdrop-filter: blur(var(--card-blur, 20px)) saturate(var(--card-saturate, 180%));
+    -webkit-backdrop-filter: blur(var(--card-blur, 20px)) saturate(var(--card-saturate, 180%));
     border: 1px solid rgba(255, 255, 255, 0.3);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
 html.style-glass .card:hover {
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, calc(var(--card-opacity, 0.7) + 0.1));
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
 }
 
 html.darkmode.style-glass .card,
 html.darkmode.style-glass #fabtn_blog_settings_popup {
-    background: rgba(66, 66, 66, 0.7);
+    background: rgba(66, 66, 66, var(--card-opacity, 0.7));
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 html.darkmode.style-glass .card:hover {
-    background: rgba(66, 66, 66, 0.8);
+    background: rgba(66, 66, 66, calc(var(--card-opacity, 0.7) + 0.1));
 }
 
 /* ========================================
@@ -15441,17 +15442,17 @@ html.style-neumorphism #fabtn_blog_settings_popup {
 
 
 /* ========== 玻璃风格下文章/页面卡片样式统一 ========== */
-/* 确保文章页卡片与首页卡片样式一致，继承全局 .card 样式 */
+/* 使用 CSS 变量，确保与首页卡片一致 */
 html.style-glass article.post.post-full.card {
-    background: rgba(255, 255, 255, 0.7) !important;
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    background: rgba(255, 255, 255, var(--card-opacity, 0.7)) !important;
+    backdrop-filter: blur(var(--card-blur, 20px)) saturate(var(--card-saturate, 180%));
+    -webkit-backdrop-filter: blur(var(--card-blur, 20px)) saturate(var(--card-saturate, 180%));
     border: 1px solid rgba(255, 255, 255, 0.3);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
 html.darkmode.style-glass article.post.post-full.card {
-    background: rgba(66, 66, 66, 0.7) !important;
+    background: rgba(66, 66, 66, var(--card-opacity, 0.7)) !important;
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
@@ -16130,15 +16131,15 @@ html.darkmode.style-glass article.post.post-full.card {
 /* ========== 移动端玻璃风格文章卡片 ========== */
 @media screen and (max-width: 900px) {
     html.style-glass article.post.post-full.card {
-        background: rgba(255, 255, 255, 0.7) !important;
-        backdrop-filter: blur(20px) saturate(180%);
-        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        background: rgba(255, 255, 255, var(--card-opacity, 0.7)) !important;
+        backdrop-filter: blur(var(--card-blur, 20px)) saturate(var(--card-saturate, 180%));
+        -webkit-backdrop-filter: blur(var(--card-blur, 20px)) saturate(var(--card-saturate, 180%));
     }
     
     html.darkmode.style-glass article.post.post-full.card {
-        background: rgba(66, 66, 66, 0.7) !important;
-        backdrop-filter: blur(20px) saturate(180%);
-        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        background: rgba(66, 66, 66, var(--card-opacity, 0.7)) !important;
+        backdrop-filter: blur(var(--card-blur, 20px)) saturate(var(--card-saturate, 180%));
+        -webkit-backdrop-filter: blur(var(--card-blur, 20px)) saturate(var(--card-saturate, 180%));
     }
 }
 

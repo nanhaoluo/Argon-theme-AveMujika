@@ -615,6 +615,26 @@
 </style>
 
 <?php
+// 卡片毛玻璃效果设置
+$card_opacity = get_option('argon_post_background_opacity', '0.7');
+$card_blur = get_option('argon_card_blur', '20');
+$card_saturate = get_option('argon_card_saturate', '180');
+
+// 如果透明度为空或为1，使用推荐默认值
+if ($card_opacity == '' || $card_opacity == '1') {
+	$card_opacity = '0.7';
+}
+?>
+
+<style id="theme_card_effect_css">
+	:root {
+		--card-opacity: <?php echo $card_opacity; ?>;
+		--card-blur: <?php echo $card_blur; ?>px;
+		--card-saturate: <?php echo $card_saturate; ?>%;
+	}
+</style>
+
+<?php
 // 动画效果设置
 $animation_style = get_option('argon_animation_style', 'material3');
 $animation_speed = get_option('argon_animation_speed', 'normal');
@@ -1165,17 +1185,16 @@ if ($animation_style == 'apple') {
 
 		<?php } ?>
 
-		/* 文章背景透明度 - 包含文章和评论区 */
+		/* 卡片透明度和毛玻璃效果 - 使用 CSS 变量 */
 		<?php 
-		$post_bg_opacity = get_option('argon_post_background_opacity');
-		$card_blur = intval(get_option('argon_card_blur', '8'));
+		$post_bg_opacity_inline = get_option('argon_post_background_opacity', '0.7');
+		$card_blur_inline = intval(get_option('argon_card_blur', '20'));
+		$card_saturate_inline = intval(get_option('argon_card_saturate', '180'));
 		
-		// 如果开启了毛玻璃但没设置透明度，自动应用推荐透明度
-		if ($card_blur > 0 && ($post_bg_opacity == '' || $post_bg_opacity == '1')) {
-			$post_bg_opacity = max(0.75, 0.92 - $card_blur * 0.008);
+		// 如果透明度为空或为1，使用推荐默认值
+		if ($post_bg_opacity_inline == '' || $post_bg_opacity_inline == '1') {
+			$post_bg_opacity_inline = '0.7';
 		}
-		
-		if ($post_bg_opacity != '' && $post_bg_opacity != '1') { 
 		?>
 		article.post.card,
 		#comments.card,
@@ -1183,7 +1202,9 @@ if ($animation_style == 'apple') {
 		.post-navigation.card,
 		.related-posts.card,
 		.card.bg-white {
-			background-color: rgba(255, 255, 255, <?php echo $post_bg_opacity; ?>) !important;
+			background-color: rgba(255, 255, 255, <?php echo $post_bg_opacity_inline; ?>) !important;
+			backdrop-filter: blur(<?php echo $card_blur_inline; ?>px) saturate(<?php echo $card_saturate_inline; ?>%);
+			-webkit-backdrop-filter: blur(<?php echo $card_blur_inline; ?>px) saturate(<?php echo $card_saturate_inline; ?>%);
 		}
 		html.darkmode article.post.card,
 		html.darkmode #comments.card,
@@ -1191,49 +1212,34 @@ if ($animation_style == 'apple') {
 		html.darkmode .post-navigation.card,
 		html.darkmode .related-posts.card,
 		html.darkmode .card.bg-white {
-			background-color: rgba(23, 25, 35, <?php echo $post_bg_opacity; ?>) !important;
+			background-color: rgba(66, 66, 66, <?php echo $post_bg_opacity_inline; ?>) !important;
 		}
-		<?php } ?>
-
-		/* 卡片毛玻璃效果 */
-		<?php 
-		if ($card_blur > 0) {
-			$blur_value = $card_blur . 'px';
-		?>
-		article.post.card,
-		#comments.card,
-		#post_comment.card,
-		.post-navigation.card,
-		.related-posts.card,
 		#leftbar .card,
 		#leftbar_part1,
-		#leftbar_part2,
-		.card.bg-white {
-			backdrop-filter: blur(<?php echo $blur_value; ?>) saturate(120%);
-			-webkit-backdrop-filter: blur(<?php echo $blur_value; ?>) saturate(120%);
+		#leftbar_part2 {
+			backdrop-filter: blur(<?php echo $card_blur_inline; ?>px) saturate(<?php echo $card_saturate_inline; ?>%);
+			-webkit-backdrop-filter: blur(<?php echo $card_blur_inline; ?>px) saturate(<?php echo $card_saturate_inline; ?>%);
 		}
-		<?php } ?>
 
 	</style>
 
 <?php } ?>
 
-<!-- 毛玻璃效果 - 独立于背景图片设置 -->
+<!-- 毛玻璃效果 - 独立于背景图片设置（无背景图时也生效） -->
 <?php 
-$card_blur_standalone = intval(get_option('argon_card_blur', '8'));
-$post_bg_opacity_standalone = get_option('argon_post_background_opacity');
+$card_blur_standalone = intval(get_option('argon_card_blur', '20'));
+$card_saturate_standalone = intval(get_option('argon_card_saturate', '180'));
+$post_bg_opacity_standalone = get_option('argon_post_background_opacity', '0.7');
 
 // 只有在没有背景图片时才输出毛玻璃样式（有背景图片时上面已经输出了）
-if (apply_filters('argon_page_background_url', get_option('argon_page_background_url')) == '' && $card_blur_standalone > 0): 
-	// 如果开启了毛玻璃但没设置透明度，自动应用推荐透明度
+if (apply_filters('argon_page_background_url', get_option('argon_page_background_url')) == ''): 
+	// 如果透明度为空或为1，使用推荐默认值
 	if ($post_bg_opacity_standalone == '' || $post_bg_opacity_standalone == '1') {
-		$post_bg_opacity_standalone = max(0.75, 0.92 - $card_blur_standalone * 0.008);
+		$post_bg_opacity_standalone = '0.7';
 	}
-	$blur_value_standalone = $card_blur_standalone . 'px';
 ?>
 <style id="theme_blur_css">
-	/* 文章背景透明度 */
-	<?php if ($post_bg_opacity_standalone != '' && $post_bg_opacity_standalone != '1'): ?>
+	/* 卡片透明度和毛玻璃效果 */
 	article.post.card,
 	#comments.card,
 	#post_comment.card,
@@ -1241,6 +1247,8 @@ if (apply_filters('argon_page_background_url', get_option('argon_page_background
 	.related-posts.card,
 	.card.bg-white {
 		background-color: rgba(255, 255, 255, <?php echo $post_bg_opacity_standalone; ?>) !important;
+		backdrop-filter: blur(<?php echo $card_blur_standalone; ?>px) saturate(<?php echo $card_saturate_standalone; ?>%);
+		-webkit-backdrop-filter: blur(<?php echo $card_blur_standalone; ?>px) saturate(<?php echo $card_saturate_standalone; ?>%);
 	}
 	html.darkmode article.post.card,
 	html.darkmode #comments.card,
@@ -1248,26 +1256,16 @@ if (apply_filters('argon_page_background_url', get_option('argon_page_background
 	html.darkmode .post-navigation.card,
 	html.darkmode .related-posts.card,
 	html.darkmode .card.bg-white {
-		background-color: rgba(23, 25, 35, <?php echo $post_bg_opacity_standalone; ?>) !important;
+		background-color: rgba(66, 66, 66, <?php echo $post_bg_opacity_standalone; ?>) !important;
 	}
-	<?php endif; ?>
-	
-	/* 卡片毛玻璃效果 */
-	article.post.card,
-	#comments.card,
-	#post_comment.card,
-	.post-navigation.card,
-	.related-posts.card,
 	#leftbar .card,
 	#leftbar_part1,
-	#leftbar_part2,
-	.card.bg-white {
-		backdrop-filter: blur(<?php echo $blur_value_standalone; ?>) saturate(120%);
-		-webkit-backdrop-filter: blur(<?php echo $blur_value_standalone; ?>) saturate(120%);
+	#leftbar_part2 {
+		backdrop-filter: blur(<?php echo $card_blur_standalone; ?>px) saturate(<?php echo $card_saturate_standalone; ?>%);
+		-webkit-backdrop-filter: blur(<?php echo $card_blur_standalone; ?>px) saturate(<?php echo $card_saturate_standalone; ?>%);
 	}
 </style>
 <?php endif; ?>
-
 
 
 <?php if (get_option('argon_show_toolbar_mask') == 'true') { ?>

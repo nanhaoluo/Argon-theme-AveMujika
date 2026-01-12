@@ -1226,20 +1226,30 @@ function themeoptions_page(){
 									<div style="margin-bottom: 20px;">
 										<label style="display: block; font-weight: 600; margin-bottom: 8px; color: #1d2327;"><?php _e('卡片透明度', 'argon');?></label>
 										<div style="display: flex; align-items: center; gap: 12px;">
-											<input type="range" name="argon_post_background_opacity" id="argon_post_bg_opacity_slider" min="0" max="1" step="0.01" value="<?php echo (get_option('argon_post_background_opacity') == '' ? '1' : get_option('argon_post_background_opacity')); ?>" style="flex: 1; cursor: pointer; height: 6px;">
-											<span id="argon_post_bg_opacity_value" style="min-width: 50px; text-align: center; font-family: monospace; font-size: 13px; background: #f0f0f1; padding: 4px 8px; border-radius: 4px;"><?php echo (get_option('argon_post_background_opacity') == '' ? '1.00' : number_format(floatval(get_option('argon_post_background_opacity')), 2)); ?></span>
+											<input type="range" name="argon_post_background_opacity" id="argon_post_bg_opacity_slider" min="0" max="1" step="0.01" value="<?php echo (get_option('argon_post_background_opacity') == '' ? '0.7' : get_option('argon_post_background_opacity')); ?>" style="flex: 1; cursor: pointer; height: 6px;">
+											<span id="argon_post_bg_opacity_value" style="min-width: 50px; text-align: center; font-family: monospace; font-size: 13px; background: #f0f0f1; padding: 4px 8px; border-radius: 4px;"><?php echo (get_option('argon_post_background_opacity') == '' ? '0.70' : number_format(floatval(get_option('argon_post_background_opacity')), 2)); ?></span>
 										</div>
-										<p style="margin: 6px 0 0; font-size: 12px; color: #646970;"><?php _e('控制文章、评论等卡片的背景透明度', 'argon');?></p>
+										<p style="margin: 6px 0 0; font-size: 12px; color: #646970;"><?php _e('控制文章、评论等卡片的背景透明度，推荐 0.7', 'argon');?></p>
 									</div>
 
 									<!-- 毛玻璃模糊 -->
-									<div style="margin-bottom: 10px;">
+									<div style="margin-bottom: 20px;">
 										<label style="display: block; font-weight: 600; margin-bottom: 8px; color: #1d2327;"><?php _e('毛玻璃模糊', 'argon');?></label>
 										<div style="display: flex; align-items: center; gap: 12px;">
-											<input type="range" name="argon_card_blur" min="0" max="20" step="1" value="<?php echo (get_option('argon_card_blur', '8')); ?>" id="argon_card_blur_slider" style="flex: 1; cursor: pointer; height: 6px;">
-											<span id="argon_card_blur_value" style="min-width: 50px; text-align: center; font-family: monospace; font-size: 13px; background: #f0f0f1; padding: 4px 8px; border-radius: 4px;"><?php echo (get_option('argon_card_blur', '8')); ?>px</span>
+											<input type="range" name="argon_card_blur" min="0" max="30" step="1" value="<?php echo (get_option('argon_card_blur', '20')); ?>" id="argon_card_blur_slider" style="flex: 1; cursor: pointer; height: 6px;">
+											<span id="argon_card_blur_value" style="min-width: 50px; text-align: center; font-family: monospace; font-size: 13px; background: #f0f0f1; padding: 4px 8px; border-radius: 4px;"><?php echo (get_option('argon_card_blur', '20')); ?>px</span>
 										</div>
-										<p style="margin: 6px 0 0; font-size: 12px; color: #646970;"><?php _e('为卡片添加毛玻璃模糊效果，推荐 8px', 'argon');?></p>
+										<p style="margin: 6px 0 0; font-size: 12px; color: #646970;"><?php _e('为卡片添加毛玻璃模糊效果，推荐 20px', 'argon');?></p>
+									</div>
+
+									<!-- 毛玻璃饱和度 -->
+									<div style="margin-bottom: 10px;">
+										<label style="display: block; font-weight: 600; margin-bottom: 8px; color: #1d2327;"><?php _e('毛玻璃饱和度', 'argon');?></label>
+										<div style="display: flex; align-items: center; gap: 12px;">
+											<input type="range" name="argon_card_saturate" min="100" max="250" step="10" value="<?php echo (get_option('argon_card_saturate', '180')); ?>" id="argon_card_saturate_slider" style="flex: 1; cursor: pointer; height: 6px;">
+											<span id="argon_card_saturate_value" style="min-width: 50px; text-align: center; font-family: monospace; font-size: 13px; background: #f0f0f1; padding: 4px 8px; border-radius: 4px;"><?php echo (get_option('argon_card_saturate', '180')); ?>%</span>
+										</div>
+										<p style="margin: 6px 0 0; font-size: 12px; color: #646970;"><?php _e('毛玻璃背景的色彩饱和度，推荐 180%', 'argon');?></p>
 									</div>
 								</div>
 
@@ -1252,7 +1262,7 @@ function themeoptions_page(){
 										<img id="effect_preview_bg" src="<?php echo esc_url($page_bg_url); ?>" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: <?php echo get_option('argon_page_background_opacity', '1'); ?>;">
 										<?php } ?>
 										<div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;">
-											<div id="blur_preview_card" style="width: 140px; height: 85px; background: rgba(255,255,255,<?php echo get_option('argon_post_background_opacity', '1'); ?>); border-radius: 10px; backdrop-filter: blur(<?php echo get_option('argon_card_blur', '8'); ?>px); -webkit-backdrop-filter: blur(<?php echo get_option('argon_card_blur', '8'); ?>px); display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 2px 12px rgba(0,0,0,0.08); border: 1px solid rgba(255,255,255,0.4);">
+											<div id="blur_preview_card" style="width: 140px; height: 85px; background: rgba(255,255,255,<?php echo get_option('argon_post_background_opacity', '0.7'); ?>); border-radius: 10px; backdrop-filter: blur(<?php echo get_option('argon_card_blur', '20'); ?>px) saturate(<?php echo get_option('argon_card_saturate', '180'); ?>%); -webkit-backdrop-filter: blur(<?php echo get_option('argon_card_blur', '20'); ?>px) saturate(<?php echo get_option('argon_card_saturate', '180'); ?>%); display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 2px 12px rgba(0,0,0,0.08); border: 1px solid rgba(255,255,255,0.4);">
 												<span style="font-size: 12px; font-weight: 500; color: #333;"><?php _e('卡片效果', 'argon'); ?></span>
 												<span id="blur_preview_info" style="font-size: 10px; color: #666; margin-top: 4px;"></span>
 											</div>
@@ -1272,6 +1282,8 @@ function themeoptions_page(){
 								var postBgValue = document.getElementById('argon_post_bg_opacity_value');
 								var blurSlider = document.getElementById('argon_card_blur_slider');
 								var blurValue = document.getElementById('argon_card_blur_value');
+								var saturateSlider = document.getElementById('argon_card_saturate_slider');
+								var saturateValue = document.getElementById('argon_card_saturate_value');
 								
 								var previewBg = document.getElementById('effect_preview_bg');
 								var previewCard = document.getElementById('blur_preview_card');
@@ -1279,16 +1291,17 @@ function themeoptions_page(){
 								
 								function updatePreview() {
 									var pageBgOpacity = pageBgSlider ? pageBgSlider.value : 1;
-									var postBgOpacity = postBgSlider ? postBgSlider.value : 1;
-									var blur = blurSlider ? blurSlider.value : 8;
+									var postBgOpacity = postBgSlider ? postBgSlider.value : 0.7;
+									var blur = blurSlider ? blurSlider.value : 20;
+									var saturate = saturateSlider ? saturateSlider.value : 180;
 									
 									if (previewBg) {
 										previewBg.style.opacity = pageBgOpacity;
 									}
 									if (previewCard) {
 										previewCard.style.background = 'rgba(255,255,255,' + postBgOpacity + ')';
-										previewCard.style.backdropFilter = 'blur(' + blur + 'px)';
-										previewCard.style.webkitBackdropFilter = 'blur(' + blur + 'px)';
+										previewCard.style.backdropFilter = 'blur(' + blur + 'px) saturate(' + saturate + '%)';
+										previewCard.style.webkitBackdropFilter = 'blur(' + blur + 'px) saturate(' + saturate + '%)';
 									}
 									if (previewInfo) {
 										previewInfo.textContent = '<?php _e("透明度", "argon"); ?> ' + parseFloat(postBgOpacity).toFixed(2) + ' / <?php _e("模糊", "argon"); ?> ' + blur + 'px';
@@ -1312,6 +1325,13 @@ function themeoptions_page(){
 								if (blurSlider) {
 									blurSlider.addEventListener('input', function() {
 										blurValue.textContent = this.value + 'px';
+										updatePreview();
+									});
+								}
+								
+								if (saturateSlider) {
+									saturateSlider.addEventListener('input', function() {
+										saturateValue.textContent = this.value + '%';
 										updatePreview();
 									});
 								}
@@ -5233,6 +5253,8 @@ function argon_update_themeoptions(){
 		argon_update_option('argon_post_background_opacity');
 
 		argon_update_option('argon_card_blur');
+
+		argon_update_option('argon_card_saturate');
 
 		argon_update_option('argon_page_background_banner_style');
 
