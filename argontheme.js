@@ -2669,6 +2669,10 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		});
 	}
 	
+	// 移动端 TODO 验证码相关变量
+	var mobilePendingUrgeBtn = null;
+	var mobileGeetestCaptchaObj = null;
+	
 	// 完成/删除/催促TODO
 	$(document).on("click", "#mobile-todo-list .mobile-todo-complete-btn, #mobile-todo-list .mobile-todo-delete-btn, #mobile-todo-list .mobile-todo-urge-btn", function() {
 		if (!window.mobileTodoConfig) return;
@@ -2723,27 +2727,168 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 				}
 			});
 		} else if (btn.hasClass("mobile-todo-urge-btn") && !btn.hasClass("urged")) {
-			btn.prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i>');
-			$.ajax({
-				url: window.mobileTodoConfig.ajaxUrl,
-				type: "POST",
-				data: {
-					action: "argon_urge_todo",
-					nonce: window.mobileTodoConfig.nonce,
-					id: id,
-					comment_captcha: ""
-				},
-				success: function(res) {
-					if (res.success) {
-						btn.addClass("urged").html('<i class="fa fa-check"></i>');
-						syncTodoToDesktop(id, "", "urge");
+			// 检查是否需要验证码
+			if (window.mobileTodoConfig.needCaptcha) {
+				var captchaContainer = $(".mobile-todo-captcha-container");
+				if (captchaContainer.length > 0) {
+					captchaContainer.slideDown(200);
+					mobilePendingUrgeBtn = btn;
+					
+					if (window.mobileTodoConfig.captchaType === 'geetest') {
+						// 极验验证码
+						if (!mobileGeetestCaptchaObj && typeof initGeetest4 === 'function') {
+							initGeetest4({
+								captchaId: window.mobileTodoConfig.geetestId,
+								product: 'bind'
+							}, function(captcha) {
+								mobileGeetestCaptchaObj = captcha;
+								captcha.onReady(function() {
+									captcha.showCaptcha();
+								}).onSuccess(function() {
+									var result = captcha.getValidate();
+									if (result && mobilePendingUrgeBtn) {
+										var urgeId = mobilePendingUrgeBtn.closest(".mobile-todo-item").data("id");
+										doMobileUrgeGeetest(mobilePendingUrgeBtn, urgeId, result);
+									}
+								}).onError(function() {
+									captchaContainer.slideUp(200);
+									mobilePendingUrgeBtn = null;
+								});
+							});
+						} else if (mobileGeetestCaptchaObj) {
+							mobileGeetestCaptchaObj.showCaptcha();
+						}
 					} else {
-						btn.prop("disabled", false).html('<i class="fa fa-bell"></i>');
+						// 数学验证码
+						$("#mobile-todo-captcha-input").val("").focus();
 					}
+					return;
 				}
-			});
+			}
+			
+			// 不需要验证码，直接催促
+			doMobileUrge(btn, id, "");
 		}
 	});
+	
+	// 移动端数学验证码提交
+	$(document).on("click", "#mobile-todo-captcha-submit", function() {
+		if (!mobilePendingUrgeBtn) return;
+		
+		var captchaInput = $("#mobile-todo-captcha-input");
+		var captchaValue = captchaInput.val().trim();
+		
+		if (!captchaValue) {
+			captchaInput.focus();
+			return;
+		}
+		
+		var id = mobilePendingUrgeBtn.closest(".mobile-todo-item").data("id");
+		doMobileUrge(mobilePendingUrgeBtn, id, captchaValue);
+	});
+	
+	// 移动端验证码回车提交
+	$(document).on("keypress", "#mobile-todo-captcha-input", function(e) {
+		if (e.key === "Enter") {
+			$("#mobile-todo-captcha-submit").click();
+		}
+	});
+	
+	// 执行移动端催促
+	function doMobileUrge(btn, id, captcha) {
+		btn.prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i>');
+		
+		$.ajax({
+			url: window.mobileTodoConfig.ajaxUrl,
+			type: "POST",
+			data: {
+				action: "argon_urge_todo",
+				nonce: window.mobileTodoConfig.nonce,
+				id: id,
+				comment_captcha: captcha
+			},
+			success: function(res) {
+				handleMobileUrgeResponse(btn, res);
+			},
+			error: function() {
+				btn.prop("disabled", false).html('<i class="fa fa-bell"></i>');
+			}
+		});
+	}
+	
+	// 极验验证码催促
+	function doMobileUrgeGeetest(btn, id, geetestResult) {
+		btn.prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i>');
+		
+		$.ajax({
+			url: window.mobileTodoConfig.ajaxUrl,
+			type: "POST",
+			data: {
+				action: "argon_urge_todo",
+				nonce: window.mobileTodoConfig.nonce,
+				id: id,
+				lot_number: geetestResult.lot_number,
+				captcha_output: geetestResult.captcha_output,
+				pass_token: geetestResult.pass_token,
+				gen_time: geetestResult.gen_time
+			},
+			success: function(res) {
+				handleMobileUrgeResponse(btn, res);
+				if (mobileGeetestCaptchaObj) mobileGeetestCaptchaObj.reset();
+			},
+			error: function() {
+				btn.prop("disabled", false).html('<i class="fa fa-bell"></i>');
+			}
+		});
+	}
+	
+	// 处理移动端催促响应
+	function handleMobileUrgeResponse(btn, res) {
+		var captchaContainer = $(".mobile-todo-captcha-container");
+		
+		if (res.success) {
+			btn.addClass("urged").html('<i class="fa fa-check"></i>');
+			captchaContainer.slideUp(200);
+			mobilePendingUrgeBtn = null;
+			
+			// 更新验证码文本
+			if (res.data && res.data.captcha) {
+				$(".mobile-todo-captcha-text").text(res.data.captcha);
+			}
+			
+			// 同步到桌面端
+			var id = btn.closest(".mobile-todo-item").data("id");
+			syncTodoToDesktop(id, "", "urge");
+			
+			// 显示成功提示
+			if (typeof iziToast !== 'undefined') {
+				iziToast.success({
+					title: '',
+					message: res.data && res.data.message ? res.data.message : '已提醒',
+					position: 'topRight',
+					timeout: 3000
+				});
+			}
+		} else {
+			btn.prop("disabled", false).html('<i class="fa fa-bell"></i>');
+			
+			// 显示错误提示
+			if (typeof iziToast !== 'undefined') {
+				iziToast.error({
+					title: '',
+					message: res.data || '操作失败',
+					position: 'topRight',
+					timeout: 3000
+				});
+			}
+			
+			// 刷新验证码
+			if (res.data && res.data.captcha) {
+				$(".mobile-todo-captcha-text").text(res.data.captcha);
+			}
+			$("#mobile-todo-captcha-input").val("").focus();
+		}
+	}
 	
 	// 同步TODO操作到桌面端
 	function syncTodoToDesktop(id, content, action) {
