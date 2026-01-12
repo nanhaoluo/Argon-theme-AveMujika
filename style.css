@@ -9945,15 +9945,12 @@ html.darkmode .close > span:not(.sr-only) {
 
 
 html.darkmode .fabtn {
-
 	color: #eee;
-
 }
 
 html.darkmode .fabtn:hover {
-
-	background: var(--color-border-on-foreground-deeper) !important;
-
+	color: #fff !important;
+	background-color: var(--themecolor) !important;
 }
 
 html.darkmode .tag.badge {
@@ -14467,10 +14464,12 @@ html.darkmode body {
 /* 卡片悬浮效果增强 */
 .card {
     border: 1px solid rgba(var(--themecolor-rgbstr), 0.06);
+    background-color: var(--color-foreground);
 }
 
 html.darkmode .card {
     border: 1px solid rgba(255, 255, 255, 0.05);
+    background-color: var(--color-foreground);
 }
 
 /* 文章卡片优化 */
