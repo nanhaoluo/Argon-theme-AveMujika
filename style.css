@@ -3174,7 +3174,7 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 	position: relative;
 	overflow: visible;
 	border: none !important;
-	border-radius: 50% !important;
+	border-radius: var(--card-radius) !important;
 	background-color: var(--color-foreground) !important;
 	color: var(--themecolor) !important;
 	box-shadow: 
@@ -3256,14 +3256,6 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 #float_action_buttons #fabtn_toggle_sides:hover {
 	opacity: 1;
 }
-	opacity: 0.6;
-	font-size: 11px;
-	margin-top: 6px;
-}
-
-#fabtn_toggle_sides:hover {
-	opacity: 1;
-}
 
 /* 阅读进度按钮 */
 #float_action_buttons #fabtn_reading_progress {
@@ -3278,7 +3270,7 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 	top: 0;
 	width: 0;
 	height: 100%;
-	border-radius: 50%;
+	border-radius: var(--card-radius);
 	background: var(--themecolor);
 	opacity: 0.12;
 	transition: width var(--animation-fast) var(--ease-standard);
