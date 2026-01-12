@@ -715,22 +715,28 @@ if (argonConfig.waterflow_columns != "1") {
 		$("#fabtn_go_to_comment").addClass("d-none");
 	}
 	$goToComment.on("click" , function(){
-		// 如果评论区是折叠状态，先展开
 		var commentsArea = $("#comments");
 		var postCommentArea = $("#post_comment");
-		if (commentsArea.hasClass("comments-collapsed")) {
-			commentsArea.removeClass("comments-collapsed");
-			setTimeout(function() {
-				postCommentArea.removeClass("comments-collapsed");
-			}, 150);
+		var wasCollapsed = commentsArea.hasClass("comments-collapsed");
+		
+		if (wasCollapsed) {
+			// 折叠状态：先滚动到评论切换按钮位置，再展开
 			var toggleBtn = $("#comments_toggle");
 			if (toggleBtn.length > 0) {
+				gotoHash("#comments_toggle", 600);
 				toggleBtn.find("i").removeClass("fa-comments").addClass("fa-comment-o");
 				toggleBtn.find(".btn-inner--text").text("折叠评论");
 			}
+			commentsArea.removeClass("comments-collapsed");
+			setTimeout(function() {
+				postCommentArea.removeClass("comments-collapsed");
+				$("#post_comment_content").focus();
+			}, 150);
+		} else {
+			// 已展开：直接滚动到评论框
+			gotoHash("#post_comment" , 600);
+			$("#post_comment_content").focus();
 		}
-		gotoHash("#post_comment" , 600);
-		$("#post_comment_content").focus();
 	});
 
 	if (localStorage['Argon_fabs_Floating_Status'] == "left"){
