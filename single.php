@@ -185,7 +185,7 @@
 
 						if ($hasThumbnail){
 
-							echo '<img class="related-post-thumbnail lazyload" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAABBJREFUeNpi+P//PwNAgAEACPwC/tuiTRYAAAAASUVORK5CYII=" data-original="' .  argon_get_post_thumbnail(get_the_ID()) . '"/>';
+							echo '<img class="related-post-thumbnail" src="' .  argon_get_post_thumbnail(get_the_ID()) . '" loading="lazy"/>';
 
 						}
 

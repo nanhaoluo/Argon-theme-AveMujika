@@ -1425,7 +1425,7 @@ if (argonConfig.waterflow_columns != "1") {
 					timeout: 5000
 				});
 				//插入新评论
-				result.html = result.html.replace(/<img class='comment-sticker lazyload'(.*?)\/>/g, "").replace(/<(\/).noscript>/g, "");
+				result.html = result.html.replace(/<(\/).noscript>/g, "");
 				let parentID = result.parentID;
 				if (parentID == "" || parentID == null){
 					parentID = 0;
@@ -1611,7 +1611,7 @@ if (argonConfig.waterflow_columns != "1") {
 				}
 
 				//发送成功，替换原评论
-				result.new_comment = result.new_comment.replace(/<img class='comment-sticker lazyload'(.*?)\/>/g, "").replace(/<(\/).noscript>/g, "");		
+				result.new_comment = result.new_comment.replace(/<(\/).noscript>/g, "");		
 				$("#comment-" + editID + " .comment-item-text").html(result.new_comment);
 				$("#comment-" + editID + " .comment-item-source").html(result.new_comment_source);
 				if ($("#comment-" + editID + " .comment-info .comment-edited").length == 0){
@@ -1857,20 +1857,16 @@ $(document).on("click" , ".comment-upvote" , function(){
 });
 /*评论表情面板*/
 function lazyloadStickers(){
-	if (typeof $.fn.lazyload !== 'function') return;
-	$(".emotion-keyboard .emotion-group:not(d-none) .emotion-item > img.lazyload").lazyload({threshold: 500, effect: "fadeIn"}).removeClass("lazyload");
-	$("html").trigger("scroll");
+	// 原生懒加载无需额外处理
 }
 $(document).on("click" , "#comment_emotion_btn" , function(){
 	$("#comment_emotion_btn").toggleClass("comment-emotion-keyboard-open");
-	lazyloadStickers();
 });
 $(document).on("click" , ".emotion-keyboard .emotion-group-name" , function(){
 	$(".emotion-keyboard .emotion-group-name.active").removeClass("active");
 	$(this).addClass("active");
 	$(".emotion-keyboard .emotion-group:not(d-none)").addClass("d-none");
 	$(".emotion-keyboard .emotion-group[index='" + $(this).attr("index") + "']").removeClass("d-none");
-	lazyloadStickers();
 });
 function inputInsertText(text, input){
 	$(input).focus();
@@ -2043,9 +2039,6 @@ $(document).on("submit" , ".post-password-form" , function(){
 				foldLongComments();
 				calcHumanTimesOnPage();
 				panguInit();
-				if (typeof $.fn.lazyload === 'function') {
-					$(".comment-item-text .comment-sticker.lazyload").lazyload(argonConfig.lazyload).removeClass("lazyload");
-				}
 			},
 			error : function(){
 				window.location.href = url;
@@ -2077,9 +2070,6 @@ $(document).on("submit" , ".post-password-form" , function(){
 				foldLongComments();
 				calcHumanTimesOnPage();
 				panguInit();
-				if (typeof $.fn.lazyload === 'function') {
-					$(".comment-item-text .comment-sticker.lazyload").lazyload(argonConfig.lazyload).removeClass("lazyload");
-				}
 			},
 			error : function(){
 				window.location.href = url;
@@ -2179,76 +2169,10 @@ $.fancybox.defaults.i18n = {
 	}
 };
 
-/*Lazyload*/
+/*Lazyload - 已改用浏览器原生 loading="lazy"*/
 function lazyloadInit(){
-	if (argonConfig.lazyload == false){
-		return;
-	}
-	// 检查 lazyload 插件是否已加载
-	if (typeof $.fn.lazyload !== 'function') {
-		// 插件未加载，延迟重试
-		setTimeout(lazyloadInit, 100);
-		return;
-	}
-	var lazyloadEffect = argonConfig.lazyload.effect;
-	if (lazyloadEffect == "none"){
-		lazyloadEffect = undefined;
-	}
-	
-	// 文章内图片和相关文章缩略图
-	$("article img.lazyload:not(.lazyload-loaded) , .related-post-thumbnail.lazyload:not(.lazyload-loaded) , .shuoshuo-preview-container img.lazyload:not(.lazyload-loaded)").lazyload({
-		threshold: argonConfig.lazyload.threshold,
-		effect: lazyloadEffect,
-		load: function () {
-			$(this).addClass("lazyload-loaded");
-			$(this).parent().removeClass("lazyload-container-unload");
-		}
-	});
-	
-	// 文章特色图片 - 确保加载后显示
-	$(".post-thumbnail.lazyload:not(.lazyload-loaded)").each(function() {
-		var $img = $(this);
-		var originalSrc = $img.attr("data-original");
-		
-		if (originalSrc) {
-			// 创建一个新图片对象来预加载
-			var img = new Image();
-			img.onload = function() {
-				$img.attr("src", originalSrc);
-				$img.addClass("lazyload-loaded");
-				$img.css("opacity", "1");
-				$img.parent().removeClass("lazyload-container-unload");
-				waterflowInit();
-			};
-			img.onerror = function() {
-				// 图片加载失败，隐藏图片容器
-				$img.closest(".post-header-with-thumbnail").removeClass("post-header-with-thumbnail");
-				$img.remove();
-				waterflowInit();
-			};
-			img.src = originalSrc;
-		}
-	});
-	
-	// 也保留原有的 lazyload 调用作为备用
-	$(".post-thumbnail.lazyload:not(.lazyload-loaded)").lazyload({
-		threshold: argonConfig.lazyload.threshold,
-		effect: lazyloadEffect,
-		load: function () {
-			$(this).addClass("lazyload-loaded");
-			$(this).css("opacity", "1");
-			$(this).parent().removeClass("lazyload-container-unload");
-			waterflowInit();
-		}
-	});
-	
-	$(".comment-item-text .comment-sticker.lazyload").lazyload({
-		threshold: argonConfig.lazyload.threshold,
-		effect: lazyloadEffect,
-		load: function(){
-			$(this).removeClass("lazyload");
-		}
-	});
+	// 原生懒加载无需 JS 初始化
+	// 保留此函数以兼容可能的外部调用
 }
 lazyloadInit();
 

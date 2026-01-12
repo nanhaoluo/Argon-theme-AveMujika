@@ -4096,16 +4096,9 @@ html.filter-grayscale {
 
 }
 
-.post-thumbnail.lazyload {
-
+/* 图片加载过渡效果 */
+.post-thumbnail {
 	transition: opacity 0.3s ease 0s;
-
-}
-
-.post-thumbnail.lazyload.lazyload-loaded {
-
-	opacity: 1 !important;
-
 }
 
 .single .post-thumbnail,

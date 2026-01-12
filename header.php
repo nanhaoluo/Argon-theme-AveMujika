@@ -333,21 +333,8 @@
 
 			pangu: "<?php echo get_option('argon_enable_pangu', 'false'); ?>",
 
-			<?php if (get_option('argon_enable_lazyload') != 'false'){ ?>
-
-				lazyload: {
-
-					threshold: <?php echo get_option('argon_lazyload_threshold', 800); ?>,
-
-					effect: "<?php echo get_option('argon_lazyload_effect', 'fadeIn'); ?>"
-
-				},
-
-			<?php } else { ?>
-
-				lazyload: false,
-
-			<?php } ?>
+			// 原生懒加载已启用，无需 JS lazyload 配置
+			lazyload: false,
 
 			fold_long_comments: <?php echo get_option('argon_fold_long_comments', 'false'); ?>,
 
