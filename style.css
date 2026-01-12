@@ -3144,6 +3144,10 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 
 	transition: all var(--animation-normal) var(--ease-standard);
 
+	background-color: var(--color-foreground) !important;
+
+	color: var(--themecolor) !important;
+
 }
 
 .fabtn:hover {
