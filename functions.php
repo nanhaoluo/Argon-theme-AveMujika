@@ -4057,6 +4057,15 @@ add_action('wp_enqueue_scripts', 'argon_enqueue_qrcode_script');
 function argon_get_git_info() {
 	$theme_dir = get_template_directory();
 	$git_dir = $theme_dir . '/.git';
+	$version_file = $theme_dir . '/version.json';
+	
+	// 优先从 version.json 读取（用于没有 .git 的服务器环境）
+	if (file_exists($version_file)) {
+		$version_data = json_decode(file_get_contents($version_file), true);
+		if ($version_data && isset($version_data['branch']) && isset($version_data['commit'])) {
+			return $version_data;
+		}
+	}
 	
 	// 检查是否存在 .git 目录
 	if (!is_dir($git_dir)) {
