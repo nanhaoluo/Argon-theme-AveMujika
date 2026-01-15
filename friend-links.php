@@ -207,6 +207,11 @@ $captcha_type = get_option('argon_captcha_type', 'math');
 get_header();
 ?>
 
+<div class="page-information-card-container"></div>
+<?php get_sidebar(); ?>
+
+<div id="primary" class="content-area">
+
 <style id="flinks-page-style">
 /* 桌面端隐藏侧边栏 */
 @media screen and (min-width: 901px) {
@@ -424,10 +429,6 @@ if (typeof jQuery !== 'undefined') {
 }
 </script>
 
-<div class="page-information-card-container"></div>
-<?php get_sidebar(); ?>
-
-<div id="primary" class="content-area">
 <main id="main" class="site-main" role="main">
 
 <?php
