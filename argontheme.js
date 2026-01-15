@@ -2437,12 +2437,15 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 /*侧栏 & 顶栏菜单手机适配*/
 !function(){
 	$(document).on("click" , "#fabtn_open_sidebar, #open_sidebar" , function(){
+		console.log('[Mobile Sidebar] Sidebar opened');
 		$("html").addClass("leftbar-opened");
 		// 侧边栏打开时初始化移动端文章目录
+		console.log('[Mobile Sidebar] Calling initMobileCatalog');
 		initMobileCatalog();
 		// 如果有文章目录，默认展开
 		setTimeout(function() {
 			var catalogSection = $("#mobile_catalog_toggle").closest(".leftbar-mobile-collapse-section");
+			console.log('[Mobile Sidebar] Catalog section found:', catalogSection.length);
 			if (catalogSection.length > 0 && !catalogSection.hasClass("expanded")) {
 				catalogSection.addClass("expanded");
 				initMobileCatalog();

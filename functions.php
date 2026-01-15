@@ -626,7 +626,7 @@ function argon_debug_console_script() {
 	#argon-debug-console-body{flex:1;overflow-y:auto;padding:10px}
 	#argon-debug-console-body::-webkit-scrollbar{width:8px}
 	#argon-debug-console-body::-webkit-scrollbar-thumb{background:#444;border-radius:4px}
-	.debug-log-item{padding:8px 12px;margin-bottom:4px;border-radius:4px;background:#2d2d2d;color:#d4d4d4;word-break:break-all;position:relative;font-size:11px;line-height:1.6}
+	.debug-log-item{padding:8px 12px;margin-bottom:4px;border-radius:4px;background:#2d2d2d;color:#d4d4d4;word-break:break-all;position:relative;font-size:11px;line-height:1.6;user-select:text;-webkit-user-select:text}
 	.debug-log-item.log{border-left:3px solid #6c757d}
 	.debug-log-item.warn{border-left:3px solid #ffc107;background:#3d3520;color:#ffc107}
 	.debug-log-item.error{border-left:3px solid #f5365c;background:#3d2020;color:#ff6b6b}
@@ -635,6 +635,8 @@ function argon_debug_console_script() {
 	.debug-log-item .mute-btn{position:absolute;top:6px;right:6px;background:#f5365c;color:#fff;border:none;padding:3px 10px;border-radius:4px;font-size:10px;cursor:pointer;opacity:0}
 	.debug-log-item:hover .mute-btn{opacity:1}
 	.debug-log-item.muted{opacity:0.5}
+	.debug-log-item.copying{background:#3a5a3a !important}
+	.debug-copy-toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:#fff;padding:10px 20px;border-radius:8px;z-index:100001;font-size:12px}
 	#argon-error-toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#f5365c;color:#fff;padding:12px 20px;border-radius:8px;box-shadow:0 4px 20px rgba(245,54,92,0.4);z-index:100000;display:none;align-items:center;gap:12px;max-width:90vw;animation:argonToastIn .3s ease}
 	@keyframes argonToastIn{from{opacity:0;transform:translateX(-50%) translateY(-20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 	#argon-error-toast.show{display:flex}
@@ -791,7 +793,14 @@ function argon_debug_console_script() {
 		function showErrorToast(m,h){if(isMuted(h))return;var t=document.getElementById('argon-error-toast');if(!t)return;var dm=isAdmin?m:'<?php _e("页面发生错误，请联系管理员", "argon"); ?>';t.querySelector('.message').textContent=dm.length>80?dm.substring(0,80)+'...':dm;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},5000);}
 		function updateCounts(){document.getElementById('count-all').textContent=counts.all;document.getElementById('count-log').textContent=counts.log;document.getElementById('count-warn').textContent=counts.warn;document.getElementById('count-error').textContent=counts.error;var b=document.getElementById('argon-debug-error-count');if(b){b.textContent=counts.error;b.style.display=counts.error>0?'inline':'none';}}
 		function addLog(type,args,source){var msg=Array.prototype.slice.call(args).map(function(a){if(typeof a==='object'){try{return JSON.stringify(a,null,2);}catch(e){return String(a);}}return String(a);}).join(' ');var hash=hashError(msg,source),time=new Date().toLocaleTimeString();logs.push({type:type,msg:msg,source:source,time:time,hash:hash});counts.all++;counts[type]=(counts[type]||0)+1;updateCounts();if(type==='error')showErrorToast(msg,hash);if(currentFilter!=='resources')renderLogs();}
-		function renderLogs(){var body=document.getElementById('argon-debug-console-body');if(!body)return;var filtered=currentFilter==='all'?logs:logs.filter(function(l){return l.type===currentFilter;});body.innerHTML=filtered.map(function(log){var muted=isMuted(log.hash);var muteBtn=isAdmin&&log.type==='error'?'<button class="mute-btn" onclick="argonDebug.mute(\''+log.hash+'\',\''+encodeURIComponent(log.msg.substring(0,200))+'\',\''+encodeURIComponent(log.source||'')+'\')">'+(muted?'<?php _e("已屏蔽", "argon"); ?>':'<?php _e("屏蔽", "argon"); ?>')+'</button>':'';return '<div class="debug-log-item '+log.type+(muted?' muted':'')+'">'+muteBtn+'<span class="time">['+log.time+']</span> '+log.msg.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')+(log.source?'<span class="source">'+log.source+'</span>':'')+'</div>';}).join('');body.scrollTop=body.scrollHeight;}
+		function renderLogs(){var body=document.getElementById('argon-debug-console-body');if(!body)return;var filtered=currentFilter==='all'?logs:logs.filter(function(l){return l.type===currentFilter;});body.innerHTML=filtered.map(function(log,idx){var muted=isMuted(log.hash);var muteBtn=isAdmin&&log.type==='error'?'<button class="mute-btn" onclick="event.stopPropagation();argonDebug.mute(\''+log.hash+'\',\''+encodeURIComponent(log.msg.substring(0,200))+'\',\''+encodeURIComponent(log.source||'')+'\')">'+(muted?'<?php _e("已屏蔽", "argon"); ?>':'<?php _e("屏蔽", "argon"); ?>')+'</button>':'';return '<div class="debug-log-item '+log.type+(muted?' muted':'')+'" data-log-idx="'+idx+'">'+muteBtn+'<span class="time">['+log.time+']</span> '+log.msg.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')+(log.source?'<span class="source">'+log.source+'</span>':'')+'</div>';}).join('');body.scrollTop=body.scrollHeight;}
+		// 长按复制功能
+		var longPressTimer=null,longPressTarget=null;
+		document.addEventListener('touchstart',function(e){var item=e.target.closest('.debug-log-item');if(item){longPressTarget=item;longPressTimer=setTimeout(function(){var idx=parseInt(item.dataset.logIdx);if(!isNaN(idx)&&logs[idx]){var text='['+logs[idx].time+'] '+logs[idx].msg+(logs[idx].source?' ('+logs[idx].source+')':'');copyToClipboard(text);item.classList.add('copying');setTimeout(function(){item.classList.remove('copying');},300);}},500);}},{passive:true});
+		document.addEventListener('touchend',function(){if(longPressTimer){clearTimeout(longPressTimer);longPressTimer=null;}},{passive:true});
+		document.addEventListener('touchmove',function(){if(longPressTimer){clearTimeout(longPressTimer);longPressTimer=null;}},{passive:true});
+		function copyToClipboard(text){if(navigator.clipboard){navigator.clipboard.writeText(text).then(function(){showCopyToast('<?php _e("已复制", "argon"); ?>');});}else{var ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showCopyToast('<?php _e("已复制", "argon"); ?>');}}
+		function showCopyToast(msg){var t=document.createElement('div');t.className='debug-copy-toast';t.textContent=msg;document.body.appendChild(t);setTimeout(function(){t.remove();},1000);}
 		var oc={log:console.log,warn:console.warn,error:console.error,info:console.info};
 		console.log=function(){addLog('log',arguments);};
 		console.info=function(){addLog('log',arguments);};
