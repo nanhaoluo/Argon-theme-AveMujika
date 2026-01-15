@@ -2514,14 +2514,17 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 	window.mobileCatalogInitialized = false;
 	
 	function initMobileCatalog() {
+		console.log('[Mobile Catalog] initMobileCatalog called, initialized:', window.mobileCatalogInitialized);
 		if (window.mobileCatalogInitialized) return;
 		var $mobileContainer = $("#leftbar_mobile_catalog");
 		var $postContent = $("#post_content");
+		console.log('[Mobile Catalog] Container found:', $mobileContainer.length, 'PostContent found:', $postContent.length);
 		if ($mobileContainer.length === 0) return;
 		if ($postContent.length === 0) return;
 		
 		// 直接生成目录，不依赖 headIndex 插件
 		var $headers = $postContent.find('h1, h2, h3, h4, h5, h6');
+		console.log('[Mobile Catalog] Headers found:', $headers.length);
 		if ($headers.length === 0) {
 			$mobileContainer.html('<div class="no-catalog">暂无目录</div>');
 			return;
@@ -2571,6 +2574,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		}
 		
 		$mobileContainer.html(buildHtml(toc, true));
+		console.log('[Mobile Catalog] HTML generated, toc items:', toc.length);
 		window.mobileCatalogInitialized = true;
 		
 		// 绑定点击事件
