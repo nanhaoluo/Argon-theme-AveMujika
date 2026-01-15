@@ -14,6 +14,13 @@
 						<script src="<?php echo $GLOBALS['assets_path']; ?>/assets/js/easter-egg.js"></script>
 						<?php endif; ?></div>
 
+						<?php 
+						// 调试控制台按钮（放在页脚底部）
+						if (function_exists('argon_debug_console_footer_button')) {
+							argon_debug_console_footer_button();
+						}
+						?>
+
 					</footer>
 
 				</main>
