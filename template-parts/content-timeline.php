@@ -1,12 +1,13 @@
 <article class="post post-full card bg-white shadow-sm border-0" id="post-<?php the_ID(); ?>" <?php post_class(); ?>>
-	<header class="post-header text-center<?php if (argon_has_post_thumbnail() && get_option('argon_show_thumbnail_in_banner_in_content_page') != 'true'){echo " post-header-with-thumbnail";}?>">
+	<?php $show_thumbnail_in_banner = get_option('argon_show_thumbnail_in_banner_in_content_page', 'false'); ?>
+	<header class="post-header text-center<?php if (argon_has_post_thumbnail() && $show_thumbnail_in_banner != 'true'){echo " post-header-with-thumbnail";}?>">
 		<?php
-			if (argon_has_post_thumbnail() && get_option('argon_show_thumbnail_in_banner_in_content_page') != 'true'){
+			if (argon_has_post_thumbnail() && $show_thumbnail_in_banner != 'true'){
 				$thumbnail_url = argon_get_post_thumbnail();
 				echo "<img class='post-thumbnail' src='" . $thumbnail_url . "'></img>";
 				echo "<div class='post-header-text-container'>";
 			}
-			if (argon_has_post_thumbnail() && get_option('argon_show_thumbnail_in_banner_in_content_page') == 'true'){
+			if (argon_has_post_thumbnail() && $show_thumbnail_in_banner == 'true'){
 				$thumbnail_url = argon_get_post_thumbnail();
 				echo "
 				<style>
@@ -44,7 +45,7 @@
 			?>
 		</div>
 		<?php
-			if (has_post_thumbnail() && get_option('argon_show_thumbnail_in_banner_in_content_page') != 'true'){
+			if (has_post_thumbnail() && $show_thumbnail_in_banner != 'true'){
 				echo "</div>";
 			}
 		?>

@@ -1,11 +1,12 @@
 <!-- 文章操作按钮：分享和评论 -->
+<?php $argon_show_sharebtn = get_option("argon_show_sharebtn", 'true'); ?>
 <div id="post_actions_container">
 	
 	<!-- 分享功能 -->
-	<?php if (get_option("argon_show_sharebtn") != 'false') { ?>
+	<?php if ($argon_show_sharebtn != 'false') { ?>
 	<div id="share_container">
 		<div id="share" data-initialized="true">
-			<?php if (get_option('argon_show_sharebtn') != 'abroad') { ?>
+			<?php if ($argon_show_sharebtn != 'abroad') { ?>
 			<a target="_blank" class="no-pjax icon-douban" tooltip="<?php _e('分享到豆瓣', 'argon'); ?>">
 				<button class="btn btn-icon btn-primary">
 					<span aria-hidden="true">豆</span>
@@ -26,7 +27,7 @@
 					<span class="btn-inner--icon"><i class="fa fa-weibo"></i></span>
 				</button>
 			</a>
-			<?php } if (get_option('argon_show_sharebtn') != 'domestic') { ?>
+			<?php } if ($argon_show_sharebtn != 'domestic') { ?>
 			<a target="_blank" class="no-pjax icon-facebook" tooltip="<?php _e('分享到 Facebook', 'argon'); ?>">
 				<button class="btn btn-icon btn-primary">
 					<span class="btn-inner--icon"><i class="fa fa-facebook"></i></span>
@@ -74,7 +75,7 @@
 <script type="text/javascript">
 (function() {
 	// 分享功能
-	<?php if (get_option("argon_show_sharebtn") != 'false') { ?>
+	<?php if ($argon_show_sharebtn != 'false') { ?>
 	socialShare("#share", {
 		title: '<?php echo addslashes(html_entity_decode(get_the_title())); ?>',
 		description: '<?php echo addslashes(html_entity_decode(wp_trim_words(html_entity_decode(get_the_content()), 50)));?>',

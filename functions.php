@@ -161,6 +161,7 @@ function argon_get_locate(){
 	if (is_admin()){
 		$determined_locale = get_user_locale();
 	}
+	return argon_locate_filter($determined_locale);
 }
 function theme_locale_hook($locate, $domain){
 	if ($domain == 'argon'){
