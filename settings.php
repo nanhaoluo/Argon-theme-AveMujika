@@ -4733,6 +4733,213 @@ window.pjaxLoaded = function(){
 
 					<tr>
 
+						<th><label><?php _e('强制刷新缓存', 'argon');?></label></th>
+
+						<td>
+
+							<?php 
+							$force_refresh_enabled = function_exists('argon_is_force_refresh_enabled') ? argon_is_force_refresh_enabled() : false;
+							$enabled_time = get_option('argon_force_refresh_enabled_time', 0);
+							$remaining = 0;
+							if ($force_refresh_enabled && $enabled_time > 0) {
+								$remaining = max(0, 3600 - (time() - $enabled_time));
+							}
+							?>
+
+							<div id="argon_force_refresh_container">
+
+								<div id="argon_force_refresh_status" style="margin-bottom:15px;padding:12px 15px;border-radius:6px;<?php echo $force_refresh_enabled ? 'background:#d4edda;border:1px solid #c3e6cb;' : 'background:#f8f9fa;border:1px solid #e9ecef;'; ?>">
+
+									<span id="argon_force_refresh_status_text">
+
+										<?php if ($force_refresh_enabled): ?>
+
+											<span style="color:#155724;">✓ <?php _e('强制刷新已启用', 'argon'); ?></span>
+
+											<span id="argon_force_refresh_countdown" style="margin-left:10px;color:#666;"><?php echo sprintf(__('剩余 %s', 'argon'), '<span id="argon_countdown_time">' . floor($remaining / 60) . ':' . str_pad($remaining % 60, 2, '0', STR_PAD_LEFT) . '</span>'); ?></span>
+
+										<?php else: ?>
+
+											<span style="color:#666;"><?php _e('强制刷新未启用', 'argon'); ?></span>
+
+										<?php endif; ?>
+
+									</span>
+
+								</div>
+
+								<button type="button" class="button <?php echo $force_refresh_enabled ? 'button-secondary' : 'button-primary'; ?>" id="argon_force_refresh_btn">
+
+									<?php echo $force_refresh_enabled ? __('关闭强制刷新', 'argon') : __('启用强制刷新 (1小时)', 'argon'); ?>
+
+								</button>
+
+							</div>
+
+							<p class="description" style="margin-top:10px;">
+
+								<?php _e('启用后，所有访客在刷新页面时将强制重新获取所有资源文件（CSS、JS等），解决手机端缓存导致的样式或功能异常问题。', 'argon'); ?><br/>
+
+								<?php _e('该功能会在 1 小时后自动关闭，以避免对服务器造成持续压力。', 'argon'); ?>
+
+							</p>
+
+							<script>
+
+							jQuery(document).ready(function($) {
+
+								var isEnabled = <?php echo $force_refresh_enabled ? 'true' : 'false'; ?>;
+
+								var remainingSeconds = <?php echo $remaining; ?>;
+
+								var countdownTimer = null;
+
+								
+
+								function updateCountdown() {
+
+									if (remainingSeconds <= 0) {
+
+										clearInterval(countdownTimer);
+
+										isEnabled = false;
+
+										updateUI();
+
+										return;
+
+									}
+
+									remainingSeconds--;
+
+									var mins = Math.floor(remainingSeconds / 60);
+
+									var secs = remainingSeconds % 60;
+
+									$('#argon_countdown_time').text(mins + ':' + (secs < 10 ? '0' : '') + secs);
+
+								}
+
+								
+
+								function updateUI() {
+
+									var statusDiv = $('#argon_force_refresh_status');
+
+									var statusText = $('#argon_force_refresh_status_text');
+
+									var btn = $('#argon_force_refresh_btn');
+
+									
+
+									if (isEnabled) {
+
+										statusDiv.css({'background': '#d4edda', 'border': '1px solid #c3e6cb'});
+
+										var mins = Math.floor(remainingSeconds / 60);
+
+										var secs = remainingSeconds % 60;
+
+										statusText.html('<span style="color:#155724;">✓ <?php _e('强制刷新已启用', 'argon'); ?></span><span id="argon_force_refresh_countdown" style="margin-left:10px;color:#666;"><?php _e('剩余', 'argon'); ?> <span id="argon_countdown_time">' + mins + ':' + (secs < 10 ? '0' : '') + secs + '</span></span>');
+
+										btn.removeClass('button-primary').addClass('button-secondary').text('<?php _e('关闭强制刷新', 'argon'); ?>');
+
+										if (!countdownTimer) {
+
+											countdownTimer = setInterval(updateCountdown, 1000);
+
+										}
+
+									} else {
+
+										statusDiv.css({'background': '#f8f9fa', 'border': '1px solid #e9ecef'});
+
+										statusText.html('<span style="color:#666;"><?php _e('强制刷新未启用', 'argon'); ?></span>');
+
+										btn.removeClass('button-secondary').addClass('button-primary').text('<?php _e('启用强制刷新 (1小时)', 'argon'); ?>');
+
+										if (countdownTimer) {
+
+											clearInterval(countdownTimer);
+
+											countdownTimer = null;
+
+										}
+
+									}
+
+								}
+
+								
+
+								// 初始化倒计时
+
+								if (isEnabled && remainingSeconds > 0) {
+
+									countdownTimer = setInterval(updateCountdown, 1000);
+
+								}
+
+								
+
+								$('#argon_force_refresh_btn').on('click', function() {
+
+									var btn = $(this);
+
+									btn.prop('disabled', true);
+
+									
+
+									var action = isEnabled ? 'argon_disable_force_refresh' : 'argon_enable_force_refresh';
+
+									
+
+									$.post(ajaxurl, {
+
+										action: action,
+
+										nonce: '<?php echo wp_create_nonce('argon_force_refresh'); ?>'
+
+									}, function(response) {
+
+										btn.prop('disabled', false);
+
+										if (response.success) {
+
+											isEnabled = !isEnabled;
+
+											if (isEnabled) {
+
+												remainingSeconds = 3600;
+
+											} else {
+
+												remainingSeconds = 0;
+
+											}
+
+											updateUI();
+
+										} else {
+
+											alert(response.data || '<?php _e('操作失败', 'argon'); ?>');
+
+										}
+
+									});
+
+								});
+
+							});
+
+							</script>
+
+						</td>
+
+					</tr>
+
+					<tr>
+
 						<th><label><?php _e('调试控制台', 'argon');?></label></th>
 
 						<td>

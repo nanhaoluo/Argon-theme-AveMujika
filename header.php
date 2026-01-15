@@ -265,12 +265,15 @@
 	<?php endif; ?>
 
 	<?php
+		// 获取资源版本号（支持强制刷新）
+		$assets_version = function_exists('argon_get_assets_version') ? argon_get_assets_version() : $GLOBALS['theme_version'];
+		
 		// CSS 加载 - 添加 media 属性确保移动端正确加载
-		wp_enqueue_style("argon_css_merged", $GLOBALS['assets_path'] . "/assets/argon_css_merged.css", array(), $GLOBALS['theme_version'], 'all');
-		wp_enqueue_style("style", $GLOBALS['assets_path'] . "/style.css", array('argon_css_merged'), $GLOBALS['theme_version'], 'all');
+		wp_enqueue_style("argon_css_merged", $GLOBALS['assets_path'] . "/assets/argon_css_merged.css", array(), $assets_version, 'all');
+		wp_enqueue_style("style", $GLOBALS['assets_path'] . "/style.css", array('argon_css_merged'), $assets_version, 'all');
 		
 		// 集成外部资源备用机制
-		wp_enqueue_script("resource_loader", $GLOBALS['assets_path'] . "/assets/vendor/external/resource-loader.js", array(), $GLOBALS['theme_version'], false);
+		wp_enqueue_script("resource_loader", $GLOBALS['assets_path'] . "/assets/vendor/external/resource-loader.js", array(), $assets_version, false);
 
 		if (get_option('argon_disable_googlefont') != 'true') {
 			// 使用备用机制加载Google Fonts
@@ -284,7 +287,7 @@
 		}
 
 		// 加载 argon_js_merged（包含 jQuery 和其他库）- 在头部同步加载以确保后续脚本可用
-		wp_enqueue_script("argon_js_merged", $GLOBALS['assets_path'] . "/assets/argon_js_merged.js", array(), $GLOBALS['theme_version'], false);
+		wp_enqueue_script("argon_js_merged", $GLOBALS['assets_path'] . "/assets/argon_js_merged.js", array(), $assets_version, false);
 	?>
 	
 	<?php wp_head(); ?>
@@ -323,7 +326,7 @@
 	</script>
 	
 	<!-- Argon 修复补丁 - 必须在 wp_head() 之后立即执行 -->
-	<script src="<?php echo get_template_directory_uri(); ?>/assets/js/argon.min.js?ver=<?php echo $GLOBALS['theme_version']; ?>"></script>
+	<script src="<?php echo get_template_directory_uri(); ?>/assets/js/argon.min.js?ver=<?php echo $assets_version; ?>"></script>
 
 	<?php $GLOBALS['wp_path'] = get_option('argon_wp_path') == '' ? '/' : get_option('argon_wp_path'); ?>
 

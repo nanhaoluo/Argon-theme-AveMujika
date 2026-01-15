@@ -35,6 +35,93 @@ $GLOBALS['theme_version'] = $argon_version;
 // 强制使用本地资源，避免 CDN 加载问题
 $GLOBALS['assets_path'] = get_bloginfo('template_url');
 
+// ==================== 强制刷新缓存功能 ====================
+
+/**
+ * 检查强制刷新缓存是否启用
+ * 启用后 1 小时自动关闭
+ */
+function argon_is_force_refresh_enabled() {
+	$enabled_time = get_option('argon_force_refresh_enabled_time', 0);
+	if ($enabled_time == 0) {
+		return false;
+	}
+	// 检查是否超过 1 小时
+	if (time() - $enabled_time > 3600) {
+		// 自动关闭
+		update_option('argon_force_refresh_enabled_time', 0);
+		return false;
+	}
+	return true;
+}
+
+/**
+ * 获取资源版本号
+ * 如果启用了强制刷新，返回当前时间戳
+ */
+function argon_get_assets_version() {
+	if (argon_is_force_refresh_enabled()) {
+		return $GLOBALS['theme_version'] . '.' . time();
+	}
+	return $GLOBALS['theme_version'];
+}
+
+/**
+ * 启用强制刷新缓存
+ */
+function argon_enable_force_refresh() {
+	check_ajax_referer('argon_force_refresh', 'nonce');
+	
+	if (!current_user_can('manage_options')) {
+		wp_send_json_error(__('权限不足', 'argon'));
+	}
+	
+	update_option('argon_force_refresh_enabled_time', time());
+	wp_send_json_success(array(
+		'message' => __('强制刷新已启用，将在 1 小时后自动关闭', 'argon'),
+		'expires_at' => time() + 3600
+	));
+}
+add_action('wp_ajax_argon_enable_force_refresh', 'argon_enable_force_refresh');
+
+/**
+ * 关闭强制刷新缓存
+ */
+function argon_disable_force_refresh() {
+	check_ajax_referer('argon_force_refresh', 'nonce');
+	
+	if (!current_user_can('manage_options')) {
+		wp_send_json_error(__('权限不足', 'argon'));
+	}
+	
+	update_option('argon_force_refresh_enabled_time', 0);
+	wp_send_json_success(array(
+		'message' => __('强制刷新已关闭', 'argon')
+	));
+}
+add_action('wp_ajax_argon_disable_force_refresh', 'argon_disable_force_refresh');
+
+/**
+ * 获取强制刷新状态
+ */
+function argon_get_force_refresh_status() {
+	check_ajax_referer('argon_force_refresh', 'nonce');
+	
+	$enabled_time = get_option('argon_force_refresh_enabled_time', 0);
+	$is_enabled = argon_is_force_refresh_enabled();
+	$remaining = 0;
+	
+	if ($is_enabled && $enabled_time > 0) {
+		$remaining = max(0, 3600 - (time() - $enabled_time));
+	}
+	
+	wp_send_json_success(array(
+		'enabled' => $is_enabled,
+		'remaining' => $remaining
+	));
+}
+add_action('wp_ajax_argon_get_force_refresh_status', 'argon_get_force_refresh_status');
+
 //翻译 Hook
 function argon_locate_filter($locate){
 	if (substr($locate, 0, 2) == 'zh'){

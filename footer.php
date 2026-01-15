@@ -30,7 +30,8 @@
 		</div>
 
 		<!-- 加载主题核心 JS -->
-		<script src="<?php echo $GLOBALS['assets_path']; ?>/argontheme.js?v=<?php echo $GLOBALS['theme_version']; ?>"></script>
+		<?php $assets_version = function_exists('argon_get_assets_version') ? argon_get_assets_version() : $GLOBALS['theme_version']; ?>
+		<script src="<?php echo $GLOBALS['assets_path']; ?>/argontheme.js?v=<?php echo $assets_version; ?>"></script>
 
 		<?php if (get_option('argon_math_render') == 'mathjax3') { /*Mathjax V3*/?>
 
