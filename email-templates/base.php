@@ -17,13 +17,15 @@ function argon_get_email_types() {
         'comment_notify' => array(
             'name' => __('评论通知', 'argon'),
             'description' => __('当博客收到新评论时发送给管理员', 'argon'),
-            'default_subject' => '[{{blog_name}}] 新评论：{{post_title}}',
-            'default_content' => '<h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: #32325d;">您的文章收到了新评论</h2>
-<p style="margin: 0 0 24px 0; color: #525f7f; line-height: 1.6;"><strong>{{commenter_name}}</strong> 在《<a href="{{post_url}}" style="color: {{theme_color}}; text-decoration: none;">{{post_title}}</a>》中发表了评论：</p>
-<div style="background: #f6f9fc; border-left: 4px solid {{theme_color}}; padding: 16px; border-radius: 4px; margin: 0 0 24px 0;">
+            'default_subject' => '[{{blog_name}}] 文章收到新评论',
+            'default_content' => '<h2 style="margin: 0 0 20px 0; font-size: 18px; font-weight: 600; color: {{theme_color}};">文章收到新评论</h2>
+<p style="margin: 0 0 20px 0; color: #525f7f; line-height: 1.6;"><strong>{{commenter_name}}</strong> 在文章《<a href="{{post_url}}" style="color: {{theme_color}}; text-decoration: none;">{{post_title}}</a>》中发表了评论：</p>
+<div style="background: #f6f9fc; border-left: 4px solid {{theme_color}}; padding: 16px; border-radius: 4px; margin: 0 0 20px 0;">
     <p style="margin: 0; color: #525f7f; line-height: 1.6;">{{comment_content}}</p>
 </div>
-<a href="{{comment_url}}" style="display: inline-block; background: {{theme_color}}; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;">查看评论</a>',
+<p style="margin: 0;">
+    <a href="{{comment_url}}" style="display: inline-block; background: {{theme_color}}; color: #ffffff; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-size: 14px;">查看评论</a>
+</p>',
             'placeholders' => array(
                 'blog_name' => __('博客名称', 'argon'),
                 'post_title' => __('文章标题', 'argon'),
@@ -40,16 +42,18 @@ function argon_get_email_types() {
             'name' => __('回复通知', 'argon'),
             'description' => __('当评论收到回复时发送给原评论者', 'argon'),
             'default_subject' => '[{{blog_name}}] 您的评论收到了回复',
-            'default_content' => '<h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: #32325d;">您的评论收到了回复</h2>
-<p style="margin: 0 0 16px 0; color: #8898aa; font-size: 14px;">您在《<a href="{{post_url}}" style="color: {{theme_color}}; text-decoration: none;">{{post_title}}</a>》的评论：</p>
+            'default_content' => '<h2 style="margin: 0 0 20px 0; font-size: 18px; font-weight: 600; color: {{theme_color}};">您的评论收到了回复</h2>
+<p style="margin: 0 0 12px 0; color: #8898aa; font-size: 14px;">您在文章《<a href="{{post_url}}" style="color: {{theme_color}}; text-decoration: none;">{{post_title}}</a>》中的评论：</p>
 <div style="background: #f6f9fc; padding: 12px 16px; border-radius: 4px; margin: 0 0 16px 0;">
     <p style="margin: 0; color: #8898aa; font-size: 14px;">{{original_comment}}</p>
 </div>
-<p style="margin: 0 0 16px 0; color: #525f7f;"><strong>{{replier_name}}</strong> 回复了您：</p>
-<div style="background: #f6f9fc; border-left: 4px solid {{theme_color}}; padding: 16px; border-radius: 4px; margin: 0 0 24px 0;">
+<p style="margin: 0 0 12px 0; color: #525f7f;"><strong>{{replier_name}}</strong> 回复了您：</p>
+<div style="background: #f6f9fc; border-left: 4px solid {{theme_color}}; padding: 16px; border-radius: 4px; margin: 0 0 20px 0;">
     <p style="margin: 0; color: #525f7f; line-height: 1.6;">{{reply_content}}</p>
 </div>
-<a href="{{comment_url}}" style="display: inline-block; background: {{theme_color}}; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;">查看回复</a>',
+<p style="margin: 0;">
+    <a href="{{comment_url}}" style="display: inline-block; background: {{theme_color}}; color: #ffffff; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-size: 14px;">查看回复</a>
+</p>',
             'placeholders' => array(
                 'blog_name' => __('博客名称', 'argon'),
                 'post_title' => __('文章标题', 'argon'),
@@ -66,11 +70,13 @@ function argon_get_email_types() {
         'user_register' => array(
             'name' => __('用户注册', 'argon'),
             'description' => __('新用户注册成功后发送的欢迎邮件', 'argon'),
-            'default_subject' => '[{{blog_name}}] 欢迎注册',
-            'default_content' => '<h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: #32325d;">欢迎加入 {{blog_name}}</h2>
-<p style="margin: 0 0 24px 0; color: #525f7f; line-height: 1.6;">亲爱的 <strong>{{user_name}}</strong>，感谢您的注册！</p>
-<p style="margin: 0 0 24px 0; color: #525f7f; line-height: 1.6;">您的账户已创建成功，现在可以登录并开始使用了。</p>
-<a href="{{login_url}}" style="display: inline-block; background: {{theme_color}}; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;">立即登录</a>',
+            'default_subject' => '[{{blog_name}}] 注册成功',
+            'default_content' => '<h2 style="margin: 0 0 20px 0; font-size: 18px; font-weight: 600; color: {{theme_color}};">欢迎加入 {{blog_name}}</h2>
+<p style="margin: 0 0 16px 0; color: #525f7f; line-height: 1.6;"><strong>{{user_name}}</strong>，您好：</p>
+<p style="margin: 0 0 20px 0; color: #525f7f; line-height: 1.6;">您的账户已创建成功，现在可以登录使用了。</p>
+<p style="margin: 0;">
+    <a href="{{login_url}}" style="display: inline-block; background: {{theme_color}}; color: #ffffff; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-size: 14px;">立即登录</a>
+</p>',
             'placeholders' => array(
                 'blog_name' => __('博客名称', 'argon'),
                 'user_name' => __('用户名', 'argon'),
@@ -84,11 +90,13 @@ function argon_get_email_types() {
             'name' => __('密码重置', 'argon'),
             'description' => __('用户请求重置密码时发送的邮件', 'argon'),
             'default_subject' => '[{{blog_name}}] 密码重置请求',
-            'default_content' => '<h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: #32325d;">密码重置请求</h2>
-<p style="margin: 0 0 24px 0; color: #525f7f; line-height: 1.6;">您好 <strong>{{user_name}}</strong>，我们收到了您的密码重置请求。</p>
-<p style="margin: 0 0 24px 0; color: #525f7f; line-height: 1.6;">请点击下方按钮重置您的密码。如果这不是您本人的操作，请忽略此邮件。</p>
-<a href="{{reset_url}}" style="display: inline-block; background: {{theme_color}}; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;">重置密码</a>
-<p style="margin: 24px 0 0 0; color: #8898aa; font-size: 12px;">此链接将在 24 小时后失效。</p>',
+            'default_content' => '<h2 style="margin: 0 0 20px 0; font-size: 18px; font-weight: 600; color: {{theme_color}};">密码重置请求</h2>
+<p style="margin: 0 0 16px 0; color: #525f7f; line-height: 1.6;"><strong>{{user_name}}</strong>，您好：</p>
+<p style="margin: 0 0 20px 0; color: #525f7f; line-height: 1.6;">我们收到了您的密码重置请求，请点击下方按钮重置密码。如果这不是您本人的操作，请忽略此邮件。</p>
+<p style="margin: 0 0 20px 0;">
+    <a href="{{reset_url}}" style="display: inline-block; background: {{theme_color}}; color: #ffffff; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-size: 14px;">重置密码</a>
+</p>
+<p style="margin: 0; color: #8898aa; font-size: 12px;">此链接将在 24 小时后失效。</p>',
             'placeholders' => array(
                 'blog_name' => __('博客名称', 'argon'),
                 'user_name' => __('用户名', 'argon'),
@@ -100,13 +108,15 @@ function argon_get_email_types() {
         'todo_urge' => array(
             'name' => __('TODO 提醒', 'argon'),
             'description' => __('访客催促作者完成 TODO 时发送的邮件', 'argon'),
-            'default_subject' => '[{{blog_name}}] 有人催你完成 TODO',
-            'default_content' => '<h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: #32325d;">有访客催促你完成 TODO</h2>
-<div style="background: #f6f9fc; border-left: 4px solid {{theme_color}}; padding: 16px; border-radius: 4px; margin: 0 0 24px 0;">
-    <p style="margin: 0; color: #525f7f; line-height: 1.6;">📝 {{todo_content}}</p>
+            'default_subject' => '[{{blog_name}}] 有访客催促您完成 TODO',
+            'default_content' => '<h2 style="margin: 0 0 20px 0; font-size: 18px; font-weight: 600; color: {{theme_color}};">有访客催促您完成 TODO</h2>
+<p style="margin: 0 0 12px 0; color: #525f7f; line-height: 1.6;">以下任务被访客催促完成：</p>
+<div style="background: #f6f9fc; border-left: 4px solid {{theme_color}}; padding: 16px; border-radius: 4px; margin: 0 0 20px 0;">
+    <p style="margin: 0; color: #525f7f; line-height: 1.6;">{{todo_content}}</p>
 </div>
-<p style="margin: 0 0 24px 0; color: #525f7f; line-height: 1.6;">快去完成吧！</p>
-<a href="{{blog_url}}" style="display: inline-block; background: {{theme_color}}; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;">前往博客</a>',
+<p style="margin: 0;">
+    <a href="{{blog_url}}" style="display: inline-block; background: {{theme_color}}; color: #ffffff; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-size: 14px;">前往博客</a>
+</p>',
             'placeholders' => array(
                 'blog_name' => __('博客名称', 'argon'),
                 'blog_url' => __('博客链接', 'argon'),
@@ -120,8 +130,8 @@ function argon_get_email_types() {
             'name' => __('通用邮件', 'argon'),
             'description' => __('其他类型的通用邮件模板', 'argon'),
             'default_subject' => '[{{blog_name}}] {{subject}}',
-            'default_content' => '<h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: #32325d;">{{title}}</h2>
-<div style="margin: 0 0 24px 0; color: #525f7f; line-height: 1.6;">{{content}}</div>',
+            'default_content' => '<h2 style="margin: 0 0 20px 0; font-size: 18px; font-weight: 600; color: {{theme_color}};">{{title}}</h2>
+<div style="margin: 0; color: #525f7f; line-height: 1.6;">{{content}}</div>',
             'placeholders' => array(
                 'blog_name' => __('博客名称', 'argon'),
                 'subject' => __('邮件主题', 'argon'),
