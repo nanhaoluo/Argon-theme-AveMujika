@@ -932,12 +932,17 @@ if (argonConfig.waterflow_columns != "1") {
 		cancelEdit(false);
 		replying = true;
 		replyID = commentID;
-		$("#post_comment_reply_name").html($("#comment-" + commentID + " .comment-item-title > .comment-name")[0].innerHTML);
-		let preview = $("#comment-" + commentID + " .comment-item-text")[0].innerHTML;
-		if ($("#comment-" + commentID + " .comment-item-source")[0].innerHTML != ''){
-			preview = $("#comment-" + commentID + " .comment-item-source")[0].innerHTML.replace(/\n/g, "</br>");
+		let nameEl = $("#comment-" + commentID + " .comment-item-title > .comment-name")[0];
+		let textEl = $("#comment-" + commentID + " .comment-item-text")[0];
+		let sourceEl = $("#comment-" + commentID + " .comment-item-source")[0];
+		if (nameEl) {
+			$("#post_comment_reply_name").text(nameEl.textContent);
 		}
-		$("#post_comment_reply_preview").html(preview);
+		let preview = textEl ? textEl.textContent : '';
+		if (sourceEl && sourceEl.innerHTML !== '') {
+			preview = sourceEl.textContent;
+		}
+		$("#post_comment_reply_preview").text(preview);
 		if ($("#comment-" + commentID + " .comment-item-title .badge-private-comment").length > 0){
 			$("#post_comment").addClass("post-comment-force-privatemode-on");
 		}else{
