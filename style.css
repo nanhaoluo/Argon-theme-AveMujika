@@ -16202,3 +16202,96 @@ html.darkmode.style-glass article.post.post-full.card {
         background: rgba(var(--themecolor-rgbstr), 0.35);
     }
 }
+
+
+/* ========== backdrop-filter 移动端兼容性修复 ========== */
+/* 针对不支持 backdrop-filter 的浏览器提供降级方案 */
+
+/* 检测不支持 backdrop-filter 的浏览器，使用更高不透明度的背景作为降级 */
+@supports not (backdrop-filter: blur(1px)) {
+    /* 顶栏降级 */
+    html.no-banner.toolbar-blur #navbar-main {
+        background-color: rgba(var(--themecolor-rgbstr), 0.92) !important;
+    }
+    
+    /* 搜索框降级 */
+    #navbar_search_input_container.open .input-group {
+        background: rgba(255, 255, 255, 0.95);
+    }
+    
+    /* 侧边栏遮罩降级 */
+    #sidebar_mask {
+        background: rgba(0, 0, 0, 0.65);
+    }
+    
+    /* 左侧栏移动端降级 */
+    @media screen and (max-width: 900px) {
+        #leftbar {
+            background: rgba(255, 255, 255, 0.98) !important;
+        }
+        
+        html.darkmode #leftbar {
+            background: rgba(30, 30, 30, 0.98) !important;
+        }
+        
+        .leftbar-mobile-action {
+            background: rgba(var(--themecolor-rgbstr), 0.12);
+        }
+        
+        .leftbar-mobile-actions-container {
+            background: rgba(255, 255, 255, 0.98);
+        }
+        
+        html.darkmode .leftbar-mobile-actions-container {
+            background: rgba(30, 30, 30, 0.98);
+        }
+    }
+    
+    /* 玻璃态顶栏降级 */
+    html.toolbar-glass #navbar-main {
+        background: rgba(255, 255, 255, 0.88) !important;
+    }
+    
+    html.toolbar-glass.darkmode #navbar-main {
+        background: rgba(0, 0, 0, 0.85) !important;
+    }
+    
+    /* 弹窗遮罩降级 */
+    .modal-backdrop,
+    #share_panel_mask {
+        background: rgba(0, 0, 0, 0.7);
+    }
+    
+    /* 图片查看器遮罩降级 */
+    .fancybox-bg {
+        background: rgba(0, 0, 0, 0.92);
+    }
+}
+
+/* 针对 -webkit-backdrop-filter 也不支持的情况（部分旧版安卓浏览器） */
+@supports not (-webkit-backdrop-filter: blur(1px)) {
+    @supports not (backdrop-filter: blur(1px)) {
+        /* 确保在完全不支持的情况下有可用的样式 */
+        html.no-banner.toolbar-blur #navbar-main,
+        html.toolbar-glass #navbar-main {
+            background-color: rgba(var(--themecolor-rgbstr), 0.95) !important;
+        }
+        
+        @media screen and (max-width: 900px) {
+            #leftbar {
+                background: var(--color-foreground) !important;
+            }
+        }
+    }
+}
+
+/* ========== iOS Safari 特殊处理 ========== */
+/* iOS Safari 需要 -webkit- 前缀，且在某些情况下需要强制开启硬件加速 */
+@media screen and (max-width: 900px) {
+    #leftbar,
+    #navbar-main,
+    .leftbar-mobile-actions-container {
+        -webkit-transform: translateZ(0);
+        transform: translateZ(0);
+    }
+}
