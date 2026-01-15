@@ -571,10 +571,10 @@ function argon_debug_console_script() {
 		function addLog(type,args,source){var msg=Array.prototype.slice.call(args).map(function(a){if(typeof a==='object'){try{return JSON.stringify(a,null,2);}catch(e){return String(a);}}return String(a);}).join(' ');var hash=hashError(msg,source),time=new Date().toLocaleTimeString();logs.push({type:type,msg:msg,source:source,time:time,hash:hash});counts.all++;counts[type]=(counts[type]||0)+1;updateCounts();if(type==='error')showErrorToast(msg,hash);renderLogs();}
 		function renderLogs(){var body=document.getElementById('argon-debug-console-body');if(!body)return;var filtered=currentFilter==='all'?logs:logs.filter(function(l){return l.type===currentFilter;});body.innerHTML=filtered.map(function(log){var muted=isMuted(log.hash);var muteBtn=isAdmin&&log.type==='error'?'<button class="mute-btn" onclick="argonDebug.mute(\''+log.hash+'\',\''+encodeURIComponent(log.msg.substring(0,200))+'\',\''+encodeURIComponent(log.source||'')+'\')">'+(muted?'<?php _e('已屏蔽', 'argon'); ?>':'<?php _e('屏蔽', 'argon'); ?>')+'</button>':'';return '<div class="debug-log-item '+log.type+(muted?' muted':'')+'">'+muteBtn+'<span class="time">['+log.time+']</span> '+log.msg.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')+(log.source?'<span class="source">'+log.source+'</span>':'')+'</div>';}).join('');body.scrollTop=body.scrollHeight;}
 		var oc={log:console.log,warn:console.warn,error:console.error,info:console.info};
-		console.log=function(){oc.log.apply(console,arguments);addLog('log',arguments);};
-		console.info=function(){oc.info.apply(console,arguments);addLog('log',arguments);};
-		console.warn=function(){oc.warn.apply(console,arguments);addLog('warn',arguments);};
-		console.error=function(){oc.error.apply(console,arguments);addLog('error',arguments);};
+		console.log=function(){addLog('log',arguments);};
+		console.info=function(){addLog('log',arguments);};
+		console.warn=function(){addLog('warn',arguments);};
+		console.error=function(){addLog('error',arguments);};
 		window.addEventListener('error',function(e){var src=e.filename?e.filename.split('/').pop()+':'+e.lineno:'';addLog('error',[e.message],src);});
 		window.addEventListener('unhandledrejection',function(e){addLog('error',['Promise: '+(e.reason?(e.reason.message||e.reason):'Unknown')]);});
 		var panel=document.getElementById('argon-debug-console'),header=document.getElementById('argon-debug-console-header');
