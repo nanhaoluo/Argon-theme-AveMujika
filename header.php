@@ -272,6 +272,9 @@
 		wp_enqueue_style("argon_css_merged", $GLOBALS['assets_path'] . "/assets/argon_css_merged.css", array(), $assets_version, 'all');
 		wp_enqueue_style("style", $GLOBALS['assets_path'] . "/style.css", array('argon_css_merged'), $assets_version, 'all');
 		
+		// 现代化布局和动画增强
+		wp_enqueue_style("modern_enhancements", $GLOBALS['assets_path'] . "/modern-enhancements.css", array('style'), $assets_version, 'all');
+		
 		// 集成外部资源备用机制
 		wp_enqueue_script("resource_loader", $GLOBALS['assets_path'] . "/assets/vendor/external/resource-loader.js", array(), $assets_version, false);
 
@@ -288,6 +291,9 @@
 
 		// 加载 argon_js_merged（包含 jQuery 和其他库）- 在头部同步加载以确保后续脚本可用
 		wp_enqueue_script("argon_js_merged", $GLOBALS['assets_path'] . "/assets/argon_js_merged.js", array(), $assets_version, false);
+		
+		// 现代化交互动画增强 - 在页面底部加载
+		wp_enqueue_script("modern_enhancements", $GLOBALS['assets_path'] . "/modern-enhancements.js", array('argon_js_merged'), $assets_version, true);
 	?>
 	
 	<?php wp_head(); ?>
