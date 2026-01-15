@@ -117,6 +117,54 @@ $author_desc = get_option('argon_sidebar_author_description');
 			</div>
 			<?php endif; ?>
 			
+			<!-- 顶栏自定义链接 -->
+			<?php 
+			$toolbar_links_left = get_option('argon_toolbar_links_left', '');
+			$toolbar_links_right = get_option('argon_toolbar_links_right', '');
+			$has_custom_links = !empty(trim($toolbar_links_left)) || !empty(trim($toolbar_links_right));
+			if ($has_custom_links) : 
+			?>
+			<div class="leftbar-mobile-menu-section">
+				<div class="leftbar-mobile-section-title"><?php _e('链接', 'argon'); ?></div>
+				<ul class="leftbar-mobile-menu">
+				<?php
+				// 输出左侧自定义链接
+				if (!empty(trim($toolbar_links_left))) {
+					foreach (explode("\n", $toolbar_links_left) as $line) {
+						$line = trim($line);
+						if (empty($line)) continue;
+						$parts = array_map('trim', explode('|', $line));
+						if (!empty($parts[0])) {
+							$url = isset($parts[1]) ? $parts[1] : '#';
+							$icon = isset($parts[2]) ? '<i class="' . esc_attr($parts[2]) . '"></i> ' : '';
+							echo '<li class="leftbar-mobile-menu-item">';
+							echo '<a href="' . esc_url($url) . '">';
+							echo $icon . '<span class="menu-text">' . esc_html($parts[0]) . '</span>';
+							echo '</a></li>';
+						}
+					}
+				}
+				// 输出右侧自定义链接
+				if (!empty(trim($toolbar_links_right))) {
+					foreach (explode("\n", $toolbar_links_right) as $line) {
+						$line = trim($line);
+						if (empty($line)) continue;
+						$parts = array_map('trim', explode('|', $line));
+						if (!empty($parts[0])) {
+							$url = isset($parts[1]) ? $parts[1] : '#';
+							$icon = isset($parts[2]) ? '<i class="' . esc_attr($parts[2]) . '"></i> ' : '';
+							echo '<li class="leftbar-mobile-menu-item">';
+							echo '<a href="' . esc_url($url) . '">';
+							echo $icon . '<span class="menu-text">' . esc_html($parts[0]) . '</span>';
+							echo '</a></li>';
+						}
+					}
+				}
+				?>
+				</ul>
+			</div>
+			<?php endif; ?>
+			
 			<!-- 侧边栏菜单 -->
 			<?php if ( has_nav_menu('leftbar_menu') ) : ?>
 			<div class="leftbar-mobile-menu-section">

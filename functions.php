@@ -631,11 +631,19 @@ function have_catalog(){
 		return true;
 	}
 	$content = get_post(get_the_ID()) -> post_content;
-	if (preg_match('/<h[1-6](.*?)>/',$content)){
+	// 检查 HTML 标题标签
+	if (preg_match('/<h[1-6](.*?)>/i', $content)){
 		return true;
-	}else{
-		return false;
 	}
+	// 检查 Gutenberg 标题块
+	if (preg_match('/<!-- wp:heading/', $content)){
+		return true;
+	}
+	// 检查 Markdown 格式标题（如果启用了 Markdown）
+	if (preg_match('/^#{1,6}\s+/m', $content)){
+		return true;
+	}
+	return false;
 }
 //获取文章 Meta
 function get_article_meta($type){
