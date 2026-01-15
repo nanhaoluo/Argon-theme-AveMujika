@@ -2516,15 +2516,53 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 	
 	function initMobileCatalog() {
 		if (window.mobileCatalogInitialized) return;
-		if ($("#leftbar_mobile_catalog").length === 0) return;
-		if ($("#post_content").length === 0) return;
+		var $mobileContainer = $("#leftbar_mobile_catalog");
+		var $postContent = $("#post_content");
+		if ($mobileContainer.length === 0) return;
+		if ($postContent.length === 0) return;
 		
+		// 直接从桌面端目录复制内容，避免重复初始化 headIndex 导致的冲突
+		var $desktopCatalog = $("#leftbar_catalog");
+		if ($desktopCatalog.length > 0 && $desktopCatalog.children().length > 0) {
+			// 复制桌面端目录内容到移动端
+			$mobileContainer.html($desktopCatalog.html());
+			window.mobileCatalogInitialized = true;
+			
+			// 绑定移动端目录的点击事件
+			$mobileContainer.off('click.mobileCatalog').on('click.mobileCatalog', '.index-link', function(e) {
+				e.preventDefault();
+				var targetId = $(this).attr('href');
+				if (targetId && targetId.startsWith('#')) {
+					var $target = $(targetId);
+					if ($target.length) {
+						// 更新高亮状态
+						$mobileContainer.find('.index-item').removeClass('current');
+						$(this).closest('.index-item').addClass('current');
+						
+						// 滚动到目标位置
+						$('html, body').animate({
+							scrollTop: $target.offset().top - 80
+						}, 500, 'easeOutExpo');
+					}
+				}
+			});
+			
+			// 同步桌面端目录的高亮状态到移动端
+			syncMobileCatalogHighlight();
+			
+			setTimeout(scrollMobileCatalogToActive, 150);
+			return;
+		}
+		
+		// 如果桌面端目录不存在，则独立初始化移动端目录
 		var retryCount = 0;
 		var maxRetries = 30;
 		
 		function tryInit() {
 			if (typeof jQuery !== 'undefined' && typeof jQuery.fn.headIndex === 'function') {
-				jQuery(document).headIndex({
+				// 使用一个临时的包装元素来初始化，避免与桌面端冲突
+				var $wrapper = $('<div id="mobile_catalog_wrapper"></div>');
+				$wrapper.headIndex({
 					articleWrapSelector: '#post_content',
 					indexBoxSelector: '#leftbar_mobile_catalog',
 					subItemBoxClass: "index-subItem-box",
@@ -2533,7 +2571,6 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 					offset: 80,
 				});
 				window.mobileCatalogInitialized = true;
-				// 初始化后滚动到当前位置
 				setTimeout(scrollMobileCatalogToActive, 150);
 			} else {
 				retryCount++;
@@ -2544,6 +2581,46 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		}
 		
 		setTimeout(tryInit, 50);
+	}
+	
+	// 同步桌面端目录高亮状态到移动端
+	function syncMobileCatalogHighlight() {
+		var $desktopCatalog = $("#leftbar_catalog");
+		var $mobileContainer = $("#leftbar_mobile_catalog");
+		
+		if ($desktopCatalog.length === 0 || $mobileContainer.length === 0) return;
+		
+		// 监听桌面端目录的高亮变化
+		var observer = new MutationObserver(function(mutations) {
+			mutations.forEach(function(mutation) {
+				if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+					var $target = $(mutation.target);
+					if ($target.hasClass('index-item')) {
+						var href = $target.find('> .index-link').attr('href');
+						if (href) {
+							// 同步高亮状态到移动端
+							$mobileContainer.find('.index-item').removeClass('current');
+							$mobileContainer.find('.index-link[href="' + href + '"]').closest('.index-item').addClass('current');
+						}
+					}
+				}
+			});
+		});
+		
+		observer.observe($desktopCatalog[0], {
+			attributes: true,
+			subtree: true,
+			attributeFilter: ['class']
+		});
+		
+		// 初始同步当前高亮状态
+		var $currentItem = $desktopCatalog.find('.index-item.current');
+		if ($currentItem.length > 0) {
+			var href = $currentItem.find('> .index-link').attr('href');
+			if (href) {
+				$mobileContainer.find('.index-link[href="' + href + '"]').closest('.index-item').addClass('current');
+			}
+		}
 	}
 	
 	// 重置移动端目录状态（供 PJAX 调用）
