@@ -418,15 +418,21 @@ html.darkmode .flink-modal { background: var(--color-background); }
 .flink-avatar[data-color="6"] { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
 </style>
 
-<script>
-document.body.classList.add('flinks-page');
-if (typeof jQuery !== 'undefined') {
-    jQuery(document).on('pjax:start', function() {
-        document.body.classList.remove('flinks-page');
-        var s = document.getElementById('flinks-page-style');
-        if (s) s.remove();
-    });
-}
+<script data-pjax>
+(function() {
+    // 添加页面标识 class
+    document.body.classList.add('flinks-page');
+    
+    // PJAX 离开时清理
+    if (typeof jQuery !== 'undefined') {
+        jQuery(document).off('pjax:start.flinks').on('pjax:start.flinks', function() {
+            document.body.classList.remove('flinks-page');
+            var s = document.getElementById('flinks-page-style');
+            if (s) s.remove();
+            jQuery(document).off('pjax:start.flinks');
+        });
+    }
+})();
 </script>
 
 <main id="main" class="site-main" role="main">
@@ -731,7 +737,7 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
 </div>
 <?php endif; ?>
 
-<script>
+<script data-pjax>
 function toggleApplyForm() {
     var c = document.querySelector('.flinks-apply-content');
     var a = document.querySelector('.flinks-apply-arrow');
