@@ -335,6 +335,63 @@ function argon_frontend_hot_reload_notice() {
 }
 add_action('wp_footer', 'argon_frontend_hot_reload_notice');
 
+// 前端自动刷新脚本
+function argon_hot_reload_auto_refresh_script() {
+	if (get_option('argon_enable_hot_reload', 'false') != 'true') {
+		return;
+	}
+	if (get_option('argon_hot_reload_auto_refresh', 'false') != 'true') {
+		return;
+	}
+	
+	$current_version = $GLOBALS['theme_version'];
+	?>
+	<script id="argon-hot-reload-checker">
+	(function() {
+		var currentVersion = '<?php echo esc_js($current_version); ?>';
+		var storageKey = 'argon_theme_version';
+		var lastRefreshKey = 'argon_last_refresh';
+		var refreshCooldown = 5000; // 5秒冷却，防止刷新循环
+		
+		// 获取存储的版本
+		var storedVersion = localStorage.getItem(storageKey);
+		var lastRefresh = parseInt(localStorage.getItem(lastRefreshKey) || '0', 10);
+		var now = Date.now();
+		
+		// 如果没有存储版本，先存储当前版本
+		if (!storedVersion) {
+			localStorage.setItem(storageKey, currentVersion);
+			return;
+		}
+		
+		// 版本不同且不在冷却期内，执行刷新
+		if (storedVersion !== currentVersion && (now - lastRefresh) > refreshCooldown) {
+			// 先更新存储，防止刷新循环
+			localStorage.setItem(storageKey, currentVersion);
+			localStorage.setItem(lastRefreshKey, now.toString());
+			
+			// 清理浏览器缓存后刷新
+			if ('caches' in window) {
+				caches.keys().then(function(names) {
+					names.forEach(function(name) {
+						caches.delete(name);
+					});
+				}).then(function() {
+					location.reload(true);
+				});
+			} else {
+				location.reload(true);
+			}
+		} else if (storedVersion !== currentVersion) {
+			// 版本不同但在冷却期，只更新存储
+			localStorage.setItem(storageKey, currentVersion);
+		}
+	})();
+	</script>
+	<?php
+}
+add_action('wp_head', 'argon_hot_reload_auto_refresh_script', 1);
+
 // 初始化热更新检测
 add_action('init', 'argon_hot_reload_init');
 

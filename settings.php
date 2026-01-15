@@ -4655,6 +4655,20 @@ window.pjaxLoaded = function(){
 
 							
 
+							<?php $argon_hot_reload_auto_refresh = get_option('argon_hot_reload_auto_refresh', 'false'); ?>
+
+							<label style="display:block;margin-top:10px;">
+
+								<input type="checkbox" name="argon_hot_reload_auto_refresh" value="true" <?php if ($argon_hot_reload_auto_refresh=='true'){echo 'checked';}?>/> 
+
+								<?php _e('自动刷新页面（检测到版本更新时自动刷新用户浏览器）', 'argon');?>
+
+							</label>
+
+							<p class="description" style="margin-left:24px;"><?php _e('推荐开启。用户访问时如检测到主题版本变化，将自动刷新页面以加载最新功能。', 'argon');?></p>
+
+							
+
 							<?php $argon_hot_reload_frontend_notice = get_option('argon_hot_reload_frontend_notice', 'false'); ?>
 
 							<label style="display:block;margin-top:10px;">
@@ -5405,6 +5419,8 @@ function argon_update_themeoptions(){
 		argon_update_option('argon_update_source');
 
 		argon_update_option_checkbox('argon_enable_hot_reload');
+
+		argon_update_option_checkbox('argon_hot_reload_auto_refresh');
 
 		argon_update_option_checkbox('argon_hot_reload_frontend_notice');
 
