@@ -3603,3 +3603,147 @@ setInterval(function(){
 !function(){
 void 0;
 }();
+
+/* ========== Modern UI Enhancements - 现代化交互动画增强 ========== */
+(function() {
+    'use strict';
+
+    // 1. 触摸涟漪效果
+    function createRipple(event, element) {
+        if (window.matchMedia('(hover: hover)').matches) return;
+        var rect = element.getBoundingClientRect();
+        var ripple = document.createElement('span');
+        var size = Math.max(rect.width, rect.height);
+        ripple.style.width = ripple.style.height = size + 'px';
+        ripple.style.left = ((event.clientX || event.touches[0].clientX) - rect.left - size / 2) + 'px';
+        ripple.style.top = ((event.clientY || event.touches[0].clientY) - rect.top - size / 2) + 'px';
+        ripple.className = 'touch-ripple';
+        var oldRipple = element.querySelector('.touch-ripple');
+        if (oldRipple) oldRipple.remove();
+        element.style.position = 'relative';
+        element.style.overflow = 'hidden';
+        element.appendChild(ripple);
+        setTimeout(function() { ripple.remove(); }, 600);
+    }
+
+    function initRippleEffect() {
+        var rippleElements = document.querySelectorAll('.btn, .card, .nav-link, .dropdown-item, .page-link, .leftbar-mobile-menu-item > a, .leftbar-mobile-action, .fabtn, .comment-reply, .tag, .badge');
+        rippleElements.forEach(function(el) {
+            if (el.dataset.rippleInit) return;
+            el.dataset.rippleInit = 'true';
+            el.addEventListener('touchstart', function(e) { createRipple(e, this); }, { passive: true });
+        });
+    }
+
+    // 2. 图片加载动画
+    function initImageLoadAnimation() {
+        var images = document.querySelectorAll('article img[loading="lazy"], .post-thumbnail img');
+        images.forEach(function(img) {
+            if (img.dataset.loadAnimInit) return;
+            img.dataset.loadAnimInit = 'true';
+            if (img.complete) { img.classList.add('loaded'); }
+            else { img.addEventListener('load', function() { this.classList.add('loaded'); }); }
+        });
+    }
+
+    // 3. 滚动入场动画
+    function initScrollAnimations() {
+        if (!('IntersectionObserver' in window)) return;
+        var animatedElements = document.querySelectorAll('.article-list article.post, .comment-item, .timeline-item, .friend-link-item, #leftbar .card, #rightbar .card');
+        var observer = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) { entry.target.classList.add('animate-in'); observer.unobserve(entry.target); }
+            });
+        }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+        animatedElements.forEach(function(el) { if (!el.classList.contains('animate-in')) observer.observe(el); });
+    }
+
+    // 4. 平滑滚动
+    function initSmoothScroll() {
+        document.querySelectorAll('a[href^="#"]').forEach(function(anchor) {
+            if (anchor.dataset.smoothScrollInit) return;
+            anchor.dataset.smoothScrollInit = 'true';
+            anchor.addEventListener('click', function(e) {
+                var targetId = this.getAttribute('href');
+                if (targetId === '#') return;
+                var target = document.querySelector(targetId);
+                if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+            });
+        });
+    }
+
+    // 5. 页面加载进度条
+    function initLoadingBar() {
+        if (document.getElementById('page-loading-bar')) return;
+        var bar = document.createElement('div');
+        bar.id = 'page-loading-bar';
+        bar.style.width = '0%';
+        document.body.appendChild(bar);
+        var progress = 0;
+        var interval = setInterval(function() {
+            progress += Math.random() * 10;
+            if (progress >= 90) { clearInterval(interval); progress = 90; }
+            bar.style.width = progress + '%';
+        }, 100);
+        window.addEventListener('load', function() {
+            clearInterval(interval);
+            bar.style.width = '100%';
+            setTimeout(function() { bar.style.opacity = '0'; setTimeout(function() { bar.remove(); }, 300); }, 200);
+        });
+    }
+
+    // 6. PJAX 加载动画
+    function initPjaxAnimations() {
+        if (typeof jQuery === 'undefined') return;
+        jQuery(document).on('pjax:start', function() {
+            jQuery('#primary').addClass('pjax-loading');
+            var bar = document.getElementById('page-loading-bar');
+            if (!bar) { bar = document.createElement('div'); bar.id = 'page-loading-bar'; document.body.appendChild(bar); }
+            bar.style.opacity = '1'; bar.style.width = '30%';
+            setTimeout(function() { bar.style.width = '60%'; }, 200);
+        });
+        jQuery(document).on('pjax:end', function() {
+            jQuery('#primary').removeClass('pjax-loading');
+            var bar = document.getElementById('page-loading-bar');
+            if (bar) { bar.style.width = '100%'; setTimeout(function() { bar.style.opacity = '0'; setTimeout(function() { bar.remove(); }, 300); }, 200); }
+            setTimeout(function() { initRippleEffect(); initImageLoadAnimation(); initScrollAnimations(); initSmoothScroll(); }, 100);
+        });
+    }
+
+    // 7. 主题切换动画
+    function initThemeTransition() {
+        var observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.attributeName === 'class') {
+                    var html = document.documentElement;
+                    html.classList.add('theme-transitioning');
+                    setTimeout(function() { html.classList.remove('theme-transitioning'); }, 300);
+                }
+            });
+        });
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    }
+
+    // 8. 减少动画偏好检测
+    function checkReducedMotion() {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            document.documentElement.classList.add('reduced-motion');
+        }
+    }
+
+    // 初始化
+    function init() {
+        checkReducedMotion();
+        initRippleEffect();
+        initImageLoadAnimation();
+        initScrollAnimations();
+        initSmoothScroll();
+        initPjaxAnimations();
+        initThemeTransition();
+    }
+
+    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); }
+    else { init(); }
+    if (document.readyState !== 'complete') { initLoadingBar(); }
+})();
+/* ========== End of Modern UI Enhancements ========== */

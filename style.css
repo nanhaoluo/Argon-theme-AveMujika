@@ -16295,3 +16295,264 @@ html.darkmode.style-glass article.post.post-full.card {
         transform: translateZ(0);
     }
 }
+
+/* ========== Modern UI Enhancements - 现代化布局和动画优化 ========== */
+
+/* 1. 增强动画变量 */
+:root {
+    --micro-duration: 80ms;
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in-out-expo: cubic-bezier(0.87, 0, 0.13, 1);
+    --ease-elastic: cubic-bezier(0.68, -0.6, 0.32, 1.6);
+    --ease-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-2: 0 2px 4px rgba(0, 0, 0, 0.05), 0 4px 8px rgba(0, 0, 0, 0.1);
+    --shadow-3: 0 4px 8px rgba(0, 0, 0, 0.05), 0 8px 16px rgba(0, 0, 0, 0.1);
+    --shadow-4: 0 8px 16px rgba(0, 0, 0, 0.08), 0 16px 32px rgba(0, 0, 0, 0.12);
+    --shadow-5: 0 12px 24px rgba(0, 0, 0, 0.1), 0 24px 48px rgba(0, 0, 0, 0.15);
+    --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.1), 0 4px 10px rgba(var(--themecolor-rgbstr), 0.08);
+    --shadow-active: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+html.darkmode {
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-2: 0 2px 4px rgba(0, 0, 0, 0.2), 0 4px 8px rgba(0, 0, 0, 0.3);
+    --shadow-3: 0 4px 8px rgba(0, 0, 0, 0.2), 0 8px 16px rgba(0, 0, 0, 0.3);
+    --shadow-4: 0 8px 16px rgba(0, 0, 0, 0.25), 0 16px 32px rgba(0, 0, 0, 0.35);
+    --shadow-5: 0 12px 24px rgba(0, 0, 0, 0.3), 0 24px 48px rgba(0, 0, 0, 0.4);
+    --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.35), 0 4px 10px rgba(var(--themecolor-rgbstr), 0.15);
+}
+
+/* 2. 桌面端卡片悬停效果增强 */
+@media (hover: hover) and (pointer: fine) {
+    article.post.card {
+        transition: transform var(--animation-normal) var(--ease-out-expo), box-shadow var(--animation-normal) var(--ease-standard);
+        will-change: transform, box-shadow;
+    }
+    article.post.card:hover {
+        transform: translateY(-6px) scale(1.005);
+        box-shadow: var(--shadow-hover);
+    }
+    article.post.card:active {
+        transform: translateY(-2px) scale(0.995);
+        box-shadow: var(--shadow-active);
+        transition-duration: var(--micro-duration);
+    }
+    article.post.card .post-thumbnail {
+        transition: transform var(--animation-slow) var(--ease-out-expo);
+        will-change: transform;
+    }
+    article.post.card:hover .post-thumbnail {
+        transform: scale(1.05);
+    }
+    .card:not(article):not(.no-hover-effect) {
+        transition: transform var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard);
+    }
+    .card:not(article):not(.no-hover-effect):hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-3);
+    }
+    #leftbar .card, #rightbar .card {
+        transition: transform var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard);
+    }
+    #leftbar .card:hover, #rightbar .card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-2);
+        border-color: rgba(var(--themecolor-rgbstr), 0.15);
+    }
+}
+
+/* 3. 按钮和链接悬停效果 */
+@media (hover: hover) and (pointer: fine) {
+    .btn { transition: all var(--animation-fast) var(--ease-standard); position: relative; overflow: hidden; }
+    .btn::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%); opacity: 0; transition: opacity var(--animation-fast) var(--ease-standard); pointer-events: none; }
+    .btn:hover::after { opacity: 1; }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: translateY(0) scale(0.98); transition-duration: var(--micro-duration); }
+    article .post-content a:not([class*="button"]):not(.no-underline) { background-image: linear-gradient(var(--themecolor), var(--themecolor)); background-size: 0% 2px; background-position: 0 100%; background-repeat: no-repeat; transition: background-size var(--animation-normal) var(--ease-out-expo); }
+    article .post-content a:not([class*="button"]):not(.no-underline):hover { background-size: 100% 2px; }
+    .navbar-nav .nav-link { position: relative; transition: color var(--animation-fast) var(--ease-standard); }
+    .navbar-nav .nav-link::before { content: ""; position: absolute; bottom: 0; left: 50%; width: 0; height: 2px; background: currentColor; transition: width var(--animation-normal) var(--ease-out-expo), left var(--animation-normal) var(--ease-out-expo); border-radius: 1px; }
+    .navbar-nav .nav-link:hover::before { width: 100%; left: 0; }
+    .comment-item { transition: transform var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard); }
+    .comment-item:hover { transform: translateX(4px); box-shadow: -4px 0 0 var(--themecolor); }
+}
+
+/* 4. 滚动入场动画 */
+@keyframes modernFadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes modernFadeInScale { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+@keyframes modernSlideInLeft { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes modernSlideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+.article-list article.post { animation: modernFadeInUp var(--animation-slow) var(--ease-emphasized-decelerate) both; }
+.article-list article.post:nth-child(1) { animation-delay: 0ms; }
+.article-list article.post:nth-child(2) { animation-delay: 50ms; }
+.article-list article.post:nth-child(3) { animation-delay: 100ms; }
+.article-list article.post:nth-child(4) { animation-delay: 150ms; }
+.article-list article.post:nth-child(5) { animation-delay: 200ms; }
+.article-list article.post:nth-child(6) { animation-delay: 250ms; }
+.article-list article.post:nth-child(7) { animation-delay: 300ms; }
+.article-list article.post:nth-child(8) { animation-delay: 350ms; }
+.article-list article.post:nth-child(n+9) { animation-delay: 400ms; }
+
+#leftbar .card { animation: modernSlideInLeft var(--animation-slow) var(--ease-emphasized-decelerate) both; }
+#leftbar .card:nth-child(1) { animation-delay: 100ms; }
+#leftbar .card:nth-child(2) { animation-delay: 150ms; }
+#leftbar .card:nth-child(3) { animation-delay: 200ms; }
+#leftbar .card:nth-child(4) { animation-delay: 250ms; }
+#leftbar .card:nth-child(5) { animation-delay: 300ms; }
+
+#rightbar .card { animation: modernSlideInRight var(--animation-slow) var(--ease-emphasized-decelerate) both; }
+#rightbar .card:nth-child(1) { animation-delay: 100ms; }
+#rightbar .card:nth-child(2) { animation-delay: 150ms; }
+#rightbar .card:nth-child(3) { animation-delay: 200ms; }
+
+/* 5. 页面过渡和浮动按钮动画 */
+#primary.pjax-loading { opacity: 0.6; transform: translateY(10px); pointer-events: none; }
+#primary { transition: opacity var(--animation-normal) var(--ease-standard), transform var(--animation-normal) var(--ease-standard); }
+@keyframes modernContentFadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+article.post.post-full { animation: modernContentFadeIn var(--animation-slow) var(--ease-emphasized-decelerate); }
+
+#float_action_buttons { transition: transform var(--animation-normal) var(--ease-back), opacity var(--animation-normal) var(--ease-standard); }
+#float_action_buttons .fabtn { transition: transform var(--animation-fast) var(--ease-spring), background var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), opacity var(--animation-normal) var(--ease-standard); }
+@media (hover: hover) { #float_action_buttons .fabtn:hover { transform: scale(1.1); box-shadow: var(--shadow-3); } }
+#float_action_buttons .fabtn:active { transform: scale(0.9); transition-duration: var(--micro-duration); }
+@keyframes modernFabtnBounceIn { 0% { opacity: 0; transform: scale(0.3); } 50% { transform: scale(1.05); } 70% { transform: scale(0.95); } 100% { opacity: 1; transform: scale(1); } }
+#float_action_buttons:not(.fabtns-unloaded) .fabtn:not(.fabtn-hidden) { animation: modernFabtnBounceIn var(--animation-slow) var(--ease-spring) both; }
+#float_action_buttons .fabtn:nth-child(1) { animation-delay: 0ms; }
+#float_action_buttons .fabtn:nth-child(2) { animation-delay: 50ms; }
+#float_action_buttons .fabtn:nth-child(3) { animation-delay: 100ms; }
+#float_action_buttons .fabtn:nth-child(4) { animation-delay: 150ms; }
+#float_action_buttons .fabtn:nth-child(5) { animation-delay: 200ms; }
+
+/* 6. 顶栏和评论区动画 */
+#navbar-main { transition: background-color var(--animation-normal) var(--ease-standard), padding var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard), transform var(--animation-normal) var(--ease-standard), backdrop-filter var(--animation-normal) var(--ease-standard); }
+#navbar-main:not(.navbar-ontop) { box-shadow: var(--shadow-2); }
+#navbar_search_input_container .input-group { transition: width var(--animation-normal) var(--ease-out-expo), background var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard); }
+#navbar_search_input_container.open .input-group { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); }
+
+.comment-item { animation: modernFadeInUp var(--animation-normal) var(--ease-emphasized-decelerate) both; }
+.comment-item:nth-child(1) { animation-delay: 0ms; }
+.comment-item:nth-child(2) { animation-delay: 30ms; }
+.comment-item:nth-child(3) { animation-delay: 60ms; }
+.comment-item:nth-child(4) { animation-delay: 90ms; }
+.comment-item:nth-child(5) { animation-delay: 120ms; }
+.comment-item:nth-child(n+6) { animation-delay: 150ms; }
+@keyframes modernCommentSuccess { 0% { transform: scale(0.8); opacity: 0; } 50% { transform: scale(1.02); } 100% { transform: scale(1); opacity: 1; } }
+.comment-item.new-comment { animation: modernCommentSuccess var(--animation-slow) var(--ease-spring); }
+
+/* 7. 图片和表单动画 */
+article img, .post-thumbnail img { transition: opacity var(--animation-normal) var(--ease-standard); }
+article img[loading="lazy"], .post-thumbnail img[loading="lazy"] { opacity: 0; }
+article img.loaded, .post-thumbnail img.loaded, article img:not([loading="lazy"]), .post-thumbnail img:not([loading="lazy"]) { opacity: 1; }
+
+.form-control { transition: border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), background-color var(--animation-fast) var(--ease-standard); }
+.form-control:focus { box-shadow: 0 0 0 3px rgba(var(--themecolor-rgbstr), 0.15); border-color: var(--themecolor); }
+.form-group.floating-label { position: relative; }
+.form-group.floating-label label { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); transition: all var(--animation-fast) var(--ease-standard); pointer-events: none; color: #999; background: var(--color-foreground); padding: 0 4px; }
+.form-group.floating-label .form-control:focus ~ label, .form-group.floating-label .form-control:not(:placeholder-shown) ~ label { top: 0; font-size: 12px; color: var(--themecolor); }
+
+/* 8. 滚动条美化 */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(var(--themecolor-rgbstr), 0.3); border-radius: 4px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: rgba(var(--themecolor-rgbstr), 0.5); background-clip: content-box; }
+* { scrollbar-width: thin; scrollbar-color: rgba(var(--themecolor-rgbstr), 0.3) transparent; }
+
+/* 9. 移动端触摸优化 */
+@media (hover: none) and (pointer: coarse) {
+    article.post.card:hover { transform: none; box-shadow: var(--shadow-1); }
+    article.post.card:active { transform: scale(0.98); transition-duration: var(--micro-duration); }
+    .card:active { transform: scale(0.99); transition-duration: var(--micro-duration); }
+    .btn:active { transform: scale(0.95); transition-duration: var(--micro-duration); }
+    a:active { opacity: 0.7; }
+    * { -webkit-tap-highlight-color: transparent; }
+    .touch-ripple { position: absolute; border-radius: 50%; background: rgba(var(--themecolor-rgbstr), 0.25); transform: scale(0); animation: modernTouchRipple 0.6s var(--ease-out-expo) forwards; pointer-events: none; }
+    @keyframes modernTouchRipple { to { transform: scale(4); opacity: 0; } }
+}
+
+/* 10. 移动端侧边栏动画增强 */
+@media screen and (max-width: 900px) {
+    #leftbar { transition: transform var(--animation-normal) var(--ease-out-expo), box-shadow var(--animation-normal) var(--ease-standard); transform: translateX(-100%); box-shadow: none; }
+    html.leftbar-opened #leftbar { transform: translateX(0); box-shadow: 4px 0 25px rgba(0, 0, 0, 0.15); }
+    #leftbar_backdrop { transition: opacity var(--animation-normal) var(--ease-standard), visibility var(--animation-normal); }
+    @keyframes modernSlideInDown { from { opacity: 0; transform: translateY(-15px); } to { opacity: 1; transform: translateY(0); } }
+    html.leftbar-opened .leftbar-mobile-profile { animation: modernSlideInDown var(--animation-normal) var(--ease-emphasized-decelerate) 0.1s both; }
+    html.leftbar-opened .leftbar-mobile-search { animation: modernFadeInUp var(--animation-normal) var(--ease-emphasized-decelerate) 0.15s both; }
+    html.leftbar-opened .leftbar-mobile-menu-section { animation: modernFadeInUp var(--animation-normal) var(--ease-emphasized-decelerate) 0.2s both; }
+    html.leftbar-opened .leftbar-mobile-footer { animation: modernFadeInUp var(--animation-normal) var(--ease-emphasized-decelerate) 0.25s both; }
+    .leftbar-mobile-menu-item > a { transition: background var(--animation-fast) var(--ease-standard), transform var(--micro-duration) var(--ease-standard); }
+    .leftbar-mobile-menu-item > a:active { background: rgba(var(--themecolor-rgbstr), 0.12); transform: scale(0.98); }
+    article.post.card { transition: transform var(--micro-duration) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard); }
+    article.post.card:active { transform: scale(0.98); }
+    #navbar-main { transition: transform var(--animation-normal) var(--ease-standard), background-color var(--animation-fast) var(--ease-standard); }
+}
+
+/* 11. 骨架屏和加载动画 */
+@keyframes modernSkeletonPulse { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+.skeleton { background: linear-gradient(90deg, var(--color-border-on-foreground) 25%, var(--color-border-on-foreground-deeper) 50%, var(--color-border-on-foreground) 75%); background-size: 200% 100%; animation: modernSkeletonPulse 1.5s ease-in-out infinite; border-radius: var(--card-radius); }
+@keyframes modernSpinnerRotate { to { transform: rotate(360deg); } }
+.loading-spinner { width: 24px; height: 24px; border: 2px solid var(--color-border); border-top-color: var(--themecolor); border-radius: 50%; animation: modernSpinnerRotate 0.8s linear infinite; }
+#page-loading-bar { position: fixed; top: 0; left: 0; height: 3px; background: var(--themecolor-gradient); z-index: 9999; transition: width var(--animation-fast) var(--ease-out-expo); box-shadow: 0 0 10px rgba(var(--themecolor-rgbstr), 0.5); }
+
+/* 12. 模态框和下拉菜单动画 */
+.modal { transition: opacity var(--animation-normal) var(--ease-standard); }
+.modal.show { opacity: 1; }
+.modal-dialog { transition: transform var(--animation-normal) var(--ease-emphasized-decelerate), opacity var(--animation-normal) var(--ease-standard); transform: scale(0.9) translateY(-20px); opacity: 0; }
+.modal.show .modal-dialog { transform: scale(1) translateY(0); opacity: 1; }
+@media screen and (max-width: 900px) {
+    .modal-dialog.modal-bottom { position: fixed; bottom: 0; left: 0; right: 0; margin: 0; transform: translateY(100%); border-radius: 20px 20px 0 0; }
+    .modal.show .modal-dialog.modal-bottom { transform: translateY(0); }
+}
+.dropdown-menu { opacity: 0; transform: translateY(-10px) scale(0.95); transform-origin: top center; transition: opacity var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-emphasized-decelerate), visibility var(--animation-fast); visibility: hidden; }
+.dropdown-menu.show { opacity: 1; transform: translateY(0) scale(1); visibility: visible; }
+.dropdown-item { transition: background var(--animation-fast) var(--ease-standard), color var(--animation-fast) var(--ease-standard); }
+
+/* 13. 工具提示、标签、分页动画 */
+.tooltip { opacity: 0; transform: translateY(5px); transition: opacity var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-emphasized-decelerate); }
+.tooltip.show { opacity: 1; transform: translateY(0); }
+.badge, .tag { transition: transform var(--animation-fast) var(--ease-spring), background var(--animation-fast) var(--ease-standard); }
+@media (hover: hover) { .badge:hover, .tag:hover { transform: scale(1.05); } }
+.badge:active, .tag:active { transform: scale(0.95); }
+.pagination .page-link { transition: all var(--animation-fast) var(--ease-standard); }
+@media (hover: hover) { .pagination .page-link:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); } }
+.pagination .page-link:active { transform: translateY(0) scale(0.95); }
+
+/* 14. 目录导航动画 */
+.index-link { transition: all var(--animation-fast) var(--ease-standard); position: relative; }
+.index-link::before { content: ""; position: absolute; left: -8px; top: 50%; transform: translateY(-50%) scaleY(0); width: 3px; height: 60%; background: var(--themecolor); border-radius: 2px; transition: transform var(--animation-normal) var(--ease-spring); }
+.index-item.current > .index-link::before { transform: translateY(-50%) scaleY(1); }
+
+/* 15. 时间线动画 */
+.timeline-item { opacity: 0; transform: translateX(-20px); animation: modernTimelineSlideIn var(--animation-slow) var(--ease-emphasized-decelerate) forwards; }
+@keyframes modernTimelineSlideIn { to { opacity: 1; transform: translateX(0); } }
+.timeline-item:nth-child(1) { animation-delay: 0ms; }
+.timeline-item:nth-child(2) { animation-delay: 100ms; }
+.timeline-item:nth-child(3) { animation-delay: 200ms; }
+.timeline-item:nth-child(4) { animation-delay: 300ms; }
+.timeline-item:nth-child(5) { animation-delay: 400ms; }
+.timeline-item:nth-child(n+6) { animation-delay: 500ms; }
+
+/* 16. 友链和代码块动画 */
+.friend-link-item { transition: transform var(--animation-normal) var(--ease-spring), box-shadow var(--animation-normal) var(--ease-standard); }
+@media (hover: hover) {
+    .friend-link-item:hover { transform: translateY(-5px) rotate(1deg); box-shadow: var(--shadow-4); }
+    .friend-link-item:hover .friend-link-avatar { transform: scale(1.1) rotate(-5deg); }
+}
+.friend-link-avatar { transition: transform var(--animation-normal) var(--ease-spring); }
+.hljs-codeblock { transition: box-shadow var(--animation-normal) var(--ease-standard); }
+@media (hover: hover) { .hljs-codeblock:hover { box-shadow: var(--shadow-3); } }
+.code-copy-btn { opacity: 0; transform: translateY(-5px); transition: opacity var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-standard), background var(--animation-fast) var(--ease-standard); }
+.hljs-codeblock:hover .code-copy-btn { opacity: 1; transform: translateY(0); }
+
+/* 17. 减少动画偏好支持 */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+    .card, .btn, a { transition: none !important; }
+}
+
+/* 18. 打印样式优化 */
+@media print {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+/* ========== End of Modern UI Enhancements ========== */
