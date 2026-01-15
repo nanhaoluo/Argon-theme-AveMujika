@@ -148,6 +148,196 @@ switch ($argon_update_source) {
 		);
 }
 
+//热更新功能
+function argon_hot_reload_init() {
+	// 检查是否启用热更新
+	if (get_option('argon_enable_hot_reload', 'false') != 'true') {
+		return;
+	}
+	
+	// 记录当前主题版本
+	$current_version = $GLOBALS['theme_version'];
+	$last_known_version = get_option('argon_hot_reload_last_version', '');
+	
+	// 如果版本发生变化，清理缓存并记录更新
+	if (!empty($last_known_version) && $last_known_version !== $current_version) {
+		argon_clear_all_caches();
+		argon_record_hot_reload_update($last_known_version, $current_version);
+	}
+	
+	// 更新记录的版本
+	update_option('argon_hot_reload_last_version', $current_version);
+}
+
+// 清理所有缓存
+function argon_clear_all_caches() {
+	// 清理 WordPress 对象缓存
+	if (function_exists('wp_cache_flush')) {
+		wp_cache_flush();
+	}
+	
+	// 清理主题更新检查器缓存
+	delete_site_transient('update_themes');
+	delete_transient('argon_update_info');
+	
+	// 清理可能存在的其他主题相关缓存
+	global $wpdb;
+	$wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_argon_%'");
+	$wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_timeout_argon_%'");
+	$wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_site_transient_puc_%'");
+	$wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_site_transient_timeout_puc_%'");
+	
+	// 触发缓存清理钩子，允许其他插件响应
+	do_action('argon_cache_cleared');
+}
+
+// 记录热更新
+function argon_record_hot_reload_update($old_version, $new_version) {
+	$update_history = get_option('argon_hot_reload_history', array());
+	
+	// 添加新的更新记录
+	$update_history[] = array(
+		'old_version' => $old_version,
+		'new_version' => $new_version,
+		'time' => current_time('timestamp'),
+		'dismissed' => false
+	);
+	
+	// 只保留最近 10 条记录
+	if (count($update_history) > 10) {
+		$update_history = array_slice($update_history, -10);
+	}
+	
+	update_option('argon_hot_reload_history', $update_history);
+}
+
+// 获取未读的更新通知
+function argon_get_pending_update_notices() {
+	$update_history = get_option('argon_hot_reload_history', array());
+	$pending = array();
+	
+	foreach ($update_history as $index => $update) {
+		if (empty($update['dismissed'])) {
+			$pending[$index] = $update;
+		}
+	}
+	
+	return $pending;
+}
+
+// 标记更新通知为已读
+function argon_dismiss_update_notice() {
+	check_ajax_referer('argon_dismiss_update_notice', 'nonce');
+	
+	$index = isset($_POST['index']) ? intval($_POST['index']) : -1;
+	$update_history = get_option('argon_hot_reload_history', array());
+	
+	if ($index === -1) {
+		// 标记所有为已读
+		foreach ($update_history as &$update) {
+			$update['dismissed'] = true;
+		}
+	} else if (isset($update_history[$index])) {
+		$update_history[$index]['dismissed'] = true;
+	}
+	
+	update_option('argon_hot_reload_history', $update_history);
+	wp_send_json_success();
+}
+add_action('wp_ajax_argon_dismiss_update_notice', 'argon_dismiss_update_notice');
+
+// 手动触发缓存清理
+function argon_manual_clear_cache() {
+	check_ajax_referer('argon_clear_cache', 'nonce');
+	
+	if (!current_user_can('manage_options')) {
+		wp_send_json_error(__('权限不足', 'argon'));
+	}
+	
+	argon_clear_all_caches();
+	wp_send_json_success(__('缓存已清理', 'argon'));
+}
+add_action('wp_ajax_argon_clear_cache', 'argon_manual_clear_cache');
+
+// 在后台显示更新通知
+function argon_admin_hot_reload_notice() {
+	if (get_option('argon_enable_hot_reload', 'false') != 'true') {
+		return;
+	}
+	
+	$pending_notices = argon_get_pending_update_notices();
+	if (empty($pending_notices)) {
+		return;
+	}
+	
+	$latest = end($pending_notices);
+	$latest_index = key($pending_notices);
+	?>
+	<div class="notice notice-success is-dismissible argon-hot-reload-notice" data-index="<?php echo $latest_index; ?>">
+		<p>
+			<strong><?php _e('Argon 主题已热更新', 'argon'); ?></strong>
+			<?php echo sprintf(
+				__('主题已从 %s 更新到 %s，所有缓存已自动清理。', 'argon'),
+				'<code>' . esc_html($latest['old_version']) . '</code>',
+				'<code>' . esc_html($latest['new_version']) . '</code>'
+			); ?>
+		</p>
+	</div>
+	<script>
+	jQuery(document).ready(function($) {
+		$('.argon-hot-reload-notice').on('click', '.notice-dismiss', function() {
+			$.post(ajaxurl, {
+				action: 'argon_dismiss_update_notice',
+				nonce: '<?php echo wp_create_nonce('argon_dismiss_update_notice'); ?>',
+				index: $(this).closest('.argon-hot-reload-notice').data('index')
+			});
+		});
+	});
+	</script>
+	<?php
+}
+add_action('admin_notices', 'argon_admin_hot_reload_notice');
+
+// 在前台显示更新通知（可选）
+function argon_frontend_hot_reload_notice() {
+	if (get_option('argon_enable_hot_reload', 'false') != 'true') {
+		return;
+	}
+	if (get_option('argon_hot_reload_frontend_notice', 'false') != 'true') {
+		return;
+	}
+	if (!is_user_logged_in() || !current_user_can('manage_options')) {
+		return;
+	}
+	
+	$pending_notices = argon_get_pending_update_notices();
+	if (empty($pending_notices)) {
+		return;
+	}
+	
+	$latest = end($pending_notices);
+	?>
+	<div id="argon-hot-reload-frontend-notice" style="position:fixed;bottom:20px;right:20px;background:#fff;padding:15px 20px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:9999;max-width:350px;">
+		<div style="display:flex;align-items:center;margin-bottom:8px;">
+			<span style="background:var(--themecolor,#5e72e4);color:#fff;padding:2px 8px;border-radius:4px;font-size:12px;margin-right:8px;"><?php _e('热更新', 'argon'); ?></span>
+			<strong><?php _e('主题已更新', 'argon'); ?></strong>
+			<span onclick="document.getElementById('argon-hot-reload-frontend-notice').remove();jQuery.post(ajaxurl,{action:'argon_dismiss_update_notice',nonce:'<?php echo wp_create_nonce('argon_dismiss_update_notice'); ?>',index:-1});" style="margin-left:auto;cursor:pointer;opacity:0.5;font-size:18px;">&times;</span>
+		</div>
+		<p style="margin:0;color:#666;font-size:14px;">
+			<?php echo sprintf(
+				__('%s → %s', 'argon'),
+				'<code>' . esc_html($latest['old_version']) . '</code>',
+				'<code>' . esc_html($latest['new_version']) . '</code>'
+			); ?>
+		</p>
+	</div>
+	<?php
+}
+add_action('wp_footer', 'argon_frontend_hot_reload_notice');
+
+// 初始化热更新检测
+add_action('init', 'argon_hot_reload_init');
+
 //初次使用时发送安装量统计信息 (数据仅用于统计安装量)
 function post_analytics_info(){
 	if(function_exists('file_get_contents')){

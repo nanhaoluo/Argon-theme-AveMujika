@@ -4637,6 +4637,88 @@ window.pjaxLoaded = function(){
 
 					<tr>
 
+						<th><label><?php _e('热更新', 'argon');?></label></th>
+
+						<td>
+
+							<?php $argon_enable_hot_reload = get_option('argon_enable_hot_reload', 'false'); ?>
+
+							<label>
+
+								<input type="checkbox" name="argon_enable_hot_reload" value="true" <?php if ($argon_enable_hot_reload=='true'){echo 'checked';}?>/> 
+
+								<?php _e('启用热更新功能', 'argon');?>
+
+							</label>
+
+							<p class="description"><?php _e('启用后，当主题文件被更新时，将自动清理所有缓存并显示更新通知。', 'argon');?></p>
+
+							
+
+							<?php $argon_hot_reload_frontend_notice = get_option('argon_hot_reload_frontend_notice', 'false'); ?>
+
+							<label style="display:block;margin-top:10px;">
+
+								<input type="checkbox" name="argon_hot_reload_frontend_notice" value="true" <?php if ($argon_hot_reload_frontend_notice=='true'){echo 'checked';}?>/> 
+
+								<?php _e('在前台显示更新通知（仅管理员可见）', 'argon');?>
+
+							</label>
+
+							
+
+							<div style="margin-top:15px;">
+
+								<button type="button" class="button" id="argon_clear_cache_btn"><?php _e('手动清理缓存', 'argon');?></button>
+
+								<span id="argon_clear_cache_result" style="margin-left:10px;color:#46b450;display:none;"><?php _e('缓存已清理', 'argon');?></span>
+
+							</div>
+
+							<script>
+
+							jQuery(document).ready(function($) {
+
+								$('#argon_clear_cache_btn').on('click', function() {
+
+									var btn = $(this);
+
+									btn.prop('disabled', true).text('<?php _e('清理中...', 'argon');?>');
+
+									$.post(ajaxurl, {
+
+										action: 'argon_clear_cache',
+
+										nonce: '<?php echo wp_create_nonce('argon_clear_cache'); ?>'
+
+									}, function(response) {
+
+										btn.prop('disabled', false).text('<?php _e('手动清理缓存', 'argon');?>');
+
+										if (response.success) {
+
+											$('#argon_clear_cache_result').fadeIn().delay(2000).fadeOut();
+
+										} else {
+
+											alert(response.data || '<?php _e('清理失败', 'argon');?>');
+
+										}
+
+									});
+
+								});
+
+							});
+
+							</script>
+
+						</td>
+
+					</tr>
+
+					<tr>
+
 						<th><label><?php _e('页脚附加内容', 'argon');?></label></th>
 
 						<td>
@@ -5321,6 +5403,10 @@ function argon_update_themeoptions(){
 		argon_update_option('argon_show_thumbnail_in_banner_in_content_page');
 
 		argon_update_option('argon_update_source');
+
+		argon_update_option_checkbox('argon_enable_hot_reload');
+
+		argon_update_option_checkbox('argon_hot_reload_frontend_notice');
 
 		argon_update_option('argon_enable_into_article_animation');
 
