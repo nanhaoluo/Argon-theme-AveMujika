@@ -2511,7 +2511,6 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 	});
 	
 	// ========== 移动端文章目录初始化 ==========
-	// 使用全局变量以便 PJAX 后重置
 	window.mobileCatalogInitialized = false;
 	
 	function initMobileCatalog() {
@@ -2521,105 +2520,105 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		if ($mobileContainer.length === 0) return;
 		if ($postContent.length === 0) return;
 		
-		// 直接从桌面端目录复制内容，避免重复初始化 headIndex 导致的冲突
-		var $desktopCatalog = $("#leftbar_catalog");
-		if ($desktopCatalog.length > 0 && $desktopCatalog.children().length > 0) {
-			// 复制桌面端目录内容到移动端
-			$mobileContainer.html($desktopCatalog.html());
-			window.mobileCatalogInitialized = true;
-			
-			// 绑定移动端目录的点击事件
-			$mobileContainer.off('click.mobileCatalog').on('click.mobileCatalog', '.index-link', function(e) {
-				e.preventDefault();
-				var targetId = $(this).attr('href');
-				if (targetId && targetId.startsWith('#')) {
-					var $target = $(targetId);
-					if ($target.length) {
-						// 更新高亮状态
-						$mobileContainer.find('.index-item').removeClass('current');
-						$(this).closest('.index-item').addClass('current');
-						
-						// 滚动到目标位置
-						$('html, body').animate({
-							scrollTop: $target.offset().top - 80
-						}, 500, 'easeOutExpo');
-					}
-				}
-			});
-			
-			// 同步桌面端目录的高亮状态到移动端
-			syncMobileCatalogHighlight();
-			
-			setTimeout(scrollMobileCatalogToActive, 150);
+		// 直接生成目录，不依赖 headIndex 插件
+		var $headers = $postContent.find('h1, h2, h3, h4, h5, h6');
+		if ($headers.length === 0) {
+			$mobileContainer.html('<div class="no-catalog">暂无目录</div>');
 			return;
 		}
 		
-		// 如果桌面端目录不存在，则独立初始化移动端目录
-		var retryCount = 0;
-		var maxRetries = 30;
+		// 构建目录树
+		var toc = [];
+		var stack = [{ level: 0, children: toc }];
 		
-		function tryInit() {
-			if (typeof jQuery !== 'undefined' && typeof jQuery.fn.headIndex === 'function') {
-				// 使用一个临时的包装元素来初始化，避免与桌面端冲突
-				var $wrapper = $('<div id="mobile_catalog_wrapper"></div>');
-				$wrapper.headIndex({
-					articleWrapSelector: '#post_content',
-					indexBoxSelector: '#leftbar_mobile_catalog',
-					subItemBoxClass: "index-subItem-box",
-					itemClass: "index-item",
-					linkClass: "index-link",
-					offset: 80,
-				});
-				window.mobileCatalogInitialized = true;
-				setTimeout(scrollMobileCatalogToActive, 150);
-			} else {
-				retryCount++;
-				if (retryCount < maxRetries) {
-					setTimeout(tryInit, 100);
-				}
+		$headers.each(function(index) {
+			var $h = $(this);
+			var level = parseInt(this.tagName.charAt(1));
+			var text = $h.text().trim();
+			var id = $h.attr('id');
+			
+			// 确保标题有 ID
+			if (!id) {
+				id = 'mobile-heading-' + index;
+				$h.attr('id', id);
 			}
+			
+			var item = { id: id, text: text, level: level, children: [] };
+			
+			// 找到合适的父级
+			while (stack.length > 1 && stack[stack.length - 1].level >= level) {
+				stack.pop();
+			}
+			stack[stack.length - 1].children.push(item);
+			stack.push({ level: level, children: item.children });
+		});
+		
+		// 递归生成 HTML
+		function buildHtml(items, isRoot) {
+			if (!items || items.length === 0) return '';
+			var html = isRoot ? '<ul>' : '<ul class="index-subItem-box">';
+			for (var i = 0; i < items.length; i++) {
+				var item = items[i];
+				html += '<li class="index-item">';
+				html += '<a href="#' + item.id + '" class="index-link" data-target="' + item.id + '">' + item.text + '</a>';
+				if (item.children.length > 0) {
+					html += buildHtml(item.children, false);
+				}
+				html += '</li>';
+			}
+			html += '</ul>';
+			return html;
 		}
 		
-		setTimeout(tryInit, 50);
+		$mobileContainer.html(buildHtml(toc, true));
+		window.mobileCatalogInitialized = true;
+		
+		// 绑定点击事件
+		$mobileContainer.off('click.mobileCatalog').on('click.mobileCatalog', '.index-link', function(e) {
+			e.preventDefault();
+			var targetId = $(this).attr('href');
+			if (targetId) {
+				var $target = $(targetId);
+				if ($target.length) {
+					$mobileContainer.find('.index-item').removeClass('current');
+					$(this).closest('.index-item').addClass('current');
+					$('html, body').animate({
+						scrollTop: $target.offset().top - 80
+					}, 500, 'easeOutExpo');
+					// 点击后关闭侧边栏
+					setTimeout(function() {
+						$("html").removeClass("leftbar-opened");
+					}, 150);
+				}
+			}
+		});
+		
+		// 初始化高亮并启动滚动监听
+		updateMobileCatalogHighlight();
+		setTimeout(scrollMobileCatalogToActive, 150);
 	}
 	
-	// 同步桌面端目录高亮状态到移动端
-	function syncMobileCatalogHighlight() {
-		var $desktopCatalog = $("#leftbar_catalog");
+	// 更新移动端目录高亮
+	function updateMobileCatalogHighlight() {
 		var $mobileContainer = $("#leftbar_mobile_catalog");
+		var $postContent = $("#post_content");
+		if ($mobileContainer.length === 0 || $postContent.length === 0) return;
 		
-		if ($desktopCatalog.length === 0 || $mobileContainer.length === 0) return;
+		var scrollTop = $(window).scrollTop();
+		var $headers = $postContent.find('h1, h2, h3, h4, h5, h6');
+		var currentId = null;
 		
-		// 监听桌面端目录的高亮变化
-		var observer = new MutationObserver(function(mutations) {
-			mutations.forEach(function(mutation) {
-				if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-					var $target = $(mutation.target);
-					if ($target.hasClass('index-item')) {
-						var href = $target.find('> .index-link').attr('href');
-						if (href) {
-							// 同步高亮状态到移动端
-							$mobileContainer.find('.index-item').removeClass('current');
-							$mobileContainer.find('.index-link[href="' + href + '"]').closest('.index-item').addClass('current');
-						}
-					}
-				}
-			});
-		});
-		
-		observer.observe($desktopCatalog[0], {
-			attributes: true,
-			subtree: true,
-			attributeFilter: ['class']
-		});
-		
-		// 初始同步当前高亮状态
-		var $currentItem = $desktopCatalog.find('.index-item.current');
-		if ($currentItem.length > 0) {
-			var href = $currentItem.find('> .index-link').attr('href');
-			if (href) {
-				$mobileContainer.find('.index-link[href="' + href + '"]').closest('.index-item').addClass('current');
+		$headers.each(function() {
+			var $h = $(this);
+			var top = $h.offset().top - 100;
+			if (scrollTop >= top) {
+				currentId = $h.attr('id');
 			}
+		});
+		
+		if (currentId) {
+			$mobileContainer.find('.index-item').removeClass('current');
+			$mobileContainer.find('.index-link[href="#' + currentId + '"]').closest('.index-item').addClass('current');
 		}
 	}
 	
@@ -2653,6 +2652,8 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		if (mobileCatalogScrollTimer) return;
 		mobileCatalogScrollTimer = setTimeout(function() {
 			mobileCatalogScrollTimer = null;
+			// 更新高亮状态
+			updateMobileCatalogHighlight();
 			// 只在侧边栏打开且目录展开时滚动
 			if ($("html").hasClass("leftbar-opened") && 
 				$("#mobile_catalog_toggle").closest(".leftbar-mobile-collapse-section").hasClass("expanded")) {
@@ -2661,12 +2662,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		}, 150);
 	});
 	
-	// 点击目录项后关闭侧边栏
-	$(document).on("click", "#leftbar_mobile_catalog .index-link", function() {
-		setTimeout(function() {
-			$("html").removeClass("leftbar-opened");
-		}, 150);
-	});
+	// 点击目录项后关闭侧边栏（已在 initMobileCatalog 中处理）
 	
 	// ========== 移动端TODO交互 ==========
 	function updateMobileTodoCount() {
