@@ -4098,12 +4098,77 @@ window.pjaxLoaded = function(){
 						</td>
 					</tr>
 
+					<tr><th class="subtitle"><h3 id="subsection-email-templates-custom"><?php _e('邮件内容模板', 'argon');?></h3></th></tr>
+
 					<tr>
-						<th><label><?php _e('邮件预览', 'argon');?></label></th>
+						<th><label><?php _e('模板编辑', 'argon');?></label></th>
 						<td>
-							<button type="button" class="button" onclick="argonPreviewEmail('comment');"><?php _e('预览评论通知邮件', 'argon');?></button>
-							<button type="button" class="button" onclick="argonPreviewEmail('reply');"><?php _e('预览回复通知邮件', 'argon');?></button>
-							<p class="description"><?php _e('预览当前设置下的邮件效果', 'argon');?></p>
+							<?php 
+							$email_types = argon_get_email_types();
+							?>
+							<div class="argon-email-template-editor">
+								<div style="margin-bottom: 16px;">
+									<label><?php _e('选择邮件类型', 'argon');?>：</label>
+									<select id="argon_email_template_type" onchange="argonSwitchEmailTemplate(this.value);" style="min-width: 200px;">
+										<?php foreach ($email_types as $type_key => $type_info): ?>
+										<option value="<?php echo esc_attr($type_key); ?>"><?php echo esc_html($type_info['name']); ?></option>
+										<?php endforeach; ?>
+									</select>
+									<span id="argon_email_template_desc" style="color: #666; margin-left: 10px;"><?php echo esc_html(reset($email_types)['description']); ?></span>
+								</div>
+
+								<?php foreach ($email_types as $type_key => $type_info): 
+									$config = argon_get_email_template_config($type_key);
+								?>
+								<div id="argon_email_template_<?php echo esc_attr($type_key); ?>" class="argon-email-template-panel" style="<?php echo $type_key !== 'comment_notify' ? 'display:none;' : ''; ?>">
+									<div style="margin-bottom: 16px;">
+										<label>
+											<?php $enabled = get_option('argon_email_template_' . $type_key . '_enabled', 'true'); ?>
+											<input type="checkbox" name="argon_email_template_<?php echo esc_attr($type_key); ?>_enabled" value="true" <?php if ($enabled === 'true') echo 'checked'; ?> />
+											<?php _e('启用此类型邮件', 'argon'); ?>
+										</label>
+									</div>
+
+									<div style="margin-bottom: 16px;">
+										<label style="display: block; margin-bottom: 4px; font-weight: 500;"><?php _e('邮件主题', 'argon');?>：</label>
+										<input type="text" name="argon_email_template_<?php echo esc_attr($type_key); ?>_subject" 
+											value="<?php echo esc_attr($config['subject']); ?>" 
+											placeholder="<?php echo esc_attr($config['default_subject']); ?>"
+											style="width: 100%;" />
+									</div>
+
+									<div style="margin-bottom: 16px;">
+										<label style="display: block; margin-bottom: 4px; font-weight: 500;"><?php _e('邮件内容', 'argon');?>：</label>
+										<textarea name="argon_email_template_<?php echo esc_attr($type_key); ?>_content" 
+											rows="12" style="width: 100%; font-family: monospace; font-size: 13px;"
+											placeholder="<?php echo esc_attr($config['default_content']); ?>"><?php echo esc_textarea(get_option('argon_email_template_' . $type_key . '_content', '')); ?></textarea>
+									</div>
+
+									<div style="margin-bottom: 16px;">
+										<label style="display: block; margin-bottom: 8px; font-weight: 500;"><?php _e('可用占位符', 'argon');?>：</label>
+										<div style="background: #f6f7f7; padding: 12px; border-radius: 4px; display: flex; flex-wrap: wrap; gap: 8px;">
+											<?php foreach ($config['placeholders'] as $placeholder => $desc): ?>
+											<code style="background: #fff; padding: 4px 8px; border-radius: 3px; cursor: pointer; border: 1px solid #ddd;" 
+												onclick="argonInsertPlaceholder('argon_email_template_<?php echo esc_attr($type_key); ?>_content', '{{<?php echo esc_attr($placeholder); ?>}}')" 
+												title="<?php echo esc_attr($desc); ?>">{{<?php echo esc_html($placeholder); ?>}}</code>
+											<?php endforeach; ?>
+										</div>
+										<p class="description" style="margin-top: 8px;"><?php _e('点击占位符可插入到内容编辑框中，占位符会在发送时被替换为实际数据', 'argon');?></p>
+									</div>
+
+									<div style="display: flex; gap: 8px;">
+										<button type="button" class="button" onclick="argonPreviewEmail('<?php echo esc_attr($type_key); ?>');">
+											<?php _e('预览邮件', 'argon');?>
+										</button>
+										<button type="button" class="button" onclick="argonResetEmailTemplate('<?php echo esc_attr($type_key); ?>');">
+											<?php _e('恢复默认', 'argon');?>
+										</button>
+									</div>
+								</div>
+								<?php endforeach; ?>
+							</div>
+
+							<!-- 邮件预览弹窗 -->
 							<div id="argon_email_preview_modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000;">
 								<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; border-radius: 8px; width: 90%; max-width: 700px; max-height: 90vh; overflow: auto;">
 									<div style="padding: 16px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
@@ -4113,7 +4178,48 @@ window.pjaxLoaded = function(){
 									<iframe id="argon_email_preview_iframe" style="width: 100%; height: 500px; border: none;"></iframe>
 								</div>
 							</div>
+
 							<script>
+								var argonEmailTypes = <?php echo json_encode($email_types); ?>;
+								var argonEmailDefaults = <?php 
+									$defaults = array();
+									foreach ($email_types as $type_key => $type_info) {
+										$defaults[$type_key] = array(
+											'subject' => $type_info['default_subject'],
+											'content' => $type_info['default_content'],
+										);
+									}
+									echo json_encode($defaults);
+								?>;
+
+								function argonSwitchEmailTemplate(type) {
+									document.querySelectorAll('.argon-email-template-panel').forEach(function(panel) {
+										panel.style.display = 'none';
+									});
+									document.getElementById('argon_email_template_' + type).style.display = 'block';
+									document.getElementById('argon_email_template_desc').textContent = argonEmailTypes[type].description;
+								}
+
+								function argonInsertPlaceholder(textareaName, placeholder) {
+									var textarea = document.querySelector('textarea[name="' + textareaName + '"]');
+									if (textarea) {
+										var start = textarea.selectionStart;
+										var end = textarea.selectionEnd;
+										var text = textarea.value;
+										textarea.value = text.substring(0, start) + placeholder + text.substring(end);
+										textarea.selectionStart = textarea.selectionEnd = start + placeholder.length;
+										textarea.focus();
+									}
+								}
+
+								function argonResetEmailTemplate(type) {
+									if (confirm('<?php _e('确定要恢复此邮件类型的默认模板吗？', 'argon');?>')) {
+										var defaults = argonEmailDefaults[type];
+										document.querySelector('input[name="argon_email_template_' + type + '_subject"]').value = defaults.subject;
+										document.querySelector('textarea[name="argon_email_template_' + type + '_content"]').value = defaults.content;
+									}
+								}
+
 								function argonPreviewEmail(type) {
 									var formData = new FormData();
 									formData.append('action', 'argon_preview_email');
@@ -5307,6 +5413,17 @@ function argon_update_themeoptions(){
 			'weibo' => isset($_POST['argon_email_social_weibo']) ? sanitize_url($_POST['argon_email_social_weibo']) : ''
 		);
 		update_option('argon_email_social_links', $social_links);
+
+		// 保存邮件模板配置
+		$email_types = array('comment_notify', 'reply_notify', 'user_register', 'password_reset', 'general');
+		foreach ($email_types as $type) {
+			// 保存启用状态
+			argon_update_option_checkbox('argon_email_template_' . $type . '_enabled');
+			// 保存主题
+			argon_update_option('argon_email_template_' . $type . '_subject');
+			// 保存内容（允许 HTML）
+			argon_update_option_allow_tags('argon_email_template_' . $type . '_content');
+		}
 
 		argon_update_option('argon_hide_footer_author');
 

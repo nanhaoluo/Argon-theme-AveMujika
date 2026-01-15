@@ -1,13 +1,120 @@
 <?php
 /**
- * Argon 邮件基础模板
+ * Argon 邮件模板系统
  * 
- * 使用表格布局确保邮件客户端兼容性
- * 所有样式使用内联方式
+ * 支持多种邮件类型的自定义模板和占位符替换
  */
 
 if (!defined('ABSPATH')) {
     exit;
+}
+
+/**
+ * 获取所有支持的邮件类型及其默认配置
+ */
+function argon_get_email_types() {
+    $types = array(
+        'comment_notify' => array(
+            'name' => __('评论通知', 'argon'),
+            'description' => __('当博客收到新评论时发送给管理员', 'argon'),
+            'default_subject' => '[{{blog_name}}] 新评论：{{post_title}}',
+            'default_content' => '<h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: #32325d;">您的文章收到了新评论</h2>
+<p style="margin: 0 0 24px 0; color: #525f7f; line-height: 1.6;"><strong>{{commenter_name}}</strong> 在《<a href="{{post_url}}" style="color: {{theme_color}}; text-decoration: none;">{{post_title}}</a>》中发表了评论：</p>
+<div style="background: #f6f9fc; border-left: 4px solid {{theme_color}}; padding: 16px; border-radius: 4px; margin: 0 0 24px 0;">
+    <p style="margin: 0; color: #525f7f; line-height: 1.6;">{{comment_content}}</p>
+</div>
+<a href="{{comment_url}}" style="display: inline-block; background: {{theme_color}}; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;">查看评论</a>',
+            'placeholders' => array(
+                'blog_name' => __('博客名称', 'argon'),
+                'post_title' => __('文章标题', 'argon'),
+                'post_url' => __('文章链接', 'argon'),
+                'commenter_name' => __('评论者名称', 'argon'),
+                'commenter_email' => __('评论者邮箱', 'argon'),
+                'comment_content' => __('评论内容', 'argon'),
+                'comment_url' => __('评论链接', 'argon'),
+                'comment_date' => __('评论时间', 'argon'),
+                'theme_color' => __('主题色', 'argon'),
+            ),
+        ),
+        'reply_notify' => array(
+            'name' => __('回复通知', 'argon'),
+            'description' => __('当评论收到回复时发送给原评论者', 'argon'),
+            'default_subject' => '[{{blog_name}}] 您的评论收到了回复',
+            'default_content' => '<h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: #32325d;">您的评论收到了回复</h2>
+<p style="margin: 0 0 16px 0; color: #8898aa; font-size: 14px;">您在《<a href="{{post_url}}" style="color: {{theme_color}}; text-decoration: none;">{{post_title}}</a>》的评论：</p>
+<div style="background: #f6f9fc; padding: 12px 16px; border-radius: 4px; margin: 0 0 16px 0;">
+    <p style="margin: 0; color: #8898aa; font-size: 14px;">{{original_comment}}</p>
+</div>
+<p style="margin: 0 0 16px 0; color: #525f7f;"><strong>{{replier_name}}</strong> 回复了您：</p>
+<div style="background: #f6f9fc; border-left: 4px solid {{theme_color}}; padding: 16px; border-radius: 4px; margin: 0 0 24px 0;">
+    <p style="margin: 0; color: #525f7f; line-height: 1.6;">{{reply_content}}</p>
+</div>
+<a href="{{comment_url}}" style="display: inline-block; background: {{theme_color}}; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;">查看回复</a>',
+            'placeholders' => array(
+                'blog_name' => __('博客名称', 'argon'),
+                'post_title' => __('文章标题', 'argon'),
+                'post_url' => __('文章链接', 'argon'),
+                'original_comment' => __('原评论内容', 'argon'),
+                'replier_name' => __('回复者名称', 'argon'),
+                'replier_email' => __('回复者邮箱', 'argon'),
+                'reply_content' => __('回复内容', 'argon'),
+                'comment_url' => __('评论链接', 'argon'),
+                'reply_date' => __('回复时间', 'argon'),
+                'theme_color' => __('主题色', 'argon'),
+            ),
+        ),
+        'user_register' => array(
+            'name' => __('用户注册', 'argon'),
+            'description' => __('新用户注册成功后发送的欢迎邮件', 'argon'),
+            'default_subject' => '[{{blog_name}}] 欢迎注册',
+            'default_content' => '<h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: #32325d;">欢迎加入 {{blog_name}}</h2>
+<p style="margin: 0 0 24px 0; color: #525f7f; line-height: 1.6;">亲爱的 <strong>{{user_name}}</strong>，感谢您的注册！</p>
+<p style="margin: 0 0 24px 0; color: #525f7f; line-height: 1.6;">您的账户已创建成功，现在可以登录并开始使用了。</p>
+<a href="{{login_url}}" style="display: inline-block; background: {{theme_color}}; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;">立即登录</a>',
+            'placeholders' => array(
+                'blog_name' => __('博客名称', 'argon'),
+                'user_name' => __('用户名', 'argon'),
+                'user_email' => __('用户邮箱', 'argon'),
+                'login_url' => __('登录链接', 'argon'),
+                'register_date' => __('注册时间', 'argon'),
+                'theme_color' => __('主题色', 'argon'),
+            ),
+        ),
+        'password_reset' => array(
+            'name' => __('密码重置', 'argon'),
+            'description' => __('用户请求重置密码时发送的邮件', 'argon'),
+            'default_subject' => '[{{blog_name}}] 密码重置请求',
+            'default_content' => '<h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: #32325d;">密码重置请求</h2>
+<p style="margin: 0 0 24px 0; color: #525f7f; line-height: 1.6;">您好 <strong>{{user_name}}</strong>，我们收到了您的密码重置请求。</p>
+<p style="margin: 0 0 24px 0; color: #525f7f; line-height: 1.6;">请点击下方按钮重置您的密码。如果这不是您本人的操作，请忽略此邮件。</p>
+<a href="{{reset_url}}" style="display: inline-block; background: {{theme_color}}; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;">重置密码</a>
+<p style="margin: 24px 0 0 0; color: #8898aa; font-size: 12px;">此链接将在 24 小时后失效。</p>',
+            'placeholders' => array(
+                'blog_name' => __('博客名称', 'argon'),
+                'user_name' => __('用户名', 'argon'),
+                'user_email' => __('用户邮箱', 'argon'),
+                'reset_url' => __('重置链接', 'argon'),
+                'theme_color' => __('主题色', 'argon'),
+            ),
+        ),
+        'general' => array(
+            'name' => __('通用邮件', 'argon'),
+            'description' => __('其他类型的通用邮件模板', 'argon'),
+            'default_subject' => '[{{blog_name}}] {{subject}}',
+            'default_content' => '<h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: #32325d;">{{title}}</h2>
+<div style="margin: 0 0 24px 0; color: #525f7f; line-height: 1.6;">{{content}}</div>',
+            'placeholders' => array(
+                'blog_name' => __('博客名称', 'argon'),
+                'subject' => __('邮件主题', 'argon'),
+                'title' => __('内容标题', 'argon'),
+                'content' => __('邮件内容', 'argon'),
+                'theme_color' => __('主题色', 'argon'),
+            ),
+        ),
+    );
+    
+    // 允许通过 filter 扩展邮件类型
+    return apply_filters('argon_email_types', $types);
 }
 
 /**
@@ -20,7 +127,6 @@ function argon_get_email_settings() {
     $footer_text = get_option('argon_email_footer_text', '');
     $social_links = get_option('argon_email_social_links', array());
     
-    // 使用默认值
     if (empty($blog_name)) {
         $blog_name = get_bloginfo('name');
     }
@@ -38,9 +144,41 @@ function argon_get_email_settings() {
 }
 
 /**
+ * 获取指定邮件类型的模板配置
+ */
+function argon_get_email_template_config($type) {
+    $types = argon_get_email_types();
+    $settings = argon_get_email_settings();
+    
+    if (!isset($types[$type])) {
+        $type = 'general';
+    }
+    
+    $default = $types[$type];
+    
+    // 获取自定义模板，如果没有则使用默认
+    $subject = get_option('argon_email_template_' . $type . '_subject', '');
+    $content = get_option('argon_email_template_' . $type . '_content', '');
+    $enabled = get_option('argon_email_template_' . $type . '_enabled', 'true');
+    
+    return array(
+        'type' => $type,
+        'name' => $default['name'],
+        'description' => $default['description'],
+        'subject' => !empty($subject) ? $subject : $default['default_subject'],
+        'content' => !empty($content) ? $content : $default['default_content'],
+        'default_subject' => $default['default_subject'],
+        'default_content' => $default['default_content'],
+        'placeholders' => $default['placeholders'],
+        'enabled' => $enabled === 'true',
+    );
+}
+
+
+/**
  * 获取邮件基础模板 HTML
  */
-function argon_get_email_template() {
+function argon_get_email_base_template() {
     $settings = argon_get_email_settings();
     
     // 页眉部分
@@ -78,7 +216,7 @@ function argon_get_email_template() {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{subject}}</title>
+    <title>{{email_subject}}</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f4f5f7; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, \'Helvetica Neue\', Arial, sans-serif;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f5f7; padding: 40px 20px;">
@@ -98,7 +236,7 @@ function argon_get_email_template() {
                             <table width="100%" cellpadding="0" cellspacing="0" border="0">
                                 <tr>
                                     <td style="padding: 32px;">
-                                        {{content}}
+                                        {{email_content}}
                                     </td>
                                 </tr>
                             </table>
@@ -124,48 +262,87 @@ function argon_get_email_template() {
     return $template;
 }
 
-
 /**
- * 渲染邮件模板
+ * 替换模板中的占位符
  * 
- * @param string $content 邮件内容 HTML
- * @param array $vars 额外的模板变量
- * @return string 渲染后的完整邮件 HTML
+ * @param string $template 模板字符串
+ * @param array $vars 变量数组
+ * @param bool $escape 是否转义 HTML
+ * @return string 替换后的字符串
  */
-function argon_render_email($content, $vars = array()) {
+function argon_replace_placeholders($template, $vars, $escape = false) {
     $settings = argon_get_email_settings();
-    $template = argon_get_email_template();
     
-    // 替换内容占位符
-    $html = str_replace('{{content}}', $content, $template);
+    // 添加全局变量
+    $global_vars = array(
+        'blog_name' => $settings['blog_name'],
+        'blog_url' => home_url(),
+        'theme_color' => $settings['theme_color'],
+        'current_year' => date('Y'),
+        'current_date' => date_i18n(get_option('date_format')),
+        'current_time' => date_i18n(get_option('time_format')),
+    );
     
-    // 替换主题色
-    $html = str_replace('{{theme_color}}', esc_attr($settings['theme_color']), $html);
+    $vars = array_merge($global_vars, $vars);
     
-    // 替换其他变量
-    if (!empty($vars)) {
-        foreach ($vars as $key => $value) {
-            $html = str_replace('{{' . $key . '}}', $value, $html);
+    foreach ($vars as $key => $value) {
+        if ($escape && !in_array($key, array('theme_color', 'blog_url', 'post_url', 'comment_url', 'reset_url', 'login_url'))) {
+            $value = esc_html($value);
         }
+        $template = str_replace('{{' . $key . '}}', $value, $template);
     }
     
-    return $html;
+    return $template;
 }
 
 /**
- * 发送统一格式的邮件
+ * 渲染完整邮件
+ * 
+ * @param string $type 邮件类型
+ * @param array $vars 模板变量
+ * @return array 包含 subject 和 html 的数组
+ */
+function argon_render_email_template($type, $vars = array()) {
+    $config = argon_get_email_template_config($type);
+    
+    // 替换主题中的占位符
+    $subject = argon_replace_placeholders($config['subject'], $vars, true);
+    
+    // 替换内容中的占位符（内容中的 URL 不转义）
+    $content = argon_replace_placeholders($config['content'], $vars, false);
+    
+    // 获取基础模板并替换
+    $base_template = argon_get_email_base_template();
+    $html = str_replace('{{email_subject}}', esc_html($subject), $base_template);
+    $html = str_replace('{{email_content}}', $content, $html);
+    
+    // 替换剩余的全局变量
+    $html = argon_replace_placeholders($html, $vars, false);
+    
+    return array(
+        'subject' => $subject,
+        'html' => $html,
+        'enabled' => $config['enabled'],
+    );
+}
+
+/**
+ * 发送邮件
  * 
  * @param string $to 收件人邮箱
- * @param string $subject 邮件主题
- * @param string $content 邮件内容 HTML
- * @param string $type 邮件类型 (comment, reply, general)
+ * @param string $type 邮件类型
+ * @param array $vars 模板变量
  * @return bool 发送是否成功
  */
-function argon_send_email($to, $subject, $content, $type = 'general') {
-    $settings = argon_get_email_settings();
+function argon_send_email($to, $type, $vars = array()) {
+    $rendered = argon_render_email_template($type, $vars);
     
-    // 渲染完整邮件
-    $html = argon_render_email($content, array('subject' => $subject));
+    // 检查该类型邮件是否启用
+    if (!$rendered['enabled']) {
+        return false;
+    }
+    
+    $settings = argon_get_email_settings();
     
     // 设置邮件头
     $headers = array(
@@ -174,9 +351,8 @@ function argon_send_email($to, $subject, $content, $type = 'general') {
     );
     
     // 发送邮件
-    $result = wp_mail($to, $subject, $html, $headers);
+    $result = wp_mail($to, $rendered['subject'], $rendered['html'], $headers);
     
-    // 记录错误日志
     if (!$result) {
         error_log('Argon Email: Failed to send ' . $type . ' email to ' . $to);
     }
@@ -184,96 +360,113 @@ function argon_send_email($to, $subject, $content, $type = 'general') {
     return $result;
 }
 
+/**
+ * 兼容旧版 API - 渲染邮件（已废弃，保留向后兼容）
+ */
+function argon_render_email($content, $vars = array()) {
+    $base_template = argon_get_email_base_template();
+    $html = str_replace('{{email_content}}', $content, $base_template);
+    $html = str_replace('{{email_subject}}', isset($vars['subject']) ? esc_html($vars['subject']) : '', $html);
+    $html = argon_replace_placeholders($html, $vars, false);
+    return $html;
+}
 
 /**
  * AJAX 邮件预览接口
  */
 add_action('wp_ajax_argon_preview_email', 'argon_preview_email_handler');
 function argon_preview_email_handler() {
-    // 验证 nonce
     if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'argon_preview_email')) {
         wp_die('Invalid nonce');
     }
     
-    // 检查权限
     if (!current_user_can('manage_options')) {
         wp_die('Permission denied');
     }
     
-    $type = isset($_POST['type']) ? sanitize_text_field($_POST['type']) : 'comment';
-    $settings = argon_get_email_settings();
+    $type = isset($_POST['type']) ? sanitize_text_field($_POST['type']) : 'comment_notify';
     
-    // 生成示例内容
-    if ($type === 'reply') {
-        $content = argon_get_reply_notify_content(array(
-            'post_title' => '示例文章标题',
-            'post_url' => home_url('/sample-post/'),
-            'original_comment' => '这是原始评论的内容，用于展示邮件模板效果。',
-            'replier_name' => '回复者',
-            'reply_content' => '这是回复内容的示例文本，展示了邮件模板中回复通知的样式效果。感谢您的评论！',
-            'comment_url' => home_url('/sample-post/#comment-1'),
-            'theme_color' => $settings['theme_color']
-        ));
-    } else {
-        $content = argon_get_comment_notify_content(array(
-            'commenter_name' => '评论者',
-            'post_title' => '示例文章标题',
-            'post_url' => home_url('/sample-post/'),
-            'comment_content' => '这是评论内容的示例文本，展示了邮件模板中评论通知的样式效果。非常感谢您的精彩文章！',
-            'comment_url' => home_url('/sample-post/#comment-1'),
-            'theme_color' => $settings['theme_color']
-        ));
-    }
+    // 生成示例数据
+    $sample_vars = argon_get_sample_email_vars($type);
     
-    // 渲染完整邮件
-    $html = argon_render_email($content, array('subject' => '邮件预览'));
+    $rendered = argon_render_email_template($type, $sample_vars);
     
-    echo $html;
+    echo $rendered['html'];
     wp_die();
 }
 
 /**
- * 生成评论通知邮件内容
+ * 获取示例邮件变量
  */
-function argon_get_comment_notify_content($vars) {
-    $theme_color = isset($vars['theme_color']) ? $vars['theme_color'] : '#5e72e4';
+function argon_get_sample_email_vars($type) {
+    $settings = argon_get_email_settings();
     
-    return '<h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: #32325d;">
-        您的文章收到了新评论
-    </h2>
-    <p style="margin: 0 0 24px 0; color: #525f7f; line-height: 1.6;">
-        <strong>' . esc_html($vars['commenter_name']) . '</strong> 在《<a href="' . esc_url($vars['post_url']) . '" style="color: ' . esc_attr($theme_color) . '; text-decoration: none;">' . esc_html($vars['post_title']) . '</a>》中发表了评论：
-    </p>
-    <div style="background: #f6f9fc; border-left: 4px solid ' . esc_attr($theme_color) . '; padding: 16px; border-radius: 4px; margin: 0 0 24px 0;">
-        <p style="margin: 0; color: #525f7f; line-height: 1.6;">' . esc_html($vars['comment_content']) . '</p>
-    </div>
-    <a href="' . esc_url($vars['comment_url']) . '" style="display: inline-block; background: ' . esc_attr($theme_color) . '; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;">
-        查看评论
-    </a>';
+    $common = array(
+        'blog_name' => $settings['blog_name'],
+        'theme_color' => $settings['theme_color'],
+    );
+    
+    switch ($type) {
+        case 'comment_notify':
+            return array_merge($common, array(
+                'post_title' => '示例文章标题',
+                'post_url' => home_url('/sample-post/'),
+                'commenter_name' => '评论者',
+                'commenter_email' => 'commenter@example.com',
+                'comment_content' => '这是评论内容的示例文本，展示了邮件模板中评论通知的样式效果。非常感谢您的精彩文章！',
+                'comment_url' => home_url('/sample-post/#comment-1'),
+                'comment_date' => date_i18n(get_option('date_format') . ' ' . get_option('time_format')),
+            ));
+            
+        case 'reply_notify':
+            return array_merge($common, array(
+                'post_title' => '示例文章标题',
+                'post_url' => home_url('/sample-post/'),
+                'original_comment' => '这是原始评论的内容，用于展示邮件模板效果。',
+                'replier_name' => '回复者',
+                'replier_email' => 'replier@example.com',
+                'reply_content' => '这是回复内容的示例文本，展示了邮件模板中回复通知的样式效果。感谢您的评论！',
+                'comment_url' => home_url('/sample-post/#comment-2'),
+                'reply_date' => date_i18n(get_option('date_format') . ' ' . get_option('time_format')),
+            ));
+            
+        case 'user_register':
+            return array_merge($common, array(
+                'user_name' => '新用户',
+                'user_email' => 'newuser@example.com',
+                'login_url' => wp_login_url(),
+                'register_date' => date_i18n(get_option('date_format') . ' ' . get_option('time_format')),
+            ));
+            
+        case 'password_reset':
+            return array_merge($common, array(
+                'user_name' => '用户名',
+                'user_email' => 'user@example.com',
+                'reset_url' => home_url('/wp-login.php?action=rp&key=sample_key'),
+            ));
+            
+        case 'general':
+        default:
+            return array_merge($common, array(
+                'subject' => '示例邮件主题',
+                'title' => '示例标题',
+                'content' => '<p>这是通用邮件模板的示例内容。您可以在这里放置任何 HTML 内容。</p>',
+            ));
+    }
 }
 
 /**
- * 生成评论回复通知邮件内容
+ * 兼容旧版 API - 生成评论通知邮件内容（已废弃）
+ */
+function argon_get_comment_notify_content($vars) {
+    $config = argon_get_email_template_config('comment_notify');
+    return argon_replace_placeholders($config['content'], $vars, false);
+}
+
+/**
+ * 兼容旧版 API - 生成回复通知邮件内容（已废弃）
  */
 function argon_get_reply_notify_content($vars) {
-    $theme_color = isset($vars['theme_color']) ? $vars['theme_color'] : '#5e72e4';
-    
-    return '<h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: #32325d;">
-        您的评论收到了回复
-    </h2>
-    <p style="margin: 0 0 16px 0; color: #8898aa; font-size: 14px;">
-        您在《<a href="' . esc_url($vars['post_url']) . '" style="color: ' . esc_attr($theme_color) . '; text-decoration: none;">' . esc_html($vars['post_title']) . '</a>》的评论：
-    </p>
-    <div style="background: #f6f9fc; padding: 12px 16px; border-radius: 4px; margin: 0 0 16px 0;">
-        <p style="margin: 0; color: #8898aa; font-size: 14px;">' . esc_html($vars['original_comment']) . '</p>
-    </div>
-    <p style="margin: 0 0 16px 0; color: #525f7f;">
-        <strong>' . esc_html($vars['replier_name']) . '</strong> 回复了您：
-    </p>
-    <div style="background: #f6f9fc; border-left: 4px solid ' . esc_attr($theme_color) . '; padding: 16px; border-radius: 4px; margin: 0 0 24px 0;">
-        <p style="margin: 0; color: #525f7f; line-height: 1.6;">' . esc_html($vars['reply_content']) . '</p>
-    </div>
-    <a href="' . esc_url($vars['comment_url']) . '" style="display: inline-block; background: ' . esc_attr($theme_color) . '; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;">
-        查看回复
-    </a>';
+    $config = argon_get_email_template_config('reply_notify');
+    return argon_replace_placeholders($config['content'], $vars, false);
 }

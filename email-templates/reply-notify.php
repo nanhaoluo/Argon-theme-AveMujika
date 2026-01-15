@@ -1,6 +1,6 @@
 <?php
 /**
- * Argon 评论回复通知邮件模板
+ * Argon 评论回复通知邮件
  * 
  * 当评论收到回复时发送给原评论者的通知邮件
  */
@@ -35,25 +35,18 @@ function argon_send_reply_notify_email($reply, $parent) {
         return false;
     }
     
-    $settings = argon_get_email_settings();
-    
-    // 准备邮件内容
-    $content = argon_get_reply_notify_content(array(
+    // 准备模板变量
+    $vars = array(
         'post_title' => $post->post_title,
         'post_url' => get_permalink($post->ID),
         'original_comment' => wp_trim_words($parent->comment_content, 50, '...'),
         'replier_name' => $reply->comment_author,
+        'replier_email' => $reply->comment_author_email,
         'reply_content' => $reply->comment_content,
         'comment_url' => get_comment_link($reply),
-        'theme_color' => $settings['theme_color']
-    ));
-    
-    // 邮件主题
-    $subject = sprintf(
-        '[%s] 您的评论收到了回复',
-        $settings['blog_name']
+        'reply_date' => get_comment_date(get_option('date_format') . ' ' . get_option('time_format'), $reply),
     );
     
     // 发送邮件
-    return argon_send_email($parent->comment_author_email, $subject, $content, 'reply');
+    return argon_send_email($parent->comment_author_email, 'reply_notify', $vars);
 }

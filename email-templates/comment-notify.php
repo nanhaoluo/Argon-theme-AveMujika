@@ -1,6 +1,6 @@
 <?php
 /**
- * Argon 评论通知邮件模板
+ * Argon 评论通知邮件
  * 
  * 当博客收到新评论时发送给管理员的通知邮件
  */
@@ -34,25 +34,17 @@ function argon_send_comment_notify_email($comment) {
         return false;
     }
     
-    $settings = argon_get_email_settings();
-    
-    // 准备邮件内容
-    $content = argon_get_comment_notify_content(array(
-        'commenter_name' => $comment->comment_author,
+    // 准备模板变量
+    $vars = array(
         'post_title' => $post->post_title,
         'post_url' => get_permalink($post->ID),
+        'commenter_name' => $comment->comment_author,
+        'commenter_email' => $comment->comment_author_email,
         'comment_content' => $comment->comment_content,
         'comment_url' => get_comment_link($comment),
-        'theme_color' => $settings['theme_color']
-    ));
-    
-    // 邮件主题
-    $subject = sprintf(
-        '[%s] 新评论：%s',
-        $settings['blog_name'],
-        $post->post_title
+        'comment_date' => get_comment_date(get_option('date_format') . ' ' . get_option('time_format'), $comment),
     );
     
     // 发送邮件
-    return argon_send_email($admin_email, $subject, $content, 'comment');
+    return argon_send_email($admin_email, 'comment_notify', $vars);
 }
