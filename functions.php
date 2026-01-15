@@ -578,6 +578,10 @@ function argon_debug_console_footer_button() {
 	if (get_option('argon_enable_debug_console', 'false') != 'true') {
 		return;
 	}
+	// 仅管理员可见
+	if (!current_user_can('manage_options')) {
+		return;
+	}
 	?>
 	<div id="argon-debug-footer-btn" style="text-align:center;padding:12px 0;border-top:1px solid rgba(0,0,0,0.05);margin-top:15px;">
 		<button onclick="argonDebug.toggle()" style="background:transparent;border:1px solid var(--themecolor,#5e72e4);color:var(--themecolor,#5e72e4);padding:8px 20px;border-radius:20px;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:all .2s;">
@@ -592,6 +596,10 @@ function argon_debug_console_footer_button() {
 // 输出调试控制台脚本和面板
 function argon_debug_console_script() {
 	if (get_option('argon_enable_debug_console', 'false') != 'true') {
+		return;
+	}
+	// 仅管理员可见
+	if (!current_user_can('manage_options')) {
 		return;
 	}
 	
