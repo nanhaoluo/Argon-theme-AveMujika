@@ -3754,25 +3754,15 @@ function argon_ajax_urge_todo() {
         wp_send_json_error(__('TODO 不存在', 'argon'));
     }
     
-    // 使用主题内置的邮件发送接口
+    // 使用邮件模板系统发送
     $admin_email = get_option('admin_email');
-    $site_name = get_bloginfo('name');
-    $site_url = get_bloginfo('url');
+    $vars = array(
+        'todo_content' => $todo_content,
+        'todo_id' => $id,
+        'urge_time' => date_i18n(get_option('date_format') . ' ' . get_option('time_format')),
+    );
     
-    $subject = '[' . $site_name . '] ' . __('有人催你完成 TODO', 'argon');
-    $html = '
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif;">
-            <h2 style="color: #5e72e4; margin-bottom: 20px;">' . __('有访客催促你完成 TODO', 'argon') . '</h2>
-            <div style="background: #f8f9fa; border-left: 4px solid #5e72e4; padding: 15px; margin: 20px 0;">
-                <p style="margin: 0; font-size: 16px;">📝 ' . esc_html($todo_content) . '</p>
-            </div>
-            <p style="color: #666;">' . __('快去完成吧！', 'argon') . '</p>
-            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-            <p style="color: #999; font-size: 12px;">' . __('来自', 'argon') . ' <a href="' . $site_url . '">' . $site_name . '</a></p>
-        </div>
-    ';
-    
-    send_mail($admin_email, $subject, $html);
+    argon_send_email($admin_email, 'todo_urge', $vars);
     
     // 该任务今天不能再被提醒（到明天0点）
     $tomorrow = strtotime('tomorrow');

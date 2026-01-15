@@ -97,6 +97,25 @@ function argon_get_email_types() {
                 'theme_color' => __('主题色', 'argon'),
             ),
         ),
+        'todo_urge' => array(
+            'name' => __('TODO 提醒', 'argon'),
+            'description' => __('访客催促作者完成 TODO 时发送的邮件', 'argon'),
+            'default_subject' => '[{{blog_name}}] 有人催你完成 TODO',
+            'default_content' => '<h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: #32325d;">有访客催促你完成 TODO</h2>
+<div style="background: #f6f9fc; border-left: 4px solid {{theme_color}}; padding: 16px; border-radius: 4px; margin: 0 0 24px 0;">
+    <p style="margin: 0; color: #525f7f; line-height: 1.6;">📝 {{todo_content}}</p>
+</div>
+<p style="margin: 0 0 24px 0; color: #525f7f; line-height: 1.6;">快去完成吧！</p>
+<a href="{{blog_url}}" style="display: inline-block; background: {{theme_color}}; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;">前往博客</a>',
+            'placeholders' => array(
+                'blog_name' => __('博客名称', 'argon'),
+                'blog_url' => __('博客链接', 'argon'),
+                'todo_content' => __('TODO 内容', 'argon'),
+                'todo_id' => __('TODO ID', 'argon'),
+                'urge_time' => __('提醒时间', 'argon'),
+                'theme_color' => __('主题色', 'argon'),
+            ),
+        ),
         'general' => array(
             'name' => __('通用邮件', 'argon'),
             'description' => __('其他类型的通用邮件模板', 'argon'),
@@ -443,6 +462,13 @@ function argon_get_sample_email_vars($type) {
                 'user_name' => '用户名',
                 'user_email' => 'user@example.com',
                 'reset_url' => home_url('/wp-login.php?action=rp&key=sample_key'),
+            ));
+            
+        case 'todo_urge':
+            return array_merge($common, array(
+                'todo_content' => '这是一个示例 TODO 任务内容',
+                'todo_id' => 'sample_todo_id',
+                'urge_time' => date_i18n(get_option('date_format') . ' ' . get_option('time_format')),
             ));
             
         case 'general':
