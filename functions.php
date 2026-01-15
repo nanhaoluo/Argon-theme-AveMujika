@@ -395,6 +395,299 @@ add_action('wp_head', 'argon_hot_reload_auto_refresh_script', 1);
 // 初始化热更新检测
 add_action('init', 'argon_hot_reload_init');
 
+// ==================== 前端调试控制台功能 ====================
+
+// 获取已屏蔽的错误列表
+function argon_get_muted_errors() {
+	return get_option('argon_muted_errors', array());
+}
+
+// 屏蔽错误
+function argon_mute_error() {
+	check_ajax_referer('argon_debug_console', 'nonce');
+	
+	if (!current_user_can('manage_options')) {
+		wp_send_json_error(__('权限不足', 'argon'));
+	}
+	
+	$error_hash = sanitize_text_field($_POST['error_hash']);
+	$error_message = sanitize_text_field($_POST['error_message']);
+	$error_source = sanitize_text_field($_POST['error_source']);
+	
+	$muted_errors = argon_get_muted_errors();
+	$muted_errors[$error_hash] = array(
+		'message' => $error_message,
+		'source' => $error_source,
+		'muted_at' => current_time('timestamp'),
+		'muted_by' => wp_get_current_user()->display_name
+	);
+	
+	update_option('argon_muted_errors', $muted_errors);
+	wp_send_json_success();
+}
+add_action('wp_ajax_argon_mute_error', 'argon_mute_error');
+
+// 取消屏蔽错误
+function argon_unmute_error() {
+	check_ajax_referer('argon_debug_console', 'nonce');
+	
+	if (!current_user_can('manage_options')) {
+		wp_send_json_error(__('权限不足', 'argon'));
+	}
+	
+	$error_hash = sanitize_text_field($_POST['error_hash']);
+	$muted_errors = argon_get_muted_errors();
+	
+	if (isset($muted_errors[$error_hash])) {
+		unset($muted_errors[$error_hash]);
+		update_option('argon_muted_errors', $muted_errors);
+	}
+	
+	wp_send_json_success();
+}
+add_action('wp_ajax_argon_unmute_error', 'argon_unmute_error');
+
+// 批量删除屏蔽的错误
+function argon_clear_muted_errors() {
+	check_ajax_referer('argon_debug_console', 'nonce');
+	
+	if (!current_user_can('manage_options')) {
+		wp_send_json_error(__('权限不足', 'argon'));
+	}
+	
+	update_option('argon_muted_errors', array());
+	wp_send_json_success();
+}
+add_action('wp_ajax_argon_clear_muted_errors', 'argon_clear_muted_errors');
+
+// 输出调试控制台脚本
+function argon_debug_console_script() {
+	if (get_option('argon_enable_debug_console', 'false') != 'true') {
+		return;
+	}
+	
+	$is_admin = current_user_can('manage_options');
+	$muted_errors = argon_get_muted_errors();
+	$muted_hashes = array_keys($muted_errors);
+	?>
+	<style id="argon-debug-console-style">
+	#argon-debug-btn{position:fixed;bottom:80px;right:20px;width:45px;height:45px;background:var(--themecolor,#5e72e4);color:#fff;border:none;border-radius:50%;cursor:pointer;z-index:99998;box-shadow:0 4px 12px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;transition:transform .2s,opacity .2s}
+	#argon-debug-btn:hover{transform:scale(1.1)}
+	#argon-debug-btn .badge{position:absolute;top:-5px;right:-5px;background:#f5365c;color:#fff;font-size:10px;padding:2px 6px;border-radius:10px;min-width:18px}
+	#argon-debug-console{position:fixed;bottom:140px;right:20px;width:420px;max-width:calc(100vw - 40px);height:350px;max-height:50vh;background:#1e1e1e;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,0.3);z-index:99999;display:none;flex-direction:column;font-family:Consolas,'Courier New',monospace;font-size:12px;overflow:hidden}
+	#argon-debug-console.show{display:flex}
+	#argon-debug-console-header{background:#333;padding:10px 15px;display:flex;align-items:center;justify-content:space-between;color:#fff;font-weight:bold;border-radius:10px 10px 0 0}
+	#argon-debug-console-header span{font-size:13px}
+	#argon-debug-console-header .actions{display:flex;gap:8px}
+	#argon-debug-console-header button{background:transparent;border:none;color:#aaa;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:11px}
+	#argon-debug-console-header button:hover{background:#444;color:#fff}
+	#argon-debug-console-body{flex:1;overflow-y:auto;padding:10px}
+	#argon-debug-console-body::-webkit-scrollbar{width:6px}
+	#argon-debug-console-body::-webkit-scrollbar-thumb{background:#555;border-radius:3px}
+	.debug-log-item{padding:8px 10px;margin-bottom:6px;border-radius:6px;background:#2d2d2d;color:#d4d4d4;word-break:break-all;position:relative}
+	.debug-log-item.log{border-left:3px solid #6c757d}
+	.debug-log-item.warn{border-left:3px solid #ffc107;background:#3d3520}
+	.debug-log-item.error{border-left:3px solid #f5365c;background:#3d2020}
+	.debug-log-item .time{color:#888;font-size:10px;margin-right:8px}
+	.debug-log-item .source{color:#888;font-size:10px;display:block;margin-top:4px}
+	.debug-log-item .mute-btn{position:absolute;top:8px;right:8px;background:#f5365c;color:#fff;border:none;padding:2px 8px;border-radius:4px;font-size:10px;cursor:pointer;opacity:0;transition:opacity .2s}
+	.debug-log-item:hover .mute-btn{opacity:1}
+	.debug-log-item .mute-btn:hover{background:#d32f4a}
+	#argon-error-toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#f5365c;color:#fff;padding:12px 20px;border-radius:8px;box-shadow:0 4px 15px rgba(245,54,92,0.4);z-index:100000;display:none;align-items:center;gap:10px;max-width:90vw;animation:slideDown .3s ease}
+	@keyframes slideDown{from{opacity:0;transform:translateX(-50%) translateY(-20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+	#argon-error-toast.show{display:flex}
+	#argon-error-toast .close-btn{background:rgba(255,255,255,0.2);border:none;color:#fff;width:24px;height:24px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center}
+	</style>
+	
+	<?php if ($is_admin): ?>
+	<button id="argon-debug-btn" title="<?php _e('调试控制台', 'argon'); ?>">
+		<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+		<span class="badge" style="display:none">0</span>
+	</button>
+	
+	<div id="argon-debug-console">
+		<div id="argon-debug-console-header">
+			<span><?php _e('调试控制台', 'argon'); ?></span>
+			<div class="actions">
+				<button onclick="argonDebug.clear()"><?php _e('清空', 'argon'); ?></button>
+				<button onclick="argonDebug.toggle()">×</button>
+			</div>
+		</div>
+		<div id="argon-debug-console-body"></div>
+	</div>
+	<?php endif; ?>
+	
+	<div id="argon-error-toast">
+		<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+		<span class="message"></span>
+		<button class="close-btn" onclick="this.parentElement.classList.remove('show')">×</button>
+	</div>
+	
+	<script id="argon-debug-console-script">
+	(function() {
+		var isAdmin = <?php echo $is_admin ? 'true' : 'false'; ?>;
+		var mutedHashes = <?php echo json_encode($muted_hashes); ?>;
+		var ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
+		var nonce = '<?php echo wp_create_nonce('argon_debug_console'); ?>';
+		var errorCount = 0;
+		var logs = [];
+		
+		// 生成错误哈希
+		function hashError(msg, source) {
+			var str = (msg || '') + '|' + (source || '');
+			var hash = 0;
+			for (var i = 0; i < str.length; i++) {
+				hash = ((hash << 5) - hash) + str.charCodeAt(i);
+				hash = hash & hash;
+			}
+			return 'e' + Math.abs(hash).toString(16);
+		}
+		
+		// 检查错误是否被屏蔽
+		function isMuted(hash) {
+			return mutedHashes.indexOf(hash) !== -1;
+		}
+		
+		// 显示错误通知
+		function showErrorToast(msg) {
+			var toast = document.getElementById('argon-error-toast');
+			if (!toast) return;
+			toast.querySelector('.message').textContent = msg.length > 100 ? msg.substring(0, 100) + '...' : msg;
+			toast.classList.add('show');
+			setTimeout(function() {
+				toast.classList.remove('show');
+			}, 5000);
+		}
+		
+		// 添加日志到控制台
+		function addLog(type, args, source) {
+			var msg = Array.prototype.slice.call(args).map(function(a) {
+				if (typeof a === 'object') {
+					try { return JSON.stringify(a); } catch(e) { return String(a); }
+				}
+				return String(a);
+			}).join(' ');
+			
+			var hash = hashError(msg, source);
+			var time = new Date().toLocaleTimeString();
+			
+			logs.push({ type: type, msg: msg, source: source, time: time, hash: hash });
+			
+			if (type === 'error') {
+				errorCount++;
+				updateBadge();
+				
+				// 如果未被屏蔽，显示通知
+				if (!isMuted(hash)) {
+					var userMsg = isAdmin ? msg : '<?php _e('页面发生错误，请联系管理员', 'argon'); ?>';
+					showErrorToast(userMsg);
+				}
+			}
+			
+			renderLogs();
+		}
+		
+		// 更新错误计数
+		function updateBadge() {
+			var badge = document.querySelector('#argon-debug-btn .badge');
+			if (badge) {
+				badge.textContent = errorCount;
+				badge.style.display = errorCount > 0 ? 'block' : 'none';
+			}
+		}
+		
+		// 渲染日志列表
+		function renderLogs() {
+			var body = document.getElementById('argon-debug-console-body');
+			if (!body) return;
+			
+			body.innerHTML = logs.map(function(log) {
+				var muteBtn = isAdmin && log.type === 'error' ? 
+					'<button class="mute-btn" onclick="argonDebug.mute(\'' + log.hash + '\',\'' + encodeURIComponent(log.msg) + '\',\'' + encodeURIComponent(log.source || '') + '\')">' + (isMuted(log.hash) ? '<?php _e('已屏蔽', 'argon'); ?>' : '<?php _e('屏蔽', 'argon'); ?>') + '</button>' : '';
+				return '<div class="debug-log-item ' + log.type + '">' +
+					muteBtn +
+					'<span class="time">' + log.time + '</span>' +
+					'<span class="content">' + log.msg.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>' +
+					(log.source ? '<span class="source">' + log.source + '</span>' : '') +
+					'</div>';
+			}).join('');
+			
+			body.scrollTop = body.scrollHeight;
+		}
+		
+		// 拦截 console 方法
+		var originalConsole = {
+			log: console.log,
+			warn: console.warn,
+			error: console.error
+		};
+		
+		// 禁用 console.log 和 console.warn（生产环境）
+		console.log = function() {};
+		console.warn = function() {};
+		
+		// 拦截 console.error
+		console.error = function() {
+			originalConsole.error.apply(console, arguments);
+			addLog('error', arguments);
+		};
+		
+		// 捕获全局错误
+		window.addEventListener('error', function(e) {
+			var source = e.filename ? e.filename + ':' + e.lineno + ':' + e.colno : '';
+			addLog('error', [e.message], source);
+		});
+		
+		// 捕获 Promise 错误
+		window.addEventListener('unhandledrejection', function(e) {
+			addLog('error', ['Unhandled Promise Rejection: ' + (e.reason ? (e.reason.message || e.reason) : 'Unknown')]);
+		});
+		
+		// 暴露全局方法
+		window.argonDebug = {
+			toggle: function() {
+				var console = document.getElementById('argon-debug-console');
+				if (console) console.classList.toggle('show');
+			},
+			clear: function() {
+				logs = [];
+				errorCount = 0;
+				updateBadge();
+				renderLogs();
+			},
+			mute: function(hash, msg, source) {
+				if (!isAdmin) return;
+				
+				var xhr = new XMLHttpRequest();
+				xhr.open('POST', ajaxUrl);
+				xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				xhr.onload = function() {
+					if (xhr.status === 200) {
+						mutedHashes.push(hash);
+						renderLogs();
+					}
+				};
+				xhr.send('action=argon_mute_error&nonce=' + nonce + '&error_hash=' + hash + '&error_message=' + msg + '&error_source=' + source);
+			},
+			// 允许管理员手动记录
+			log: function() {
+				if (isAdmin) addLog('log', arguments);
+			}
+		};
+		
+		// 绑定按钮事件
+		var btn = document.getElementById('argon-debug-btn');
+		if (btn) {
+			btn.addEventListener('click', function() {
+				argonDebug.toggle();
+			});
+		}
+	})();
+	</script>
+	<?php
+}
+add_action('wp_footer', 'argon_debug_console_script', 999);
+
 //初次使用时发送安装量统计信息 (数据仅用于统计安装量)
 function post_analytics_info(){
 	if(function_exists('file_get_contents')){

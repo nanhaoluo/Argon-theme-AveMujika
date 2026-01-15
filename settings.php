@@ -4733,6 +4733,120 @@ window.pjaxLoaded = function(){
 
 					<tr>
 
+						<th><label><?php _e('调试控制台', 'argon');?></label></th>
+
+						<td>
+
+							<?php $argon_enable_debug_console = get_option('argon_enable_debug_console', 'false'); ?>
+
+							<label>
+
+								<input type="checkbox" name="argon_enable_debug_console" value="true" <?php if ($argon_enable_debug_console=='true'){echo 'checked';}?>/> 
+
+								<?php _e('启用前端调试控制台', 'argon');?>
+
+							</label>
+
+							<p class="description"><?php _e('启用后，管理员可在前台看到调试按钮，点击打开控制台查看错误信息。普通用户遇到错误时会显示红色通知提示联系管理员。', 'argon');?></p>
+
+							
+
+							<?php $muted_errors = get_option('argon_muted_errors', array()); ?>
+
+							<?php if (!empty($muted_errors)): ?>
+
+							<div style="margin-top:15px;padding:15px;background:#f8f9fa;border-radius:6px;">
+
+								<strong style="display:block;margin-bottom:10px;"><?php _e('已屏蔽的错误', 'argon'); ?> (<?php echo count($muted_errors); ?>)</strong>
+
+								<div style="max-height:200px;overflow-y:auto;">
+
+								<?php foreach ($muted_errors as $hash => $error): ?>
+
+									<div style="padding:8px 10px;margin-bottom:6px;background:#fff;border-radius:4px;border-left:3px solid #f5365c;font-size:12px;position:relative;">
+
+										<div style="color:#333;word-break:break-all;"><?php echo esc_html(mb_substr($error['message'], 0, 100)); ?><?php echo mb_strlen($error['message']) > 100 ? '...' : ''; ?></div>
+
+										<div style="color:#888;font-size:11px;margin-top:4px;">
+
+											<?php echo sprintf(__('由 %s 于 %s 屏蔽', 'argon'), esc_html($error['muted_by']), date('Y-m-d H:i', $error['muted_at'])); ?>
+
+										</div>
+
+										<button type="button" class="button button-small" style="position:absolute;top:8px;right:8px;" onclick="argonUnmuteError('<?php echo esc_attr($hash); ?>', this)"><?php _e('取消屏蔽', 'argon'); ?></button>
+
+									</div>
+
+								<?php endforeach; ?>
+
+								</div>
+
+								<button type="button" class="button" style="margin-top:10px;" id="argon_clear_muted_errors_btn"><?php _e('清空所有屏蔽', 'argon'); ?></button>
+
+							</div>
+
+							<script>
+
+							function argonUnmuteError(hash, btn) {
+
+								if (!confirm('<?php _e('确定取消屏蔽此错误？', 'argon'); ?>')) return;
+
+								jQuery.post(ajaxurl, {
+
+									action: 'argon_unmute_error',
+
+									nonce: '<?php echo wp_create_nonce('argon_debug_console'); ?>',
+
+									error_hash: hash
+
+								}, function(response) {
+
+									if (response.success) {
+
+										jQuery(btn).closest('div[style*="border-left"]').fadeOut(300, function() { jQuery(this).remove(); });
+
+									}
+
+								});
+
+							}
+
+							jQuery('#argon_clear_muted_errors_btn').on('click', function() {
+
+								if (!confirm('<?php _e('确定清空所有已屏蔽的错误？', 'argon'); ?>')) return;
+
+								var btn = jQuery(this);
+
+								btn.prop('disabled', true);
+
+								jQuery.post(ajaxurl, {
+
+									action: 'argon_clear_muted_errors',
+
+									nonce: '<?php echo wp_create_nonce('argon_debug_console'); ?>'
+
+								}, function(response) {
+
+									if (response.success) {
+
+										btn.closest('div[style*="background:#f8f9fa"]').fadeOut(300);
+
+									}
+
+								});
+
+							});
+
+							</script>
+
+							<?php endif; ?>
+
+						</td>
+
+					</tr>
+
+					<tr>
+
 						<th><label><?php _e('页脚附加内容', 'argon');?></label></th>
 
 						<td>
@@ -5423,6 +5537,8 @@ function argon_update_themeoptions(){
 		argon_update_option_checkbox('argon_hot_reload_auto_refresh');
 
 		argon_update_option_checkbox('argon_hot_reload_frontend_notice');
+
+		argon_update_option_checkbox('argon_enable_debug_console');
 
 		argon_update_option('argon_enable_into_article_animation');
 
