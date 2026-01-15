@@ -600,12 +600,14 @@ function argon_debug_console_script() {
 	
 	// 获取版本信息
 	$theme_version = $GLOBALS['theme_version'];
+	$assets_version = function_exists('argon_get_assets_version') ? argon_get_assets_version() : $theme_version;
 	$wp_version = get_bloginfo('version');
 	$php_version = phpversion();
 	$git_info = function_exists('argon_get_git_info') ? argon_get_git_info() : null;
+	$force_refresh_enabled = function_exists('argon_is_force_refresh_enabled') ? argon_is_force_refresh_enabled() : false;
 	?>
 	<style id="argon-debug-console-style">
-	#argon-debug-console{position:fixed;bottom:20px;left:20px;width:480px;max-width:calc(100vw - 40px);height:420px;max-height:70vh;background:#1e1e1e;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:99999;display:none;flex-direction:column;font-family:Consolas,'Courier New',monospace;font-size:12px;overflow:hidden}
+	#argon-debug-console{position:fixed;bottom:20px;left:20px;width:520px;max-width:calc(100vw - 40px);height:480px;max-height:70vh;background:#1e1e1e;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:99999;display:none;flex-direction:column;font-family:Consolas,'Courier New',monospace;font-size:12px;overflow:hidden}
 	#argon-debug-console.show{display:flex}
 	#argon-debug-console-header{background:#2d2d2d;padding:12px 15px;display:flex;align-items:center;justify-content:space-between;color:#fff;font-weight:bold;border-radius:12px 12px 0 0;cursor:move;user-select:none}
 	#argon-debug-console-header .title{display:flex;align-items:center;gap:8px;font-size:13px}
@@ -637,6 +639,26 @@ function argon_debug_console_script() {
 	@keyframes argonToastIn{from{opacity:0;transform:translateX(-50%) translateY(-20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 	#argon-error-toast.show{display:flex}
 	#argon-error-toast .close-btn{background:rgba(255,255,255,0.2);border:none;color:#fff;width:24px;height:24px;border-radius:50%;cursor:pointer}
+	.debug-resource-item{padding:10px 12px;margin-bottom:6px;border-radius:4px;background:#2d2d2d;font-size:11px}
+	.debug-resource-item .res-type{display:inline-block;padding:2px 8px;border-radius:3px;font-size:10px;margin-right:8px;font-weight:bold}
+	.debug-resource-item .res-type.css{background:#264de4;color:#fff}
+	.debug-resource-item .res-type.js{background:#f7df1e;color:#000}
+	.debug-resource-item .res-type.font{background:#ff6b6b;color:#fff}
+	.debug-resource-item .res-type.img{background:#4caf50;color:#fff}
+	.debug-resource-item .res-type.other{background:#666;color:#fff}
+	.debug-resource-item .res-name{color:#9cdcfe;word-break:break-all}
+	.debug-resource-item .res-version{color:#4ec9b0;margin-left:8px}
+	.debug-resource-item .res-size{color:#888;font-size:10px;margin-left:8px}
+	.debug-resource-item .res-status{float:right;font-size:10px;padding:2px 6px;border-radius:3px}
+	.debug-resource-item .res-status.cached{background:#3d3520;color:#ffc107}
+	.debug-resource-item .res-status.fresh{background:#1e3a1e;color:#4caf50}
+	.debug-resource-summary{padding:12px;background:#252526;border-radius:6px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:15px}
+	.debug-resource-summary .summary-item{text-align:center}
+	.debug-resource-summary .summary-value{font-size:18px;font-weight:bold;color:#9cdcfe}
+	.debug-resource-summary .summary-label{font-size:10px;color:#888}
+	.debug-force-refresh-status{padding:10px 12px;margin-bottom:10px;border-radius:4px;font-size:11px}
+	.debug-force-refresh-status.enabled{background:#1e3a1e;border:1px solid #4caf50;color:#4caf50}
+	.debug-force-refresh-status.disabled{background:#2d2d2d;border:1px solid #444;color:#888}
 	@media(max-width:768px){#argon-debug-console{left:10px;right:10px;bottom:10px;width:auto;height:55vh}#argon-debug-console-header{cursor:default}}
 	</style>
 	
@@ -647,6 +669,7 @@ function argon_debug_console_script() {
 		</div>
 		<div id="argon-debug-console-info">
 			<span><span class="label">Theme:</span> <span class="value"><?php echo esc_html($theme_version); ?></span></span>
+			<span><span class="label">Assets:</span> <span class="value"><?php echo esc_html($assets_version); ?></span></span>
 			<span><span class="label">WP:</span> <span class="value"><?php echo esc_html($wp_version); ?></span></span>
 			<span><span class="label">PHP:</span> <span class="value"><?php echo esc_html($php_version); ?></span></span>
 			<?php if ($git_info): ?><span><span class="label">Git:</span> <span class="value"><?php echo esc_html($git_info['branch'] . '@' . $git_info['commit']); ?></span></span><?php endif; ?>
@@ -657,6 +680,7 @@ function argon_debug_console_script() {
 			<button data-filter="log"><?php _e('日志', 'argon'); ?><span class="count" id="count-log">0</span></button>
 			<button data-filter="warn"><?php _e('警告', 'argon'); ?><span class="count" id="count-warn">0</span></button>
 			<button data-filter="error"><?php _e('错误', 'argon'); ?><span class="count" id="count-error">0</span></button>
+			<button data-filter="resources"><?php _e('资源', 'argon'); ?><span class="count" id="count-resources">0</span></button>
 		</div>
 		<div id="argon-debug-console-body"></div>
 	</div>
@@ -673,15 +697,101 @@ function argon_debug_console_script() {
 		var mutedHashes = <?php echo json_encode($muted_hashes); ?>;
 		var ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
 		var nonce = '<?php echo wp_create_nonce('argon_debug_console'); ?>';
-		var logs = [], counts = {all:0,log:0,warn:0,error:0}, currentFilter = 'all';
+		var forceRefreshEnabled = <?php echo $force_refresh_enabled ? 'true' : 'false'; ?>;
+		var logs = [], counts = {all:0,log:0,warn:0,error:0,resources:0}, currentFilter = 'all';
+		var resourcesData = [];
 		var uaEl = document.getElementById('argon-debug-ua');
 		if(uaEl){uaEl.textContent=navigator.userAgent;uaEl.title=navigator.userAgent;}
+		
+		// 收集页面资源信息
+		function collectResources() {
+			resourcesData = [];
+			var entries = performance.getEntriesByType('resource');
+			entries.forEach(function(entry) {
+				var url = entry.name;
+				var type = 'other';
+				var name = url.split('/').pop().split('?')[0];
+				var version = '';
+				
+				// 提取版本号
+				var verMatch = url.match(/[?&]v(?:er)?=([^&]+)/);
+				if (verMatch) version = verMatch[1];
+				
+				// 判断资源类型
+				if (/\.css(\?|$)/i.test(url)) type = 'css';
+				else if (/\.js(\?|$)/i.test(url)) type = 'js';
+				else if (/\.(woff2?|ttf|eot|otf)(\?|$)/i.test(url)) type = 'font';
+				else if (/\.(png|jpe?g|gif|svg|webp|ico)(\?|$)/i.test(url)) type = 'img';
+				
+				// 只显示主题相关资源或有版本号的资源
+				var isThemeResource = url.indexOf('/themes/') !== -1 || url.indexOf('/argon') !== -1;
+				if (type === 'css' || type === 'js' || isThemeResource) {
+					resourcesData.push({
+						type: type,
+						name: name,
+						url: url,
+						version: version,
+						size: entry.transferSize || 0,
+						duration: Math.round(entry.duration),
+						cached: entry.transferSize === 0 && entry.decodedBodySize > 0
+					});
+				}
+			});
+			counts.resources = resourcesData.length;
+			document.getElementById('count-resources').textContent = counts.resources;
+		}
+		
+		// 渲染资源列表
+		function renderResources() {
+			var body = document.getElementById('argon-debug-console-body');
+			if (!body) return;
+			
+			var cssCount = 0, jsCount = 0, totalSize = 0, cachedCount = 0;
+			resourcesData.forEach(function(r) {
+				if (r.type === 'css') cssCount++;
+				if (r.type === 'js') jsCount++;
+				totalSize += r.size;
+				if (r.cached) cachedCount++;
+			});
+			
+			var html = '<div class="debug-force-refresh-status ' + (forceRefreshEnabled ? 'enabled' : 'disabled') + '">';
+			html += forceRefreshEnabled ? '✓ <?php _e("强制刷新已启用 - 资源将绕过缓存加载", "argon"); ?>' : '<?php _e("强制刷新未启用 - 资源可能使用浏览器缓存", "argon"); ?>';
+			html += '</div>';
+			
+			html += '<div class="debug-resource-summary">';
+			html += '<div class="summary-item"><div class="summary-value">' + resourcesData.length + '</div><div class="summary-label"><?php _e("总资源", "argon"); ?></div></div>';
+			html += '<div class="summary-item"><div class="summary-value">' + cssCount + '</div><div class="summary-label">CSS</div></div>';
+			html += '<div class="summary-item"><div class="summary-value">' + jsCount + '</div><div class="summary-label">JS</div></div>';
+			html += '<div class="summary-item"><div class="summary-value">' + formatSize(totalSize) + '</div><div class="summary-label"><?php _e("传输大小", "argon"); ?></div></div>';
+			html += '<div class="summary-item"><div class="summary-value">' + cachedCount + '</div><div class="summary-label"><?php _e("缓存命中", "argon"); ?></div></div>';
+			html += '</div>';
+			
+			resourcesData.forEach(function(r) {
+				html += '<div class="debug-resource-item">';
+				html += '<span class="res-type ' + r.type + '">' + r.type.toUpperCase() + '</span>';
+				html += '<span class="res-name">' + r.name + '</span>';
+				if (r.version) html += '<span class="res-version">v' + r.version + '</span>';
+				if (r.size > 0) html += '<span class="res-size">' + formatSize(r.size) + '</span>';
+				html += '<span class="res-status ' + (r.cached ? 'cached' : 'fresh') + '">' + (r.cached ? '<?php _e("缓存", "argon"); ?>' : '<?php _e("新加载", "argon"); ?>') + '</span>';
+				html += '</div>';
+			});
+			
+			body.innerHTML = html;
+		}
+		
+		function formatSize(bytes) {
+			if (bytes === 0) return '0 B';
+			if (bytes < 1024) return bytes + ' B';
+			if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+			return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+		}
+		
 		function hashError(m,s){var str=(m||'')+'|'+(s||''),h=0;for(var i=0;i<str.length;i++){h=((h<<5)-h)+str.charCodeAt(i);h=h&h;}return 'e'+Math.abs(h).toString(16);}
 		function isMuted(h){return mutedHashes.indexOf(h)!==-1;}
-		function showErrorToast(m,h){if(isMuted(h))return;var t=document.getElementById('argon-error-toast');if(!t)return;var dm=isAdmin?m:'<?php _e('页面发生错误，请联系管理员', 'argon'); ?>';t.querySelector('.message').textContent=dm.length>80?dm.substring(0,80)+'...':dm;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},5000);}
+		function showErrorToast(m,h){if(isMuted(h))return;var t=document.getElementById('argon-error-toast');if(!t)return;var dm=isAdmin?m:'<?php _e("页面发生错误，请联系管理员", "argon"); ?>';t.querySelector('.message').textContent=dm.length>80?dm.substring(0,80)+'...':dm;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},5000);}
 		function updateCounts(){document.getElementById('count-all').textContent=counts.all;document.getElementById('count-log').textContent=counts.log;document.getElementById('count-warn').textContent=counts.warn;document.getElementById('count-error').textContent=counts.error;var b=document.getElementById('argon-debug-error-count');if(b){b.textContent=counts.error;b.style.display=counts.error>0?'inline':'none';}}
-		function addLog(type,args,source){var msg=Array.prototype.slice.call(args).map(function(a){if(typeof a==='object'){try{return JSON.stringify(a,null,2);}catch(e){return String(a);}}return String(a);}).join(' ');var hash=hashError(msg,source),time=new Date().toLocaleTimeString();logs.push({type:type,msg:msg,source:source,time:time,hash:hash});counts.all++;counts[type]=(counts[type]||0)+1;updateCounts();if(type==='error')showErrorToast(msg,hash);renderLogs();}
-		function renderLogs(){var body=document.getElementById('argon-debug-console-body');if(!body)return;var filtered=currentFilter==='all'?logs:logs.filter(function(l){return l.type===currentFilter;});body.innerHTML=filtered.map(function(log){var muted=isMuted(log.hash);var muteBtn=isAdmin&&log.type==='error'?'<button class="mute-btn" onclick="argonDebug.mute(\''+log.hash+'\',\''+encodeURIComponent(log.msg.substring(0,200))+'\',\''+encodeURIComponent(log.source||'')+'\')">'+(muted?'<?php _e('已屏蔽', 'argon'); ?>':'<?php _e('屏蔽', 'argon'); ?>')+'</button>':'';return '<div class="debug-log-item '+log.type+(muted?' muted':'')+'">'+muteBtn+'<span class="time">['+log.time+']</span> '+log.msg.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')+(log.source?'<span class="source">'+log.source+'</span>':'')+'</div>';}).join('');body.scrollTop=body.scrollHeight;}
+		function addLog(type,args,source){var msg=Array.prototype.slice.call(args).map(function(a){if(typeof a==='object'){try{return JSON.stringify(a,null,2);}catch(e){return String(a);}}return String(a);}).join(' ');var hash=hashError(msg,source),time=new Date().toLocaleTimeString();logs.push({type:type,msg:msg,source:source,time:time,hash:hash});counts.all++;counts[type]=(counts[type]||0)+1;updateCounts();if(type==='error')showErrorToast(msg,hash);if(currentFilter!=='resources')renderLogs();}
+		function renderLogs(){var body=document.getElementById('argon-debug-console-body');if(!body)return;var filtered=currentFilter==='all'?logs:logs.filter(function(l){return l.type===currentFilter;});body.innerHTML=filtered.map(function(log){var muted=isMuted(log.hash);var muteBtn=isAdmin&&log.type==='error'?'<button class="mute-btn" onclick="argonDebug.mute(\''+log.hash+'\',\''+encodeURIComponent(log.msg.substring(0,200))+'\',\''+encodeURIComponent(log.source||'')+'\')">'+(muted?'<?php _e("已屏蔽", "argon"); ?>':'<?php _e("屏蔽", "argon"); ?>')+'</button>':'';return '<div class="debug-log-item '+log.type+(muted?' muted':'')+'">'+muteBtn+'<span class="time">['+log.time+']</span> '+log.msg.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')+(log.source?'<span class="source">'+log.source+'</span>':'')+'</div>';}).join('');body.scrollTop=body.scrollHeight;}
 		var oc={log:console.log,warn:console.warn,error:console.error,info:console.info};
 		console.log=function(){addLog('log',arguments);};
 		console.info=function(){addLog('log',arguments);};
@@ -691,9 +801,15 @@ function argon_debug_console_script() {
 		window.addEventListener('unhandledrejection',function(e){addLog('error',['Promise: '+(e.reason?(e.reason.message||e.reason):'Unknown')]);});
 		var panel=document.getElementById('argon-debug-console'),header=document.getElementById('argon-debug-console-header');
 		if(window.innerWidth>768&&header&&panel){var isDragging=false,startX,startY,startLeft,startTop;header.addEventListener('mousedown',function(e){if(e.target.tagName==='BUTTON')return;isDragging=true;startX=e.clientX;startY=e.clientY;var rect=panel.getBoundingClientRect();startLeft=rect.left;startTop=rect.top;panel.style.transition='none';});document.addEventListener('mousemove',function(e){if(!isDragging)return;var newLeft=Math.max(0,Math.min(startLeft+e.clientX-startX,window.innerWidth-panel.offsetWidth));var newTop=Math.max(0,Math.min(startTop+e.clientY-startY,window.innerHeight-panel.offsetHeight));panel.style.left=newLeft+'px';panel.style.top=newTop+'px';panel.style.bottom='auto';panel.style.right='auto';});document.addEventListener('mouseup',function(){isDragging=false;panel.style.transition='';});}
-		document.querySelectorAll('#argon-debug-console-tabs button').forEach(function(btn){btn.addEventListener('click',function(){document.querySelectorAll('#argon-debug-console-tabs button').forEach(function(b){b.classList.remove('active');});this.classList.add('active');currentFilter=this.dataset.filter;renderLogs();});});
-		window.argonDebug={toggle:function(){panel.classList.toggle('show');},clear:function(){logs=[];counts={all:0,log:0,warn:0,error:0};updateCounts();renderLogs();},mute:function(hash,msg,source){if(!isAdmin)return;var xhr=new XMLHttpRequest();xhr.open('POST',ajaxUrl);xhr.setRequestHeader('Content-Type','application/x-www-form-urlencoded');xhr.onload=function(){if(xhr.status===200){mutedHashes.push(hash);renderLogs();}};xhr.send('action=argon_mute_error&nonce='+nonce+'&error_hash='+hash+'&error_message='+msg+'&error_source='+source);}};
-		console.log('<?php _e('调试控制台已启动', 'argon'); ?> - Theme v<?php echo esc_js($theme_version); ?>');
+		document.querySelectorAll('#argon-debug-console-tabs button').forEach(function(btn){btn.addEventListener('click',function(){document.querySelectorAll('#argon-debug-console-tabs button').forEach(function(b){b.classList.remove('active');});this.classList.add('active');currentFilter=this.dataset.filter;if(currentFilter==='resources'){collectResources();renderResources();}else{renderLogs();}});});
+		window.argonDebug={toggle:function(){panel.classList.toggle('show');if(panel.classList.contains('show')&&currentFilter==='resources'){collectResources();renderResources();}},clear:function(){logs=[];counts={all:0,log:0,warn:0,error:0,resources:counts.resources};updateCounts();renderLogs();},mute:function(hash,msg,source){if(!isAdmin)return;var xhr=new XMLHttpRequest();xhr.open('POST',ajaxUrl);xhr.setRequestHeader('Content-Type','application/x-www-form-urlencoded');xhr.onload=function(){if(xhr.status===200){mutedHashes.push(hash);renderLogs();}};xhr.send('action=argon_mute_error&nonce='+nonce+'&error_hash='+hash+'&error_message='+msg+'&error_source='+source);}};
+		
+		// 页面加载完成后收集资源
+		window.addEventListener('load', function() {
+			setTimeout(collectResources, 100);
+		});
+		
+		console.log('<?php _e("调试控制台已启动", "argon"); ?> - Theme v<?php echo esc_js($theme_version); ?>, Assets v<?php echo esc_js($assets_version); ?>');
 	})();
 	</script>
 	<?php
