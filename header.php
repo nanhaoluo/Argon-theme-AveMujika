@@ -289,81 +289,40 @@
 	
 	<?php wp_head(); ?>
 	
-	<!-- 移动端兼容性修复 -->
+	<!-- 移动端资源加载修复 - 确保 CSS 完全应用 -->
 	<script>
 		(function() {
-			var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-			var html = document.documentElement;
-			
-			// 检测 backdrop-filter 支持
-			var supportsBackdrop = CSS.supports && (
-				CSS.supports('backdrop-filter', 'blur(1px)') || 
-				CSS.supports('-webkit-backdrop-filter', 'blur(1px)')
-			);
-			
-			if (!supportsBackdrop) {
-				html.classList.add('no-backdrop-filter');
-			}
-			
-			if (isMobile) {
-				html.classList.add('is-mobile-device');
+			// 检测移动端并强制重新计算样式
+			if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+				// 确保 CSS 已加载
+				var checkCSS = function() {
+					var testEl = document.createElement('div');
+					testEl.className = 'container';
+					testEl.style.cssText = 'position:absolute;visibility:hidden;';
+					document.body.appendChild(testEl);
+					var computed = window.getComputedStyle(testEl);
+					var isLoaded = computed.width !== 'auto' && computed.width !== '';
+					document.body.removeChild(testEl);
+					return isLoaded;
+				};
 				
-				// 监听深色模式切换，强制刷新样式
-				var observer = new MutationObserver(function(mutations) {
-					mutations.forEach(function(mutation) {
-						if (mutation.attributeName === 'class') {
-							// 强制重新计算所有样式
-							document.body.style.display = 'none';
-							void document.body.offsetHeight;
-							document.body.style.display = '';
-						}
-					});
+				// 如果 CSS 未完全加载，强制重新加载
+				document.addEventListener('DOMContentLoaded', function() {
+					if (!checkCSS()) {
+						// 触发重排以应用样式
+						document.body.style.display = 'none';
+						document.body.offsetHeight; // 强制重排
+						document.body.style.display = '';
+					}
 				});
-				
-				observer.observe(html, { attributes: true, attributeFilter: ['class'] });
 			}
 		})();
 		
-		// 用户角色检测
+		// 用户角色检测 - 传递给前端JavaScript
 		window.argonUserRole = '<?php echo current_user_can('administrator') ? 'administrator' : (is_user_logged_in() ? 'user' : 'guest'); ?>';
 	</script>
 	
-	<!-- 移动端降级样式 -->
-	<style>
-		/* 不支持 backdrop-filter 时的降级方案 */
-		html.no-backdrop-filter .card.bg-white,
-		html.no-backdrop-filter article.post.card,
-		html.no-backdrop-filter #comments.card,
-		html.no-backdrop-filter #post_comment.card {
-			background-color: rgba(255, 255, 255, 0.95) !important;
-		}
-		html.no-backdrop-filter.darkmode .card.bg-white,
-		html.no-backdrop-filter.darkmode article.post.card,
-		html.no-backdrop-filter.darkmode #comments.card,
-		html.no-backdrop-filter.darkmode #post_comment.card {
-			background-color: rgba(50, 50, 50, 0.95) !important;
-		}
-		
-		/* 移动端深色模式文字颜色强制修复 */
-		html.is-mobile-device.darkmode body,
-		html.is-mobile-device.darkmode .post-content,
-		html.is-mobile-device.darkmode .card-body,
-		html.is-mobile-device.darkmode p,
-		html.is-mobile-device.darkmode span,
-		html.is-mobile-device.darkmode li {
-			color: #eee !important;
-		}
-		html.is-mobile-device:not(.darkmode) body,
-		html.is-mobile-device:not(.darkmode) .post-content,
-		html.is-mobile-device:not(.darkmode) .card-body,
-		html.is-mobile-device:not(.darkmode) p,
-		html.is-mobile-device:not(.darkmode) span:not(.badge),
-		html.is-mobile-device:not(.darkmode) li {
-			color: #525f7f !important;
-		}
-	</style>
-	
-	<!-- Argon 修复补丁 -->
+	<!-- Argon 修复补丁 - 必须在 wp_head() 之后立即执行 -->
 	<script src="<?php echo get_template_directory_uri(); ?>/assets/js/argon.min.js?ver=<?php echo $GLOBALS['theme_version']; ?>"></script>
 
 	<?php $GLOBALS['wp_path'] = get_option('argon_wp_path') == '' ? '/' : get_option('argon_wp_path'); ?>
