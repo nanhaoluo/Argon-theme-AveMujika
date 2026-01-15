@@ -9,6 +9,16 @@
  * @link https://www.gnu.org/licenses/gpl-3.0.html
  */
 
+// 禁止移动端浏览器缓存 HTML 页面
+function argon_prevent_mobile_cache() {
+	if (wp_is_mobile() && !is_admin()) {
+		header('Cache-Control: no-cache, no-store, must-revalidate');
+		header('Pragma: no-cache');
+		header('Expires: 0');
+	}
+}
+add_action('send_headers', 'argon_prevent_mobile_cache');
+
 if (version_compare( $GLOBALS['wp_version'], '4.4-alpha', '<' )) {
 	echo "<div style='background: #5e72e4;color: #fff;font-size: 30px;padding: 50px 30px;position: fixed;width: 100%;left: 0;right: 0;bottom: 0;z-index: 2147483647;'>" . __("Argon 主题不支持 Wordpress 4.4 以下版本，请更新 Wordpress", 'argon') . "</div>";
 }
