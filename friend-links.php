@@ -420,16 +420,41 @@ html.darkmode .flink-modal { background: var(--color-background); }
 
 <script data-pjax>
 (function() {
+    // 清理函数
+    function cleanupFlinksPage() {
+        document.body.classList.remove('flinks-page');
+        var s = document.getElementById('flinks-page-style');
+        if (s) s.remove();
+    }
+    
+    // 先清理可能残留的状态（处理后退情况）
+    // 如果当前不是友链页面但有残留 class，清理它
+    if (!document.getElementById('flinks-page-style')) {
+        document.body.classList.remove('flinks-page');
+    }
+    
     // 添加页面标识 class
     document.body.classList.add('flinks-page');
     
     // PJAX 离开时清理
     if (typeof jQuery !== 'undefined') {
-        jQuery(document).off('pjax:start.flinks').on('pjax:start.flinks', function() {
-            document.body.classList.remove('flinks-page');
-            var s = document.getElementById('flinks-page-style');
-            if (s) s.remove();
-            jQuery(document).off('pjax:start.flinks');
+        var $ = jQuery;
+        $(document).off('pjax:start.flinks pjax:popstate.flinks');
+        
+        // 正常跳转离开
+        $(document).on('pjax:start.flinks', function() {
+            cleanupFlinksPage();
+            $(document).off('pjax:start.flinks pjax:popstate.flinks');
+        });
+        
+        // 浏览器后退/前进
+        $(document).on('pjax:popstate.flinks', function() {
+            // 延迟检查，等 PJAX 完成内容替换
+            setTimeout(function() {
+                if (!document.getElementById('flinks-page-style')) {
+                    document.body.classList.remove('flinks-page');
+                }
+            }, 50);
         });
     }
 })();
