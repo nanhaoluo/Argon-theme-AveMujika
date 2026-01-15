@@ -265,13 +265,12 @@
 	<?php endif; ?>
 
 	<?php
-
-		wp_enqueue_style("argon_css_merged", $GLOBALS['assets_path'] . "/assets/argon_css_merged.css", null, $GLOBALS['theme_version']);
-
-		wp_enqueue_style("style", $GLOBALS['assets_path'] . "/style.css", null, $GLOBALS['theme_version']);
+		// CSS 加载 - 添加 media 属性确保移动端正确加载
+		wp_enqueue_style("argon_css_merged", $GLOBALS['assets_path'] . "/assets/argon_css_merged.css", array(), $GLOBALS['theme_version'], 'all');
+		wp_enqueue_style("style", $GLOBALS['assets_path'] . "/style.css", array('argon_css_merged'), $GLOBALS['theme_version'], 'all');
 		
 		// 集成外部资源备用机制
-		wp_enqueue_script("resource_loader", $GLOBALS['assets_path'] . "/assets/vendor/external/resource-loader.js", null, $GLOBALS['theme_version'], false);
+		wp_enqueue_script("resource_loader", $GLOBALS['assets_path'] . "/assets/vendor/external/resource-loader.js", array(), $GLOBALS['theme_version'], false);
 
 		if (get_option('argon_disable_googlefont') != 'true') {
 			// 使用备用机制加载Google Fonts
@@ -284,20 +283,47 @@
 			</script>';
 		}
 
-		// 加载 argon_js_merged（包含 jQuery 和其他库）- 在头部加载以确保后续脚本可用
-		wp_enqueue_script("argon_js_merged", $GLOBALS['assets_path'] . "/assets/argon_js_merged.js", null, $GLOBALS['theme_version'], false);
-
+		// 加载 argon_js_merged（包含 jQuery 和其他库）- 在头部同步加载以确保后续脚本可用
+		wp_enqueue_script("argon_js_merged", $GLOBALS['assets_path'] . "/assets/argon_js_merged.js", array(), $GLOBALS['theme_version'], false);
 	?>
 	
 	<?php wp_head(); ?>
 	
-	<!-- 用户角色检测 - 传递给前端JavaScript -->
+	<!-- 移动端资源加载修复 - 确保 CSS 完全应用 -->
 	<script>
+		(function() {
+			// 检测移动端并强制重新计算样式
+			if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+				// 确保 CSS 已加载
+				var checkCSS = function() {
+					var testEl = document.createElement('div');
+					testEl.className = 'container';
+					testEl.style.cssText = 'position:absolute;visibility:hidden;';
+					document.body.appendChild(testEl);
+					var computed = window.getComputedStyle(testEl);
+					var isLoaded = computed.width !== 'auto' && computed.width !== '';
+					document.body.removeChild(testEl);
+					return isLoaded;
+				};
+				
+				// 如果 CSS 未完全加载，强制重新加载
+				document.addEventListener('DOMContentLoaded', function() {
+					if (!checkCSS()) {
+						// 触发重排以应用样式
+						document.body.style.display = 'none';
+						document.body.offsetHeight; // 强制重排
+						document.body.style.display = '';
+					}
+				});
+			}
+		})();
+		
+		// 用户角色检测 - 传递给前端JavaScript
 		window.argonUserRole = '<?php echo current_user_can('administrator') ? 'administrator' : (is_user_logged_in() ? 'user' : 'guest'); ?>';
 	</script>
 	
 	<!-- Argon 修复补丁 - 必须在 wp_head() 之后立即执行 -->
-	<script src="<?php echo get_template_directory_uri(); ?>/assets/js/argon.min.js?ver=<?php echo $GLOBALS['theme_version']; ?>&t=<?php echo time(); ?>"></script>
+	<script src="<?php echo get_template_directory_uri(); ?>/assets/js/argon.min.js?ver=<?php echo $GLOBALS['theme_version']; ?>"></script>
 
 	<?php $GLOBALS['wp_path'] = get_option('argon_wp_path') == '' ? '/' : get_option('argon_wp_path'); ?>
 
