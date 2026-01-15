@@ -61,10 +61,25 @@ function argon_is_force_refresh_enabled() {
  */
 function argon_get_assets_version() {
 	if (argon_is_force_refresh_enabled()) {
-		return $GLOBALS['theme_version'] . '.' . time();
+		// 使用启用时间作为版本号，确保同一小时内版本一致但与之前不同
+		$enabled_time = get_option('argon_force_refresh_enabled_time', 0);
+		return $GLOBALS['theme_version'] . '.r' . $enabled_time;
 	}
 	return $GLOBALS['theme_version'];
 }
+
+/**
+ * 强制刷新时发送禁止缓存的 HTTP 头
+ */
+function argon_force_refresh_headers() {
+	if (!is_admin() && argon_is_force_refresh_enabled()) {
+		header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
+		header('Pragma: no-cache');
+		header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
+		header('X-Argon-Force-Refresh: enabled');
+	}
+}
+add_action('send_headers', 'argon_force_refresh_headers');
 
 /**
  * 启用强制刷新缓存

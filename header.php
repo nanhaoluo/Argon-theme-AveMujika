@@ -292,6 +292,51 @@
 	
 	<?php wp_head(); ?>
 	
+	<?php if (function_exists('argon_is_force_refresh_enabled') && argon_is_force_refresh_enabled()): ?>
+	<!-- 强制刷新缓存 - 清除浏览器和 Service Worker 缓存 -->
+	<script>
+	(function() {
+		var forceRefreshKey = 'argon_force_refresh_version';
+		var currentVersion = '<?php echo get_option('argon_force_refresh_enabled_time', 0); ?>';
+		var lastVersion = localStorage.getItem(forceRefreshKey);
+		
+		// 版本变化时清除所有缓存
+		if (lastVersion !== currentVersion) {
+			localStorage.setItem(forceRefreshKey, currentVersion);
+			
+			// 清除 Service Worker 缓存
+			if ('caches' in window) {
+				caches.keys().then(function(names) {
+					names.forEach(function(name) {
+						caches.delete(name);
+					});
+				});
+			}
+			
+			// 注销所有 Service Worker
+			if ('serviceWorker' in navigator) {
+				navigator.serviceWorker.getRegistrations().then(function(registrations) {
+					registrations.forEach(function(registration) {
+						registration.unregister();
+					});
+				});
+			}
+			
+			// 如果不是首次访问，强制硬刷新
+			if (lastVersion !== null) {
+				// 清除 sessionStorage
+				try { sessionStorage.clear(); } catch(e) {}
+				
+				// 强制硬刷新（绕过缓存）
+				if (window.location.reload) {
+					window.location.reload(true);
+				}
+			}
+		}
+	})();
+	</script>
+	<?php endif; ?>
+	
 	<!-- 移动端资源加载修复 - 确保 CSS 完全应用 -->
 	<script>
 		(function() {
