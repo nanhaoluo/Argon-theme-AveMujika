@@ -8361,6 +8361,15 @@ body.noscroll:before {
 	border-radius: 10px;
 }
 
+/* 移动端分享面板适配 */
+@media (max-width: 576px) {
+	#share {
+		flex-wrap: wrap;
+		justify-content: flex-end;
+		max-width: calc(100vw - 40px);
+	}
+}
+
 #share .icon-wechat,
 #share .icon-copy-link {
 	position: relative;
@@ -16231,11 +16240,6 @@ html.darkmode {
         transform: translateY(-6px) scale(1.005);
         box-shadow: var(--shadow-hover);
     }
-    article.post.card:active {
-        transform: translateY(-2px) scale(0.995);
-        box-shadow: var(--shadow-active);
-        transition-duration: var(--micro-duration);
-    }
     article.post.card .post-thumbnail {
         transition: transform var(--animation-slow) var(--ease-out-expo);
     }
@@ -16359,13 +16363,7 @@ article img.loaded, .post-thumbnail img.loaded, article img:not([loading="lazy"]
 /* 9. 移动端触摸优化 */
 @media (hover: none) and (pointer: coarse) {
     article.post.card:hover { transform: none; box-shadow: var(--shadow-1); }
-    article.post.card:active { transform: scale(0.98); transition-duration: var(--micro-duration); }
-    .card:active { transform: scale(0.99); transition-duration: var(--micro-duration); }
-    .btn:active { transform: scale(0.95); transition-duration: var(--micro-duration); }
-    a:active { opacity: 0.7; }
     * { -webkit-tap-highlight-color: transparent; }
-    .touch-ripple { position: absolute; border-radius: 50%; background: rgba(var(--themecolor-rgbstr), 0.25); transform: scale(0); animation: modernTouchRipple 0.6s var(--ease-out-expo) forwards; pointer-events: none; }
-    @keyframes modernTouchRipple { to { transform: scale(4); opacity: 0; } }
 }
 
 /* 10. 移动端侧边栏动画增强 */
@@ -16381,7 +16379,6 @@ article img.loaded, .post-thumbnail img.loaded, article img:not([loading="lazy"]
     .leftbar-mobile-menu-item > a { transition: background var(--animation-fast) var(--ease-standard), transform var(--micro-duration) var(--ease-standard); }
     .leftbar-mobile-menu-item > a:active { background: rgba(var(--themecolor-rgbstr), 0.12); transform: scale(0.98); }
     article.post.card { transition: transform var(--micro-duration) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard); }
-    article.post.card:active { transform: scale(0.98); }
     #navbar-main { transition: transform var(--animation-normal) var(--ease-standard), background-color var(--animation-fast) var(--ease-standard); }
 }
 
