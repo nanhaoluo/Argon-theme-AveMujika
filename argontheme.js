@@ -955,6 +955,11 @@ if (argonConfig.waterflow_columns != "1") {
 !function(){
 	//回复评论
 	let replying = false , replyID = 0;
+	
+	/**
+	 * 显示回复框
+	 * @param {number} commentID - 评论ID
+	 */
 	function reply(commentID){
 		cancelEdit(false);
 		replying = true;
@@ -978,17 +983,33 @@ if (argonConfig.waterflow_columns != "1") {
 		$("body,html").animate({
 			scrollTop: $('#post_comment').offset().top - 100
 		}, 400, 'easeOutCirc');
-		$('#post_comment_reply_info').slideDown(350, 'easeOutCirc');
+		
+		// 使用 CSS 动画显示回复框
+		let replyInfo = $('#post_comment_reply_info');
+		replyInfo.removeClass('reply-leaving').css('display', 'block');
+		// 触发重排以确保动画生效
+		replyInfo[0].offsetHeight;
+		replyInfo.addClass('reply-entering');
+		
 		setTimeout(function(){
 			$("#post_comment_content").focus();
-		}, 350);
+		}, 300);
 	}
+	
+	/**
+	 * 取消回复
+	 */
 	function cancelReply(){
 		replying = false;
 		replyID = 0;
-		$('#post_comment_reply_info').slideUp(250, 'easeOutCirc');
+		let replyInfo = $('#post_comment_reply_info');
+		replyInfo.removeClass('reply-entering').addClass('reply-leaving');
+		setTimeout(function(){
+			replyInfo.css('display', 'none').removeClass('reply-leaving');
+		}, 200);
 		$("#post_comment").removeClass("post-comment-force-privatemode-on post-comment-force-privatemode-off");
 	}
+	
 	$(document).on("click" , ".comment-reply" , function(){
 		reply(this.getAttribute("data-id"));
 	});
@@ -998,7 +1019,7 @@ if (argonConfig.waterflow_columns != "1") {
 	$(document).on("pjax:click" , function(){
 		replying = false;
 		replyID = 0;
-		$('#post_comment_reply_info').css("display", "none");
+		$('#post_comment_reply_info').css("display", "none").removeClass('reply-entering reply-leaving');
 		$("#post_comment").removeClass("post-comment-force-privatemode-on post-comment-force-privatemode-off");
 	});
 	//编辑评论

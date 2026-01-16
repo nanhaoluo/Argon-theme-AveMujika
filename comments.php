@@ -314,9 +314,19 @@ function resetGeetestCaptcha() {
 			<span class="hide-on-comment-not-editing"><?php echo apply_filters("argon_comment_title_editing", __('编辑评论', 'argon'))?></span>
 		</h2>
 		<div id="post_comment_reply_info" class="post-comment-reply" style="display: none;">
-			<span><?php _e('正在回复', 'argon');?> <b><span id="post_comment_reply_name"></span></b><?php _e(' 的评论', 'argon');?> :</span>
+			<div class="post-comment-reply-header">
+				<div class="post-comment-reply-icon">
+					<i class="fa fa-reply"></i>
+				</div>
+				<div class="post-comment-reply-meta">
+					<span class="post-comment-reply-label"><?php _e('正在回复', 'argon');?></span>
+					<span class="post-comment-reply-name" id="post_comment_reply_name"></span>
+				</div>
+				<button id="post_comment_reply_cancel" class="post-comment-reply-close" type="button" title="<?php _e('取消回复', 'argon');?>">
+					<i class="fa fa-times"></i>
+				</button>
+			</div>
 			<div id="post_comment_reply_preview" class="post-comment-reply-preview"></div>
-			<button id="post_comment_reply_cancel" class="btn btn-outline-primary btn-sm"><?php _e('取消回复', 'argon');?></button>
 		</div>
 		<form>
 			<div style="display:none;">
