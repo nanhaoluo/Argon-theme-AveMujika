@@ -16518,8 +16518,8 @@ article img.loaded, .post-thumbnail img.loaded, article img:not([loading="lazy"]
 
 /* 14. 目录导航动画 */
 .index-link { transition: all var(--animation-fast) var(--ease-standard); position: relative; }
-.index-link::before { content: ""; position: absolute; left: -8px; top: 50%; transform: translateY(-50%) scaleY(0); width: 3px; height: 60%; background: var(--themecolor); border-radius: 2px; transition: transform var(--animation-normal) var(--ease-spring); }
-.index-item.current > .index-link::before { transform: translateY(-50%) scaleY(1); }
+#leftbar_mobile_catalog .index-link::before { content: ""; position: absolute; left: -8px; top: 50%; transform: translateY(-50%) scaleY(0); width: 3px; height: 60%; background: var(--themecolor); border-radius: 2px; transition: transform var(--animation-normal) var(--ease-spring); }
+#leftbar_mobile_catalog .index-item.current > .index-link::before { transform: translateY(-50%) scaleY(1); }
 
 /* 15. 时间线动画 */
 .timeline-item { opacity: 0; transform: translateX(-20px); animation: modernTimelineSlideIn var(--animation-slow) var(--ease-emphasized-decelerate) forwards; }
