@@ -1,9 +1,24 @@
 /*!
  * Argon 主题核心 JavaScript
+ * 
+ * 目录:
+ * 1. 兼容性修复 - 第三方库 polyfill
+ * 2. 全局配置 - argonConfig 初始化
+ * 3. 工具函数 - Cookie、翻译等
+ * 4. 顶栏功能 - 透明度、搜索
+ * 5. 侧边栏 - 浮动、滚动
+ * 6. 文章列表 - 瀑布流布局
+ * 7. 浮动按钮 - 回顶、设置
+ * 8. 评论系统 - 发送、回复、编辑
+ * 9. 代码高亮 - Prism 增强
+ * 10. PJAX - 页面无刷新加载
  */
 
-// ========== 兼容性修复 ==========
-// 确保 Prism 和 autoloader 存在
+// ==========================================================================
+// 1. 兼容性修复 - 确保第三方库存在
+// ==========================================================================
+
+// Prism 代码高亮
 if (typeof window.Prism === 'undefined') {
     window.Prism = { 
         highlightAll: function() {},
@@ -21,21 +36,19 @@ if (typeof window.Prism.plugins.autoloader === 'undefined') {
     };
 }
 
-// 确保 Zoomify 存在
+// Zoomify 图片缩放
 if (typeof window.Zoomify === 'undefined') {
     window.Zoomify = function() {};
     window.Zoomify.DEFAULTS = {};
 }
 
-// 确保 jQuery 插件存在
+// jQuery 插件
 if (typeof jQuery !== 'undefined') {
     (function($) {
-        // 确保 zoomify 插件存在
         if (typeof $.fn.zoomify === 'undefined') {
             $.fn.zoomify = function() { return this; };
         }
         
-        // 确保 fancybox 存在
         if (typeof $.fancybox === 'undefined') {
             $.fancybox = {
                 defaults: {
@@ -57,7 +70,6 @@ if (typeof jQuery !== 'undefined') {
             };
         }
         
-        // 确保 pjax 存在
         if (typeof $.pjax === 'undefined') {
             $.pjax = function() {};
             $.pjax.defaults = {
@@ -76,20 +88,39 @@ if (typeof jQuery !== 'undefined') {
     })(jQuery);
 }
 
-// ========== 原有代码 ==========
+// ==========================================================================
+// 2. 全局配置
+// ==========================================================================
+
 if (typeof(argonConfig) === "undefined"){
 	var argonConfig = {};
 }
 if (typeof(argonConfig.wp_path) === "undefined"){
 	argonConfig.wp_path = "/";
 }
-/*Cookies 操作*/
+
+// ==========================================================================
+// 3. 工具函数
+// ==========================================================================
+
+/**
+ * 设置 Cookie
+ * @param {string} cname - Cookie 名称
+ * @param {string} cvalue - Cookie 值
+ * @param {number} exdays - 过期天数
+ */
 function setCookie(cname, cvalue, exdays) {
 	let d = new Date();
 	d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
 	let expires = "expires=" + d.toUTCString();
 	document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
 }
+
+/**
+ * 获取 Cookie
+ * @param {string} cname - Cookie 名称
+ * @returns {string} Cookie 值
+ */
 function getCookie(cname) {
 	let name = cname + "=";
 	let decodedCookie = decodeURIComponent(document.cookie);
@@ -106,7 +137,7 @@ function getCookie(cname) {
 	return "";
 }
 
-/*多语言支持*/
+// ---------- 多语言翻译系统 ----------
 var translation = {};
 translation['en_US'] = {
 	"确定": "OK",
@@ -302,7 +333,11 @@ function __(text){
 	return translation[lang][text];
 }
 
-/*根据滚动高度改变顶栏透明度*/
+// ==========================================================================
+// 4. 顶栏功能
+// ==========================================================================
+
+// ---------- 顶栏透明度随滚动变化 ----------
 !function(){
 	let toolbar = document.getElementById("navbar-main");
 	let $bannerContainer = $("#banner_container");
@@ -379,7 +414,7 @@ function __(text){
 	document.addEventListener("scroll", changeToolbarTransparency, {passive: true});
 }();
 
-/*搜索*/
+// ---------- 搜索功能 ----------
 function searchPosts(word){
 	if ($(".search-result").length > 0){
 		let url = new URL(window.location.href);
@@ -488,7 +523,11 @@ $(document).on("change" , ".search-filter" , function(e){
 	});
 });
 
-/*左侧栏随页面滚动浮动*/
+// ==========================================================================
+// 5. 侧边栏
+// ==========================================================================
+
+// ---------- 侧栏随滚动浮动 ----------
 !function(){
 	if ($("#leftbar").length === 0){
 		let contentOffsetTop = $('#content').offset().top;
@@ -573,7 +612,11 @@ if (argonConfig.headroom === "true"){
 	}).init();
 }
 
-/*瀑布流布局*/
+// ==========================================================================
+// 6. 文章列表布局
+// ==========================================================================
+
+// ---------- 瀑布流布局 ----------
 function waterflowInit() {
 	if (argonConfig.waterflow_columns === "1") {
 		return;
@@ -681,7 +724,10 @@ if (argonConfig.waterflow_columns !== "1") {
 	});
 }();
 
-/*浮动按钮栏相关 (回顶等)*/
+// ==========================================================================
+// 7. 浮动操作按钮
+// ==========================================================================
+
 !function(){
 	// 确保 DOM 和 jQuery 已加载
 	if (typeof jQuery === 'undefined') {
@@ -924,9 +970,12 @@ if (argonConfig.waterflow_columns !== "1") {
 	});
 }();
 
-/*评论区 & 发送评论*/
+// ==========================================================================
+// 8. 评论系统
+// ==========================================================================
+
 !function(){
-	//回复评论
+	// ---------- 回复评论 ----------
 	let replying = false , replyID = 0;
 	function reply(commentID){
 		cancelEdit(false);
@@ -2278,8 +2327,12 @@ if ($("html").hasClass("banner-as-cover")){
 	});
 }
 
-/*Pjax*/
-let pjaxScrollTop = 0, pjaxLoading = false;
+// ==========================================================================
+// 10. PJAX 无刷新加载
+// ==========================================================================
+
+let pjaxScrollTop = 0;
+var pjaxLoading = false;
 $.pjax.defaults.timeout = 10000;
 $.pjax.defaults.container = ['#primary', '#leftbar_part1_menu', '#leftbar_part2_inner', '.page-information-card-container', '#rightbar', '#wpadminbar'];
 $.pjax.defaults.fragment = ['#primary', '#leftbar_part1_menu', '#leftbar_part2_inner', '.page-information-card-container', '#rightbar', '#wpadminbar'];

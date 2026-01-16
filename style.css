@@ -11,6 +11,11 @@
 
 @charset "utf-8";
 
+/* ==========================================================================
+   CSS 变量定义 (CSS Custom Properties)
+   ========================================================================== */
+
+/* ---------- 主题色系统 ---------- */
 :root {
 	--themecolor: #5e72e4;
 	--themecolor-R: 94;
@@ -99,31 +104,36 @@
 	--color-border-on-foreground-deeper: #eee;
 	--color-text-deeper: #212529;
 	--color-selection: #cce2ff;
-	/* ========== 统一动画系统 - 桌面端和移动端一致 ========== */
-	/* 动画时长 - 基于 Material Design 3 规范 */
+	
+	/* ---------- 动画系统 (Material Design 3) ---------- */
+	/* 动画时长 */
 	--animation-instant: 100ms;
 	--animation-fast: 150ms;
 	--animation-normal: 250ms;
 	--animation-slow: 400ms;
 	--animation-slower: 600ms;
-	/* 缓动函数 - Material 3 标准曲线 */
+	
+	/* 缓动函数 - 标准曲线 */
 	--ease-standard: cubic-bezier(0.2, 0, 0, 1);
 	--ease-standard-decelerate: cubic-bezier(0, 0, 0, 1);
 	--ease-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
 	--ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
 	--ease-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
 	--ease-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
-	/* 弹性缓动 - 用于交互反馈 */
+	
+	/* 缓动函数 - 弹性曲线 */
 	--ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 	--ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
 	--ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
-	/* 状态层透明度 - Material 3 */
+	
+	/* 状态层透明度 */
 	--state-hover-opacity: 0.08;
 	--state-focus-opacity: 0.12;
 	--state-pressed-opacity: 0.12;
 	--state-dragged-opacity: 0.16;
 }
 
+/* ---------- 夜间模式配色 ---------- */
 html.darkmode body {
 	--color-background: #282828;
 	--color-foreground: #424242;
@@ -138,8 +148,8 @@ html.darkmode body {
 	--color-selection: #607799;
 }
 
+/* ---------- AMOLED 夜间模式 ---------- */
 html.darkmode.amoled-dark body,
-
 html.darkmode.amoled-dark.immersion-color body {
 	--color-background: #111;
 	--color-foreground: #000;
@@ -150,10 +160,11 @@ html.darkmode.amoled-dark.immersion-color body {
 	--color-border-on-foreground-deeper: #252525;
 	--color-text-deeper: #eee;
 	--color-selection: #607799;
---color-darkmode-toolbar: 0, 0, 0;
+	--color-darkmode-toolbar: 0, 0, 0;
 	--color-darkmode-banner: #131313;
 }
 
+/* ---------- 沉浸式主题色 (日间) ---------- */
 html.immersion-color body {
 	--color-background: rgb(var(--color-tint-86));
 	--color-foreground: rgb(var(--color-tint-92));
@@ -166,6 +177,7 @@ html.immersion-color body {
 	--color-selection: rgb(var(--color-tint-70));
 }
 
+/* ---------- 沉浸式主题色 (夜间) ---------- */
 html.immersion-color.darkmode body {
 	--color-background: rgb(var(--color-shade-94));
 	--color-foreground: rgb(var(--color-shade-90));
@@ -176,11 +188,13 @@ html.immersion-color.darkmode body {
 	--color-border-on-foreground-deeper: rgb(var(--color-shade-75));
 	--color-text-deeper: rgb(var(--color-tint-82));
 	--color-selection: rgb(var(--color-shade-70));
---color-darkmode-toolbar: var(--color-shade-90);
+	--color-darkmode-toolbar: var(--color-shade-90);
 	--color-darkmode-banner: rgb(var(--color-shade-96));
 }
 
-/* 主题切换过渡效果 (Dark/Light Mode Transition) */
+/* ==========================================================================
+   主题切换过渡效果
+   ========================================================================== */
 html {
 	transition: none;
 }
@@ -197,8 +211,9 @@ html.theme-transitioning *::after {
 		stroke 200ms var(--ease-standard) !important;
 }
 
-/*Argon CSS Override*/
-
+/* ==========================================================================
+   Argon 框架样式覆盖
+   ========================================================================== */
 .bg-white,
 
 .card,
@@ -249,7 +264,9 @@ html.theme-transitioning *::after {
 	background-color: var(--color-widgets-disabled);
 }
 
-/* Main CSS */
+/* ==========================================================================
+   基础样式
+   ========================================================================== */
 
 :root {
 	--card-radius: 4px;
