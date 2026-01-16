@@ -5411,12 +5411,15 @@ html.darkmode .comment-operations {
 
 .comment-upvote .btn-inner--text {
 	margin-left: 0 !important;
+	margin-right: 0 !important;
 	font-variant-numeric: tabular-nums;
+	display: inline-block !important;
 }
 
 .comment-upvote .comment-upvote-num {
 	min-width: 12px;
 	text-align: center;
+	display: inline-block;
 }
 
 html.darkmode .comment-upvote {

@@ -996,12 +996,14 @@ if (argonConfig.waterflow_columns != "1") {
 			$("#post_comment").addClass("post-comment-force-privatemode-off");
 		}
 		
-		// 滚动到评论框（添加防护检查）
+		// 滚动到评论框（使用原生 scrollTo 避免 jQuery easing 依赖问题）
 		let postComment = $('#post_comment');
 		if (postComment.length > 0 && postComment.offset()) {
-			$("body,html").animate({
-				scrollTop: postComment.offset().top - 100
-			}, 400, 'easeOutCirc');
+			let targetTop = postComment.offset().top - 100;
+			window.scrollTo({
+				top: targetTop,
+				behavior: 'smooth'
+			});
 		}
 		
 		// 使用 CSS 动画显示回复框
@@ -1063,9 +1065,14 @@ if (argonConfig.waterflow_columns != "1") {
 		}else{
 			$("#post_comment").addClass("post-comment-force-privatemode-off");
 		}
-		$("body,html").animate({
-			scrollTop: $('#post_comment').offset().top - 100
-		}, 400, 'easeOutCirc');
+		// 使用原生 scrollTo 避免 jQuery easing 依赖问题
+		let postCommentEl = document.getElementById('post_comment');
+		if (postCommentEl) {
+			window.scrollTo({
+				top: postCommentEl.getBoundingClientRect().top + window.pageYOffset - 100,
+				behavior: 'smooth'
+			});
+		}
 		$("#post_comment_content").focus();
 	}
 	function cancelEdit(clear){
@@ -1080,9 +1087,14 @@ if (argonConfig.waterflow_columns != "1") {
 		edit(this.getAttribute("data-id"));
 	});
 	$(document).on("click", "#post_comment_edit_cancel", function(){
-		$("body,html").animate({
-			scrollTop: $("#comment-" + editID).offset().top - 100
-		}, 400, 'easeOutCirc');
+		// 使用原生 scrollTo 避免 jQuery easing 依赖问题
+		let commentEl = document.getElementById("comment-" + editID);
+		if (commentEl) {
+			window.scrollTo({
+				top: commentEl.getBoundingClientRect().top + window.pageYOffset - 100,
+				behavior: 'smooth'
+			});
+		}
 		cancelEdit(true);
 	});
 	$(document).on("pjax:click", function(){
