@@ -3710,18 +3710,10 @@ void 0;
         });
     }
 
-    // 7. 主题切换动画
+    // 7. 主题切换动画 - 已在 header.php 中通过 setDarkmode 函数处理，此处不再重复
     function initThemeTransition() {
-        var observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                if (mutation.attributeName === 'class') {
-                    var html = document.documentElement;
-                    html.classList.add('theme-transitioning');
-                    setTimeout(function() { html.classList.remove('theme-transitioning'); }, 300);
-                }
-            });
-        });
-        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        // 移除 MutationObserver 避免无限循环导致内存泄漏
+        // 主题切换过渡效果已在 setDarkmode() 函数中实现
     }
 
     // 8. 减少动画偏好检测

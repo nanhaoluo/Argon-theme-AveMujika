@@ -16327,7 +16327,6 @@ html.darkmode {
 @media (hover: hover) and (pointer: fine) {
     article.post.card {
         transition: transform var(--animation-normal) var(--ease-out-expo), box-shadow var(--animation-normal) var(--ease-standard);
-        will-change: transform, box-shadow;
     }
     article.post.card:hover {
         transform: translateY(-6px) scale(1.005);
@@ -16340,7 +16339,6 @@ html.darkmode {
     }
     article.post.card .post-thumbnail {
         transition: transform var(--animation-slow) var(--ease-out-expo);
-        will-change: transform;
     }
     article.post.card:hover .post-thumbnail {
         transform: scale(1.05);
