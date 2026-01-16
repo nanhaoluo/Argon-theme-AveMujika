@@ -196,9 +196,7 @@
 
 	<?php } ?>
 
-
-
-	<?php
+<?php
 
 		$seo_keywords = get_seo_keywords();
 
@@ -208,9 +206,7 @@
 
 	<?php } ?>
 
-
-
-	<?php
+<?php
 
 		if (is_single() || is_page()){
 
@@ -232,9 +228,7 @@
 
 	<?php } ?>
 
-
-
-	<meta name="theme-color" content="<?php echo $themecolor; ?>">
+<meta name="theme-color" content="<?php echo $themecolor; ?>">
 
 	<meta name="theme-color-rgb" content="<?php echo hex2str($themecolor); ?>">
 
@@ -242,21 +236,13 @@
 
 	<meta name="argon-enable-custom-theme-color" content="<?php echo (get_option('argon_show_customize_theme_color_picker') != 'false' ? 'true' : 'false'); ?>">
 
-
-
-
-
-	<meta name="theme-card-radius" content="<?php echo $cardradius; ?>">
+<meta name="theme-card-radius" content="<?php echo $cardradius; ?>">
 
 	<meta name="theme-card-radius-origin" content="<?php echo $cardradius_origin; ?>">
 
+<meta name="theme-version" content="<?php echo $GLOBALS['theme_version']; ?>">
 
-
-	<meta name="theme-version" content="<?php echo $GLOBALS['theme_version']; ?>">
-
-
-
-	<link rel="profile" href="http://gmpg.org/xfn/11">
+<link rel="profile" href="http://gmpg.org/xfn/11">
 
 	<?php if ( is_singular() && pings_open( get_queried_object() ) ) : ?>
 
@@ -293,8 +279,7 @@
 	<?php wp_head(); ?>
 	
 	<?php if (function_exists('argon_is_force_refresh_enabled') && argon_is_force_refresh_enabled()): ?>
-	<!-- 强制刷新缓存 - 清除浏览器和 Service Worker 缓存 -->
-	<script>
+	<!-- 强制刷新缓存 - 清除浏览器和 Service Worker 缓存 --><script>
 	(function() {
 		var forceRefreshKey = 'argon_force_refresh_version';
 		var currentVersion = '<?php echo get_option('argon_force_refresh_enabled_time', 0); ?>';
@@ -337,8 +322,7 @@
 	</script>
 	<?php endif; ?>
 	
-	<!-- 移动端资源加载修复 - 确保 CSS 完全应用 -->
-	<script>
+	<!-- 移动端资源加载修复 - 确保 CSS 完全应用 --><script>
 		(function() {
 			// 检测移动端并强制重新计算样式
 			if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
@@ -370,8 +354,7 @@
 		window.argonUserRole = '<?php echo current_user_can('administrator') ? 'administrator' : (is_user_logged_in() ? 'user' : 'guest'); ?>';
 	</script>
 	
-	<!-- Argon 修复补丁 - 必须在 wp_head() 之后立即执行 -->
-	<script src="<?php echo get_template_directory_uri(); ?>/assets/js/argon.min.js?ver=<?php echo $assets_version; ?>"></script>
+	<!-- Argon 修复补丁 - 必须在 wp_head() 之后立即执行 --><script src="<?php echo get_template_directory_uri(); ?>/assets/js/argon.min.js?ver=<?php echo $assets_version; ?>"></script>
 
 	<?php $GLOBALS['wp_path'] = get_option('argon_wp_path') == '' ? '/' : get_option('argon_wp_path'); ?>
 
@@ -565,9 +548,7 @@
 
 		}
 
-
-
-		function toggleAmoledDarkMode(){
+function toggleAmoledDarkMode(){
 
 			document.documentElement.classList.toggle("amoled-dark");
 
@@ -605,9 +586,7 @@
 
 	</script>
 
-
-
-	<?php if (get_option('argon_enable_smoothscroll_type') == '2') { /*平滑滚动*/?>
+<?php if (get_option('argon_enable_smoothscroll_type') == '2') { /*平滑滚动*/?>
 
 		<script src="<?php echo $GLOBALS['assets_path']; ?>/assets/vendor/smoothscroll/smoothscroll2.js"></script>
 
@@ -627,11 +606,7 @@
 
 </head>
 
-
-
 <?php echo get_option('argon_custom_html_head'); ?>
-
-
 
 <style id="themecolor_css">
 
@@ -770,8 +745,6 @@ if ($animation_style == 'apple') {
 	<?php endif; ?>
 </style>
 
-
-
 <body <?php body_class(); ?>>
 
 <?php /*wp_body_open();*/ ?>
@@ -882,17 +855,17 @@ if ($animation_style == 'apple') {
 
 								if ($depth == 0){
 
-									if ($args -> walker -> has_children == 1){
+									if ($args->walker->has_children == 1){
 
 										$output .= "\n
 
 										<li class='nav-item dropdown'>
 
-											<a href='" . $object -> url . "' class='nav-link' data-toggle='dropdown' no-pjax onclick='return false;' title='" . $object -> description . "'>
+											<a href='" . $object->url . "' class='nav-link' data-toggle='dropdown' no-pjax onclick='return false;' title='" . $object->description . "'>
 
 										  		<i class='ni ni-book-bookmark d-lg-none'></i>
 
-												<span class='nav-link-inner--text'>" . $object -> title . "</span>
+												<span class='nav-link-inner--text'>" . $object->title . "</span>
 
 										  </a>";
 
@@ -902,11 +875,11 @@ if ($animation_style == 'apple') {
 
 										<li class='nav-item'>
 
-											<a href='" . $object -> url . "' class='nav-link' target='" . $object -> target . "' title='" . $object -> description . "'>
+											<a href='" . $object->url . "' class='nav-link' target='" . $object->target . "' title='" . $object->description . "'>
 
 										  		<i class='ni ni-book-bookmark d-lg-none'></i>
 
-												<span class='nav-link-inner--text'>" . $object -> title . "</span>
+												<span class='nav-link-inner--text'>" . $object->title . "</span>
 
 										  </a>";
 
@@ -914,7 +887,7 @@ if ($animation_style == 'apple') {
 
 								}else if ($depth == 1){
 
-									$output .= "<a href='" . $object -> url . "' class='dropdown-item' target='" . $object -> target . "' title='" . $object -> description . "'>" . $object -> title . "</a>";
+									$output .= "<a href='" . $object->url . "' class='dropdown-item' target='" . $object->target . "' title='" . $object->description . "'>" . $object->title . "</a>";
 
 								}
 
@@ -1064,9 +1037,7 @@ if ($animation_style == 'apple') {
 
 </div>
 
-<!--Banner-->
-
-<section id="banner" class="banner section section-lg section-shaped">
+<!--Banner--><section id="banner" class="banner section section-lg section-shaped">
 
 	<div class="shape <?php echo get_option('argon_banner_background_hide_shapes') == 'true' ? '' : 'shape-style-1' ?> <?php echo get_option('argon_banner_background_color_type') == '' ? 'shape-primary' : get_option('argon_banner_background_color_type'); ?>">
 
@@ -1090,9 +1061,7 @@ if ($animation_style == 'apple') {
 
 	</div>
 
-
-
-	<?php
+<?php
 
 		$banner_title = get_option('argon_banner_title') == '' ? get_bloginfo('name') : get_option('argon_banner_title');
 
@@ -1143,8 +1112,6 @@ if ($animation_style == 'apple') {
 	<?php } ?>
 
 </section>
-
-
 
 <?php if (apply_filters('argon_page_background_url', get_option('argon_page_background_url')) != '') { ?>
 
@@ -1286,8 +1253,7 @@ if ($animation_style == 'apple') {
 
 <?php } ?>
 
-<!-- 毛玻璃效果 - 独立于背景图片设置（无背景图时也生效） -->
-<?php 
+<!-- 毛玻璃效果 - 独立于背景图片设置（无背景图时也生效） --><?php 
 $card_blur_standalone = intval(get_option('argon_card_blur', '20'));
 $card_saturate_standalone = intval(get_option('argon_card_saturate', '180'));
 $post_bg_opacity_standalone = get_option('argon_post_background_opacity', '0.7');
@@ -1328,7 +1294,6 @@ if (apply_filters('argon_page_background_url', get_option('argon_page_background
 </style>
 <?php endif; ?>
 
-
 <?php if (get_option('argon_show_toolbar_mask') == 'true') { ?>
 
 	<style>
@@ -1364,8 +1329,6 @@ if (apply_filters('argon_page_background_url', get_option('argon_page_background
 	</style>
 
 <?php } ?>
-
-
 
 <div id="float_action_buttons" class="float-action-buttons fabtns-unloaded">
 
@@ -1512,8 +1475,6 @@ if (apply_filters('argon_page_background_url', get_option('argon_page_background
 	</button>
 
 </div>
-
-
 
 <div id="content" class="site-content">
 

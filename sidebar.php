@@ -15,10 +15,8 @@ $author_desc = get_option('argon_sidebar_author_description');
 
 <aside id="leftbar" class="<?php echo $leftbar_class; ?>" role="complementary">
 
-		<!-- 移动端侧边栏 - 重新设计的布局 -->
-		<div id="leftbar_mobile_nav" class="leftbar-mobile-nav">
-			<!-- 顶部用户信息区 -->
-			<div class="leftbar-mobile-profile">
+		<!-- 移动端侧边栏 - 重新设计的布局 --><div id="leftbar_mobile_nav" class="leftbar-mobile-nav">
+			<!-- 顶部用户信息区 --><div class="leftbar-mobile-profile">
 				<div class="leftbar-mobile-close" id="leftbar_close_btn">
 					<i class="fa fa-times"></i>
 				</div>
@@ -48,8 +46,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 					<div class="leftbar-mobile-user-desc"><?php echo esc_html($author_desc); ?></div>
 					<?php endif; ?>
 				</div>
-				<!-- 统计数据 -->
-				<div class="leftbar-mobile-stats">
+				<!-- 统计数据 --><div class="leftbar-mobile-stats">
 					<div class="leftbar-mobile-stat">
 						<span class="stat-num"><?php echo wp_count_posts()->publish; ?></span>
 						<span class="stat-label"><?php _e('文章', 'argon'); ?></span>
@@ -65,16 +62,14 @@ $author_desc = get_option('argon_sidebar_author_description');
 				</div>
 			</div>
 			
-			<!-- 搜索框 -->
-			<div class="leftbar-mobile-search">
+			<!-- 搜索框 --><div class="leftbar-mobile-search">
 				<div class="leftbar-mobile-search-inner">
 					<i class="fa fa-search"></i>
 					<input type="text" id="leftbar_mobile_search_input" placeholder="<?php _e('搜索...', 'argon'); ?>" autocomplete="off">
 				</div>
 			</div>
 			
-			<!-- 导航菜单 -->
-			<?php if ( has_nav_menu('toolbar_menu') ) : ?>
+			<!-- 导航菜单 --><?php if ( has_nav_menu('toolbar_menu') ) : ?>
 			<div class="leftbar-mobile-menu-section">
 				<div class="leftbar-mobile-section-title"><?php _e('导航', 'argon'); ?></div>
 				<ul class="leftbar-mobile-menu">
@@ -117,8 +112,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 			</div>
 			<?php endif; ?>
 			
-			<!-- 侧边栏菜单 -->
-			<?php if ( has_nav_menu('leftbar_menu') ) : ?>
+			<!-- 侧边栏菜单 --><?php if ( has_nav_menu('leftbar_menu') ) : ?>
 			<div class="leftbar-mobile-menu-section">
 				<div class="leftbar-mobile-section-title"><?php _e('更多', 'argon'); ?></div>
 				<ul class="leftbar-mobile-menu">
@@ -135,8 +129,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 			</div>
 			<?php endif; ?>
 			
-			<!-- 文章目录折叠面板 (仅在文章页显示) -->
-			<?php if (have_catalog()) : ?>
+			<!-- 文章目录折叠面板 (仅在文章页显示) --><?php if (have_catalog()) : ?>
 			<div class="leftbar-mobile-collapse-section">
 				<div class="leftbar-mobile-collapse-header" id="mobile_catalog_toggle">
 					<div class="collapse-header-left">
@@ -151,8 +144,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 			</div>
 			<?php endif; ?>
 			
-			<!-- TODO折叠面板 -->
-			<?php if (get_option('argon_show_todo_list', 'true') == 'true') : ?>
+			<!-- TODO折叠面板 --><?php if (get_option('argon_show_todo_list', 'true') == 'true') : ?>
 			<?php
 				$mobile_todos = argon_get_todo_list();
 				$mobile_is_author = current_user_can('publish_posts');
@@ -259,8 +251,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 			</script>
 			<?php endif; ?>
 			
-			<!-- 顶栏自定义链接 -->
-			<?php 
+			<!-- 顶栏自定义链接 --><?php 
 			$toolbar_links_left = get_option('argon_toolbar_links_left', '');
 			$toolbar_links_right = get_option('argon_toolbar_links_right', '');
 			$has_custom_links = !empty(trim($toolbar_links_left)) || !empty(trim($toolbar_links_right));
@@ -307,8 +298,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 			</div>
 			<?php endif; ?>
 			
-			<!-- 底部操作区 -->
-			<div class="leftbar-mobile-footer">
+			<!-- 底部操作区 --><div class="leftbar-mobile-footer">
 				<div class="leftbar-mobile-actions">
 					<button class="leftbar-mobile-action" onclick="toggleDarkmode()">
 						<i class="fa fa-moon-o"></i>
@@ -326,8 +316,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 			</div>
 		</div>
 
-		<!-- 桌面端原有侧边栏内容 -->
-		<div class="leftbar-desktop-content">
+		<!-- 桌面端原有侧边栏内容 --><div class="leftbar-desktop-content">
 		<?php if (get_option('argon_sidebar_announcement') != '') { ?>
 
 			<div id="leftbar_announcement" class="card bg-white shadow-sm border-0">
@@ -350,9 +339,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 
 				<span class="leftbar-banner-title text-white"><?php echo get_option('argon_sidebar_banner_title') == '' ? bloginfo('name') : get_option('argon_sidebar_banner_title'); ?></span>
 
-
-
-				<?php 
+<?php 
 
 					$sidebar_subtitle = get_option('argon_sidebar_banner_subtitle'); 
 
@@ -370,13 +357,9 @@ $author_desc = get_option('argon_sidebar_author_description');
 
 				<?php } /*顶栏标题*/?>
 
+</div>
 
-
-			</div>
-
-
-
-			<?php
+<?php
 
 				/*侧栏上部菜单*/
 
@@ -402,9 +385,9 @@ $author_desc = get_option('argon_sidebar_author_description');
 
 						$output .= "\n
 
-						<li class='leftbar-menu-item" . ( $args -> walker -> has_children == 1 ? " leftbar-menu-item-haschildren" : "" ) . ( $object -> current == 1 ? " current" : "" ) . "'>
+						<li class='leftbar-menu-item" . ( $args->walker->has_children == 1 ? " leftbar-menu-item-haschildren" : "" ) . ( $object->current == 1 ? " current" : "" ) . "'>
 
-							<a href='" . $object -> url . "'" . ( $args -> walker -> has_children == 1 ? " no-pjax onclick='return false;'" : "" ) . " target='" . $object -> target . "'>". $object -> title . "</a>";
+							<a href='" . $object->url . "'" . ( $args->walker->has_children == 1 ? " no-pjax onclick='return false;'" : "" ) . " target='" . $object->target . "'>". $object->title . "</a>";
 
 					}
 
@@ -595,7 +578,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 
 									<a <?php $archives_page_url = get_option('argon_archives_timeline_url'); echo (empty($archives_page_url) ? ' style="cursor: default;"' : 'href="' . $archives_page_url . '"');?>>
 
-										<span class="site-state-item-count"><?php echo wp_count_posts() -> publish; ?></span>
+										<span class="site-state-item-count"><?php echo wp_count_posts()->publish; ?></span>
 
 										<span class="site-state-item-name"><?php _e('文章', 'argon');?></span>
 
@@ -643,7 +626,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 
 											<div class='site-author-links-item'>
 
-												<a href='" . $object -> url . "' rel='noopener' target='_blank'>". $object -> title . "</a>";
+												<a href='" . $object->url . "' rel='noopener' target='_blank'>". $object->title . "</a>";
 
 										}
 
@@ -661,9 +644,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 
 								}
 
-
-
-								if ( has_nav_menu('leftbar_author_links') ){
+if ( has_nav_menu('leftbar_author_links') ){
 
 									echo "<div class='site-author-links'>";
 
@@ -701,7 +682,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 
 											<li class='site-friend-links-item'>
 
-												<a href='" . $object -> url . "' rel='noopener' target='_blank'>". $object -> title . "</a>";
+												<a href='" . $object->url . "' rel='noopener' target='_blank'>". $object->title . "</a>";
 
 										}
 
@@ -719,9 +700,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 
 								}
 
-
-
-								if ( has_nav_menu('leftbar_friend_links') ){
+if ( has_nav_menu('leftbar_friend_links') ){
 
 									echo "<div class='site-friend-links'>
 
@@ -1178,9 +1157,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 		</script>
 		<?php endif; ?>
 
-		</div><!-- .leftbar-desktop-content -->
-
-</aside>
+		</div><!-- .leftbar-desktop-content --></aside>
 
 <div class="modal fade" id="blog_categories" tabindex="-1" role="dialog" aria-labelledby="" aria-hidden="true">
 
@@ -1224,7 +1201,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 
 					foreach($categories as $category) {
 
-						echo "<a href=" . get_category_link( $category -> term_id ) . " class='badge badge-secondary tag'>" . $category->name . " <span class='tag-num'>" . $category -> count . "</span></a>";
+						echo "<a href=" . get_category_link( $category->term_id ) . " class='badge badge-secondary tag'>" . $category->name . " <span class='tag-num'>" . $category->count . "</span></a>";
 
 					}
 
@@ -1280,7 +1257,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 
 					foreach($categories as $category) {
 
-						echo "<a href=" . get_category_link( $category -> term_id ) . " class='badge badge-secondary tag'>" . $category->name . " <span class='tag-num'>" . $category -> count . "</span></a>";
+						echo "<a href=" . get_category_link( $category->term_id ) . " class='badge badge-secondary tag'>" . $category->name . " <span class='tag-num'>" . $category->count . "</span></a>";
 
 					}
 

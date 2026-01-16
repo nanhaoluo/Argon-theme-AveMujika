@@ -1,14 +1,8 @@
 <?php get_header(); ?>
 
-
-
 <div class="page-information-card-container"></div>
 
-
-
 <?php get_sidebar(); ?>
-
-
 
 <div id="primary" class="content-area">
 
@@ -20,22 +14,16 @@
 
 			the_post();
 
+get_template_part( 'template-parts/content', 'single' );
 
-
-			get_template_part( 'template-parts/content', 'single' );
-
-
-
-			// 文章操作按钮（分享和评论）
+// 文章操作按钮（分享和评论）
 			get_template_part( 'template-parts/post-actions' );
 
 			if (comments_open() || get_comments_number()) {
 				comments_template();
 			}
 
-
-
-			if ( is_singular( 'post' ) ) {
+if ( is_singular( 'post' ) ) {
 
 				if (get_previous_post() || get_next_post()){
 
@@ -67,9 +55,7 @@
 
 			}
 
-
-
-			$relatedPosts = get_option('argon_related_post', 'disabled');
+$relatedPosts = get_option('argon_related_post', 'disabled');
 
 			if ($relatedPosts != "disabled"){
 
@@ -79,13 +65,13 @@
 
 				if (strpos($relatedPosts, 'category') !== false){
 
-					$cats = get_the_category($post -> ID);
+					$cats = get_the_category($post->ID);
 
 					if ($cats){
 
 						foreach($cats as $key1 => $cat) {
 
-							$cat_array[$key1] = $cat -> slug;
+							$cat_array[$key1] = $cat->slug;
 
 						}
 
@@ -97,13 +83,13 @@
 
 				if (strpos($relatedPosts, 'tag') !== false){
 
-					$tags = get_the_tags($post -> ID);
+					$tags = get_the_tags($post->ID);
 
 					if ($tags){
 
 						foreach($tags as $key2 => $tag) {
 
-							$tag_array[$key2] = $tag -> slug;
+							$tag_array[$key2] = $tag->slug;
 
 						}
 
@@ -121,7 +107,7 @@
 
 					'meta_key' => 'views',
 
-					'post__not_in' => array($post -> ID),
+					'post__not_in' => array($post->ID),
 
 					'tax_query' => array(
 
@@ -153,7 +139,7 @@
 
 				));
 
-				if ($query -> have_posts()) {
+				if ($query->have_posts()) {
 
 					echo '<div class="related-posts card shadow-sm">
 
@@ -167,9 +153,9 @@
 
 		            <div style="overflow-x: auto;padding: 1.5rem;padding-top: 0.8rem;padding-bottom: 0.8rem;}">';
 
-					while ($query -> have_posts()) {
+					while ($query->have_posts()) {
 
-						$query -> the_post();
+						$query->the_post();
 
 						$hasThumbnail = argon_has_post_thumbnail(get_the_ID());
 
@@ -201,13 +187,9 @@
 
 			}
 
-
-
-		endwhile;
+endwhile;
 
 		?>
-
-
 
 <?php get_footer(); ?>
 

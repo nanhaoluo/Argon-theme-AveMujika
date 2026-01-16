@@ -364,7 +364,7 @@ function resetGeetestCaptcha() {
 							<div class="input-group-prepend">
 								<span class="input-group-text"><i class="fa fa-user-circle"></i></span>
 							</div>
-							<input id="post_comment_name" class="form-control" placeholder="<?php _e('昵称', 'argon');?>" type="text" name="author" value="<?php if (is_user_logged_in()) {echo (wp_get_current_user() -> user_login);} else {echo htmlspecialchars($current_commenter['comment_author']);} ?>">
+							<input id="post_comment_name" class="form-control" placeholder="<?php _e('昵称', 'argon');?>" type="text" name="author" value="<?php if (is_user_logged_in()) {echo (wp_get_current_user()->user_login);} else {echo htmlspecialchars($current_commenter['comment_author']);} ?>">
 						</div>
 					</div>
 				</div>
@@ -374,7 +374,7 @@ function resetGeetestCaptcha() {
 							<div class="input-group-prepend">
 								<span class="input-group-text"><i class="fa fa-envelope"></i></span>
 							</div>
-							<input id="post_comment_email" class="form-control" placeholder="<?php _e('邮箱', 'argon');?><?php if ($enable_qq_avatar == 'true'){echo __(' / QQ 号', 'argon');} ?>" type="email" name="email" value="<?php if (is_user_logged_in()) {echo (wp_get_current_user() -> user_email);} else {echo htmlspecialchars($current_commenter['comment_author_email']);} ?>">
+							<input id="post_comment_email" class="form-control" placeholder="<?php _e('邮箱', 'argon');?><?php if ($enable_qq_avatar == 'true'){echo __(' / QQ 号', 'argon');} ?>" type="email" name="email" value="<?php if (is_user_logged_in()) {echo (wp_get_current_user()->user_email);} else {echo htmlspecialchars($current_commenter['comment_author_email']);} ?>">
 						</div>
 					</div>
 				</div>
@@ -383,16 +383,14 @@ function resetGeetestCaptcha() {
 						<?php 
 						$captcha_type = get_option('argon_captcha_type', 'math');
 						if ($captcha_type === 'geetest') { ?>
-							<!-- Geetest 验证码容器 -->
-							<div id="geetest-captcha" class="mb-4"></div>
+							<!-- Geetest 验证码容器 --><div id="geetest-captcha" class="mb-4"></div>
 							<input type="hidden" id="geetest_lot_number" name="lot_number" value="">
 							<input type="hidden" id="geetest_captcha_output" name="captcha_output" value="">
 							<input type="hidden" id="geetest_pass_token" name="pass_token" value="">
 							<input type="hidden" id="geetest_gen_time" name="gen_time" value="">
 							<input type="hidden" id="argon_comment_nonce" value="<?php echo wp_create_nonce('argon_comment'); ?>">
 						<?php } else { ?>
-							<!-- 原有的数学验证码 -->
-							<div class="input-group input-group-alternative mb-4 post-comment-captcha-container" captcha="<?php echo get_comment_captcha(get_comment_captcha_seed());?>">
+							<!-- 原有的数学验证码 --><div class="input-group input-group-alternative mb-4 post-comment-captcha-container" captcha="<?php echo get_comment_captcha(get_comment_captcha_seed());?>">
 								<div class="input-group-prepend">
 									<span class="input-group-text"><i class="fa fa-key"></i></span>
 								</div>
