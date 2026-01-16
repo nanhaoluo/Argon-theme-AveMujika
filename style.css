@@ -5455,10 +5455,10 @@ html.darkmode .comment-upvote:hover {
 }
 
 .comment-upvote.upvoted:hover {
-	background-color: var(--themecolor) !important;
+	background-color: var(--themecolor-dark) !important;
 	color: #fff !important;
-	transform: translateX(-50%) !important;
-	cursor: default;
+	transform: translateX(-50%) scale(1.05) !important;
+	cursor: pointer;
 }
 
 .comment-upvote.comment-upvoting {

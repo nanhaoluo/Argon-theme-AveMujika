@@ -867,6 +867,22 @@ function argon_debug_console_script() {
 }
 add_action('wp_footer', 'argon_debug_console_script', 999);
 
+// 确保 jQuery easing 函数在所有脚本加载后仍可用
+function argon_ensure_jquery_easing() {
+	?>
+	<script>
+	(function(){
+		if(typeof jQuery==='undefined')return;
+		var $=jQuery;
+		if(!$.easing)$.easing={};
+		if(!$.easing.easeOutCirc)$.easing.easeOutCirc=function(x){return Math.sqrt(1-Math.pow(x-1,2));};
+		if(!$.easing.easeOutExpo)$.easing.easeOutExpo=function(x){return x===1?1:1-Math.pow(2,-10*x);};
+	})();
+	</script>
+	<?php
+}
+add_action('wp_footer', 'argon_ensure_jquery_easing', 9999);
+
 //初次使用时发送安装量统计信息 (数据仅用于统计安装量)
 function post_analytics_info(){
 	if(function_exists('file_get_contents')){
@@ -1728,68 +1744,161 @@ function get_comment_upvotes($id) {
 	if ($comment == null){
 		return 0;
 	}
-	$upvotes = get_comment_meta($comment -> comment_ID, "upvotes", true);
+	$upvotes = get_comment_meta($comment->comment_ID, 'upvotes', true);
 	if ($upvotes == null) {
 		$upvotes = 0;
 	}
 	return $upvotes;
 }
-function set_comment_upvotes($id){
+
+/**
+ * 获取用户唯一标识（基于 IP + User-Agent 的哈希）
+ * 用于识别同一用户，防止重复点赞
+ */
+function get_user_upvote_identifier() {
+	$ip = '';
+	// 获取真实 IP，考虑代理情况
+	if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+		$ip = $_SERVER['HTTP_CLIENT_IP'];
+	} elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+		// 可能有多个 IP，取第一个
+		$ip_list = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+		$ip = trim($ip_list[0]);
+	} elseif (!empty($_SERVER['HTTP_X_REAL_IP'])) {
+		$ip = $_SERVER['HTTP_X_REAL_IP'];
+	} else {
+		$ip = $_SERVER['REMOTE_ADDR'];
+	}
+	
+	// 结合 User-Agent 生成设备指纹
+	$user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '';
+	
+	// 如果用户已登录，使用用户 ID 作为主要标识
+	if (is_user_logged_in()) {
+		return 'user_' . get_current_user_id();
+	}
+	
+	// 未登录用户使用 IP + UA 哈希
+	// 使用 sha256 生成较短的哈希，取前 16 位
+	return substr(hash('sha256', $ip . '|' . $user_agent), 0, 16);
+}
+
+/**
+ * 获取评论的点赞用户列表
+ */
+function get_comment_upvote_users($id) {
 	$comment = get_comment($id);
 	if ($comment == null){
-		return 0;
+		return [];
 	}
-	$upvotes = get_comment_meta($comment -> comment_ID, "upvotes", true);
-	if ($upvotes == null) {
-		$upvotes = 0;
+	$users = get_comment_meta($comment->comment_ID, 'upvote_users', true);
+	if (empty($users) || !is_array($users)) {
+		return [];
 	}
-	$upvotes++;
-	update_comment_meta($comment -> comment_ID, "upvotes", $upvotes);
-	return $upvotes;
+	return $users;
 }
-function is_comment_upvoted($id){
-	$upvotedList = isset( $_COOKIE['argon_comment_upvoted'] ) ? $_COOKIE['argon_comment_upvoted'] : '';
-	if (in_array($id, explode(',', $upvotedList))){
-		return true;
-	}
-	return false;
+
+/**
+ * 检查当前用户是否已点赞该评论
+ */
+function is_comment_upvoted($id) {
+	$identifier = get_user_upvote_identifier();
+	$users = get_comment_upvote_users($id);
+	return in_array($identifier, $users);
 }
+
+/**
+ * 添加点赞
+ */
+function add_comment_upvote($id) {
+	$comment = get_comment($id);
+	if ($comment == null){
+		return false;
+	}
+	
+	$identifier = get_user_upvote_identifier();
+	$users = get_comment_upvote_users($id);
+	
+	if (in_array($identifier, $users)) {
+		return false; // 已点赞
+	}
+	
+	$users[] = $identifier;
+	update_comment_meta($comment->comment_ID, 'upvote_users', $users);
+	update_comment_meta($comment->comment_ID, 'upvotes', count($users));
+	
+	return true;
+}
+
+/**
+ * 取消点赞
+ */
+function remove_comment_upvote($id) {
+	$comment = get_comment($id);
+	if ($comment == null){
+		return false;
+	}
+	
+	$identifier = get_user_upvote_identifier();
+	$users = get_comment_upvote_users($id);
+	
+	$key = array_search($identifier, $users);
+	if ($key === false) {
+		return false; // 未点赞
+	}
+	
+	unset($users[$key]);
+	$users = array_values($users); // 重新索引
+	update_comment_meta($comment->comment_ID, 'upvote_users', $users);
+	update_comment_meta($comment->comment_ID, 'upvotes', count($users));
+	
+	return true;
+}
+
+/**
+ * 处理评论点赞/取消点赞请求
+ */
 function upvote_comment(){
-	if (get_option("argon_enable_comment_upvote", "false") != "true"){
+	if (get_option('argon_enable_comment_upvote', 'false') != 'true'){
 		return;
 	}
 	header('Content-Type:application/json; charset=utf-8');
-	$ID = $_POST["comment_id"];
+	$ID = isset($_POST['comment_id']) ? intval($_POST['comment_id']) : 0;
 	$comment = get_comment($ID);
 	if ($comment == null){
-		exit(json_encode(array(
+		exit(json_encode([
 			'status' => 'failed',
 			'msg' => __('评论不存在', 'argon'),
-			'total_upvote' => 0
-		)));
+			'total_upvote' => 0,
+			'upvoted' => false
+		]));
 	}
-	$upvotedList = isset( $_COOKIE['argon_comment_upvoted'] ) ? $_COOKIE['argon_comment_upvoted'] : '';
-	if (in_array($ID, explode(',', $upvotedList))){
-		exit(json_encode(array(
-			'status' => 'failed',
-			'msg' => __('该评论已被赞过', 'argon'),
-			'total_upvote' => get_comment_upvotes($ID)
-		)));
+	
+	$is_upvoted = is_comment_upvoted($ID);
+	
+	if ($is_upvoted) {
+		// 已点赞，执行取消点赞
+		remove_comment_upvote($ID);
+		exit(json_encode([
+			'ID' => $ID,
+			'status' => 'success',
+			'action' => 'removed',
+			'msg' => __('已取消点赞', 'argon'),
+			'total_upvote' => format_number_in_kilos(get_comment_upvotes($ID)),
+			'upvoted' => false
+		]));
+	} else {
+		// 未点赞，执行点赞
+		add_comment_upvote($ID);
+		exit(json_encode([
+			'ID' => $ID,
+			'status' => 'success',
+			'action' => 'added',
+			'msg' => __('点赞成功', 'argon'),
+			'total_upvote' => format_number_in_kilos(get_comment_upvotes($ID)),
+			'upvoted' => true
+		]));
 	}
-    set_comment_upvotes($ID);
-    setcookie('argon_comment_upvoted', $upvotedList . $ID . "," , array(
-        'expires' => time() + 3153600000,
-        'path' => '/',
-        'secure' => is_ssl(),
-        'httponly' => true,
-        'samesite' => 'Lax'
-    ));
-	exit(json_encode(array(
-		'ID' => $ID,
-		'status' => 'success',
-		'msg' => __('点赞成功', 'argon'),
-		'total_upvote' => format_number_in_kilos(get_comment_upvotes($ID))
-	)));
 }
 add_action('wp_ajax_upvote_comment' , 'upvote_comment');
 add_action('wp_ajax_nopriv_upvote_comment' , 'upvote_comment');

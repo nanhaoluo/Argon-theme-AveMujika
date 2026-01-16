@@ -1905,25 +1905,35 @@ if (argonConfig.waterflow_columns != "1") {
 	});
 }();
 /*评论点赞*/
-$(document).on("click" , ".comment-upvote" , function(){
-	$this = $(this);
-	ID = $this.attr("data-id");
-	$this.addClass("comment-upvoting");
+$(document).on('click', '.comment-upvote', function(){
+	let $this = $(this);
+	let ID = $this.attr('data-id');
+	
+	// 防止重复点击
+	if ($this.hasClass('comment-upvoting')) {
+		return;
+	}
+	
+	$this.addClass('comment-upvoting');
 	$.ajax({
-		url : argonConfig.wp_path + "wp-admin/admin-ajax.php",
-		type : "POST",
-		dataType : "json",
-		data : {
-			action: "upvote_comment",
-			comment_id : ID,
+		url: argonConfig.wp_path + 'wp-admin/admin-ajax.php',
+		type: 'POST',
+		dataType: 'json',
+		data: {
+			action: 'upvote_comment',
+			comment_id: ID,
 		},
-		success : function(result){
-			$this.removeClass("comment-upvoting");
-			if (result.status == "success"){
-				$(".comment-upvote-num" , $this).html(result.total_upvote);
-				$this.addClass("upvoted");
-			}else{
-				$(".comment-upvote-num" , $this).html(result.total_upvote);
+		success: function(result){
+			$this.removeClass('comment-upvoting');
+			if (result.status === 'success'){
+				$('.comment-upvote-num', $this).html(result.total_upvote);
+				if (result.upvoted) {
+					$this.addClass('upvoted');
+				} else {
+					$this.removeClass('upvoted');
+				}
+			} else {
+				$('.comment-upvote-num', $this).html(result.total_upvote);
 				iziToast.show({
 					title: result.msg,
 					class: 'shadow-sm',
@@ -1938,10 +1948,10 @@ $(document).on("click" , ".comment-upvote" , function(){
 				});
 			}
 		},
-		error : function(xhr){
-			$this.removeClass("comment-upvoting");
+		error: function(xhr){
+			$this.removeClass('comment-upvoting');
 			iziToast.show({
-				title: __("点赞失败"),
+				title: __('点赞失败'),
 				class: 'shadow-sm',
 				position: 'topRight',
 				backgroundColor: '#f5365c',
