@@ -5204,7 +5204,9 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 
 	min-height: 24px;
 
-	margin-bottom: 1rem;
+	margin-bottom: 0;
+
+	padding-bottom: 2rem;
 
 	overflow-wrap: break-word;
 
