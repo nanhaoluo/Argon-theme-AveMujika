@@ -8361,43 +8361,6 @@ body.noscroll:before {
 	border-radius: 10px;
 }
 
-/* 移动端适配 */
-@media (max-width: 576px) {
-	#share {
-		position: fixed;
-		bottom: 80px;
-		right: 16px;
-		left: auto;
-		top: auto;
-		flex-direction: column;
-		gap: 8px;
-		padding: 10px;
-		background: var(--color-foreground);
-		border-radius: 12px;
-		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-		transform: translateY(20px);
-	}
-	
-	#share_container.opened #share {
-		transform: translateY(0);
-	}
-	
-	/* 移动端分享按钮旋转而不是消失 */
-	#share_container.opened #share_show {
-		transform: rotate(45deg);
-		opacity: 1;
-		pointer-events: auto;
-	}
-}
-
-/* 夜间模式 */
-@media (max-width: 576px) {
-	html.darkmode #share {
-		background: var(--color-foreground);
-		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-	}
-}
-
 #share .icon-wechat,
 #share .icon-copy-link {
 	position: relative;
