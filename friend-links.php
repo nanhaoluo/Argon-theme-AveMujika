@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * 友情链接页面
  * @package Argon
@@ -468,7 +468,8 @@ $flink_slogan = get_option('argon_friend_link_slogan', __('海内存知己，天
 $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换友链！如果您的网站已添加本站链接，填写友链页面地址可自动通过审核。', 'argon'));
 ?>
 
-<!-- 头部卡片 --><div class="flinks-header-card" style="margin-bottom: 16px;">
+<!-- 头部卡片 -->
+<div class="flinks-header-card" style="margin-bottom: 16px;">
     <div class="flinks-header-icon"><i class="fa fa-link"></i></div>
     <h1 class="flinks-title"><?php _e('友情链接', 'argon'); ?></h1>
     <p class="flinks-subtitle"><?php echo esc_html($flink_slogan); ?></p>
@@ -480,7 +481,8 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
     </div>
 </div>
 
-<!-- 管理面板（仅管理员可见） --><?php if ($is_admin) : ?>
+<!-- 管理面板（仅管理员可见） -->
+<?php if ($is_admin) : ?>
 <article class="post card shadow-sm bg-white border-0 flinks-admin-card" style="margin-bottom: 16px;" id="admin-panel">
     <div class="flinks-admin-title"><i class="fa fa-cog"></i><?php _e('友链管理', 'argon'); ?> <button class="btn btn-sm btn-secondary" style="margin-left:auto;font-size:11px;" id="check-all-btn"><?php _e('检测所有友链', 'argon'); ?></button></div>
     
@@ -538,7 +540,8 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
 </article>
 <?php endif; ?>
 
-<!-- 友链列表 --><?php if (!empty($links)) : ?>
+<!-- 友链列表 -->
+<?php if (!empty($links)) : ?>
     <?php $color_index = 0; foreach ($links as $category => $category_links) : ?>
     <article class="post card shadow-sm bg-white border-0 flinks-category-card" style="margin-bottom: 16px;">
         <div class="flinks-category-header">
@@ -604,7 +607,8 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
 </article>
 <?php endif; ?>
 
-<!-- 申请友链 --><?php if ($show_apply_form && !$is_admin) : ?>
+<!-- 申请友链 -->
+<?php if ($show_apply_form && !$is_admin) : ?>
 <article class="post card shadow-sm bg-white border-0 flinks-apply-card" style="margin-bottom: 16px;" id="apply-section">
     <div class="flinks-apply-header" onclick="toggleApplyForm()">
         <div class="flinks-apply-title"><i class="fa fa-plus-circle"></i><span><?php _e('申请友链', 'argon'); ?></span></div>
@@ -674,7 +678,8 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
                 </div>
             </div>
             
-            <!-- 验证码 --><?php if ($captcha_enabled) : ?>
+            <!-- 验证码 -->
+            <?php if ($captcha_enabled) : ?>
             <div class="flinks-captcha">
                 <?php if ($captcha_type === 'geetest') : ?>
                 <div id="flink-geetest-captcha"></div>
@@ -701,7 +706,8 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
 </article>
 <?php endif; ?>
 
-<!-- 编辑弹窗 --><?php if ($is_admin) : ?>
+<!-- 编辑弹窗 -->
+<?php if ($is_admin) : ?>
 <div class="flink-modal-overlay" id="edit-modal">
     <div class="flink-modal">
         <div class="flink-modal-title">

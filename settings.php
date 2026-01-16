@@ -90,7 +90,8 @@ function themeoptions_page(){
 
 				<tbody>
 
-					<!-- ========== 1. 基础设置 ========== --><tr><th class="subtitle"><h2 id="section-basic"><?php _e("基础设置", 'argon');?></h2></th></tr>
+					<!-- ========== 1. 基础设置 ========== -->
+					<tr><th class="subtitle"><h2 id="section-basic"><?php _e("基础设置", 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-theme-color"><?php _e("主题色", 'argon');?></h3></th></tr>
 
@@ -186,7 +187,9 @@ function themeoptions_page(){
 
 								</style>
 
-<?php $argon_show_customize_theme_color_picker = get_option('argon_show_customize_theme_color_picker');?>
+
+
+								<?php $argon_show_customize_theme_color_picker = get_option('argon_show_customize_theme_color_picker');?>
 
 								<div style="margin-top: 15px;">
 
@@ -288,7 +291,8 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 2. 外观样式 ========== --><tr><th class="subtitle"><h2 id="section-appearance"><?php _e('外观样式', 'argon');?></h2></th></tr>
+					<!-- ========== 2. 外观样式 ========== -->
+					<tr><th class="subtitle"><h2 id="section-appearance"><?php _e('外观样式', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-card-style"><?php _e('卡片样式', 'argon');?></h3></th></tr>
 
@@ -376,7 +380,8 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 3. 页面布局 ========== --><tr><th class="subtitle"><h2 id="section-layout"><?php _e('页面布局', 'argon');?></h2></th></tr>
+					<!-- ========== 3. 页面布局 ========== -->
+					<tr><th class="subtitle"><h2 id="section-layout"><?php _e('页面布局', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-page-layout"><?php _e('整体布局', 'argon');?></h3></th></tr>
 
@@ -707,7 +712,8 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 4. 顶栏设置 ========== --><tr><th class="subtitle"><h2 id="section-toolbar"><?php _e('顶栏设置', 'argon');?></h2></th></tr>
+					<!-- ========== 4. 顶栏设置 ========== -->
+					<tr><th class="subtitle"><h2 id="section-toolbar"><?php _e('顶栏设置', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-toolbar-basic"><?php _e('基本设置', 'argon');?></h3></th></tr>
 
@@ -947,7 +953,8 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 5. Banner 设置 ========== --><tr><th class="subtitle"><h2 id="section-banner"><?php _e('Banner 设置', 'argon');?></h2></th></tr>
+					<!-- ========== 5. Banner 设置 ========== -->
+					<tr><th class="subtitle"><h2 id="section-banner"><?php _e('Banner 设置', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-banner-content"><?php _e('Banner 内容', 'argon');?></h3></th></tr>
 
@@ -1163,7 +1170,8 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 6. 页面背景 ========== --><tr><th class="subtitle"><h2 id="section-background"><?php _e('页面背景', 'argon');?></h2></th></tr>
+					<!-- ========== 6. 页面背景 ========== -->
+					<tr><th class="subtitle"><h2 id="section-background"><?php _e('页面背景', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-background-image"><?php _e('背景图片', 'argon');?></h3></th></tr>
 
@@ -1202,8 +1210,10 @@ function themeoptions_page(){
 						<td colspan="2" style="padding: 20px 10px;">
 
 							<div style="display: flex; gap: 40px; align-items: flex-start;">
-								<!-- 左侧：设置项 --><div style="flex: 1; max-width: 450px;">
-									<!-- 背景不透明度 --><div style="margin-bottom: 20px;">
+								<!-- 左侧：设置项 -->
+								<div style="flex: 1; max-width: 450px;">
+									<!-- 背景不透明度 -->
+									<div style="margin-bottom: 20px;">
 										<label style="display: block; font-weight: 600; margin-bottom: 8px; color: #1d2327;"><?php _e('背景不透明度', 'argon');?></label>
 										<div style="display: flex; align-items: center; gap: 12px;">
 											<input type="range" name="argon_page_background_opacity" id="argon_page_bg_opacity_slider" min="0" max="1" step="0.01" value="<?php echo (get_option('argon_page_background_opacity') == '' ? '1' : get_option('argon_page_background_opacity')); ?>" style="flex: 1; cursor: pointer; height: 6px;">
@@ -1212,7 +1222,8 @@ function themeoptions_page(){
 										<p style="margin: 6px 0 0; font-size: 12px; color: #646970;"><?php _e('控制页面背景图片的不透明度', 'argon');?></p>
 									</div>
 
-									<!-- 卡片透明度 --><div style="margin-bottom: 20px;">
+									<!-- 卡片透明度 -->
+									<div style="margin-bottom: 20px;">
 										<label style="display: block; font-weight: 600; margin-bottom: 8px; color: #1d2327;"><?php _e('卡片透明度', 'argon');?></label>
 										<div style="display: flex; align-items: center; gap: 12px;">
 											<input type="range" name="argon_post_background_opacity" id="argon_post_bg_opacity_slider" min="0" max="1" step="0.01" value="<?php echo (get_option('argon_post_background_opacity') == '' ? '0.7' : get_option('argon_post_background_opacity')); ?>" style="flex: 1; cursor: pointer; height: 6px;">
@@ -1221,7 +1232,8 @@ function themeoptions_page(){
 										<p style="margin: 6px 0 0; font-size: 12px; color: #646970;"><?php _e('控制文章、评论等卡片的背景透明度，推荐 0.7', 'argon');?></p>
 									</div>
 
-									<!-- 毛玻璃模糊 --><div style="margin-bottom: 20px;">
+									<!-- 毛玻璃模糊 -->
+									<div style="margin-bottom: 20px;">
 										<label style="display: block; font-weight: 600; margin-bottom: 8px; color: #1d2327;"><?php _e('毛玻璃模糊', 'argon');?></label>
 										<div style="display: flex; align-items: center; gap: 12px;">
 											<input type="range" name="argon_card_blur" min="0" max="30" step="1" value="<?php echo (get_option('argon_card_blur', '20')); ?>" id="argon_card_blur_slider" style="flex: 1; cursor: pointer; height: 6px;">
@@ -1230,7 +1242,8 @@ function themeoptions_page(){
 										<p style="margin: 6px 0 0; font-size: 12px; color: #646970;"><?php _e('为卡片添加毛玻璃模糊效果，推荐 20px', 'argon');?></p>
 									</div>
 
-									<!-- 毛玻璃饱和度 --><div style="margin-bottom: 10px;">
+									<!-- 毛玻璃饱和度 -->
+									<div style="margin-bottom: 10px;">
 										<label style="display: block; font-weight: 600; margin-bottom: 8px; color: #1d2327;"><?php _e('毛玻璃饱和度', 'argon');?></label>
 										<div style="display: flex; align-items: center; gap: 12px;">
 											<input type="range" name="argon_card_saturate" min="100" max="250" step="10" value="<?php echo (get_option('argon_card_saturate', '180')); ?>" id="argon_card_saturate_slider" style="flex: 1; cursor: pointer; height: 6px;">
@@ -1240,7 +1253,8 @@ function themeoptions_page(){
 									</div>
 								</div>
 
-								<!-- 右侧：实时预览 --><div style="flex-shrink: 0;">
+								<!-- 右侧：实时预览 -->
+								<div style="flex-shrink: 0;">
 									<label style="display: block; font-weight: 600; margin-bottom: 8px; color: #1d2327;"><?php _e('效果预览', 'argon');?></label>
 									<?php $page_bg_url = get_option('argon_page_background_url'); ?>
 									<div id="effect_preview_box" style="position: relative; width: 200px; height: 140px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.12); background: #f4f5f7;">
@@ -1330,7 +1344,8 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 7. 侧边栏 ========== --><tr><th class="subtitle"><h2 id="section-sidebar"><?php _e('侧边栏', 'argon');?></h2></th></tr>
+					<!-- ========== 7. 侧边栏 ========== -->
+					<tr><th class="subtitle"><h2 id="section-sidebar"><?php _e('侧边栏', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-author-info"><?php _e('作者信息', 'argon');?></h3></th></tr>
 
@@ -1480,7 +1495,8 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 8. 浮动按钮与页脚 ========== --><tr><th class="subtitle"><h2 id="section-fab-footer"><?php _e('浮动按钮与页脚', 'argon');?></h2></th></tr>
+					<!-- ========== 8. 浮动按钮与页脚 ========== -->
+					<tr><th class="subtitle"><h2 id="section-fab-footer"><?php _e('浮动按钮与页脚', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-fab"><?php _e('浮动操作按钮', 'argon');?></h3></th></tr>
 
@@ -1552,7 +1568,8 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 9. 高级设置 ========== --><tr><th class="subtitle"><h2 id="section-advanced"><?php _e('高级设置', 'argon');?></h2></th></tr>
+					<!-- ========== 9. 高级设置 ========== -->
+					<tr><th class="subtitle"><h2 id="section-advanced"><?php _e('高级设置', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-seo">SEO</h3></th></tr>
 
@@ -1584,7 +1601,8 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 10. 文章显示 ========== --><tr><th class="subtitle"><h2 id="section-post-display"><?php _e('文章显示', 'argon');?></h2></th></tr>
+					<!-- ========== 10. 文章显示 ========== -->
+					<tr><th class="subtitle"><h2 id="section-post-display"><?php _e('文章显示', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-post-meta"><?php _e('Meta 信息', 'argon');?></h3></th></tr>
 
@@ -1860,7 +1878,8 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 11. 文章功能 ========== --><tr><th class="subtitle"><h2 id="section-post-features"><?php _e('文章功能', 'argon');?></h2></th></tr>
+					<!-- ========== 11. 文章功能 ========== -->
+					<tr><th class="subtitle"><h2 id="section-post-features"><?php _e('文章功能', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-footnote"><?php _e('脚注引用', 'argon');?></h3></th></tr>
 
@@ -2198,7 +2217,8 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 12. 特殊页面 ========== --><tr><th class="subtitle"><h2 id="section-special-pages"><?php _e('特殊页面', 'argon');?></h2></th></tr>
+					<!-- ========== 12. 特殊页面 ========== -->
+					<tr><th class="subtitle"><h2 id="section-special-pages"><?php _e('特殊页面', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-archive"><?php _e('归档页面', 'argon');?></h3></th></tr>
 
@@ -2270,7 +2290,8 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 13. 功能增强 ========== --><tr><th class="subtitle"><h2 id="section-enhancements"><?php _e('功能增强', 'argon');?></h2></th></tr>
+					<!-- ========== 13. 功能增强 ========== -->
+					<tr><th class="subtitle"><h2 id="section-enhancements"><?php _e('功能增强', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-code-highlight"><?php _e('代码高亮', 'argon');?></h3></th></tr>
 
@@ -2975,7 +2996,8 @@ window.pjaxLoaded = function(){
 
 					</tr>
 
-					<!-- ========== 14. 评论设置 ========== --><tr><th class="subtitle"><h2 id="section-comment"><?php _e('评论设置', 'argon');?></h2></th></tr>
+					<!-- ========== 14. 评论设置 ========== -->
+					<tr><th class="subtitle"><h2 id="section-comment"><?php _e('评论设置', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-comment-pagination"><?php _e('评论分页', 'argon');?></h3></th></tr>
 
@@ -3101,7 +3123,8 @@ window.pjaxLoaded = function(){
 
 					</tr>
 
-					<!-- ========== 15. 验证码与安全 ========== --><tr><th class="subtitle"><h2 id="section-security"><?php _e('验证码与安全', 'argon');?></h2></th></tr>
+					<!-- ========== 15. 验证码与安全 ========== -->
+					<tr><th class="subtitle"><h2 id="section-security"><?php _e('验证码与安全', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-captcha"><?php _e('验证码设置', 'argon');?></h3></th></tr>
 
@@ -3209,7 +3232,9 @@ window.pjaxLoaded = function(){
 
 									var apiServer = $('input[name="argon_geetest_api_server"]').val().trim();
 
-if (!captchaId || !captchaKey) {
+									
+
+									if (!captchaId || !captchaKey) {
 
 										alert('<?php _e('使用极验验证码时，验证码 ID 和 Key 为必填项', 'argon'); ?>');
 
@@ -3217,7 +3242,9 @@ if (!captchaId || !captchaKey) {
 
 									}
 
-// 验证API服务器URL格式
+									
+
+									// 验证API服务器URL格式
 
 									if (apiServer && !apiServer.match(/^https?:\/\/.+/)) {
 
@@ -3233,7 +3260,9 @@ if (!captchaId || !captchaKey) {
 
 							}
 
-$('select[name="argon_captcha_type"]').change(function() {
+							
+
+							$('select[name="argon_captcha_type"]').change(function() {
 
 								if ($(this).val() === 'geetest') {
 
@@ -3247,7 +3276,9 @@ $('select[name="argon_captcha_type"]').change(function() {
 
 							});
 
-// 表单提交时验证
+							
+
+							// 表单提交时验证
 
 							$('form').submit(function(e) {
 
@@ -3427,7 +3458,8 @@ $('select[name="argon_captcha_type"]').change(function() {
 
 				</tr>
 
-					<!-- ========== 返回评论系统 ========== --><tr><th class="subtitle"><h3 id="subsection-comment-features"><?php _e('评论功能', 'argon');?></h3></th></tr>
+					<!-- ========== 返回评论系统 ========== -->
+					<tr><th class="subtitle"><h3 id="subsection-comment-features"><?php _e('评论功能', 'argon');?></h3></th></tr>
 
 				<tr>
 
@@ -3905,13 +3937,13 @@ $('select[name="argon_captcha_type"]').change(function() {
 
 										foreach ($all_post_types as $post_type) {
 
-											if ($post_type->name == 'attachment'){
+											if ($post_type -> name == 'attachment'){
 
 												continue;
 
 											}
 
-											echo '<div class="search-filter-item" filter-name="'. $post_type->name .'">'. $post_type->label .'</div>';
+											echo '<div class="search-filter-item" filter-name="'. $post_type -> name .'">'. $post_type -> label .'</div>';
 
 										}
 
@@ -3995,7 +4027,8 @@ $('select[name="argon_captcha_type"]').change(function() {
 
 					</tr>
 
-					<!-- ========== 邮件模板设置 ========== --><tr><th class="subtitle"><h3 id="subsection-email-template"><?php _e('邮件模板', 'argon');?></h3></th></tr>
+					<!-- ========== 邮件模板设置 ========== -->
+					<tr><th class="subtitle"><h3 id="subsection-email-template"><?php _e('邮件模板', 'argon');?></h3></th></tr>
 
 					<tr>
 						<th><label><?php _e('邮件主题色', 'argon');?></label></th>
@@ -4135,7 +4168,8 @@ $('select[name="argon_captcha_type"]').change(function() {
 								<?php endforeach; ?>
 							</div>
 
-							<!-- 邮件预览弹窗 --><div id="argon_email_preview_modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000;">
+							<!-- 邮件预览弹窗 -->
+							<div id="argon_email_preview_modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000;">
 								<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; border-radius: 8px; width: 90%; max-width: 700px; max-height: 90vh; overflow: auto;">
 									<div style="padding: 16px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
 										<strong><?php _e('邮件预览', 'argon');?></strong>
@@ -4313,7 +4347,7 @@ $('select[name="argon_captcha_type"]').change(function() {
 
 									foreach($categories as $category) {
 
-										echo "<span>".$category->name ."->". $category->term_id ."</span>";
+										echo "<span>".$category -> name ." -> ". $category -> term_id ."</span>";
 
 									}
 
@@ -4331,7 +4365,7 @@ $('select[name="argon_captcha_type"]').change(function() {
 
 									foreach($categories as $category) {
 
-										echo "<span>".$category->name ."->". $category->term_id ."</span>";
+										echo "<span>".$category -> name ." -> ". $category -> term_id ."</span>";
 
 									}
 
@@ -4619,7 +4653,9 @@ $('select[name="argon_captcha_type"]').change(function() {
 
 							<p class="description"><?php _e('启用后，当主题文件被更新时，将自动清理所有缓存并显示更新通知。', 'argon');?></p>
 
-<?php $argon_hot_reload_auto_refresh = get_option('argon_hot_reload_auto_refresh', 'false'); ?>
+							
+
+							<?php $argon_hot_reload_auto_refresh = get_option('argon_hot_reload_auto_refresh', 'false'); ?>
 
 							<label style="display:block;margin-top:10px;">
 
@@ -4631,7 +4667,9 @@ $('select[name="argon_captcha_type"]').change(function() {
 
 							<p class="description" style="margin-left:24px;"><?php _e('推荐开启。用户访问时如检测到主题版本变化，将自动刷新页面以加载最新功能。', 'argon');?></p>
 
-<?php $argon_hot_reload_frontend_notice = get_option('argon_hot_reload_frontend_notice', 'false'); ?>
+							
+
+							<?php $argon_hot_reload_frontend_notice = get_option('argon_hot_reload_frontend_notice', 'false'); ?>
 
 							<label style="display:block;margin-top:10px;">
 
@@ -4641,7 +4679,9 @@ $('select[name="argon_captcha_type"]').change(function() {
 
 							</label>
 
-<div style="margin-top:15px;">
+							
+
+							<div style="margin-top:15px;">
 
 								<button type="button" class="button" id="argon_clear_cache_btn"><?php _e('手动清理缓存', 'argon');?></button>
 
@@ -4754,7 +4794,9 @@ $('select[name="argon_captcha_type"]').change(function() {
 
 								var countdownTimer = null;
 
-function updateCountdown() {
+								
+
+								function updateCountdown() {
 
 									if (remainingSeconds <= 0) {
 
@@ -4778,7 +4820,9 @@ function updateCountdown() {
 
 								}
 
-function updateUI() {
+								
+
+								function updateUI() {
 
 									var statusDiv = $('#argon_force_refresh_status');
 
@@ -4786,7 +4830,9 @@ function updateUI() {
 
 									var btn = $('#argon_force_refresh_btn');
 
-if (isEnabled) {
+									
+
+									if (isEnabled) {
 
 										statusDiv.css({'background': '#d4edda', 'border': '1px solid #c3e6cb'});
 
@@ -4824,7 +4870,9 @@ if (isEnabled) {
 
 								}
 
-// 初始化倒计时
+								
+
+								// 初始化倒计时
 
 								if (isEnabled && remainingSeconds > 0) {
 
@@ -4832,15 +4880,21 @@ if (isEnabled) {
 
 								}
 
-$('#argon_force_refresh_btn').on('click', function() {
+								
+
+								$('#argon_force_refresh_btn').on('click', function() {
 
 									var btn = $(this);
 
 									btn.prop('disabled', true);
 
-var action = isEnabled ? 'argon_disable_force_refresh' : 'argon_enable_force_refresh';
+									
 
-$.post(ajaxurl, {
+									var action = isEnabled ? 'argon_disable_force_refresh' : 'argon_enable_force_refresh';
+
+									
+
+									$.post(ajaxurl, {
 
 										action: action,
 
@@ -4902,7 +4956,9 @@ $.post(ajaxurl, {
 
 							<p class="description"><?php _e('启用后，管理员可在前台看到调试按钮，点击打开控制台查看错误信息。普通用户遇到错误时会显示红色通知提示联系管理员。', 'argon');?></p>
 
-<?php $muted_errors = get_option('argon_muted_errors', array()); ?>
+							
+
+							<?php $muted_errors = get_option('argon_muted_errors', array()); ?>
 
 							<?php if (!empty($muted_errors)): ?>
 
@@ -5334,7 +5390,9 @@ $.post(ajaxurl, {
 
 		}
 
-.form-table > tbody > tr:first-child > th{
+
+
+		.form-table > tbody > tr:first-child > th{
 
 			padding-top: 0 !important;
 
@@ -5348,7 +5406,9 @@ $.post(ajaxurl, {
 
 		}
 
-.form-table-mathrender > tbody > tr > th > label > div {
+
+
+		.form-table-mathrender > tbody > tr > th > label > div {
 
 			margin-top: 10px;
 
@@ -5372,7 +5432,9 @@ $.post(ajaxurl, {
 
 		}
 
-#main_form > .form-table{
+
+
+		#main_form > .form-table{
 
 			max-width: calc(100% - 180px);
 
@@ -5938,7 +6000,9 @@ function argon_update_themeoptions(){
 
 		argon_update_option('argon_show_comment_parent_info');
 
-//LazyLoad 相关
+
+
+		//LazyLoad 相关
 
 		argon_update_option('argon_enable_lazyload');
 
@@ -5948,7 +6012,9 @@ function argon_update_themeoptions(){
 
 		argon_update_option('argon_lazyload_loading_style');
 
-//图片缩放预览相关
+
+
+		//图片缩放预览相关
 
 		argon_update_option('argon_enable_fancybox');
 
@@ -5960,7 +6026,9 @@ function argon_update_themeoptions(){
 
 		argon_update_option('argon_zoomify_scale');
 
-//数学公式相关配置项
+
+
+		//数学公式相关配置项
 
 		argon_update_option('argon_math_render');
 
@@ -5970,13 +6038,17 @@ function argon_update_themeoptions(){
 
 		argon_update_option('argon_katex_cdn_url');
 
-//页头页尾脚本
+
+
+		//页头页尾脚本
 
 		argon_update_option_allow_tags('argon_custom_html_head');
 
 		argon_update_option_allow_tags('argon_custom_html_foot');
 
-//公告
+
+
+		//公告
 
 		argon_update_option_allow_tags('argon_sidebar_announcement');
 

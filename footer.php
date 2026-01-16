@@ -29,7 +29,8 @@
 
 		</div>
 
-		<!-- 加载主题核心 JS --><?php $assets_version = function_exists('argon_get_assets_version') ? argon_get_assets_version() : $GLOBALS['theme_version']; ?>
+		<!-- 加载主题核心 JS -->
+		<?php $assets_version = function_exists('argon_get_assets_version') ? argon_get_assets_version() : $GLOBALS['theme_version']; ?>
 		<script src="<?php echo $GLOBALS['assets_path']; ?>/argontheme.js?v=<?php echo $assets_version; ?>"></script>
 
 		<?php if (get_option('argon_math_render') == 'mathjax3') { /*Mathjax V3*/?>
@@ -148,13 +149,17 @@
 
 		<?php }?>
 
-<?php if (get_option('argon_enable_code_highlight') == 'true') { /*Highlight.js*/?>
+
+
+		<?php if (get_option('argon_enable_code_highlight') == 'true') { /*Highlight.js*/?>
 
 			<link rel="stylesheet" href="<?php echo $GLOBALS['assets_path']; ?>/assets/vendor/highlight/styles/<?php echo get_option('argon_code_theme') == '' ? 'vs2015' : get_option('argon_code_theme'); ?>.css">
 
 		<?php }?>
 
-</div>
+
+
+	</div>
 
 </div>
 
@@ -162,6 +167,10 @@
 
 </body>
 
+
+
 <?php echo get_option('argon_custom_html_foot'); ?>
+
+
 
 </html>
