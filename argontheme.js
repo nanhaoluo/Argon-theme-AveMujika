@@ -980,16 +980,23 @@ if (argonConfig.waterflow_columns != "1") {
 		}else{
 			$("#post_comment").addClass("post-comment-force-privatemode-off");
 		}
-		$("body,html").animate({
-			scrollTop: $('#post_comment').offset().top - 100
-		}, 400, 'easeOutCirc');
+		
+		// 滚动到评论框（添加防护检查）
+		let postComment = $('#post_comment');
+		if (postComment.length > 0 && postComment.offset()) {
+			$("body,html").animate({
+				scrollTop: postComment.offset().top - 100
+			}, 400, 'easeOutCirc');
+		}
 		
 		// 使用 CSS 动画显示回复框
 		let replyInfo = $('#post_comment_reply_info');
-		replyInfo.removeClass('reply-leaving').css('display', 'block');
-		// 触发重排以确保动画生效
-		replyInfo[0].offsetHeight;
-		replyInfo.addClass('reply-entering');
+		if (replyInfo.length > 0) {
+			replyInfo.removeClass('reply-leaving').css('display', 'block');
+			// 触发重排以确保动画生效
+			replyInfo[0].offsetHeight;
+			replyInfo.addClass('reply-entering');
+		}
 		
 		setTimeout(function(){
 			$("#post_comment_content").focus();
@@ -1010,9 +1017,15 @@ if (argonConfig.waterflow_columns != "1") {
 		$("#post_comment").removeClass("post-comment-force-privatemode-on post-comment-force-privatemode-off");
 	}
 	
-	$(document).on("click" , ".comment-reply" , function(){
-		reply(this.getAttribute("data-id"));
+	// 使用原生事件委托确保第一次点击也能响应
+	document.addEventListener('click', function(e) {
+		let target = e.target.closest('.comment-reply');
+		if (target) {
+			reply(target.getAttribute('data-id'));
+		}
 	});
+	
+	// 保留 jQuery 事件绑定用于 PJAX 兼容
 	$(document).on("click pjax:click" , "#post_comment_reply_cancel" , function(){
 		cancelReply();
 	});
@@ -3754,7 +3767,8 @@ void 0;
     }
 
     function initRippleEffect() {
-        var rippleElements = document.querySelectorAll('.btn, .card, .nav-link, .dropdown-item, .page-link, .leftbar-mobile-menu-item > a, .leftbar-mobile-action, .fabtn, .comment-reply, .tag, .badge');
+        // 排除大尺寸卡片（文章、评论区、相关文章、页脚等），避免触摸时产生布局问题
+        var rippleElements = document.querySelectorAll('.btn, .card:not(article.post):not(#comments):not(#post_comment):not(.related-posts):not(.post-navigation):not(#footer), .nav-link, .dropdown-item, .page-link, .leftbar-mobile-menu-item > a, .leftbar-mobile-action, .fabtn, .comment-reply, .tag, .badge');
         rippleElements.forEach(function(el) {
             if (el.dataset.rippleInit) return;
             el.dataset.rippleInit = 'true';
