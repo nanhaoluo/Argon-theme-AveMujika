@@ -5450,6 +5450,11 @@ window.pjaxLoaded = function(){
 
 		});
 
+		// 防止数学公式 CDN 输入框点击时触发 radio 选中
+		$(document).on("click", ".form-table-mathrender input[type='text']", function(e){
+			e.stopPropagation();
+		});
+
 		$(function () {
 
 			$(document).headIndex({
