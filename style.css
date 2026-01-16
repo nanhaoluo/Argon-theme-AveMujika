@@ -5140,7 +5140,7 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 
 	margin-top: 20px;
 
-	padding-bottom: 18px;
+	padding-bottom: 35px;
 
 	border-bottom: var(--color-border-on-foreground) solid 1px;
 
@@ -5204,9 +5204,7 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 
 	min-height: 24px;
 
-	margin-bottom: 0;
-
-	padding-bottom: 2rem;
+	margin-bottom: 1rem;
 
 	overflow-wrap: break-word;
 
