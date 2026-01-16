@@ -4461,8 +4461,6 @@ html.darkmode .tippy-box[data-theme~="light"] {
 	margin-left: -5px;
 	width: calc(100% + 0px);
 	height: auto;
-	max-height: calc(100vh - 400px); /* 限制最大高度，为 TODO 和底部留出空间 */
-	overflow-y: auto;
 }
 
 #leftbar_catalog::-webkit-scrollbar {
