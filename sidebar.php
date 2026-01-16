@@ -542,23 +542,52 @@ $author_desc = get_option('argon_sidebar_author_description');
 
 								<?php if (get_option('argon_show_headindex_number') == 'true') {?>
 
-									<style>
-
-										#leftbar_catalog ul {
-
-											counter-reset: blog_catalog_number;
-
+									<script>
+									(function() {
+										// 智能检测标题是否已有序号，避免重复添加
+										function initCatalogNumbers() {
+											var catalog = document.getElementById('leftbar_catalog');
+											if (!catalog) {
+												setTimeout(initCatalogNumbers, 100);
+												return;
+											}
+											
+											var items = catalog.querySelectorAll('li.index-item > a.index-link');
+											if (items.length === 0) {
+												setTimeout(initCatalogNumbers, 100);
+												return;
+											}
+											
+											// 检测是否有标题已经带序号（如 "1. xxx" 或 "1.1 xxx"）
+											var numberPattern = /^[\d一二三四五六七八九十]+[.、．]\s*/;
+											var hasNumberedHeadings = false;
+											var numberedCount = 0;
+											
+											items.forEach(function(item) {
+												var text = item.textContent.trim();
+												if (numberPattern.test(text)) {
+													numberedCount++;
+												}
+											});
+											
+											// 如果超过一半的标题已有序号，认为文章自带编号
+											hasNumberedHeadings = numberedCount > items.length / 2;
+											
+											if (!hasNumberedHeadings) {
+												// 添加 CSS 计数器样式
+												var style = document.createElement('style');
+												style.textContent = '#leftbar_catalog ul { counter-reset: blog_catalog_number; } #leftbar_catalog li.index-item > a:before { content: counters(blog_catalog_number, \".\") \" \"; counter-increment: blog_catalog_number; }';
+												document.head.appendChild(style);
+											}
 										}
-
-										#leftbar_catalog li.index-item > a:before {
-
-											content: counters(blog_catalog_number, '.') " ";
-
-											counter-increment: blog_catalog_number;
-
+										
+										if (document.readyState === 'loading') {
+											document.addEventListener('DOMContentLoaded', initCatalogNumbers);
+										} else {
+											setTimeout(initCatalogNumbers, 100);
 										}
-
-									</style>
+									})();
+									</script>
 
 								<?php }?>
 
