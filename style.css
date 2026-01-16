@@ -5102,6 +5102,8 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 
 	position: relative;
 
+	min-height: 70px;
+
 }
 
 .comment-avatar-vertical-center .comment-item-left-wrapper {
