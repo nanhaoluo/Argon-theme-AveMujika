@@ -3889,3 +3889,21 @@ void 0;
     if (document.readyState !== 'complete') { initLoadingBar(); }
 })();
 /* ========== End of Modern UI Enhancements ========== */
+
+
+// ========== jQuery Easing 备用（确保在所有脚本加载后仍可用）==========
+(function() {
+    if (typeof jQuery === 'undefined') return;
+    var $ = jQuery;
+    if (!$.easing) $.easing = {};
+    if (!$.easing.easeOutCirc) {
+        $.easing.easeOutCirc = function(x) {
+            return Math.sqrt(1 - Math.pow(x - 1, 2));
+        };
+    }
+    if (!$.easing.easeOutExpo) {
+        $.easing.easeOutExpo = function(x) {
+            return x === 1 ? 1 : 1 - Math.pow(2, -10 * x);
+        };
+    }
+})();
