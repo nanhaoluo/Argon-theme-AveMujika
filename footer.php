@@ -123,28 +123,26 @@
 
 			<script src="<?php echo get_option('argon_katex_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/katex@0.11.1/dist/' : get_option('argon_katex_cdn_url'); ?>katex.min.js"></script>
 
-			<script src="<?php echo get_option('argon_katex_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/katex@0.11.1/dist/' : get_option('argon_katex_cdn_url'); ?>contrib/auto-render.min.js"></script>
+			<script src="<?php echo get_option('argon_katex_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/katex@0.11.1/dist/' : get_option('argon_katex_cdn_url'); ?>contrib/auto-render.min.js" onload="window.katexAutoRenderLoaded=true"></script>
 
 			<script>
-
 				document.addEventListener("DOMContentLoaded", function() {
-
-					renderMathInElement(document.body,{
-
-						delimiters: [
-
-							{left: "$", right: "$", display: true},
-
-							{left: "$", right: "$", display: false},
-
-							{left: "\\(", right: "\\)", display: false}
-
-						]
-
-					});
-
+					function tryRenderMath() {
+						if (typeof renderMathInElement === 'function') {
+							renderMathInElement(document.body, {
+								delimiters: [
+									{left: "$$", right: "$$", display: true},
+									{left: "$", right: "$", display: false},
+									{left: "\\(", right: "\\)", display: false},
+									{left: "\\[", right: "\\]", display: true}
+								]
+							});
+						} else {
+							setTimeout(tryRenderMath, 100);
+						}
+					}
+					tryRenderMath();
 				});
-
 			</script>
 
 		<?php }?>
