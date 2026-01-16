@@ -30,6 +30,21 @@ if (typeof window.Zoomify === 'undefined') {
 // 确保 jQuery 插件存在
 if (typeof jQuery !== 'undefined') {
     (function($) {
+        // 确保 easing 函数存在（防止其他插件覆盖 jQuery 后丢失）
+        if (typeof $.easing === 'undefined') {
+            $.easing = {};
+        }
+        if (typeof $.easing.easeOutCirc === 'undefined') {
+            $.easing.easeOutCirc = function(x) {
+                return Math.sqrt(1 - Math.pow(x - 1, 2));
+            };
+        }
+        if (typeof $.easing.easeOutExpo === 'undefined') {
+            $.easing.easeOutExpo = function(x) {
+                return x === 1 ? 1 : 1 - Math.pow(2, -10 * x);
+            };
+        }
+        
         // 确保 zoomify 插件存在
         if (typeof $.fn.zoomify === 'undefined') {
             $.fn.zoomify = function() { return this; };
