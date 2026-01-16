@@ -5322,11 +5322,13 @@ html.darkmode .comment-item-avatar .avatar {
 	background: var(--color-widgets);
 	border-radius: var(--m3-shape-sm, 6px);
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+	pointer-events: none;
 }
 
 .comment-item:hover .comment-operations {
 	opacity: 1;
 	transform: translateY(0);
+	pointer-events: auto;
 }
 
 html.darkmode .comment-operations {

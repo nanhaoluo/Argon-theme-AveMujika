@@ -1017,15 +1017,9 @@ if (argonConfig.waterflow_columns != "1") {
 		$("#post_comment").removeClass("post-comment-force-privatemode-on post-comment-force-privatemode-off");
 	}
 	
-	// 使用原生事件委托确保第一次点击也能响应
-	document.addEventListener('click', function(e) {
-		let target = e.target.closest('.comment-reply');
-		if (target) {
-			reply(target.getAttribute('data-id'));
-		}
+	$(document).on("click" , ".comment-reply" , function(){
+		reply(this.getAttribute("data-id"));
 	});
-	
-	// 保留 jQuery 事件绑定用于 PJAX 兼容
 	$(document).on("click pjax:click" , "#post_comment_reply_cancel" , function(){
 		cancelReply();
 	});
