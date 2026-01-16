@@ -2870,33 +2870,6 @@ window.pjaxLoaded = function(){
 					<tr><th class="subtitle"><h3 id="subsection-animation"><?php _e('动画效果', 'argon');?></h3></th></tr>
 
 					<tr>
-						<th><label><?php _e('全局动画风格', 'argon');?></label></th>
-						<td>
-							<select name="argon_animation_style">
-								<?php $argon_animation_style = get_option('argon_animation_style', 'material3'); ?>
-								<option value="material3" <?php if ($argon_animation_style=='material3'){echo 'selected';} ?>><?php _e('Material 3 (推荐)', 'argon');?></option>
-								<option value="apple" <?php if ($argon_animation_style=='apple'){echo 'selected';} ?>><?php _e('Apple 风格', 'argon');?></option>
-								<option value="minimal" <?php if ($argon_animation_style=='minimal'){echo 'selected';} ?>><?php _e('简约', 'argon');?></option>
-								<option value="disabled" <?php if ($argon_animation_style=='disabled'){echo 'selected';} ?>><?php _e('禁用动画', 'argon');?></option>
-							</select>
-							<p class="description"><?php _e('选择全局动画风格，影响按钮、卡片、页面切换等所有动画效果', 'argon');?></p>
-						</td>
-					</tr>
-
-					<tr>
-						<th><label><?php _e('动画速度', 'argon');?></label></th>
-						<td>
-							<select name="argon_animation_speed">
-								<?php $argon_animation_speed = get_option('argon_animation_speed', 'normal'); ?>
-								<option value="fast" <?php if ($argon_animation_speed=='fast'){echo 'selected';} ?>><?php _e('快速', 'argon');?></option>
-								<option value="normal" <?php if ($argon_animation_speed=='normal'){echo 'selected';} ?>><?php _e('正常 (推荐)', 'argon');?></option>
-								<option value="slow" <?php if ($argon_animation_speed=='slow'){echo 'selected';} ?>><?php _e('慢速', 'argon');?></option>
-							</select>
-							<p class="description"><?php _e('调整全局动画的播放速度', 'argon');?></p>
-						</td>
-					</tr>
-
-					<tr>
 						<th><label><?php _e('卡片悬浮效果', 'argon');?></label></th>
 						<td>
 							<select name="argon_card_hover_effect">
@@ -5757,8 +5730,6 @@ function argon_update_themeoptions(){
 		argon_update_option('argon_disable_pjax_animation');
 
 		// 动画效果相关配置
-		argon_update_option('argon_animation_style');
-		argon_update_option('argon_animation_speed');
 		argon_update_option('argon_card_hover_effect');
 		argon_update_option('argon_button_click_effect');
 

@@ -698,52 +698,21 @@ if ($card_opacity == '' || $card_opacity == '1') {
 </style>
 
 <?php
-// 动画效果设置
-$animation_style = get_option('argon_animation_style', 'material3');
-$animation_speed = get_option('argon_animation_speed', 'normal');
+// 动画效果设置 - 使用融合风格（Material 3 + Apple + 简约的最佳组合）
 $card_hover_effect = get_option('argon_card_hover_effect', 'lift');
 $button_click_effect = get_option('argon_button_click_effect', 'both');
-
-// 根据动画速度设置时间变量
-$speed_multiplier = 1;
-if ($animation_speed == 'fast') {
-	$speed_multiplier = 0.6;
-} else if ($animation_speed == 'slow') {
-	$speed_multiplier = 1.5;
-}
-
-$animation_fast = round(150 * $speed_multiplier);
-$animation_normal = round(250 * $speed_multiplier);
-$animation_slow = round(400 * $speed_multiplier);
-
-// 根据动画风格设置缓动函数
-$ease_standard = 'cubic-bezier(0.4, 0, 0.2, 1)';
-$ease_spring = 'cubic-bezier(0.34, 1.56, 0.64, 1)';
-
-if ($animation_style == 'apple') {
-	$ease_standard = 'cubic-bezier(0.25, 0.1, 0.25, 1)';
-	$ease_spring = 'cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-} else if ($animation_style == 'minimal') {
-	$ease_standard = 'ease';
-	$ease_spring = 'ease-out';
-}
 ?>
 
 <style id="theme_animation_css">
 	:root {
-		--animation-fast: <?php echo $animation_fast; ?>ms;
-		--animation-normal: <?php echo $animation_normal; ?>ms;
-		--animation-slow: <?php echo $animation_slow; ?>ms;
-		--ease-standard: <?php echo $ease_standard; ?>;
-		--ease-spring: <?php echo $ease_spring; ?>;
+		/* 动画时长 - Material 3 规范 */
+		--animation-fast: 150ms;
+		--animation-normal: 250ms;
+		--animation-slow: 400ms;
+		/* 缓动函数 - 融合风格：Material 3 标准 + Apple 流畅 + 简约自然 */
+		--ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1); /* Apple 风格，更流畅 */
+		--ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* Material 弹性，有活力 */
 	}
-	
-	<?php if ($animation_style == 'disabled'): ?>
-	*, *::before, *::after {
-		animation-duration: 0.01ms !important;
-		transition-duration: 0.01ms !important;
-	}
-	<?php endif; ?>
 	
 	<?php if ($card_hover_effect == 'none'): ?>
 	.post-item:hover, article.card:hover {
