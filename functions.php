@@ -2989,11 +2989,64 @@ function get_banner_background_url(){
 		return $url;
 	}
 }
-//原生懒加载：对 <img> 标签添加 loading="lazy" 属性
+//懒加载：对 <img> 标签添加懒加载支持
 function argon_lazyload($content){
-	if(!is_feed() && !is_robots() && !is_home()){
-		// 为没有 loading 属性的图片添加 loading="lazy"
-		$content = preg_replace('/<img((?!loading=)[^>]*)>/i', '<img$1 loading="lazy">', $content);
+	if (!is_feed() && !is_robots() && !is_home()) {
+		$loading_style = get_option('argon_lazyload_loading_style', '1');
+		// 占位图 base64（用于触发 CSS 加载动画）
+		$placeholder = 'data:image/svg+xml;base64,PCEtLUFyZ29uTG9hZGluZy0tPg==';
+		$style_class = ($loading_style !== 'none') ? ' lazyload-style-' . $loading_style : '';
+		
+		$content = preg_replace_callback(
+			'/<img\s+([^>]*)>/i',
+			function($matches) use ($placeholder, $style_class) {
+				$attrs = $matches[1];
+				
+				// 如果已有 lazyload 类或 data-src 属性则不处理
+				if (preg_match('/\bclass\s*=\s*["\'][^"\']*\blazyload\b/i', $attrs) ||
+					preg_match('/\bdata-src\s*=/i', $attrs)) {
+					return $matches[0];
+				}
+				
+				// 提取 src 属性
+				if (!preg_match('/\bsrc\s*=\s*["\']([^"\']*)["\']/', $attrs, $src_match)) {
+					return $matches[0];
+				}
+				$original_src = $src_match[1];
+				
+				// 跳过已经是 base64 的图片
+				if (strpos($original_src, 'data:image') === 0) {
+					return $matches[0];
+				}
+				
+				// 替换 src 为占位图，添加 data-src 存储原始地址
+				$new_attrs = preg_replace(
+					'/\bsrc\s*=\s*["\'][^"\']*["\']/',
+					'src="' . $placeholder . '" data-src="' . esc_attr($original_src) . '"',
+					$attrs
+				);
+				
+				// 添加 lazyload 类
+				if (preg_match('/\bclass\s*=\s*["\']([^"\']*)["\']/', $new_attrs, $class_match)) {
+					$new_class = $class_match[1] . ' lazyload' . $style_class;
+					$new_attrs = preg_replace(
+						'/\bclass\s*=\s*["\'][^"\']*["\']/',
+						'class="' . esc_attr($new_class) . '"',
+						$new_attrs
+					);
+				} else {
+					$new_attrs .= ' class="lazyload' . $style_class . '"';
+				}
+				
+				// 添加 loading="lazy" 作为后备
+				if (!preg_match('/\bloading\s*=/i', $new_attrs)) {
+					$new_attrs .= ' loading="lazy"';
+				}
+				
+				return '<img ' . $new_attrs . '>';
+			},
+			$content
+		);
 	}
 	return $content;
 }
@@ -3004,8 +3057,10 @@ function argon_fancybox($content){
 	return $content;
 }
 function the_content_filter($content){
-	// 始终使用原生懒加载
-	$content = argon_lazyload($content);
+	// 根据设置决定是否启用懒加载
+	if (get_option('argon_enable_lazyload') !== 'false') {
+		$content = argon_lazyload($content);
+	}
 	if (get_option('argon_enable_fancybox') != 'false' && get_option('argon_enable_zoomify') == 'false'){
 		$content = argon_fancybox($content);
 	}

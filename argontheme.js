@@ -2235,10 +2235,89 @@ $.fancybox.defaults.i18n = {
 	}
 };
 
-/*Lazyload - 已改用浏览器原生 loading="lazy"*/
-function lazyloadInit(){
-	// 原生懒加载无需 JS 初始化
-	// 保留此函数以兼容可能的外部调用
+/*Lazyload - 使用 IntersectionObserver 实现懒加载*/
+function lazyloadInit() {
+	let images = document.querySelectorAll('img.lazyload[data-src]');
+	if (images.length === 0) return;
+	
+	let effect = argonConfig.lazyload_effect || 'fadeIn';
+	let threshold = parseInt(argonConfig.lazyload_threshold) || 800;
+	
+	// 使用 IntersectionObserver 实现懒加载
+	if ('IntersectionObserver' in window) {
+		let observer = new IntersectionObserver(function(entries) {
+			entries.forEach(function(entry) {
+				if (entry.isIntersecting) {
+					let img = entry.target;
+					loadImage(img, effect);
+					observer.unobserve(img);
+				}
+			});
+		}, {
+			rootMargin: threshold + 'px 0px'
+		});
+		
+		images.forEach(function(img) {
+			observer.observe(img);
+		});
+	} else {
+		// 降级方案：直接加载所有图片
+		images.forEach(function(img) {
+			loadImage(img, effect);
+		});
+	}
+}
+
+/**
+ * 加载单张图片
+ * @param {HTMLImageElement} img - 图片元素
+ * @param {string} effect - 加载效果
+ */
+function loadImage(img, effect) {
+	let src = img.getAttribute('data-src');
+	if (!src) return;
+	
+	// 预加载图片
+	let tempImg = new Image();
+	tempImg.onload = function() {
+		img.src = src;
+		img.removeAttribute('data-src');
+		img.classList.remove('lazyload');
+		
+		// 移除所有 lazyload-style-* 类
+		img.className = img.className.replace(/\blazyload-style-\d+\b/g, '').trim();
+		
+		// 应用加载效果
+		if (effect === 'fadeIn') {
+			img.style.opacity = '0';
+			img.style.transition = 'opacity 0.3s ease';
+			setTimeout(function() {
+				img.style.opacity = '1';
+			}, 10);
+			setTimeout(function() {
+				img.style.transition = '';
+			}, 310);
+		} else if (effect === 'slideDown') {
+			img.style.opacity = '0';
+			img.style.transform = 'translateY(-20px)';
+			img.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+			setTimeout(function() {
+				img.style.opacity = '1';
+				img.style.transform = 'translateY(0)';
+			}, 10);
+			setTimeout(function() {
+				img.style.transition = '';
+				img.style.transform = '';
+			}, 310);
+		}
+	};
+	tempImg.onerror = function() {
+		// 加载失败时使用原始 src
+		img.src = src;
+		img.removeAttribute('data-src');
+		img.classList.remove('lazyload');
+	};
+	tempImg.src = src;
 }
 lazyloadInit();
 

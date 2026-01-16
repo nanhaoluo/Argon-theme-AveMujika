@@ -407,8 +407,10 @@
 
 			pangu: "<?php echo get_option('argon_enable_pangu', 'false'); ?>",
 
-			// 原生懒加载已启用，无需 JS lazyload 配置
-			lazyload: false,
+			// 懒加载配置
+			lazyload: <?php echo (get_option('argon_enable_lazyload') !== 'false' ? 'true' : 'false'); ?>,
+			lazyload_effect: "<?php echo get_option('argon_lazyload_effect', 'fadeIn'); ?>",
+			lazyload_threshold: <?php echo (get_option('argon_lazyload_threshold') == '' ? '800' : get_option('argon_lazyload_threshold')); ?>,
 
 			fold_long_comments: <?php echo get_option('argon_fold_long_comments', 'false'); ?>,
 
