@@ -409,7 +409,7 @@ $(document).on("blur" , "#navbar_search_input_container" , function(){
 });
 // 监听输入变化来切换has-text类
 $(document).on("input" , "#navbar_search_input" , function(){
-	var container = $("#navbar_search_input_container");
+	let container = $("#navbar_search_input_container");
 	if ($(this).val().trim() !== "") {
 		container.addClass("has-text");
 	} else {
@@ -602,7 +602,7 @@ function waterflowInit() {
 	let heights = [0, 0, 0];
 	function getMinHeightPosition(){
 		let res = 0, minn = 2147483647;
-		for (var i = 0; i < columns; i++) {
+		for (let i = 0; i < columns; i++) {
 			if (heights[i] < minn) {
 				minn = heights[i];
 				res = i;
@@ -663,11 +663,11 @@ if (argonConfig.waterflow_columns !== "1") {
 
 /*移动端文章列表布局切换*/
 !function(){
-	var mobileLayout = argonConfig.article_list_layout_mobile || "1";
-	var isMobile = window.innerWidth <= 900;
+	let mobileLayout = argonConfig.article_list_layout_mobile || "1";
+	let isMobile = window.innerWidth <= 900;
 	
 	function applyMobileLayout() {
-		var nowMobile = window.innerWidth <= 900;
+		let nowMobile = window.innerWidth <= 900;
 		if (nowMobile) {
 			$("html").addClass("mobile-layout-" + mobileLayout);
 		} else {
@@ -728,10 +728,10 @@ if (argonConfig.waterflow_columns !== "1") {
 		$("#fabtn_go_to_comment").addClass("fabtn-hidden");
 	}
 	$goToComment.on("click" , function(){
-		var commentsArea = $("#comments");
-		var postCommentArea = $("#post_comment");
-		var wasCollapsed = commentsArea.hasClass("comments-collapsed");
-		var toggleBtn = $("#comments_toggle");
+		let commentsArea = $("#comments");
+		let postCommentArea = $("#post_comment");
+		let wasCollapsed = commentsArea.hasClass("comments-collapsed");
+		let toggleBtn = $("#comments_toggle");
 		
 		if (wasCollapsed && toggleBtn.length > 0) {
 			// 折叠状态：先滚动到评论切换按钮位置，再展开
@@ -1290,7 +1290,7 @@ if (argonConfig.waterflow_columns !== "1") {
 		});
 
 		// 准备数据
-		var ajaxData = {
+		let ajaxData = {
 			action: "ajax_post_comment",
 			comment: commentContent,
 			author: commentName,
@@ -2279,7 +2279,7 @@ if ($("html").hasClass("banner-as-cover")){
 }
 
 /*Pjax*/
-var pjaxScrollTop = 0, pjaxLoading = false;
+let pjaxScrollTop = 0, pjaxLoading = false;
 $.pjax.defaults.timeout = 10000;
 $.pjax.defaults.container = ['#primary', '#leftbar_part1_menu', '#leftbar_part2_inner', '.page-information-card-container', '#rightbar', '#wpadminbar'];
 $.pjax.defaults.fragment = ['#primary', '#leftbar_part1_menu', '#leftbar_part2_inner', '.page-information-card-container', '#rightbar', '#wpadminbar'];
@@ -2448,7 +2448,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		initMobileCatalog();
 		// 如果有文章目录，默认展开
 		setTimeout(function() {
-			var catalogSection = $("#mobile_catalog_toggle").closest(".leftbar-mobile-collapse-section");
+			let catalogSection = $("#mobile_catalog_toggle").closest(".leftbar-mobile-collapse-section");
 			console.log('[Mobile Sidebar] Catalog section found:', catalogSection.length);
 			if (catalogSection.length > 0 && !catalogSection.hasClass("expanded")) {
 				catalogSection.addClass("expanded");
@@ -2489,15 +2489,15 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 	
 	// ========== 移动端折叠面板交互 ==========
 	$(document).on("click", ".leftbar-mobile-collapse-header", function(e) {
-		var section = $(this).closest(".leftbar-mobile-collapse-section");
-		var header = $(this);
-		var isExpanded = section.hasClass("expanded");
+		let section = $(this).closest(".leftbar-mobile-collapse-section");
+		let header = $(this);
+		let isExpanded = section.hasClass("expanded");
 		
 		// 添加点击波纹效果
-		var ripple = $('<span class="collapse-ripple"></span>');
-		var rect = this.getBoundingClientRect();
-		var x = e.clientX - rect.left;
-		var y = e.clientY - rect.top;
+		let ripple = $('<span class="collapse-ripple"></span>');
+		let rect = this.getBoundingClientRect();
+		let x = e.clientX - rect.left;
+		let y = e.clientY - rect.top;
 		ripple.css({
 			left: x + 'px',
 			top: y + 'px'
@@ -2523,14 +2523,14 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 	function initMobileCatalog() {
 		console.log('[Mobile Catalog] initMobileCatalog called, initialized:', window.mobileCatalogInitialized);
 		if (window.mobileCatalogInitialized) return;
-		var $mobileContainer = $("#leftbar_mobile_catalog");
-		var $postContent = $("#post_content");
+		let $mobileContainer = $("#leftbar_mobile_catalog");
+		let $postContent = $("#post_content");
 		console.log('[Mobile Catalog] Container found:', $mobileContainer.length, 'PostContent found:', $postContent.length);
 		if ($mobileContainer.length === 0) return;
 		if ($postContent.length === 0) return;
 		
 		// 直接生成目录，不依赖 headIndex 插件
-		var $headers = $postContent.find('h1, h2, h3, h4, h5, h6');
+		let $headers = $postContent.find('h1, h2, h3, h4, h5, h6');
 		console.log('[Mobile Catalog] Headers found:', $headers.length);
 		if ($headers.length === 0) {
 			$mobileContainer.html('<div class="no-catalog">暂无目录</div>');
@@ -2538,14 +2538,14 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		}
 		
 		// 构建目录树
-		var toc = [];
-		var stack = [{ level: 0, children: toc }];
+		let toc = [];
+		let stack = [{ level: 0, children: toc }];
 		
 		$headers.each(function(index) {
-			var $h = $(this);
-			var level = parseInt(this.tagName.charAt(1));
-			var text = $h.text().trim();
-			var id = $h.attr('id');
+			let $h = $(this);
+			let level = parseInt(this.tagName.charAt(1));
+			let text = $h.text().trim();
+			let id = $h.attr('id');
 			
 			// 确保标题有 ID
 			if (!id) {
@@ -2553,7 +2553,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 				$h.attr('id', id);
 			}
 			
-			var item = { id: id, text: text, level: level, children: [] };
+			let item = { id: id, text: text, level: level, children: [] };
 			
 			// 找到合适的父级
 			while (stack.length > 1 && stack[stack.length - 1].level >= level) {
@@ -2566,9 +2566,9 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		// 递归生成 HTML
 		function buildHtml(items, isRoot) {
 			if (!items || items.length === 0) return '';
-			var html = isRoot ? '<ul>' : '<ul class="index-subItem-box">';
-			for (var i = 0; i < items.length; i++) {
-				var item = items[i];
+			let html = isRoot ? '<ul>' : '<ul class="index-subItem-box">';
+			for (let i = 0; i < items.length; i++) {
+				let item = items[i];
 				html += '<li class="index-item">';
 				html += '<a href="#' + item.id + '" class="index-link" data-target="' + item.id + '">' + item.text + '</a>';
 				if (item.children.length > 0) {
@@ -2587,9 +2587,9 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		// 绑定点击事件
 		$mobileContainer.off('click.mobileCatalog').on('click.mobileCatalog', '.index-link', function(e) {
 			e.preventDefault();
-			var targetId = $(this).attr('href');
+			let targetId = $(this).attr('href');
 			if (targetId) {
-				var $target = $(targetId);
+				let $target = $(targetId);
 				if ($target.length) {
 					$mobileContainer.find('.index-item').removeClass('current');
 					$(this).closest('.index-item').addClass('current');
@@ -2611,17 +2611,17 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 	
 	// 更新移动端目录高亮
 	function updateMobileCatalogHighlight() {
-		var $mobileContainer = $("#leftbar_mobile_catalog");
-		var $postContent = $("#post_content");
+		let $mobileContainer = $("#leftbar_mobile_catalog");
+		let $postContent = $("#post_content");
 		if ($mobileContainer.length === 0 || $postContent.length === 0) return;
 		
-		var scrollTop = $(window).scrollTop();
-		var $headers = $postContent.find('h1, h2, h3, h4, h5, h6');
-		var currentId = null;
+		let scrollTop = $(window).scrollTop();
+		let $headers = $postContent.find('h1, h2, h3, h4, h5, h6');
+		let currentId = null;
 		
 		$headers.each(function() {
-			var $h = $(this);
-			var top = $h.offset().top - 100;
+			let $h = $(this);
+			let top = $h.offset().top - 100;
 			if (scrollTop >= top) {
 				currentId = $h.attr('id');
 			}
@@ -2641,14 +2641,14 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 	
 	// 滚动目录到当前激活项
 	function scrollMobileCatalogToActive() {
-		var container = $("#leftbar_mobile_catalog");
-		var activeItem = container.find(".index-item.current");
+		let container = $("#leftbar_mobile_catalog");
+		let activeItem = container.find(".index-item.current");
 		if (activeItem.length > 0 && container.length > 0) {
-			var containerHeight = container.height();
-			var itemTop = activeItem.position().top;
-			var itemHeight = activeItem.outerHeight();
-			var scrollTop = container.scrollTop();
-			var targetScroll = scrollTop + itemTop - (containerHeight / 2) + (itemHeight / 2);
+			let containerHeight = container.height();
+			let itemTop = activeItem.position().top;
+			let itemHeight = activeItem.outerHeight();
+			let scrollTop = container.scrollTop();
+			let targetScroll = scrollTop + itemTop - (containerHeight / 2) + (itemHeight / 2);
 			container.stop().animate({
 				scrollTop: Math.max(0, targetScroll)
 			}, 300, 'easeOutCubic');
@@ -2656,7 +2656,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 	}
 	
 	// 监听页面滚动，实时更新移动端目录高亮并自动滚动
-	var mobileCatalogScrollTimer = null;
+	let mobileCatalogScrollTimer = null;
 	$(window).on("scroll.mobileCatalog", function() {
 		if (!window.mobileCatalogInitialized) return;
 		// 节流处理
@@ -2677,7 +2677,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 	
 	// ========== 移动端TODO交互 ==========
 	function updateMobileTodoCount() {
-		var count = $("#mobile-todo-list .mobile-todo-item:not(.todo-completed)").length;
+		let count = $("#mobile-todo-list .mobile-todo-item:not(.todo-completed)").length;
 		$("#mobile_todo_count").text(count);
 		// 同步更新桌面端计数
 		$(".todo-count").text(count);
@@ -2697,11 +2697,11 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 	function addMobileTodo() {
 		if (!window.mobileTodoConfig) return;
 		
-		var input = $("#mobile-todo-input");
-		var content = input.val().trim();
+		let input = $("#mobile-todo-input");
+		let content = input.val().trim();
 		if (!content) return;
 		
-		var btn = $("#mobile-todo-add-btn");
+		let btn = $("#mobile-todo-add-btn");
 		btn.prop("disabled", true);
 		
 		$.ajax({
@@ -2714,10 +2714,10 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 			},
 			success: function(res) {
 				if (res.success) {
-					var list = $("#mobile-todo-list");
+					let list = $("#mobile-todo-list");
 					list.find(".mobile-todo-empty").remove();
 					
-					var newItem = $('<li class="mobile-todo-item" data-id="' + res.data.id + '">' +
+					let newItem = $('<li class="mobile-todo-item" data-id="' + res.data.id + '">' +
 						'<span class="mobile-todo-content">' + $("<div>").text(content).html() + '</span>' +
 						'<button class="mobile-todo-complete-btn" title="完成"><i class="fa fa-check"></i></button>' +
 						'</li>');
@@ -2738,16 +2738,16 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 	}
 	
 	// 移动端 TODO 验证码相关变量
-	var mobilePendingUrgeBtn = null;
-	var mobileGeetestCaptchaObj = null;
+	let mobilePendingUrgeBtn = null;
+	let mobileGeetestCaptchaObj = null;
 	
 	// 完成/删除/催促TODO
 	$(document).on("click", "#mobile-todo-list .mobile-todo-complete-btn, #mobile-todo-list .mobile-todo-delete-btn, #mobile-todo-list .mobile-todo-urge-btn", function() {
 		if (!window.mobileTodoConfig) return;
 		
-		var btn = $(this);
-		var item = btn.closest(".mobile-todo-item");
-		var id = item.data("id");
+		let btn = $(this);
+		let item = btn.closest(".mobile-todo-item");
+		let id = item.data("id");
 		
 		if (btn.hasClass("mobile-todo-complete-btn")) {
 			btn.prop("disabled", true);
@@ -2797,7 +2797,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		} else if (btn.hasClass("mobile-todo-urge-btn") && !btn.hasClass("urged")) {
 			// 检查是否需要验证码
 			if (window.mobileTodoConfig.needCaptcha) {
-				var captchaContainer = $(".mobile-todo-captcha-container");
+				let captchaContainer = $(".mobile-todo-captcha-container");
 				if (captchaContainer.length > 0) {
 					captchaContainer.slideDown(200);
 					mobilePendingUrgeBtn = btn;
@@ -2813,9 +2813,9 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 								captcha.onReady(function() {
 									captcha.showCaptcha();
 								}).onSuccess(function() {
-									var result = captcha.getValidate();
+									let result = captcha.getValidate();
 									if (result && mobilePendingUrgeBtn) {
-										var urgeId = mobilePendingUrgeBtn.closest(".mobile-todo-item").data("id");
+										let urgeId = mobilePendingUrgeBtn.closest(".mobile-todo-item").data("id");
 										doMobileUrgeGeetest(mobilePendingUrgeBtn, urgeId, result);
 									}
 								}).onError(function() {
@@ -2843,15 +2843,15 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 	$(document).on("click", "#mobile-todo-captcha-submit", function() {
 		if (!mobilePendingUrgeBtn) return;
 		
-		var captchaInput = $("#mobile-todo-captcha-input");
-		var captchaValue = captchaInput.val().trim();
+		let captchaInput = $("#mobile-todo-captcha-input");
+		let captchaValue = captchaInput.val().trim();
 		
 		if (!captchaValue) {
 			captchaInput.focus();
 			return;
 		}
 		
-		var id = mobilePendingUrgeBtn.closest(".mobile-todo-item").data("id");
+		let id = mobilePendingUrgeBtn.closest(".mobile-todo-item").data("id");
 		doMobileUrge(mobilePendingUrgeBtn, id, captchaValue);
 	});
 	
@@ -2912,7 +2912,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 	
 	// 处理移动端催促响应
 	function handleMobileUrgeResponse(btn, res) {
-		var captchaContainer = $(".mobile-todo-captcha-container");
+		let captchaContainer = $(".mobile-todo-captcha-container");
 		
 		if (res.success) {
 			btn.addClass("urged").html('<i class="fa fa-check"></i>');
@@ -2925,7 +2925,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 			}
 			
 			// 同步到桌面端
-			var id = btn.closest(".mobile-todo-item").data("id");
+			let id = btn.closest(".mobile-todo-item").data("id");
 			syncTodoToDesktop(id, "", "urge");
 			
 			// 显示成功提示
@@ -2960,24 +2960,24 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 	
 	// 同步TODO操作到桌面端
 	function syncTodoToDesktop(id, content, action) {
-		var desktopList = $("#todo-list");
+		let desktopList = $("#todo-list");
 		if (desktopList.length === 0) return;
 		
 		if (action === "add") {
 			desktopList.find(".todo-empty").remove();
-			var newItem = $('<li class="todo-item" data-id="' + id + '">' +
+			let newItem = $('<li class="todo-item" data-id="' + id + '">' +
 				'<span class="todo-content">' + $("<div>").text(content).html() + '</span>' +
 				'<button class="todo-complete-btn" title="完成"><i class="fa fa-check"></i></button>' +
 				'</li>');
 			desktopList.prepend(newItem);
 		} else if (action === "complete") {
-			var item = desktopList.find('.todo-item[data-id="' + id + '"]');
+			let item = desktopList.find('.todo-item[data-id="' + id + '"]');
 			item.addClass("todo-completed");
 			item.find(".todo-complete-btn").replaceWith('<button class="todo-delete-btn" title="删除"><i class="fa fa-trash"></i></button>');
 		} else if (action === "delete") {
 			desktopList.find('.todo-item[data-id="' + id + '"]').remove();
 		} else if (action === "urge") {
-			var urgeBtn = desktopList.find('.todo-item[data-id="' + id + '"] .todo-urge-btn');
+			let urgeBtn = desktopList.find('.todo-item[data-id="' + id + '"] .todo-urge-btn');
 			urgeBtn.addClass("urged").prop("disabled", true).html('<i class="fa fa-check"></i>');
 		}
 	}
@@ -3397,7 +3397,7 @@ function randomString(len) {
 	res[0] = chars.charAt(Math.floor(Math.random() * (chars.length - 10)));
 	return res;
 }
-var codeOfBlocks = {};
+let codeOfBlocks = {};
 function getCodeFromBlock(block){
 	if (codeOfBlocks[block.id] !== undefined){
 		return codeOfBlocks[block.id];
@@ -3522,7 +3522,7 @@ $(document).on("click" , ".hljs-control-toggle-linenumber" , function(){
 
 /*时间差计算*/
 function addPreZero(num, n) {
-	var len = num.toString().length;
+	let len = num.toString().length;
 	while(len < n) {
 		num = "0" + num;
 		len++;
@@ -3608,14 +3608,14 @@ void 0;
     // 1. 触摸涟漪效果
     function createRipple(event, element) {
         if (window.matchMedia('(hover: hover)').matches) return;
-        var rect = element.getBoundingClientRect();
-        var ripple = document.createElement('span');
-        var size = Math.max(rect.width, rect.height);
+        let rect = element.getBoundingClientRect();
+        let ripple = document.createElement('span');
+        let size = Math.max(rect.width, rect.height);
         ripple.style.width = ripple.style.height = size + 'px';
         ripple.style.left = ((event.clientX || event.touches[0].clientX) - rect.left - size / 2) + 'px';
         ripple.style.top = ((event.clientY || event.touches[0].clientY) - rect.top - size / 2) + 'px';
         ripple.className = 'touch-ripple';
-        var oldRipple = element.querySelector('.touch-ripple');
+        let oldRipple = element.querySelector('.touch-ripple');
         if (oldRipple) oldRipple.remove();
         element.style.position = 'relative';
         element.style.overflow = 'hidden';
@@ -3624,7 +3624,7 @@ void 0;
     }
 
     function initRippleEffect() {
-        var rippleElements = document.querySelectorAll('.btn, .card, .nav-link, .dropdown-item, .page-link, .leftbar-mobile-menu-item > a, .leftbar-mobile-action, .fabtn, .comment-reply, .tag, .badge');
+        let rippleElements = document.querySelectorAll('.btn, .card, .nav-link, .dropdown-item, .page-link, .leftbar-mobile-menu-item > a, .leftbar-mobile-action, .fabtn, .comment-reply, .tag, .badge');
         rippleElements.forEach(function(el) {
             if (el.dataset.rippleInit) return;
             el.dataset.rippleInit = 'true';
@@ -3634,7 +3634,7 @@ void 0;
 
     // 2. 图片加载动画
     function initImageLoadAnimation() {
-        var images = document.querySelectorAll('article img[loading="lazy"], .post-thumbnail img');
+        let images = document.querySelectorAll('article img[loading="lazy"], .post-thumbnail img');
         images.forEach(function(img) {
             if (img.dataset.loadAnimInit) return;
             img.dataset.loadAnimInit = 'true';
@@ -3646,8 +3646,8 @@ void 0;
     // 3. 滚动入场动画
     function initScrollAnimations() {
         if (!('IntersectionObserver' in window)) return;
-        var animatedElements = document.querySelectorAll('.article-list article.post, .comment-item, .timeline-item, .friend-link-item, #leftbar .card, #rightbar .card');
-        var observer = new IntersectionObserver(function(entries) {
+        let animatedElements = document.querySelectorAll('.article-list article.post, .comment-item, .timeline-item, .friend-link-item, #leftbar .card, #rightbar .card');
+        let observer = new IntersectionObserver(function(entries) {
             entries.forEach(function(entry) {
                 if (entry.isIntersecting) { entry.target.classList.add('animate-in'); observer.unobserve(entry.target); }
             });
@@ -3661,9 +3661,9 @@ void 0;
             if (anchor.dataset.smoothScrollInit) return;
             anchor.dataset.smoothScrollInit = 'true';
             anchor.addEventListener('click', function(e) {
-                var targetId = this.getAttribute('href');
+                let targetId = this.getAttribute('href');
                 if (targetId === '#') return;
-                var target = document.querySelector(targetId);
+                let target = document.querySelector(targetId);
                 if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
             });
         });
@@ -3672,12 +3672,12 @@ void 0;
     // 5. 页面加载进度条
     function initLoadingBar() {
         if (document.getElementById('page-loading-bar')) return;
-        var bar = document.createElement('div');
+        let bar = document.createElement('div');
         bar.id = 'page-loading-bar';
         bar.style.width = '0%';
         document.body.appendChild(bar);
-        var progress = 0;
-        var interval = setInterval(function() {
+        let progress = 0;
+        let interval = setInterval(function() {
             progress += Math.random() * 10;
             if (progress >= 90) { clearInterval(interval); progress = 90; }
             bar.style.width = progress + '%';
@@ -3694,14 +3694,14 @@ void 0;
         if (typeof jQuery === 'undefined') return;
         jQuery(document).on('pjax:start', function() {
             jQuery('#primary').addClass('pjax-loading');
-            var bar = document.getElementById('page-loading-bar');
+            let bar = document.getElementById('page-loading-bar');
             if (!bar) { bar = document.createElement('div'); bar.id = 'page-loading-bar'; document.body.appendChild(bar); }
             bar.style.opacity = '1'; bar.style.width = '30%';
             setTimeout(function() { bar.style.width = '60%'; }, 200);
         });
         jQuery(document).on('pjax:end', function() {
             jQuery('#primary').removeClass('pjax-loading');
-            var bar = document.getElementById('page-loading-bar');
+            let bar = document.getElementById('page-loading-bar');
             if (bar) { bar.style.width = '100%'; setTimeout(function() { bar.style.opacity = '0'; setTimeout(function() { bar.remove(); }, 300); }, 200); }
             setTimeout(function() { initRippleEffect(); initImageLoadAnimation(); initScrollAnimations(); initSmoothScroll(); }, 100);
         });

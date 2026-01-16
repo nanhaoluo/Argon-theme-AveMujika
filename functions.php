@@ -29,7 +29,7 @@ function theme_slug_setup() {
 }
 add_action('after_setup_theme','theme_slug_setup');
 
-$argon_version = !(wp_get_theme() -> Template) ? wp_get_theme() -> Version : wp_get_theme(wp_get_theme() -> Template) -> Version;
+$argon_version = !(wp_get_theme()->Template) ? wp_get_theme()->Version : wp_get_theme(wp_get_theme()->Template)->Version;
 $GLOBALS['theme_version'] = $argon_version;
 
 // 强制使用本地资源，避免 CDN 加载问题
@@ -218,7 +218,6 @@ if (version_compare($argon_last_version, $GLOBALS['theme_version'], '<' )){
 	}
 	update_option("argon_last_version", $GLOBALS['theme_version']);
 }
-
 
 //引入邮件模板系统
 require_once(get_template_directory() . '/email-templates/base.php');
@@ -961,7 +960,7 @@ function argon_get_first_image_of_article(){
 	if (post_password_required()){
 		return false;
 	}
-	$post_content_full = apply_filters('the_content', preg_replace( '<!--more(.*?)-->', '', $post -> post_content));
+	$post_content_full = apply_filters('the_content', preg_replace( '<!--more(.*?)-->', '', $post->post_content));
 	preg_match('/<img(.*?)(src|data-original)=[\"\']((http:|https:)?\/\/(.*?))[\"\'](.*?)\/?>/', $post_content_full, $match);
 	if (isset($match[3])){
 		return $match[3];
@@ -971,7 +970,7 @@ function argon_get_first_image_of_article(){
 function argon_has_post_thumbnail($postID = 0){
 	if ($postID == 0){
 		global $post;
-		$postID = $post -> ID;
+		$postID = $post->ID;
 	}
 	if (has_post_thumbnail()){
 		return true;
@@ -990,7 +989,7 @@ function argon_has_post_thumbnail($postID = 0){
 function argon_get_post_thumbnail($postID = 0){
 	if ($postID == 0){
 		global $post;
-		$postID = $post -> ID;
+		$postID = $post->ID;
 	}
 	if (has_post_thumbnail()){
 		return apply_filters("argon_post_thumbnail", wp_get_attachment_image_src(get_post_thumbnail_id($postID), "full")[0]);
@@ -1000,8 +999,8 @@ function argon_get_post_thumbnail($postID = 0){
 //文末附加内容
 function get_additional_content_after_post(){
 	global $post;
-	$postID = $post -> ID;
-	$res = get_post_meta($post -> ID, 'argon_after_post', true);
+	$postID = $post->ID;
+	$res = get_post_meta($post->ID, 'argon_after_post', true);
 	if ($res == "--none--"){
 		return "";
 	}
@@ -1134,7 +1133,7 @@ function get_seo_description(){
 			return preg_replace('/ \[&hellip;]$/', '&hellip;', get_the_excerpt());
 		}
 		if (!post_password_required()){
-			return htmlspecialchars(mb_substr(str_replace("\n", '', strip_tags($post -> post_content)), 0, 50)) . "...";
+			return htmlspecialchars(mb_substr(str_replace("\n", '', strip_tags($post->post_content)), 0, 50)) . "...";
 		}else{
 			return __("这是一个加密页面，需要密码来查看", 'argon');
 		}
@@ -1146,14 +1145,14 @@ function get_seo_description(){
 function get_seo_keywords(){
 	if (is_single()){
 		global $post;
-		$tags = get_the_tags('', ',', '', $post -> ID);
+		$tags = get_the_tags('', ',', '', $post->ID);
 		if ($tags != null){
 			$res = "";
 			foreach ($tags as $tag){
 				if ($res != ""){
 					$res .= ",";
 				}
-				$res .= $tag -> name;
+				$res .= $tag->name;
 			}
 			return $res;
 		}
@@ -1178,7 +1177,7 @@ function get_seo_keywords(){
 //页面分享预览图
 function get_og_image(){
 	global $post;
-	$postID = $post -> ID;
+	$postID = $post->ID;
 	$argon_first_image_as_thumbnail = get_post_meta($postID, 'argon_first_image_as_thumbnail', 'true');
 	if (has_post_thumbnail() || $argon_first_image_as_thumbnail == 'true'){
 		return argon_get_post_thumbnail($postID);
@@ -1202,7 +1201,7 @@ function set_post_views(){
 	}
 	if (!isset($post_id)){
 		global $post;
-		$post_id = $post -> ID;
+		$post_id = $post->ID;
 	}
 	if (post_password_required($post_id)){
 		return;
@@ -1222,10 +1221,10 @@ function set_post_views(){
 		return;
 	}
 	global $post;
-	if (!isset($post -> ID)){
+	if (!isset($post->ID)){
 		return;
 	}
-	$post_id = $post -> ID;
+	$post_id = $post->ID;
 	$count_key = 'views';
 	$count = get_post_meta($post_id, $count_key, true);
 	if (is_single() || is_page()) {
@@ -1316,7 +1315,7 @@ function have_catalog(){
 	if (is_page() && is_page_template('timeline.php')){
 		return true;
 	}
-	$content = get_post(get_the_ID()) -> post_content;
+	$content = get_post(get_the_ID())->post_content;
 	// 检查 HTML 标题标签
 	if (preg_match('/<h[1-6](.*?)>/i', $content)){
 		return true;
@@ -1375,7 +1374,7 @@ function get_article_meta($type){
 	if ($type == 'comments'){
 		return '<div class="post-meta-detail post-meta-detail-comments">
 					<i class="fa fa-comments-o" aria-hidden="true"></i> ' .
-					get_post(get_the_ID()) -> comment_count .
+					get_post(get_the_ID())->comment_count .
 				'</div>';
 	}
 	if ($type == 'categories'){
@@ -1383,7 +1382,7 @@ function get_article_meta($type){
 				<i class="fa fa-bookmark-o" aria-hidden="true"></i> ';
 		$categories = get_the_category();
 		foreach ($categories as $index => $category){
-			$res .= '<a href="' . get_category_link($category -> term_id) . '" target="_blank" class="post-meta-detail-catagory-link">' . $category -> cat_name . '</a>';
+			$res .= '<a href="' . get_category_link($category->term_id) . '" target="_blank" class="post-meta-detail-catagory-link">' . $category->cat_name . '</a>';
 			if ($index != count($categories) - 1){
 				$res .= '<span class="post-meta-detail-catagory-space">,</span>';
 			}
@@ -1395,7 +1394,7 @@ function get_article_meta($type){
 		$res = '<div class="post-meta-detail post-meta-detail-author">
 					<i class="fa fa-user-circle-o" aria-hidden="true"></i> ';
 					global $authordata;
-		$res .= '<a href="' . get_author_posts_url($authordata -> ID, $authordata -> user_nicename) . '" target="_blank">' . get_the_author() . '</a>
+		$res .= '<a href="' . get_author_posts_url($authordata->ID, $authordata->user_nicename) . '" target="_blank">' . get_the_author() . '</a>
 				</div>';
 		return $res;
 	}
@@ -1428,7 +1427,7 @@ function is_readingtime_meta_hidden(){
 		return true;
 	}
 	global $post;
-	if (get_post_meta($post -> ID, 'argon_hide_readingtime', true) == 'true'){
+	if (get_post_meta($post->ID, 'argon_hide_readingtime', true) == 'true'){
 		return true;
 	}
 	return false;
@@ -1436,14 +1435,14 @@ function is_readingtime_meta_hidden(){
 //当前文章是否隐藏 发布时间和分类 (简洁 Meta)
 function is_meta_simple(){
 	global $post;
-	if (get_post_meta($post -> ID, 'argon_meta_simple', true) == 'true'){
+	if (get_post_meta($post->ID, 'argon_meta_simple', true) == 'true'){
 		return true;
 	}
 	return false;
 }
 //根据文章 id 获取标题
 function get_post_title_by_id($id){
-	return get_post($id) -> post_title;
+	return get_post($id)->post_title;
 }
 //解析 UA 和相应图标
 require_once(get_template_directory() . '/useragent-parser.php');
@@ -1510,14 +1509,14 @@ function check_login_user_same($userid){
 	if ($userid == 0){
 		return false;
 	}
-	if ($userid != (wp_get_current_user() -> ID)){
+	if ($userid != (wp_get_current_user()->ID)){
 		return false;
 	}
 	return true;
 }
 function get_comment_user_id_by_id($comment_ID){
 	$comment = get_comment($comment_ID);
-	return $comment -> user_id;
+	return $comment->user_id;
 }
 function check_comment_userid($id){
 	if (!check_login_user_same(get_comment_user_id_by_id($id))){
@@ -1547,7 +1546,7 @@ function user_can_view_comment($id){
 //过滤 RSS 中悄悄话
 function remove_rss_private_comment_title_and_author($str){
 	global $comment;
-	if (isset($comment -> comment_ID) && is_comment_private_mode($comment -> comment_ID)){
+	if (isset($comment->comment_ID) && is_comment_private_mode($comment->comment_ID)){
 		return "***";
 	}
 	return $str;
@@ -1556,9 +1555,9 @@ add_filter('the_title_rss' , 'remove_rss_private_comment_title_and_author');
 add_filter('comment_author_rss' , 'remove_rss_private_comment_title_and_author');
 function remove_rss_private_comment_content($str){
 	global $comment;
-	if (is_comment_private_mode($comment -> comment_ID)){
-		$comment -> comment_content = __('该评论为悄悄话', 'argon');
-		return $comment -> comment_content;
+	if (is_comment_private_mode($comment->comment_ID)){
+		$comment->comment_content = __('该评论为悄悄话', 'argon');
+		return $comment->comment_content;
 	}
 	return $str;
 }
@@ -1568,11 +1567,11 @@ function get_comment_parent_info($comment){
 	if (!$GLOBALS['argon_comment_options']['show_comment_parent_info']){
 		return "";
 	}
-	if ($comment -> comment_parent == 0){
+	if ($comment->comment_parent == 0){
 		return "";
 	}
-	$parent_comment = get_comment($comment -> comment_parent);
-	return '<div class="comment-parent-info" data-parent-id=' . $parent_comment -> comment_ID . '><i class="fa fa-reply" aria-hidden="true"></i> ' . get_comment_author($parent_comment -> comment_ID) . '</div>';
+	$parent_comment = get_comment($comment->comment_parent);
+	return '<div class="comment-parent-info" data-parent-id=' . $parent_comment->comment_ID . '><i class="fa fa-reply" aria-hidden="true"></i> ' . get_comment_author($parent_comment->comment_ID) . '</div>';
 }
 //是否可以查看评论编辑记录
 function can_visit_comment_edit_history($id){
@@ -1618,10 +1617,10 @@ function get_comment_edit_history(){
 						<div class='comment-edit-history-id'>
 							#" . $position . "
 						</div>
-						" . ($edition -> isfirst ? "<span class='badge badge-primary badge-admin'>" . __("最初版本", 'argon') . "</span>" : "") . "
+						" . ($edition->isfirst ? "<span class='badge badge-primary badge-admin'>" . __("最初版本", 'argon') . "</span>" : "") . "
 					</div>
-					<div class='comment-edit-history-time'>" . date('Y-m-d H:i:s', $edition -> time) . "</div>
-					<div class='comment-edit-history-content'>" . str_replace("\n", "</br>", $edition -> content) . "</div>
+					<div class='comment-edit-history-time'>" . date('Y-m-d H:i:s', $edition->time) . "</div>
+					<div class='comment-edit-history-content'>" . str_replace("\n", "</br>", $edition->content) . "</div>
 				</div>";
 	}
 	exit(json_encode(array(
@@ -1633,10 +1632,10 @@ add_action('wp_ajax_get_comment_edit_history', 'get_comment_edit_history');
 add_action('wp_ajax_nopriv_get_comment_edit_history', 'get_comment_edit_history');
 //是否可以置顶/取消置顶
 function is_comment_pinable($id){
-	if (get_comment($id) -> comment_approved != "1"){
+	if (get_comment($id)->comment_approved != "1"){
 		return false;
 	}
-	if (get_comment($id) -> comment_parent != 0){
+	if (get_comment($id)->comment_parent != 0){
 		return false;
 	}
 	if (is_comment_private_mode($id)){
@@ -1660,7 +1659,7 @@ function argon_get_comment_text($comment_ID = 0, $args = array()) {
 	);
 	$comment_text = preg_replace(
 		'/<img src="(.*?)" alt="(.*?)" \/>/',
-		'<a href="$1" title="$2" data-fancybox="comment-' . $comment -> comment_ID . '-image" class="comment-image" rel="nofollow">
+		'<a href="$1" title="$2" data-fancybox="comment-' . $comment->comment_ID . '-image" class="comment-image" rel="nofollow">
 			<i class="fa fa-image" aria-hidden="true"></i>
 			' . __('查看图片', 'argon') . '
 			<img src="" alt="$2" class="comment-image-preview">
@@ -1695,7 +1694,7 @@ function get_comment_upvotes($id) {
 	if ($comment == null){
 		return 0;
 	}
-	$upvotes = get_comment_meta($comment -> comment_ID, "upvotes", true);
+	$upvotes = get_comment_meta($comment->comment_ID, "upvotes", true);
 	if ($upvotes == null) {
 		$upvotes = 0;
 	}
@@ -1706,12 +1705,12 @@ function set_comment_upvotes($id){
 	if ($comment == null){
 		return 0;
 	}
-	$upvotes = get_comment_meta($comment -> comment_ID, "upvotes", true);
+	$upvotes = get_comment_meta($comment->comment_ID, "upvotes", true);
 	if ($upvotes == null) {
 		$upvotes = 0;
 	}
 	$upvotes++;
-	update_comment_meta($comment -> comment_ID, "upvotes", $upvotes);
+	update_comment_meta($comment->comment_ID, "upvotes", $upvotes);
 	return $upvotes;
 }
 function is_comment_upvoted($id){
@@ -1768,7 +1767,7 @@ $GLOBALS['argon_comment_options']['show_comment_parent_info'] = (get_option("arg
 function argon_comment_format($comment, $args, $depth){
 	global $comment_enable_upvote, $comment_enable_pinning;
 	$GLOBALS['comment'] = $comment;
-	if (!($comment -> placeholder) && user_can_view_comment(get_comment_ID())){
+	if (!($comment->placeholder) && user_can_view_comment(get_comment_ID())){
 	?>
 	<li class="comment-item" id="comment-<?php comment_ID(); ?>" data-id="<?php comment_ID(); ?>" data-use-markdown="<?php echo get_comment_meta(get_comment_ID(), "use_markdown", true);?>">
 		<div class="comment-item-left-wrapper">
@@ -1790,7 +1789,7 @@ function argon_comment_format($comment, $args, $depth){
 			<div class="comment-item-title">
 				<div class="comment-name">
 					<div class="comment-author"><?php echo get_comment_author_link();?></div>
-					<?php if (user_can($comment -> user_id , "update_core")){
+					<?php if (user_can($comment->user_id , "update_core")){
 						echo '<span class="badge badge-primary badge-admin">' . __('博主', 'argon') . '</span>';}
 					?>
 					<?php echo get_comment_parent_info($comment); ?>
@@ -1800,11 +1799,11 @@ function argon_comment_format($comment, $args, $depth){
 					<?php if (is_comment_private_mode(get_comment_ID()) && user_can_view_comment(get_comment_ID())){
 						echo '<span class="badge badge-success badge-private-comment">' . __('悄悄话', 'argon') . '</span>';}
 					?>
-					<?php if ($comment -> comment_approved == 0){
+					<?php if ($comment->comment_approved == 0){
 						echo '<span class="badge badge-warning badge-unapproved">' . __('待审核', 'argon') . '</span>';}
 					?>
 					<?php
-						echo parse_ua_and_icon($comment -> comment_agent);
+						echo parse_ua_and_icon($comment->comment_agent);
 					?>
 				</div>
 				<div class="comment-info">
@@ -1832,7 +1831,7 @@ function argon_comment_format($comment, $args, $depth){
 						<button class="comment-pin btn btn-sm btn-outline-primary" data-id="<?php comment_ID(); ?>" type="button" style="margin-right: 2px;"><?php _ex('置顶', 'to pin', 'argon')?></button>
 				<?php }
 					} ?>
-				<?php if ((check_comment_token(get_comment_ID()) || check_login_user_same($comment -> user_id)) && (get_option("argon_comment_allow_editing") != "false")) { ?>
+				<?php if ((check_comment_token(get_comment_ID()) || check_login_user_same($comment->user_id)) && (get_option("argon_comment_allow_editing") != "false")) { ?>
 					<button class="comment-edit btn btn-sm btn-outline-primary" data-id="<?php comment_ID(); ?>" type="button" style="margin-right: 2px;"><?php _e('编辑', 'argon')?></button>
 				<?php } ?>
 				<button class="comment-reply btn btn-sm btn-outline-primary" data-id="<?php comment_ID(); ?>" type="button"><?php _e('回复', 'argon')?></button>
@@ -1849,10 +1848,10 @@ function argon_comment_shuoshuo_preview_format($comment, $args, $depth){
 		<div class="comment-item-inner " id="comment-inner-<?php comment_ID();?>">
 			<span class="shuoshuo-comment-item-title">
 				<?php echo get_comment_author_link();?>
-				<?php if( user_can($comment -> user_id , "update_core") ){
+				<?php if( user_can($comment->user_id , "update_core") ){
 					echo '<span class="badge badge-primary badge-admin">' . __('博主', 'argon') . '</span>';}
 				?>
-				<?php if( $comment -> comment_approved == 0 ){
+				<?php if( $comment->comment_approved == 0 ){
 					echo '<span class="badge badge-warning badge-unapproved">' . __('待审核', 'argon') . '</span>';}
 				?>
 				:
@@ -1886,10 +1885,10 @@ get_comment_captcha_seed();
 class captcha_calculation{ //数字验证码
 	var $captchaSeed;
 	function __construct($seed) {
-		$this -> captchaSeed = $seed;
+		$this->captchaSeed = $seed;
 	}
 	function getChallenge(){
-		mt_srand($this -> captchaSeed + 10007);
+		mt_srand($this->captchaSeed + 10007);
 		$oper = mt_rand(1 , 4);
 		$num1 = 0;
 		$num2 = 0;
@@ -1919,7 +1918,7 @@ class captcha_calculation{ //数字验证码
 		}
 	}
 	function getAnswer(){
-		mt_srand($this -> captchaSeed + 10007);
+		mt_srand($this->captchaSeed + 10007);
 		$oper = mt_rand(1 , 4);
 		$num1 = 0;
 		$num2 = 0;
@@ -1967,11 +1966,11 @@ function wrong_captcha($msg = null){
 }
 function get_comment_captcha(){
 	$captcha = new captcha_calculation(get_comment_captcha_seed());
-	return $captcha -> getChallenge();
+	return $captcha->getChallenge();
 }
 function get_comment_captcha_answer(){
 	$captcha = new captcha_calculation(get_comment_captcha_seed());
-	return $captcha -> getAnswer();
+	return $captcha->getAnswer();
 }
 // Geetest 验证码相关函数
 function geetest_validate($lot_number, $captcha_output, $pass_token, $gen_time) {
@@ -2323,9 +2322,9 @@ function ajax_post_comment(){
 	}
 	$comment = wp_handle_comment_submission(wp_unslash($_POST));
 	if (is_wp_error($comment)){
-		$msg = $comment -> get_error_data();
+		$msg = $comment->get_error_data();
 		if (!empty($msg)){
-			$msg = $comment -> get_error_message();
+			$msg = $comment->get_error_message();
 		}
 		exit(json_encode(array(
 			'status' => 'failed',
@@ -2338,7 +2337,7 @@ function ajax_post_comment(){
 	if (isset($_POST['qq'])){
 		if (!empty($_POST['qq']) && get_option('argon_comment_enable_qq_avatar') == 'true'){
 			$_comment = $comment;
-			$_comment -> comment_author_email = $_POST['qq'] . "@avatarqq.com";
+			$_comment->comment_author_email = $_POST['qq'] . "@avatarqq.com";
 			do_action('set_comment_cookies', $_comment, $user);
 		}
 	}
@@ -2360,8 +2359,8 @@ function ajax_post_comment(){
 	exit(json_encode(array(
 		'status' => 'success',
 		'html' => $html,
-		'id' => $comment -> comment_ID,
-		'parentID' => $comment -> comment_parent,
+		'id' => $comment->comment_ID,
+		'parentID' => $comment->comment_parent,
 		'commentOrder' => (get_option("comment_order") == "" ? "desc" : get_option("comment_order")),
 		'newCaptchaSeed' => $newCaptchaSeed,
 		'newCaptcha' => $newCaptcha,
@@ -2393,7 +2392,7 @@ function comment_markdown_parse($comment_content){
 
 	//解析 Markdown
 	$parsedown = new _Parsedown();
-	$res = $parsedown -> text($comment_content);
+	$res = $parsedown->text($comment_content);
 	/*$res = preg_replace(
 		'/<code>([\s\S]*?)<\/code>/',
 		'<pre>$1</pre>',
@@ -2499,16 +2498,16 @@ function comment_mail_notify($comment){
 	if ($comment == null){
 		return;
 	}
-	$id = $comment -> comment_ID;
-	$commentPostID = $comment -> comment_post_ID;
-	$commentAuthor = $comment -> comment_author;
-	$parentID = $comment -> comment_parent;
+	$id = $comment->comment_ID;
+	$commentPostID = $comment->comment_post_ID;
+	$commentAuthor = $comment->comment_author;
+	$parentID = $comment->comment_parent;
 	if ($parentID == 0){
 		return;
 	}
 	$parentComment = get_comment($parentID);
-	$parentEmail =  $parentComment -> comment_author_email;
-	$parentName = $parentComment -> comment_author;
+	$parentEmail =  $parentComment->comment_author_email;
+	$parentName = $parentComment->comment_author;
 	$emailTo = "$parentName <$parentEmail>";
 	if (get_comment_meta($parentID, "enable_mailnotice", true) == "true"){
 		if (check_email_address($parentEmail)){
@@ -2555,8 +2554,8 @@ add_action('argon_async_comment_mail_notify', 'argon_async_comment_mail_notify_h
 function post_comment_updatemetas($id){
 	$parentID = $_POST['comment_parent'];
 	$comment = get_comment($id);
-	$commentPostID = $comment -> comment_post_ID;
-	$commentAuthor = $comment -> comment_author;
+	$commentPostID = $comment->comment_post_ID;
+	$commentAuthor = $comment->comment_author;
 	$mailnoticeUnsubscribeKey = get_random_token();
 	//评论 Markdown 源码
 	update_comment_meta($id, "comment_content_source", $_POST['comment_content_source']);
@@ -2598,7 +2597,7 @@ function post_comment_updatemetas($id){
 		update_comment_meta($id, "enable_mailnotice", "false");
 	}
 	//向父级评论发送邮件
-	if ($comment -> comment_approved == 1){
+	if ($comment->comment_approved == 1){
 		wp_schedule_single_event(time() + 1, 'argon_async_comment_mail_notify', array($comment->comment_ID));
 	}
 	//保存 QQ 号
@@ -2697,7 +2696,7 @@ function pin_comment(){
 			'msg' => $newPinnedStat ? __('评论已经是置顶状态', 'argon') : __('评论已经是取消置顶状态', 'argon')
 		)));
 	}
-	if (get_comment($id) -> comment_parent != 0){
+	if (get_comment($id)->comment_parent != 0){
 		exit(json_encode(array(
 			'status' => 'failed',
 			'msg' => __('不能置顶子评论', 'argon')
@@ -2837,8 +2836,8 @@ function get_argon_comment_paginate_links_prev_url(){
 //评论重排序（置顶优先）
 $GLOBALS['comment_order'] = get_option('comment_order');
 function argon_comment_cmp($a, $b){
-	$a_pinned = get_comment_meta($a -> comment_ID, 'pinned', true);
-	$b_pinned = get_comment_meta($b -> comment_ID, 'pinned', true);
+	$a_pinned = get_comment_meta($a->comment_ID, 'pinned', true);
+	$b_pinned = get_comment_meta($b->comment_ID, 'pinned', true);
 	if ($a_pinned != "true"){
 		$a_pinned = "false";
 	}
@@ -2846,7 +2845,7 @@ function argon_comment_cmp($a, $b){
 		$b_pinned = "false";
 	}
 	if ($a_pinned == $b_pinned){
-		return ($a -> comment_date_gmt) > ($b -> comment_date_gmt);
+		return ($a->comment_date_gmt) > ($b->comment_date_gmt);
 	}else{
 		if ($a_pinned == "true"){
 			return ($GLOBALS['comment_order'] == 'desc');
@@ -2858,7 +2857,7 @@ function argon_comment_cmp($a, $b){
 function argon_get_comments(){
 	global $wp_query;
 	/*$cpage = get_query_var('cpage') ?? 1;
-	$maxiumPages = $wp_query -> max_num_pages;*/
+	$maxiumPages = $wp_query->max_num_pages;*/
 	$args = array(
 		'post__in'		 => array(get_the_ID()),
 		'type'           => 'comment',
@@ -2876,7 +2875,7 @@ function argon_get_comments(){
 	}
 
 	$comment_query = new WP_Comment_Query;
-	$comments = $comment_query -> query($args);
+	$comments = $comment_query->query($args);
 	
 	if (get_option("argon_enable_comment_pinning", "false") == "true"){
 		usort($comments, "argon_comment_cmp");
@@ -2894,7 +2893,7 @@ function argon_get_comments(){
 	$comments_per_page = get_option('comments_per_page');
 	$comments_count = 0; 
 	foreach ($comments as $comment){
-		if ($comment -> comment_parent == 0){
+		if ($comment->comment_parent == 0){
 			$comments_count++;
 		}
 	}
@@ -2912,10 +2911,10 @@ function argon_get_comments(){
 //QQ Avatar 获取
 function get_avatar_by_qqnumber($avatar){
 	global $comment;
-	if (!isset($comment) || !isset($comment -> comment_ID)){
+	if (!isset($comment) || !isset($comment->comment_ID)){
 		return $avatar;
 	}
-	$qqnumber = get_comment_meta($comment -> comment_ID, 'qq_number', true);
+	$qqnumber = get_comment_meta($comment->comment_ID, 'qq_number', true);
 	if (!empty($qqnumber)){
 		preg_match_all('/width=\'(.*?)\'/', $avatar, $preg_res);
 		$size = $preg_res[1][0];
@@ -2977,7 +2976,7 @@ function the_content_filter($content){
 		$content = argon_fancybox($content);
 	}
 	global $post;
-	$custom_css = get_post_meta($post -> ID, 'argon_custom_css', true);
+	$custom_css = get_post_meta($post->ID, 'argon_custom_css', true);
 	if (!empty($custom_css)){
 		$content .= "<style>" . $custom_css . "</style>";
 	}
@@ -3066,7 +3065,7 @@ function alert_footer_copyright_changed(){ ?>
 	</div>
 <?php }
 function check_footer_copyright(){
-	$footer = file_get_contents(get_theme_root() . "/" . wp_get_theme() -> template . "/footer.php");
+	$footer = file_get_contents(get_theme_root() . "/" . wp_get_theme()->template . "/footer.php");
 	if ((strpos($footer, "github.com/solstice23/argon-theme") === false) && (strpos($footer, "solstice23.top") === false)){
 		add_action('admin_notices', 'alert_footer_copyright_changed');
 	}
@@ -3371,8 +3370,8 @@ add_action('wp_ajax_update_post_meta_ajax' , 'update_post_meta_ajax');
 add_action('wp_ajax_nopriv_update_post_meta_ajax' , 'update_post_meta_ajax');
 //首页显示说说
 function argon_home_add_post_type_shuoshuo($query){
-	if (is_home() && $query -> is_main_query()){
-		$query -> set('post_type', array('post', 'shuoshuo'));
+	if (is_home() && $query->is_main_query()){
+		$query->set('post_type', array('post', 'shuoshuo'));
 	}
 	return $query;
 }
@@ -3381,11 +3380,11 @@ if (get_option("argon_home_show_shuoshuo") == "true"){
 }
 //首页隐藏特定分类文章
 function argon_home_hide_categories($query){
-	if (is_home() && $query -> is_main_query()){
+	if (is_home() && $query->is_main_query()){
 		$excludeCategories = explode(",", get_option("argon_hide_categories"));
 		$excludeCategories = array_map(function($cat) { return -$cat; }, $excludeCategories);
-		$query -> set('category__not_in', $excludeCategories);
-		$query -> set('tag__not_in', $excludeCategories);
+		$query->set('category__not_in', $excludeCategories);
+		$query->set('tag__not_in', $excludeCategories);
 	}
 	return $query;
 }
@@ -3395,7 +3394,7 @@ if (get_option("argon_hide_categories") != ""){
 //文章过时信息显示
 function argon_get_post_outdated_info(){
 	global $post;
-	$post_show_outdated_info_status = strval(get_post_meta($post -> ID, 'argon_show_post_outdated_info', true));
+	$post_show_outdated_info_status = strval(get_post_meta($post->ID, 'argon_show_post_outdated_info', true));
 	if (get_option("argon_outdated_info_tip_type") == "toast"){
 		$before = "<div id='post_outdate_toast' style='display:none;' data-text='";
 		$after = "'></div>";
@@ -3731,25 +3730,25 @@ function shortcode_friend_link($attr,$content=""){
 	foreach ($friendlinks as $friendlink){
 		$out .= "
 			<div class='link mb-2 col-lg-6 col-md-6'>
-				<div class='card shadow-sm friend-link-container" . ($friendlink -> link_image == "" ? " no-avatar" : "") . "'>";
-		if ($friendlink -> link_image != ''){
+				<div class='card shadow-sm friend-link-container" . ($friendlink->link_image == "" ? " no-avatar" : "") . "'>";
+		if ($friendlink->link_image != ''){
 			$out .= "
-					<img src='" . $friendlink -> link_image . "' class='friend-link-avatar bg-gradient-secondary'>";
+					<img src='" . $friendlink->link_image . "' class='friend-link-avatar bg-gradient-secondary'>";
 		}
 		$out .= "	<div class='friend-link-content'>
 						<div class='friend-link-title title text-primary'>
-							<a target='_blank' href='" . esc_url($friendlink -> link_url) . "'>" . esc_html($friendlink -> link_name) . "</a>
+							<a target='_blank' href='" . esc_url($friendlink->link_url) . "'>" . esc_html($friendlink->link_name) . "</a>
 						</div>
-						<div class='friend-link-description'>" . esc_html($friendlink -> link_description) . "</div>";
+						<div class='friend-link-description'>" . esc_html($friendlink->link_description) . "</div>";
 		$out .= "		<div class='friend-link-links'>";
-		foreach (explode("\n", $friendlink -> link_notes) as $line){
+		foreach (explode("\n", $friendlink->link_notes) as $line){
 			$item = explode("|", trim($line));
 			if(stripos($item[0], "fa-") !== 0){
 				continue;
 			}
 			$out .= "<a href='" . esc_url($item[1]) . "' target='_blank'><i class='fa " . sanitize_html_class($item[0]) . "'></i></a>";
 		}
-		$out .= "<a href='" . esc_url($friendlink -> link_url) . "' target='_blank' style='float:right; margin-right: 10px;'><i class='fa fa-angle-right' style='font-weight: bold;'></i></a>";
+		$out .= "<a href='" . esc_url($friendlink->link_url) . "' target='_blank' style='float:right; margin-right: 10px;'><i class='fa fa-angle-right' style='font-weight: bold;'></i></a>";
 		$out .= "
 						</div>
 					</div>
@@ -3929,12 +3928,12 @@ function shortcode_github($attr,$content=""){
 				throw new Exception("");
 			}
 			$json = json_decode($json);
-			$description = esc_html($json -> description);
-			if (!empty($json -> homepage)){
-				$description .= esc_html(" <a href='" . $json -> homepage . "' target='_blank' no-pjax>" . $json -> homepage . "</a>");
+			$description = esc_html($json->description);
+			if (!empty($json->homepage)){
+				$description .= esc_html(" <a href='" . $json->homepage . "' target='_blank' no-pjax>" . $json->homepage . "</a>");
 			}
-			$stars = $json -> stargazers_count;
-			$forks = $json -> forks_count;
+			$stars = $json->stargazers_count;
+			$forks = $json->forks_count;
 		}catch (Exception $e){
 			$getdata = "frontend";
 		}
@@ -4236,13 +4235,13 @@ function argon_get_search_post_type_array(){
 	return $arr;
 }
 function search_filter($query) {
-	if (!$query -> is_search || is_admin()) {
+	if (!$query->is_search || is_admin()) {
 		return $query;
 	}
 	if (get_option('argon_enable_search_filters', 'true') == 'false'){
 		return $query;
 	}
-	$query -> set('post_type', argon_get_search_post_type_array());
+	$query->set('post_type', argon_get_search_post_type_array());
 	return $query;
 }
 add_filter('pre_get_posts', 'search_filter');
@@ -4287,7 +4286,6 @@ function argon_enqueue_qrcode_script() {
 	}
 }
 add_action('wp_enqueue_scripts', 'argon_enqueue_qrcode_script');
-
 
 // 获取 Git 版本信息
 function argon_get_git_info() {
@@ -4352,7 +4350,6 @@ function argon_get_git_info() {
 		'commit' => $commit ?: 'unknown'
 	);
 }
-
 
 // ========== TODO 列表功能 ==========
 
