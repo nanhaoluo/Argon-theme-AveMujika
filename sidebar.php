@@ -558,9 +558,9 @@ $author_desc = get_option('argon_sidebar_author_description');
 												return;
 											}
 											
-											// 检测是否有标题已经带序号（如 "1. xxx" 或 "1.1 xxx"）
-											var numberPattern = /^[\d一二三四五六七八九十]+[.、．]\s*/;
-											var hasNumberedHeadings = false;
+											// 检测是否有标题已经带序号
+											// 支持格式：1. 1.1 一、二、第一、第二、(1) (一) [1] 等
+											var numberPattern = /^([\d一二三四五六七八九十百千]+[.、．:：]\s*|第[一二三四五六七八九十百千\d]+[章节部分条款、]\s*|[（\(【\[]\s*[\d一二三四五六七八九十]+\s*[）\)】\]]\s*|[IVXLCDM]+[.、．]\s*)/;
 											var numberedCount = 0;
 											
 											items.forEach(function(item) {
@@ -571,7 +571,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 											});
 											
 											// 如果超过一半的标题已有序号，认为文章自带编号
-											hasNumberedHeadings = numberedCount > items.length / 2;
+											var hasNumberedHeadings = numberedCount > items.length / 2;
 											
 											if (!hasNumberedHeadings) {
 												// 添加 CSS 计数器样式

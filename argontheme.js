@@ -524,8 +524,35 @@ $(document).on("change" , ".search-filter" , function(e){
 			leftbarPart2.classList.add('sticky');
 			if (leftbarPart3) {
 				leftbarPart3.classList.add('sticky');
-				// 动态设置 part2 高度变量
+				// 计算可用空间并分配给 part2 和 part3
+				let viewportHeight = window.innerHeight;
+				let topOffset = argonConfig.headroom !== 'absolute' ? 90 : 20;
+				let availableHeight = viewportHeight - topOffset - 20; // 20px 底部边距
+				
+				// 获取 part3 的自然高度（不受限制时的高度）
+				leftbarPart3.style.maxHeight = 'none';
+				let part3NaturalHeight = leftbarPart3.scrollHeight;
+				leftbarPart3.style.maxHeight = '';
+				
+				// 最小高度限制
+				let minPart2Height = 150;
+				let minPart3Height = 100;
+				
+				// 计算分配
+				let part2Height, part3MaxHeight;
+				if (part3NaturalHeight + minPart2Height <= availableHeight) {
+					// part3 可以完全显示
+					part3MaxHeight = part3NaturalHeight;
+					part2Height = availableHeight - part3NaturalHeight - 10;
+				} else {
+					// 需要按比例分配，part2 占 60%，part3 占 40%
+					part2Height = Math.max(minPart2Height, availableHeight * 0.6);
+					part3MaxHeight = Math.max(minPart3Height, availableHeight - part2Height - 10);
+				}
+				
 				document.documentElement.style.setProperty('--leftbar-part2-height', leftbarPart2.offsetHeight + 10 + 'px');
+				document.documentElement.style.setProperty('--leftbar-part3-height', part3MaxHeight + 'px');
+				document.documentElement.style.setProperty('--leftbar-part3-max-height', part3MaxHeight + 'px');
 			}
 		}else{
 			//滚动条在顶部 不浮动状态

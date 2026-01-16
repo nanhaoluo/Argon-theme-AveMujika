@@ -2531,13 +2531,9 @@ html.navbar-absolute #leftbar_part2.sticky {
 }
 
 #leftbar_part2_inner {
-
-	max-height: calc(100vh - 110px);
-
+	max-height: calc(100vh - 110px - var(--leftbar-part3-height, 0px));
 	overflow-y: auto;
-
 	padding: 10px;
-
 }
 
 #leftbar_part2_inner::-webkit-scrollbar {
@@ -12607,6 +12603,16 @@ article .post-content .huhua a:before {
 	position: fixed;
 	top: calc(80px + var(--leftbar-part2-height, 300px));
 	width: 240px;
+	max-height: var(--leftbar-part3-max-height, 50vh);
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+#leftbar_part3.sticky .card-body {
+	overflow-y: auto;
+	flex: 1;
+	min-height: 0;
 }
 
 body.leftbar-can-headroom.headroom---unpinned #leftbar_part3.sticky {
@@ -12706,7 +12712,7 @@ html.navbar-absolute #leftbar_part3.sticky {
 }
 
 .todo-list-scroll {
-	max-height: 240px;
+	max-height: none;
 	overflow-y: auto;
 	padding-right: 5px;
 }
