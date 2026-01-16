@@ -4920,8 +4920,11 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 		max-height var(--animation-slow) var(--ease-emphasized),
 		margin var(--animation-slow) var(--ease-standard),
 		padding var(--animation-slow) var(--ease-standard);
-	overflow: hidden;
 	will-change: opacity, max-height;
+}
+
+#comments.comments-collapsed, #post_comment.comments-collapsed {
+	overflow: hidden;
 }
 
 #comments.comments-collapsed {
