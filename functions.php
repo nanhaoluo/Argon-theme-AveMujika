@@ -676,7 +676,7 @@ function argon_debug_console_script() {
 	<div id="argon-debug-console">
 		<div id="argon-debug-console-header">
 			<div class="title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg><?php _e('调试控制台', 'argon'); ?></div>
-			<div class="actions"><button onclick="argonDebug.clear()"><?php _e('清空', 'argon'); ?></button><button class="close-btn" onclick="argonDebug.toggle()">×</button></div>
+			<div class="actions"><button onclick="argonDebug.clearCache()" title="<?php _e('清除浏览器缓存', 'argon'); ?>"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg> <?php _e('清除缓存', 'argon'); ?></button><button onclick="argonDebug.clear()"><?php _e('清空日志', 'argon'); ?></button><button class="close-btn" onclick="argonDebug.toggle()">×</button></div>
 		</div>
 		<div id="argon-debug-console-info">
 			<span><span class="label">Theme:</span> <span class="value"><?php echo esc_html($theme_version); ?></span></span>
@@ -820,7 +820,40 @@ function argon_debug_console_script() {
 		var panel=document.getElementById('argon-debug-console'),header=document.getElementById('argon-debug-console-header');
 		if(window.innerWidth>768&&header&&panel){var isDragging=false,startX,startY,startLeft,startTop;header.addEventListener('mousedown',function(e){if(e.target.tagName==='BUTTON')return;isDragging=true;startX=e.clientX;startY=e.clientY;var rect=panel.getBoundingClientRect();startLeft=rect.left;startTop=rect.top;panel.style.transition='none';});document.addEventListener('mousemove',function(e){if(!isDragging)return;var newLeft=Math.max(0,Math.min(startLeft+e.clientX-startX,window.innerWidth-panel.offsetWidth));var newTop=Math.max(0,Math.min(startTop+e.clientY-startY,window.innerHeight-panel.offsetHeight));panel.style.left=newLeft+'px';panel.style.top=newTop+'px';panel.style.bottom='auto';panel.style.right='auto';});document.addEventListener('mouseup',function(){isDragging=false;panel.style.transition='';});}
 		document.querySelectorAll('#argon-debug-console-tabs button').forEach(function(btn){btn.addEventListener('click',function(){document.querySelectorAll('#argon-debug-console-tabs button').forEach(function(b){b.classList.remove('active');});this.classList.add('active');currentFilter=this.dataset.filter;if(currentFilter==='resources'){collectResources();renderResources();}else{renderLogs();}});});
-		window.argonDebug={toggle:function(){panel.classList.toggle('show');if(panel.classList.contains('show')&&currentFilter==='resources'){collectResources();renderResources();}},clear:function(){logs=[];counts={all:0,log:0,warn:0,error:0,resources:counts.resources};updateCounts();renderLogs();},mute:function(hash,msg,source){if(!isAdmin)return;var xhr=new XMLHttpRequest();xhr.open('POST',ajaxUrl);xhr.setRequestHeader('Content-Type','application/x-www-form-urlencoded');xhr.onload=function(){if(xhr.status===200){mutedHashes.push(hash);renderLogs();}};xhr.send('action=argon_mute_error&nonce='+nonce+'&error_hash='+hash+'&error_message='+msg+'&error_source='+source);}};
+		window.argonDebug={toggle:function(){panel.classList.toggle('show');if(panel.classList.contains('show')&&currentFilter==='resources'){collectResources();renderResources();}},clear:function(){logs=[];counts={all:0,log:0,warn:0,error:0,resources:counts.resources};updateCounts();renderLogs();},clearCache:function(){
+			// 清除浏览器缓存
+			var cleared = [];
+			// 1. 清除 localStorage
+			try { var lsLen = localStorage.length; localStorage.clear(); if(lsLen > 0) cleared.push('localStorage ('+lsLen+' items)'); } catch(e) {}
+			// 2. 清除 sessionStorage
+			try { var ssLen = sessionStorage.length; sessionStorage.clear(); if(ssLen > 0) cleared.push('sessionStorage ('+ssLen+' items)'); } catch(e) {}
+			// 3. 清除 Service Worker 缓存
+			if ('caches' in window) {
+				caches.keys().then(function(names) {
+					var count = names.length;
+					names.forEach(function(name) { caches.delete(name); });
+					if (count > 0) {
+						console.log('<?php _e("已清除 Service Worker 缓存", "argon"); ?>: ' + count + ' caches');
+					}
+				});
+			}
+			// 4. 注销 Service Worker
+			if ('serviceWorker' in navigator) {
+				navigator.serviceWorker.getRegistrations().then(function(registrations) {
+					registrations.forEach(function(registration) { registration.unregister(); });
+					if (registrations.length > 0) {
+						console.log('<?php _e("已注销 Service Worker", "argon"); ?>: ' + registrations.length);
+					}
+				});
+			}
+			// 显示结果
+			var msg = cleared.length > 0 ? '<?php _e("已清除", "argon"); ?>: ' + cleared.join(', ') : '<?php _e("缓存已清除", "argon"); ?>';
+			console.log(msg);
+			// 提示用户
+			if (confirm('<?php _e("缓存已清除！是否立即刷新页面以加载最新资源？", "argon"); ?>')) {
+				window.location.reload(true);
+			}
+		},mute:function(hash,msg,source){if(!isAdmin)return;var xhr=new XMLHttpRequest();xhr.open('POST',ajaxUrl);xhr.setRequestHeader('Content-Type','application/x-www-form-urlencoded');xhr.onload=function(){if(xhr.status===200){mutedHashes.push(hash);renderLogs();}};xhr.send('action=argon_mute_error&nonce='+nonce+'&error_hash='+hash+'&error_message='+msg+'&error_source='+source);}};
 		
 		// 页面加载完成后收集资源
 		window.addEventListener('load', function() {
