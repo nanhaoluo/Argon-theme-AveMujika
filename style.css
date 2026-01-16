@@ -5091,6 +5091,8 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 
 	display: flex;
 
+	overflow: visible;
+
 }
 
 .comment-item-left-wrapper {
@@ -5106,6 +5108,8 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 	position: relative;
 
 	min-height: 70px;
+
+	overflow: visible;
 
 }
 
