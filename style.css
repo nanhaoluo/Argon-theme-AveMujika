@@ -8224,11 +8224,11 @@ body.noscroll:before {
 	margin-bottom: 25px;
 }
 
+/* ---------- 分享按钮 ---------- */
 #share_container {
-	height: 38px;
 	position: relative;
 	display: inline-flex;
-	align-items: center;
+	align-items: flex-end;
 }
 
 #comments_toggle {
@@ -8261,80 +8261,62 @@ body.noscroll:before {
 }
 
 #share,
-
 #share_show {
-
 	width: max-content;
-
 	width: -moz-max-content;
-
 	transition: transform var(--animation-normal) var(--ease-emphasized), opacity var(--animation-normal) var(--ease-standard);
-
 }
 
 #share {
-
 	position: absolute;
-
+	bottom: calc(100% + 8px);
 	right: 0;
-
-	top: 0;
-
 	display: flex;
-
-	flex-direction: row;
-
-	flex-wrap: nowrap;
-
-	justify-content: flex-end;
-
-	align-items: center;
-
+	flex-direction: column;
 	gap: 6px;
-
-	transform: translateY(-10px);
-
+	padding: 8px;
+	background: var(--color-foreground);
+	border-radius: 12px;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+	transform: translateY(10px);
 	opacity: 0;
-
 	pointer-events: none;
-
 	will-change: transform, opacity;
-
 }
 
-/* 分享按钮子元素初始状态 */
+/* 分享按钮子元素初始状态 - 上滑动画 */
 #share > a {
 	opacity: 0;
-	transform: scale(0.8) translateX(10px);
+	transform: translateY(8px);
 	transition: 
 		opacity var(--animation-normal) var(--ease-emphasized-decelerate),
 		transform var(--animation-normal) var(--ease-spring);
 }
 
-/* 错落动画延迟 */
-#share_container.opened #share > a:nth-child(1) { transition-delay: 0ms; }
-#share_container.opened #share > a:nth-child(2) { transition-delay: 30ms; }
-#share_container.opened #share > a:nth-child(3) { transition-delay: 60ms; }
-#share_container.opened #share > a:nth-child(4) { transition-delay: 90ms; }
-#share_container.opened #share > a:nth-child(5) { transition-delay: 120ms; }
-#share_container.opened #share > a:nth-child(6) { transition-delay: 150ms; }
-#share_container.opened #share > a:nth-child(7) { transition-delay: 180ms; }
-#share_container.opened #share > a:nth-child(8) { transition-delay: 210ms; }
+/* 展开时错落动画延迟 - 从下往上依次出现 */
+#share_container.opened #share > a:nth-last-child(1) { transition-delay: 0ms; }
+#share_container.opened #share > a:nth-last-child(2) { transition-delay: 30ms; }
+#share_container.opened #share > a:nth-last-child(3) { transition-delay: 60ms; }
+#share_container.opened #share > a:nth-last-child(4) { transition-delay: 90ms; }
+#share_container.opened #share > a:nth-last-child(5) { transition-delay: 120ms; }
+#share_container.opened #share > a:nth-last-child(6) { transition-delay: 150ms; }
+#share_container.opened #share > a:nth-last-child(7) { transition-delay: 180ms; }
+#share_container.opened #share > a:nth-last-child(8) { transition-delay: 210ms; }
 
 #share_container.opened #share > a {
 	opacity: 1;
-	transform: scale(1) translateX(0);
+	transform: translateY(0);
 }
 
-/* 分享按钮退出动画 - 反向错落延迟 */
-#share_container:not(.opened) #share > a:nth-child(1) { transition-delay: 120ms; }
-#share_container:not(.opened) #share > a:nth-child(2) { transition-delay: 100ms; }
-#share_container:not(.opened) #share > a:nth-child(3) { transition-delay: 80ms; }
-#share_container:not(.opened) #share > a:nth-child(4) { transition-delay: 60ms; }
-#share_container:not(.opened) #share > a:nth-child(5) { transition-delay: 40ms; }
-#share_container:not(.opened) #share > a:nth-child(6) { transition-delay: 20ms; }
-#share_container:not(.opened) #share > a:nth-child(7) { transition-delay: 0ms; }
-#share_container:not(.opened) #share > a:nth-child(8) { transition-delay: 0ms; }
+/* 收起时错落动画延迟 - 从上往下依次消失 */
+#share_container:not(.opened) #share > a:nth-last-child(8) { transition-delay: 0ms; }
+#share_container:not(.opened) #share > a:nth-last-child(7) { transition-delay: 20ms; }
+#share_container:not(.opened) #share > a:nth-last-child(6) { transition-delay: 40ms; }
+#share_container:not(.opened) #share > a:nth-last-child(5) { transition-delay: 60ms; }
+#share_container:not(.opened) #share > a:nth-last-child(4) { transition-delay: 80ms; }
+#share_container:not(.opened) #share > a:nth-last-child(3) { transition-delay: 100ms; }
+#share_container:not(.opened) #share > a:nth-last-child(2) { transition-delay: 120ms; }
+#share_container:not(.opened) #share > a:nth-last-child(1) { transition-delay: 140ms; }
 
 /* 分享面板移动端响应式适配 */
 @media (max-width: 576px) {
@@ -8348,12 +8330,12 @@ body.noscroll:before {
 		right: 16px;
 		left: auto;
 		top: auto;
-		flex-direction: column-reverse;
+		flex-direction: column;
 		gap: 8px;
 		transform: translateY(20px);
 		max-height: calc(100vh - 160px);
 		overflow-y: auto;
-		padding: 8px;
+		padding: 10px;
 		background: var(--color-foreground);
 		border-radius: 12px;
 		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
@@ -8364,371 +8346,246 @@ body.noscroll:before {
 	}
 	
 	#share > a {
-		transform: scale(0.8) translateY(10px);
+		transform: translateY(10px);
 	}
 	
 	#share_container.opened #share > a {
-		transform: scale(1) translateY(0);
+		transform: translateY(0);
 	}
 }
 
 #share_show {
-
 	opacity: 1;
-
 	height: 38px;
-
 	width: 38px;
-
 	display: inline-flex;
-
 	align-items: center;
-
 	justify-content: center;
-
-	transform: translateY(0);
-
 	background-color: var(--themecolor) !important;
-
 	border-color: var(--themecolor) !important;
-
+	transition: transform var(--animation-normal) var(--ease-spring), 
+		background-color var(--animation-fast) var(--ease-standard),
+		border-color var(--animation-fast) var(--ease-standard);
 }
 
 #share_show:hover {
-
 	background-color: var(--themecolor-dark) !important;
-
 	border-color: var(--themecolor-dark) !important;
-
 }
 
 #share_show:active {
-
 	background-color: var(--themecolor-dark2) !important;
-
 	border-color: var(--themecolor-dark2) !important;
-
 }
 
 #share_container.opened #share {
-
 	transform: translateY(0);
-
 	opacity: 1;
-
 	pointer-events: unset;
-
 }
 
 #share_container.opened #share_show {
-
-	transform: rotate(45deg) scale(0.9);
-
-	opacity: 0.7;
-
-	pointer-events: none;
-
+	transform: rotate(45deg);
 }
 
 #share_container .btn {
-
 	height: 38px;
-
-	padding: 0 15px;
-
-	line-height: 38px;
-
-	margin-left: 5px;
-
-	margin-right: 0;
-
-	margin-bottom: 0;
-
-	min-width: 50px;
-
-}
-
-#share .btn {
-
-	margin-bottom: 0;
-
-	height: 38px;
-
-	width: 50px;
-
+	width: 38px;
 	padding: 0;
-
 	display: inline-flex;
-
 	align-items: center;
-
 	justify-content: center;
-
+	margin: 0;
 }
 
-
+/* 夜间模式分享面板 */
+html.darkmode #share {
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
 
 #share .icon-wechat,
 #share .icon-copy-link {
-
 	position: relative;
-
 }
 
 #share .icon-wechat .wechat-qrcode,
 #share .icon-copy-link .wechat-qrcode {
-
 	position: absolute;
-
 	z-index: 2;
-
-	bottom: 50px;
-
-	right: 0px;
-
+	top: 50%;
+	right: calc(100% + 10px);
+	transform: translateY(-50%) translateX(10px);
 	width: max-content;
-
 	width: -moz-max-content;
-
 	background: var(--color-widgets);
-
 	box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-
 	text-align: center;
-
 	padding: 15px 30px;
-
 	transition: visibility 0.25s, opacity 0.25s, transform 0.25s;
-
-	transform: translate(0, -10px) perspective(100px) rotateX(3deg);
-
 	opacity: 0;
-
-	border-radius: 3px;
-
+	border-radius: 8px;
 	pointer-events: none;
-
 }
 
 #share .icon-wechat:hover .wechat-qrcode,
 #share .icon-copy-link:hover .wechat-qrcode {
-
-	transform: translate(0, 0);
-
+	transform: translateY(-50%) translateX(0);
 	opacity: 1;
-
 }
 
 #share .wechat-qrcode:before {
-
 	position: absolute;
-
 	z-index: 3;
-
-	top: calc(100% - 1em - 2px);
-
-	right: 35px;
-
+	top: 50%;
+	right: -6px;
 	display: block;
-
-	width: 16px;
-
-	height: 16px;
-
+	width: 12px;
+	height: 12px;
 	content: "";
-
-	transform: rotate(-45deg) translateY(1rem);
-
-	border-radius: 0.2rem;
-
+	transform: translateY(-50%) rotate(45deg);
+	border-radius: 2px;
 	background: var(--color-widgets);
-
 }
 
 #share .qrcode img {
-
 	margin: auto;
-
 }
 
 #share .wechat-qrcode h4 {
-
 	font-size: 18px;
-
 	padding-bottom: 10px;
-
 }
 
 #share .wechat-qrcode .help {
-
 	color: #000;
-
 	padding-top: 20px;
-
 	padding-bottom: 5px;
+}
 
+html.darkmode #share .wechat-qrcode .help {
+	color: var(--color-text);
 }
 
 #share > a {
-
 	position: relative;
-
 }
 
+/* 分享按钮 tooltip */
 #share > a:before,
-
 #share_show:before {
-
 	pointer-events: none;
-
 	position: absolute;
-
-	top: -35px;
-
-	right: 0px;
-
+	top: 50%;
+	right: calc(100% + 8px);
+	transform: translateY(-50%) translateX(5px);
 	line-height: 25px;
-
 	width: max-content;
-
 	width: -moz-max-content;
-
 	text-align: center;
-
 	font-weight: normal;
-
 	color: #fff;
-
 	background: #32325d;
-
 	padding: 3px 10px;
-
 	font-size: 14px;
-
-	border-radius: 3px;
-
+	border-radius: 6px;
 	z-index: 3;
-
-	transition: all 0.3s ease;
-
-	transform: translateY(5px);
-
+	transition: all 0.2s var(--ease-standard);
 	opacity: 0;
-
 }
 
 #share > a:hover:before,
-
 #share_show:hover:before {
-
-	transform: translateY(0);
-
-	opacity: 0.7;
-
+	transform: translateY(-50%) translateX(0);
+	opacity: 0.9;
 }
 
 #share_show:before {
-
 	content: attr(tooltip);
-
-	top: -40px;
-
+	top: 50%;
+	right: calc(100% + 8px);
 	height: max-content;
-
 	height: -moz-max-content;
-
 	text-transform: none;
-
 }
 
 #share .icon-douban:before {
-
 	content: attr(tooltip);
-
 }
 
 #share .icon-qq:before {
-
 	content: attr(tooltip);
-
 }
 
 #share .icon-qzone:before {
-
 	content: attr(tooltip);
-
 }
 
 #share .icon-weibo:before {
-
 	content: attr(tooltip);
-
 }
 
 #share .icon-facebook:before {
-
 	content: attr(tooltip);
-
 }
 
 #share .icon-twitter:before {
-
 	content: attr(tooltip);
-
 }
 
 #share .icon-telegram:before {
-
 	content: attr(tooltip);
-
 }
 
 #share .icon-copy-link:before {
-
 	display: none !important;
-
 }
 
+/* 移动端分享按钮 tooltip 隐藏 */
+@media (max-width: 576px) {
+	#share > a:before {
+		display: none !important;
+	}
+	
+	#share .icon-wechat .wechat-qrcode,
+	#share .icon-copy-link .wechat-qrcode {
+		right: auto;
+		left: calc(100% + 10px);
+		transform: translateY(-50%) translateX(-10px);
+	}
+	
+	#share .icon-wechat:hover .wechat-qrcode,
+	#share .icon-copy-link:hover .wechat-qrcode {
+		transform: translateY(-50%) translateX(0);
+	}
+	
+	#share .wechat-qrcode:before {
+		right: auto;
+		left: -6px;
+	}
+}
 
-
-/*Wordpress Adminbar*/
-
+/* ==========================================================================
+   WordPress Adminbar
+   ========================================================================== */
 #wpadminbar {
-
 	position: fixed !important;
-
 	width: max-content !important;
-
 	height: max-content !important;
-
 	width: -moz-max-content !important;
-
 	height: -moz-max-content !important;
-
 	min-height: 55px;
-
 	max-width: 100vw;
-
 	background: var(--themecolor) !important;
-
 	box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
-
 	border-radius: 0 100px 100px 0;
-
 	padding: 10px 20px;
-
 	top: calc(50vh - 27.5px) !important;
-
 	left: 0 !important;
-
 	transform: translateX(calc(-100% + 25px));
-
 	transition: all 0.3s ease;
-
 }
 
 #wpadminbar:hover {
-
 	transform: none !important;
 
 }
