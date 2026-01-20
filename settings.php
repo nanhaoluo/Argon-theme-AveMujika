@@ -1881,6 +1881,194 @@ function themeoptions_page(){
 					<!-- ========== 11. 文章功能 ========== -->
 					<tr><th class="subtitle"><h2 id="section-post-features"><?php _e('文章功能', 'argon');?></h2></th></tr>
 
+					<tr><th class="subtitle"><h3 id="subsection-ai-summary"><?php _e('AI 文章摘要', 'argon');?></h3></th></tr>
+
+					<tr>
+						<th><label><?php _e('启用 AI 文章摘要', 'argon');?></label></th>
+						<td>
+							<select name="argon_ai_summary_enable">
+								<?php $argon_ai_summary_enable = get_option('argon_ai_summary_enable', 'false'); ?>
+								<option value="true" <?php if ($argon_ai_summary_enable=='true'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
+								<option value="false" <?php if ($argon_ai_summary_enable=='false'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
+							</select>
+							<p class="description"><?php _e('开启后，文章开头会显示 AI 生成的摘要。每篇文章只生成一次，结果会缓存到服务器。', 'argon');?></p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('AI 服务商', 'argon');?></label></th>
+						<td>
+							<select name="argon_ai_summary_provider">
+								<?php $argon_ai_summary_provider = get_option('argon_ai_summary_provider', 'openai'); ?>
+								<option value="openai" <?php if ($argon_ai_summary_provider=='openai'){echo 'selected';} ?>>OpenAI (ChatGPT)</option>
+								<option value="anthropic" <?php if ($argon_ai_summary_provider=='anthropic'){echo 'selected';} ?>>Anthropic (Claude)</option>
+								<option value="deepseek" <?php if ($argon_ai_summary_provider=='deepseek'){echo 'selected';} ?>>DeepSeek</option>
+								<option value="qianwen" <?php if ($argon_ai_summary_provider=='qianwen'){echo 'selected';} ?>><?php _e('通义千问', 'argon');?></option>
+								<option value="wenxin" <?php if ($argon_ai_summary_provider=='wenxin'){echo 'selected';} ?>><?php _e('文心一言', 'argon');?></option>
+								<option value="doubao" <?php if ($argon_ai_summary_provider=='doubao'){echo 'selected';} ?>><?php _e('豆包 (火山引擎)', 'argon');?></option>
+								<option value="kimi" <?php if ($argon_ai_summary_provider=='kimi'){echo 'selected';} ?>>Kimi (Moonshot)</option>
+								<option value="zhipu" <?php if ($argon_ai_summary_provider=='zhipu'){echo 'selected';} ?>><?php _e('智谱 AI (GLM)', 'argon');?></option>
+								<option value="siliconflow" <?php if ($argon_ai_summary_provider=='siliconflow'){echo 'selected';} ?>><?php _e('硅基流动 (SiliconFlow)', 'argon');?></option>
+							</select>
+							<p class="description"><?php _e('选择 AI 服务提供商', 'argon');?></p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('API 密钥', 'argon');?></label></th>
+						<td>
+							<input type="password" class="regular-text" name="argon_ai_summary_api_key" value="<?php echo get_option('argon_ai_summary_api_key', ''); ?>" placeholder="sk-..."/>
+							<p class="description"><?php _e('填写对应服务商的 API Key', 'argon');?></p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('API 端点 (可选)', 'argon');?></label></th>
+						<td>
+							<input type="text" class="regular-text" name="argon_ai_summary_api_endpoint" value="<?php echo get_option('argon_ai_summary_api_endpoint', ''); ?>" placeholder="<?php _e('留空使用默认端点', 'argon');?>"/>
+							<p class="description"><?php _e('自定义 API 端点地址，留空则使用官方默认地址。适用于使用代理或第三方兼容接口。', 'argon');?></p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('AI 模型', 'argon');?></label></th>
+						<td>
+							<select name="argon_ai_summary_model" id="argon_ai_summary_model" class="regular-text">
+								<option value=""><?php _e('使用默认模型', 'argon');?></option>
+								<?php
+								$current_model = get_option('argon_ai_summary_model', '');
+								if (!empty($current_model)) {
+									echo '<option value="' . esc_attr($current_model) . '" selected>' . esc_html($current_model) . '</option>';
+								}
+								?>
+							</select>
+							<button type="button" class="button" id="argon_refresh_models" style="margin-left: 10px;">
+								<span class="dashicons dashicons-update" style="margin-top: 3px;"></span> <?php _e('刷新模型列表', 'argon');?>
+							</button>
+							<span id="argon_model_loading" style="display:none;margin-left:10px;color:#666;">
+								<span class="dashicons dashicons-update spin" style="margin-top:3px;"></span> <?php _e('加载中...', 'argon');?>
+							</span>
+							<p class="description">
+								<?php _e('选择要使用的模型。点击"刷新模型列表"可从服务商获取最新可用模型。', 'argon');?><br/>
+								<?php _e('默认模型: OpenAI (gpt-4o-mini) | Claude (claude-3-5-haiku-20241022) | DeepSeek (deepseek-chat)', 'argon');?><br/>
+								<?php _e('通义千问 (qwen-turbo) | 文心一言 (ernie-4.0-turbo-8k) | 豆包 (doubao-pro-32k)', 'argon');?><br/>
+								<?php _e('Kimi (moonshot-v1-8k) | 智谱 (glm-4-flash) | 硅基流动 (Qwen/Qwen2.5-7B-Instruct)', 'argon');?>
+							</p>
+							<style>
+								@keyframes spin {
+									from { transform: rotate(0deg); }
+									to { transform: rotate(360deg); }
+								}
+								.dashicons.spin {
+									animation: spin 1s linear infinite;
+								}
+							</style>
+							<script>
+							jQuery(document).ready(function($) {
+								var currentProvider = $('select[name="argon_ai_summary_provider"]').val();
+								
+								// 监听服务商变化
+								$('select[name="argon_ai_summary_provider"]').on('change', function() {
+									currentProvider = $(this).val();
+									$('#argon_ai_summary_model').html('<option value=""><?php _e('使用默认模型', 'argon');?></option>');
+								});
+								
+								// 刷新模型列表
+								$('#argon_refresh_models').on('click', function() {
+									var btn = $(this);
+									var loading = $('#argon_model_loading');
+									var select = $('#argon_ai_summary_model');
+									var apiKey = $('input[name="argon_ai_summary_api_key"]').val();
+									var apiEndpoint = $('input[name="argon_ai_summary_api_endpoint"]').val();
+									
+									if (!apiKey) {
+										alert('<?php _e('请先填写 API 密钥', 'argon');?>');
+										return;
+									}
+									
+									btn.prop('disabled', true);
+									loading.show();
+									
+									$.post(ajaxurl, {
+										action: 'argon_get_ai_models',
+										nonce: '<?php echo wp_create_nonce('argon_get_ai_models'); ?>',
+										provider: currentProvider,
+										api_key: apiKey,
+										api_endpoint: apiEndpoint
+									}, function(response) {
+										btn.prop('disabled', false);
+										loading.hide();
+										
+										if (response.success && response.data.models) {
+											var currentValue = select.val();
+											select.html('<option value=""><?php _e('使用默认模型', 'argon');?></option>');
+											
+											$.each(response.data.models, function(i, model) {
+												var selected = model.id === currentValue ? ' selected' : '';
+												select.append('<option value="' + model.id + '"' + selected + '>' + model.name + '</option>');
+											});
+											
+											if (response.data.models.length > 0) {
+												alert('<?php _e('成功加载', 'argon');?> ' + response.data.models.length + ' <?php _e('个模型', 'argon');?>');
+											} else {
+												alert('<?php _e('未找到可用模型', 'argon');?>');
+											}
+										} else {
+											alert('<?php _e('获取模型列表失败', 'argon');?>: ' + (response.data || '<?php _e('未知错误', 'argon');?>'));
+										}
+									}).fail(function() {
+										btn.prop('disabled', false);
+										loading.hide();
+										alert('<?php _e('请求失败，请检查网络连接', 'argon');?>');
+									});
+								});
+							});
+							</script>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('摘要提示词', 'argon');?></label></th>
+						<td>
+							<textarea type="text" rows="4" cols="70" name="argon_ai_summary_prompt"><?php echo get_option('argon_ai_summary_prompt', '你是一个专业的内容摘要助手。请仔细阅读以下文章内容，用简洁、准确的语言总结文章的核心观点和主要内容。要求：1) 控制在 100-150 字以内；2) 突出文章的关键信息和亮点；3) 使用通俗易懂的语言；4) 保持客观中立的语气。'); ?></textarea>
+							<p class="description"><?php _e('自定义 AI 生成摘要时使用的提示词', 'argon');?></p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('排除文章 ID', 'argon');?></label></th>
+						<td>
+							<input type="text" class="regular-text" name="argon_ai_summary_exclude_ids" value="<?php echo get_option('argon_ai_summary_exclude_ids', ''); ?>" placeholder="1,2,3"/>
+							<p class="description"><?php _e('不显示 AI 摘要的文章 ID，多个用英文逗号分隔', 'argon');?></p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('手动重新生成', 'argon');?></label></th>
+						<td>
+							<button type="button" class="button" id="argon-clear-ai-summaries"><?php _e('清除所有 AI 摘要缓存', 'argon');?></button>
+							<p class="description"><?php _e('清除后，所有文章的 AI 摘要将在下次访问时重新生成', 'argon');?></p>
+							<script>
+							jQuery('#argon-clear-ai-summaries').on('click', function() {
+								if (!confirm('<?php _e('确定要清除所有 AI 摘要缓存吗？', 'argon');?>')) return;
+								var btn = jQuery(this);
+								btn.prop('disabled', true).text('<?php _e('清除中...', 'argon');?>');
+								jQuery.post(ajaxurl, {
+									action: 'argon_clear_ai_summaries',
+									nonce: '<?php echo wp_create_nonce('argon_clear_ai_summaries'); ?>'
+								}, function(response) {
+									if (response.success) {
+										alert('<?php _e('清除成功', 'argon');?>');
+									} else {
+										alert('<?php _e('清除失败', 'argon');?>: ' + (response.data || ''));
+									}
+									btn.prop('disabled', false).text('<?php _e('清除所有 AI 摘要缓存', 'argon');?>');
+								});
+							});
+							</script>
+						</td>
+					</tr>
+
 					<tr><th class="subtitle"><h3 id="subsection-footnote"><?php _e('脚注引用', 'argon');?></h3></th></tr>
 
 					<tr>
@@ -3365,7 +3553,141 @@ window.pjaxLoaded = function(){
 
 					</tr>
 
+					<tr>
+
+						<th><label><?php _e('反馈提交验证码', 'argon');?></label></th>
+
+						<td>
+
+							<select name="argon_feedback_captcha_mode">
+
+								<?php $feedback_captcha = get_option('argon_feedback_captcha_mode', 'global'); ?>
+
+								<option value="global" <?php if ($feedback_captcha=='global'){echo 'selected';} ?>><?php _e('使用全局设置', 'argon');?></option>
+
+								<option value="enabled" <?php if ($feedback_captcha=='enabled'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
+
+								<option value="disabled" <?php if ($feedback_captcha=='disabled'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
+
+							</select>
+
+							<p class="description"><?php _e('问题反馈页面提交时是否需要验证码', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
+					<tr><th class="subtitle"><h3 id="subsection-feedback"><?php _e('反馈设置', 'argon');?></h3></th></tr>
+
+					<tr>
+
+						<th><label><?php _e('新反馈通知管理员', 'argon');?></label></th>
+
+						<td>
+
+							<select name="argon_feedback_notify_admin">
+
+								<?php $feedback_notify_admin = get_option('argon_feedback_notify_admin', 'true'); ?>
+
+								<option value="true" <?php if ($feedback_notify_admin=='true'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
+
+								<option value="false" <?php if ($feedback_notify_admin=='false'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
+
+							</select>
+
+							<p class="description"><?php _e('收到新反馈时是否发送邮件通知管理员', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
+					<tr>
+
+						<th><label><?php _e('反馈回复/完结通知用户', 'argon');?></label></th>
+
+						<td>
+
+							<select name="argon_feedback_notify_user">
+
+								<?php $feedback_notify_user = get_option('argon_feedback_notify_user', 'true'); ?>
+
+								<option value="true" <?php if ($feedback_notify_user=='true'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
+
+								<option value="false" <?php if ($feedback_notify_user=='false'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
+
+							</select>
+
+							<p class="description"><?php _e('反馈收到回复或被标记为已解决时，是否发送邮件通知用户。邮件中包含授权链接，用户可通过链接查看反馈详情（无论反馈是否公开）', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
 					<tr><th class="subtitle"><h3 id="subsection-rate-limit"><?php _e('速率限制', 'argon');?></h3></th></tr>
+
+				<tr>
+
+					<th><label><?php _e('全局 IP 黑名单', 'argon');?></label></th>
+
+					<td>
+
+						<textarea name="argon_global_blocked_ips" rows="8" cols="70" placeholder="<?php _e('每行一个 IP 地址', 'argon');?>"><?php echo get_option('argon_global_blocked_ips', ''); ?></textarea>
+
+						<p class="description">
+							<?php _e('被屏蔽的 IP 地址将无法提交评论、反馈、友链申请等操作。支持以下格式：', 'argon');?><br>
+							• <?php _e('精确匹配：192.168.1.100', 'argon');?><br>
+							• <?php _e('通配符：192.168.1.*', 'argon');?><br>
+							• <?php _e('CIDR 格式：192.168.1.0/24', 'argon');?>
+						</p>
+
+					</td>
+
+				</tr>
+
+				<tr>
+
+					<th><label><?php _e('友链申请频率限制', 'argon');?></label></th>
+
+					<td>
+
+						<input type="number" name="argon_flink_apply_limit" min="1" max="50" value="<?php echo get_option('argon_flink_apply_limit', '3'); ?>" style="width:80px;"/> <?php _e('次', 'argon');?> / 
+						<input type="number" name="argon_flink_apply_period" min="60" max="86400" value="<?php echo get_option('argon_flink_apply_period', '3600'); ?>" style="width:100px;"/> <?php _e('秒', 'argon');?>
+
+						<p class="description"><?php _e('限制单个用户在指定时间内提交友链申请的次数。默认：1小时内最多3次', 'argon');?></p>
+
+					</td>
+
+				</tr>
+
+				<tr>
+
+					<th><label><?php _e('反馈提交频率限制', 'argon');?></label></th>
+
+					<td>
+
+						<input type="number" name="argon_feedback_submit_limit" min="1" max="100" value="<?php echo get_option('argon_feedback_submit_limit', '5'); ?>" style="width:80px;"/> <?php _e('次', 'argon');?> / 
+						<input type="number" name="argon_feedback_submit_period" min="60" max="86400" value="<?php echo get_option('argon_feedback_submit_period', '3600'); ?>" style="width:100px;"/> <?php _e('秒', 'argon');?>
+
+						<p class="description"><?php _e('限制单个用户在指定时间内提交反馈的次数，防止恶意刷屏。默认：1小时内最多5次', 'argon');?></p>
+
+					</td>
+
+				</tr>
+
+				<tr>
+
+					<th><label><?php _e('反馈图片上传频率限制', 'argon');?></label></th>
+
+					<td>
+
+						<input type="number" name="argon_feedback_upload_limit" min="1" max="100" value="<?php echo get_option('argon_feedback_upload_limit', '20'); ?>" style="width:80px;"/> <?php _e('张', 'argon');?> / 
+						<input type="number" name="argon_feedback_upload_period" min="60" max="86400" value="<?php echo get_option('argon_feedback_upload_period', '3600'); ?>" style="width:100px;"/> <?php _e('秒', 'argon');?>
+
+						<p class="description"><?php _e('限制单个用户在指定时间内上传图片的数量。默认：1小时内最多20张', 'argon');?></p>
+
+					</td>
+
+				</tr>
 
 				<tr>
 
@@ -5798,6 +6120,16 @@ function argon_update_themeoptions(){
 		argon_update_option('argon_friend_link_welcome');
 		argon_update_option('argon_friend_link_allow_apply');
 		argon_update_option('argon_friend_link_captcha');
+		argon_update_option('argon_feedback_captcha_mode');
+		argon_update_option('argon_feedback_notify_admin');
+		argon_update_option('argon_feedback_notify_user');
+		argon_update_option('argon_global_blocked_ips');
+		argon_update_option('argon_flink_apply_limit');
+		argon_update_option('argon_flink_apply_period');
+		argon_update_option('argon_feedback_submit_limit');
+		argon_update_option('argon_feedback_submit_period');
+		argon_update_option('argon_feedback_upload_limit');
+		argon_update_option('argon_feedback_upload_period');
 		argon_update_option('argon_friend_link_hide_no_backlink');
 		argon_update_option_allow_tags('argon_friend_link_requirements');
 
@@ -6027,6 +6359,15 @@ function argon_update_themeoptions(){
 		//公告
 
 		argon_update_option_allow_tags('argon_sidebar_announcement');
+
+	//AI 摘要
+	argon_update_option_checkbox('argon_ai_summary_enable');
+	argon_update_option('argon_ai_summary_provider');
+	argon_update_option('argon_ai_summary_api_key');
+	argon_update_option('argon_ai_summary_api_endpoint');
+	argon_update_option('argon_ai_summary_model');
+	argon_update_option('argon_ai_summary_prompt');
+	argon_update_option('argon_ai_summary_exclude_ids');
 
 	}
 
