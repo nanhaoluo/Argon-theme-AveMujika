@@ -1,4 +1,7 @@
-<?php get_header(); ?>
+<?php 
+echo '<!-- ========== ARGON SINGLE.PHP 已加载 ========== -->';
+get_header(); 
+?>
 
 
 
@@ -19,8 +22,6 @@
 		while ( have_posts() ) :
 
 			the_post();
-
-
 
 			get_template_part( 'template-parts/content', 'single' );
 
