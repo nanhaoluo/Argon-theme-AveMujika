@@ -4482,12 +4482,20 @@ function argon_feedback_rewrite() {
     add_rewrite_rule('^feedback/?$', 'index.php?argon_feedback_view=1', 'top');
 }
 
+// AI 查询页面 URL 重写
+add_action('init', 'argon_ai_query_rewrite');
+function argon_ai_query_rewrite() {
+    add_rewrite_rule('^ai-query/?$', 'index.php?argon_ai_query=1', 'top');
+    add_rewrite_rule('^ai-query/([A-Z0-9]{8})/?$', 'index.php?argon_ai_query=1&code=$matches[1]', 'top');
+}
+
 // 主题激活或更新时刷新重写规则
 add_action('after_switch_theme', 'argon_flush_rewrite_rules');
 add_action('upgrader_process_complete', 'argon_flush_rewrite_rules');
 function argon_flush_rewrite_rules() {
     argon_friend_links_rewrite();
     argon_feedback_rewrite();
+    argon_ai_query_rewrite();
     flush_rewrite_rules();
 }
 
@@ -4495,6 +4503,7 @@ add_filter('query_vars', 'argon_friend_links_query_vars');
 function argon_friend_links_query_vars($vars) {
     $vars[] = 'argon_friend_links';
     $vars[] = 'argon_feedback_view';
+    $vars[] = 'argon_ai_query';
     return $vars;
 }
 
@@ -4511,6 +4520,15 @@ add_action('template_redirect', 'argon_feedback_template');
 function argon_feedback_template() {
     if (get_query_var('argon_feedback_view') || isset($_GET['argon_feedback_view'])) {
         include(get_template_directory() . '/feedback.php');
+        exit;
+    }
+}
+
+// AI 查询页面路由
+add_action('template_redirect', 'argon_ai_query_template');
+function argon_ai_query_template() {
+    if (get_query_var('argon_ai_query')) {
+        include(get_template_directory() . '/ai-summary-query.php');
         exit;
     }
 }

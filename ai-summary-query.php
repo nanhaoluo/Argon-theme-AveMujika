@@ -8,6 +8,9 @@ if (!file_exists($wp_load_path)) $wp_load_path = $_SERVER['DOCUMENT_ROOT'] . '/w
 require_once($wp_load_path);
 
 $query_code = isset($_GET['code']) ? sanitize_text_field($_GET['code']) : '';
+if (empty($query_code)) {
+	$query_code = get_query_var('code') ? sanitize_text_field(get_query_var('code')) : '';
+}
 $result = null;
 $error = '';
 
@@ -276,7 +279,7 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 			<a href="<?php echo esc_url($result['post_url']); ?>" class="btn btn-primary">
 				<?php _e('查看原文', 'argon'); ?>
 			</a>
-			<a href="<?php echo esc_url(get_template_directory_uri() . '/ai-summary-query.php'); ?>" class="btn btn-outline-secondary">
+			<a href="<?php echo home_url('/ai-query'); ?>" class="btn btn-outline-secondary">
 				<?php _e('查询其他识别码', 'argon'); ?>
 			</a>
 		</div>
@@ -284,7 +287,6 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('功能说明', 'argon'); ?></h4>
 		<ul class="ai-help-list">
 			<li><?php _e('每个 AI 生成内容都有唯一的 8 位识别码，用于内容溯源', 'argon'); ?></li>
-			<li><?php _e('识别码显示在文章页面的 AI 摘要底部，点击可直接跳转到本页面', 'argon'); ?></li>
 			<li><?php _e('通过识别码可以查询 AI 内容的生成信息和关联文章', 'argon'); ?></li>
 			<li><?php _e('识别码由数字和大写字母组成，不包含易混淆字符（I、O）', 'argon'); ?></li>
 		</ul>
