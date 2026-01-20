@@ -291,9 +291,6 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 	<?php endif; ?>
 </article>
 
-</main>
-</div>
-
 <?php
 get_footer();
 ?>
