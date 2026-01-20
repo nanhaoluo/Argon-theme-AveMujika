@@ -14,7 +14,7 @@ License: GNU General Public License v3.0
 
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
-Tags: 简�? 两栏, 侧栏在左�? 浮动侧栏, 文章目录, 自适应, 夜间模式, 可自定义
+Tags: 简�? 两栏, 侧栏在左�? 浮动侧栏, 文章目录, 自适应, 夜间模式, 可自定义
 
 */
 
@@ -203,7 +203,7 @@ Tags: 简�? 两栏, 侧栏在左�? 浮动侧栏, 文章目录, 自适应, 夜�
 
 	--color-selection: #cce2ff;
 
-	/* ========== 统一动画系统 - 桌面端和移动端一�?========== */
+	/* ========== 统一动画系统 - 桌面端和移动端一�?========== */
 	/* 动画时长 - 基于 Material Design 3 规范 */
 	--animation-instant: 100ms;
 	--animation-fast: 150ms;
@@ -219,12 +219,12 @@ Tags: 简�? 两栏, 侧栏在左�? 浮动侧栏, 文章目录, 自适应, 夜�
 	--ease-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
 	--ease-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
 
-	/* 弹性缓�?- 用于交互反馈 */
+	/* 弹性缓�?- 用于交互反馈 */
 	--ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 	--ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
 	--ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 
-	/* 状态层透明�?- Material 3 */
+	/* 状态层透明�?- Material 3 */
 	--state-hover-opacity: 0.08;
 	--state-focus-opacity: 0.12;
 	--state-pressed-opacity: 0.12;
@@ -1659,7 +1659,7 @@ html.triple-column #content {
 
 }
 
-/*顶栏�?Banner 部分*/
+/*顶栏�?Banner 部分*/
 
 #navbar-main {
 
@@ -2179,7 +2179,7 @@ html:not(.is-home) .cover-scroll-down {
 
 
 
-/*左侧�?/
+/* 左侧栏 */
 
 .leftbar-banner {
 
@@ -3142,7 +3142,7 @@ html.darkmode .wp-block-calendar tbody td {
 	display: none;
 }
 
-/* 首页横幅模式下隐�?*/
+/* 首页横幅模式下隐�?*/
 html.is-home.banner-as-cover #float_action_buttons.hidden {
 	opacity: 0;
 	pointer-events: none;
@@ -3155,7 +3155,7 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 	transition: opacity var(--animation-normal) var(--ease-standard);
 }
 
-/* 基础按钮样式 - 重置所�?Bootstrap 样式 */
+/* 基础按钮样式 - 重置所�?Bootstrap 样式 */
 #float_action_buttons .fabtn,
 #float_action_buttons .fabtn.btn,
 #float_action_buttons .fabtn.btn-icon,
@@ -3211,7 +3211,7 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 		0 2px 8px rgba(var(--themecolor-rgbstr), 0.25) !important;
 }
 
-/* 按钮内图标居�?*/
+/* 按钮内图标居�?*/
 #float_action_buttons .fabtn .btn-inner--icon {
 	display: flex !important;
 	align-items: center !important;
@@ -3302,12 +3302,12 @@ html.darkmode #float_action_buttons #fabtn_toggle_darkmode i.fa-lightbulb-o {
 	display: inline-block;
 }
 
-/* 侧边栏打开按钮（移动端�?*/
+/* 侧边栏打开按钮（移动端�?*/
 #float_action_buttons #fabtn_open_sidebar {
 	display: none;
 }
 
-/* 侧边栏遮�?*/
+/* 侧边栏遮�?*/
 #sidebar_mask {
 	display: none;
 	opacity: 0;
@@ -3511,7 +3511,7 @@ html.amoled-dark #blog_setting_toggle_darkmode_and_amoledarkmode:before {
 
 }
 
-/* 设置面板分段选择器优�?*/
+/* 设置面板分段选择器优�?*/
 .blog-setting-selector-left {
 
 	margin-right: 0 !important;
@@ -4572,7 +4572,7 @@ html.darkmode #leftbar_catalog::-webkit-scrollbar-thumb {
 
 
 
-/*文章导航 (�?下一篇文�?*/
+/*文章导航 (�?下一篇文�?*/
 
 .post-navigation {
 
@@ -4908,7 +4908,7 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 
 }
 
-/*评论�?/
+/*评论�?/
 
 #comments {
 
@@ -5100,7 +5100,7 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 
 }
 
-/* ---------- 评论项左侧区�?---------- */
+/* ---------- 评论项左侧区�?---------- */
 .comment-item-left-wrapper {
 	display: flex;
 	flex-direction: column;
@@ -5152,7 +5152,7 @@ html.darkmode .comment-item-avatar .avatar {
 	font-size: 16px;
 }
 
-/* ---------- 评论项内容区�?---------- */
+/* ---------- 评论项内容区�?---------- */
 .comment-item-inner {
 	display: block;
 	position: relative;
@@ -5206,7 +5206,7 @@ html.darkmode .comment-item-avatar .avatar {
 	margin-bottom: 0;
 }
 
-/* ---------- 评论作者信�?---------- */
+/* ---------- 评论作者信�?---------- */
 .comment-name {
 	flex: 1;
 	font-weight: 600;
@@ -5244,7 +5244,7 @@ html.darkmode .comment-item-avatar .avatar {
 	opacity: 0.75;
 }
 
-/* ---------- 评论元信�?---------- */
+/* ---------- 评论元信�?---------- */
 .comment-info {
 	margin-top: 2px;
 	font-size: 12px;
@@ -5838,7 +5838,7 @@ html.darkmode .comment-item-text blockquote {
 
 }
 
-/*评论区页�?/
+/*评论区页�?/
 
 .comments-navigation .page-item > div {
 
@@ -5846,7 +5846,7 @@ html.darkmode .comment-item-text blockquote {
 
 }
 
-/*评论区更�?/
+/*评论区更�?/
 
 #comments_more {
 
@@ -5966,7 +5966,7 @@ html.darkmode .comment-edit-history-item {
 
 }
 
-/*发送评论区�?/
+/*发送评论区�?/
 
 #post_comment {
 
@@ -5974,7 +5974,7 @@ html.darkmode .comment-edit-history-item {
 
 }
 
-/* 发送评论卡片优�?*/
+/* 发送评论卡片优�?*/
 #post_comment.card {
 	border-radius: 16px;
 	padding: 20px;
@@ -6024,7 +6024,7 @@ html.darkmode #post_comment.card:hover {
 
 }
 
-/* ---------- 评论回复提示�?---------- */
+/* ---------- 评论回复提示�?---------- */
 .post-comment-reply {
 	margin-top: 12px;
 	margin-bottom: 12px;
@@ -6129,7 +6129,7 @@ html.darkmode .post-comment-reply-preview {
 	pointer-events: none;
 }
 
-/* 回复框动�?*/
+/* 回复框动�?*/
 @keyframes replySlideIn {
 	from {
 		opacity: 0;
@@ -6483,7 +6483,7 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 }
 
-/*发送评论区�?编辑评论*/
+/*发送评论区�?编辑评论*/
 
 #post_comment:not(.editing) .hide-on-comment-not-editing {
 
@@ -6788,7 +6788,7 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 /*短代码适配*/
 
-/*短代�?checkbox*/
+/*短代�?checkbox*/
 
 .shortcode-todo {
 
@@ -6830,7 +6830,7 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 
 
-/*短代�?警告与折叠块*/
+/*短代�?警告与折叠块*/
 
 .admonition,
 
@@ -7032,7 +7032,7 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 
 
-/*短代�?友链-简�?/
+/*短代�?友链-简�?/
 
 .friend-links-simple .friend-category-title {
 
@@ -7092,7 +7092,7 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 
 
-/*短代�?友链*/
+/*短代�?友链*/
 
 .friend-links .link {
 
@@ -7122,7 +7122,7 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 }
 
-/*短代�?友链-样式 1*/
+/*短代�?友链-样式 1*/
 
 .friend-links-style1 .friend-link-avatar {
 
@@ -7230,7 +7230,7 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 }
 
-/*短代�?友链-样式 1-方形头像*/
+/*短代�?友链-样式 1-方形头像*/
 
 .friend-links-style1.friend-links-style1-square .friend-link-avatar {
 
@@ -7252,7 +7252,7 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 }
 
-/*短代�?友链-样式 2*/
+/*短代�?友链-样式 2*/
 
 .friend-links-style2 .friend-link-avatar {
 
@@ -7326,7 +7326,7 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 }
 
-/*短代�?友链-样式 2-大头�?/
+/*短代�?友链-样式 2-大头�?/
 
 .friend-links-style2.friend-links-style2-big .friend-link-avatar {
 
@@ -7358,7 +7358,7 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 
 
-/*短代�?时间�?/
+/*短代�?时间�?/
 
 .argon-timeline {
 
@@ -7436,7 +7436,7 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 
 
-/*短代�?隐藏文本*/
+/*短代�?隐藏文本*/
 
 .argon-hidden-text {
 
@@ -7478,7 +7478,7 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 
 
-/*短代�?Github*/
+/*短代�?Github*/
 
 .github-info-card {
 
@@ -7552,7 +7552,7 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 }
 
-/*短代�?Github-Mini*/
+/*短代�?Github-Mini*/
 
 .github-info-card-mini {
 
@@ -7648,7 +7648,7 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 
 
-/*短代�?进度�?/
+/*短代�?进度�?/
 
 .progress {
 
@@ -7798,7 +7798,7 @@ html.darkmode .argon-tabpanel .nav-pills .nav-link {
 
 
 
-/*nprogress 加载进度�?/
+/*nprogress 加载进度�?/
 
 #nprogress {
 
@@ -7847,6 +7847,7 @@ body.leftbar-can-headroom.headroom---unpinned #nprogress .bar {
 	opacity: 1;
 
 	-webkit-transform: rotate(3deg) translate(0px, -4px);
+	transform: rotate(3deg) translate(0px, -4px);
 
 	-ms-transform: rotate(3deg) translate(0px, -4px);
 
@@ -7911,12 +7912,14 @@ body.leftbar-can-headroom.headroom---unpinned #nprogress .bar {
 	0% {
 
 		-webkit-transform: rotate(0deg);
+		transform: rotate(0deg);
 
 	}
 
 	100% {
 
 		-webkit-transform: rotate(360deg);
+		transform: rotate(360deg);
 
 	}
 
@@ -8389,7 +8392,7 @@ body.noscroll:before {
 	position: relative;
 }
 
-/* 二维码弹�?- 显示在按钮上�?*/
+/* 二维码弹�?- 显示在按钮上�?*/
 #share .icon-wechat .wechat-qrcode,
 #share .icon-copy-link .wechat-qrcode {
 	position: absolute;
@@ -8416,7 +8419,7 @@ body.noscroll:before {
 	pointer-events: auto;
 }
 
-/* 二维码弹窗箭�?*/
+/* 二维码弹窗箭�?*/
 #share .wechat-qrcode:before {
 	position: absolute;
 	z-index: 3;
@@ -8456,7 +8459,7 @@ html.darkmode #share .wechat-qrcode .help {
 	position: relative;
 }
 
-/* tooltip - 显示在按钮上�?*/
+/* tooltip - 显示在按钮上�?*/
 #share > a:before,
 #share_show:before {
 	pointer-events: none;
@@ -8532,7 +8535,7 @@ html.darkmode #share .wechat-qrcode .help {
 		display: none !important;
 	}
 	
-	/* 二维码弹窗改为左侧显�?*/
+	/* 二维码弹窗改为左侧显�?*/
 	#share .icon-wechat .wechat-qrcode,
 	#share .icon-copy-link .wechat-qrcode {
 		bottom: auto;
@@ -9031,7 +9034,7 @@ html[lang] {
 
 }
 
-/*归档时间�?/
+/*归档时间�?/
 
 .archive-timeline {
 
@@ -10111,7 +10114,7 @@ html.darkmode.amoled-dark #content:after {
 		background: var(--color-foreground);
 	}
 	
-	/* 顶部用户信息�?- 增强视觉效果 */
+	/* 顶部用户信息�?- 增强视觉效果 */
 	.leftbar-mobile-profile {
 		background: var(--themecolor-gradient);
 		padding: 28px 20px 24px;
@@ -10269,7 +10272,7 @@ html.darkmode.amoled-dark #content:after {
 		font-weight: 500;
 	}
 	
-	/* 搜索�?- 优化样式 */
+	/* 搜索�?- 优化样式 */
 	.leftbar-mobile-search {
 		padding: 16px 16px 8px;
 		background: var(--color-foreground);
@@ -10316,7 +10319,7 @@ html.darkmode.amoled-dark #content:after {
 		color: #aaa;
 	}
 	
-	/* 导航菜单区域 - 优化间距和样�?*/
+	/* 导航菜单区域 - 优化间距和样�?*/
 	.leftbar-mobile-menu-section {
 		padding: 12px 12px 8px;
 	}
@@ -10355,7 +10358,7 @@ html.darkmode.amoled-dark #content:after {
 		overflow: hidden;
 	}
 	
-	/* 菜单项涟漪效�?*/
+	/* 菜单项涟漪效�?*/
 	.leftbar-mobile-menu-item > a::before {
 		content: "";
 		position: absolute;
@@ -10456,7 +10459,7 @@ html.darkmode.amoled-dark #content:after {
 		background: rgba(var(--themecolor-rgbstr), 0.08);
 	}
 	
-	/* 底部操作�?- 优化设计 */
+	/* 底部操作�?- 优化设计 */
 	.leftbar-mobile-footer {
 		margin-top: auto;
 		padding: 12px 16px 20px;
@@ -10525,7 +10528,7 @@ html.darkmode.amoled-dark #content:after {
 		transform: scale(1.1);
 	}
 	
-	/* ========== 移动端折叠面板样�?- Material 3 & iOS 风格 ========== */
+	/* ========== 移动端折叠面板样�?- Material 3 & iOS 风格 ========== */
 	.leftbar-mobile-collapse-section {
 		margin: 4px 12px;
 		background: var(--color-background);
@@ -10711,7 +10714,7 @@ html.darkmode.amoled-dark #content:after {
 		}
 	}
 	
-	/* ========== 移动端文章目录样�?========== */
+	/* ========== 移动端文章目录样�?========== */
 	.mobile-catalog-container {
 		padding: 4px 12px 12px;
 	}
@@ -11036,7 +11039,7 @@ html.darkmode.amoled-dark #content:after {
 		display: block;
 	}
 	
-	/* 移动端隐藏浮动按钮提示文�?*/
+	/* 移动端隐藏浮动按钮提示文�?*/
 	#float_action_buttons .fabtn:before {
 		display: none !important;
 	}
@@ -11064,7 +11067,7 @@ html.darkmode.amoled-dark #content:after {
 		transform: translateX(0);
 	}
 	
-	/* 移动端侧边栏入场动画关键�?*/
+	/* 移动端侧边栏入场动画关键�?*/
 	@keyframes slideInFromLeft {
 		from {
 			opacity: 0;
@@ -11109,7 +11112,7 @@ html.darkmode.amoled-dark #content:after {
 		}
 	}
 	
-	/* 侧边栏内容交错入场动�?*/
+	/* 侧边栏内容交错入场动�?*/
 	html.leftbar-opened .leftbar-mobile-profile {
 		animation: slideInFromLeft 0.4s var(--ease-emphasized) 0.05s both;
 	}
@@ -11122,7 +11125,7 @@ html.darkmode.amoled-dark #content:after {
 		animation: fadeInUp 0.35s var(--ease-emphasized) 0.2s both;
 	}
 	
-	/* 多邻国连胜徽章入场动�?*/
+	/* 多邻国连胜徽章入场动�?*/
 	html.leftbar-opened .leftbar-mobile-user-name .duolingo-streak {
 		animation: duolingoBadgeIn 0.4s var(--ease-spring) 0.35s both;
 	}
@@ -11166,7 +11169,7 @@ html.darkmode.amoled-dark #content:after {
 		animation: fadeInUp 0.4s var(--ease-emphasized) 0.3s both;
 	}
 	
-	/* 菜单项交错入�?*/
+	/* 菜单项交错入�?*/
 	html.leftbar-opened .leftbar-mobile-menu-item {
 		animation: fadeInUp 0.3s var(--ease-standard) both;
 	}
@@ -11216,7 +11219,7 @@ html.darkmode.amoled-dark #content:after {
 		overflow: hidden;
 	}
 
-	/* 遮罩�?- 优化动画 */
+	/* 遮罩�?- 优化动画 */
 	#sidebar_mask {
 		position: fixed;
 		display: block;
@@ -11435,7 +11438,7 @@ html.darkmode.amoled-dark #content:after {
 		color: #999;
 	}
 	
-	/* ========== 移动端文章卡片独立样�?========== */
+	/* ========== 移动端文章卡片独立样�?========== */
 	/* 移动端布局 1: 大图模式 (默认) */
 	html.mobile-layout-1 article.post-preview-layout-2,
 	article.post-preview-layout-2 {
@@ -11547,7 +11550,7 @@ html.darkmode.amoled-dark #content:after {
 		display: none;
 	}
 	
-	/* 通用移动端文章卡片样�?*/
+	/* 通用移动端文章卡片样�?*/
 	article.post-preview-layout-2 .post-title {
 		font-size: 18px;
 		line-height: 1.4;
@@ -11557,7 +11560,7 @@ html.darkmode.amoled-dark #content:after {
 		font-size: 13px;
 	}
 	
-	/* ========== 移动端搜索框动画 (照搬桌面�? ========== */
+	/* ========== 移动端搜索框动画 (照搬桌面�? ========== */
 	.leftbar-mobile-search-inner {
 		position: relative;
 		transition: all 0.3s cubic-bezier(0.4, 0, 0, 1);
@@ -11572,7 +11575,7 @@ html.darkmode.amoled-dark #content:after {
 		transition: all 0.3s cubic-bezier(0.4, 0, 0, 1);
 	}
 	
-	/* 搜索框聚焦时的光标动�?*/
+	/* 搜索框聚焦时的光标动�?*/
 	@keyframes searchPulse {
 		0%, 100% { box-shadow: 0 0 0 0 rgba(var(--themecolor-rgbstr), 0.2); }
 		50% { box-shadow: 0 0 0 4px rgba(var(--themecolor-rgbstr), 0.1); }
@@ -11582,7 +11585,7 @@ html.darkmode.amoled-dark #content:after {
 		animation: searchPulse 2s ease-in-out infinite;
 	}
 	
-	/* ========== 更多流畅侧边栏动�?========== */
+	/* ========== 更多流畅侧边栏动�?========== */
 	/* 关闭按钮旋转入场 */
 	@keyframes rotateIn {
 		from {
@@ -11688,7 +11691,7 @@ html.darkmode.amoled-dark #content:after {
 		transform: rotate(180deg);
 	}
 	
-	/* 遮罩层淡入增�?*/
+	/* 遮罩层淡入增�?*/
 	#sidebar_mask {
 		transition: opacity 0.35s var(--ease-emphasized),
 					visibility 0.35s var(--ease-emphasized),
@@ -11961,7 +11964,7 @@ html.darkmode.amoled-dark #content:after {
 
 	}
 
-	/*显示更少的页�?/
+	/*显示更少的页�?/
 
 	.pagination:not(.pagination-mobile) {
 
@@ -12184,6 +12187,7 @@ html.using-safari .comment-time-details,
 html.using-safari #share .icon-wechat .wechat-qrcode {
 
 	-webkit-transform: translate3d(0, 0, 0) !important;
+	transform: translate3d(0, 0, 0) !important;
 
 	width: unset !important;
 
@@ -12212,6 +12216,7 @@ html.using-safari .post-donate .donate-btn:hover ~ .donate-qrcode {
 html.using-safari #fabtn_blog_settings_popup {
 
 	-webkit-transform: translate3d(0, 0, 0) !important;
+	transform: translate3d(0, 0, 0) !important;
 
 }
 
@@ -12284,11 +12289,11 @@ html.using-safari .friend-link-description:after {
 }
 
 /* 
-  * 放置于这里的CSS将应用于所有皮�?
+  * 放置于这里的CSS将应用于所有皮�?
   * 萌娘百科仅开放Vector皮肤 
   * 请尊重萌娘百科版权，以下代码除非注明均是管理员手敲出来的！！！复制需要注明源自萌娘百科，并且附上URL地址 `http://zh.moegirl.org/MediaWiki:Common.css` 
-  * 版权协定：知识共�?署名-非商业性使�?相同方式共享 3.0 
-  * 复制之后请把图片换成自己网站上URL地址�?
+  * 版权协定：知识共�?署名-非商业性使�?相同方式共享 3.0 
+  * 复制之后请把图片换成自己网站上URL地址�?
   */ 
  
 .heimu, .heimu a, a .heimu, .heimu a.new { 
@@ -12508,7 +12513,7 @@ article .post-content .huhua a:before {
 	box-shadow: 0 4px 15px rgba(136, 216, 176, 0.4);
 }
 
-/* 移动�?*/
+/* 移动�?*/
 @media screen and (max-width: 576px) {
 	.git-version-badge {
 		display: none;
@@ -12583,7 +12588,7 @@ html.navbar-absolute #leftbar_part3.sticky {
 	margin-left: auto;
 }
 
-/* 站长端：显示未完成数�?*/
+/* 站长端：显示未完成数�?*/
 .todo-count::before {
 	content: '';
 }
@@ -12777,7 +12782,7 @@ html.navbar-absolute #leftbar_part3.sticky {
 	opacity: 0.85;
 }
 
-/* 已完成任务的完成标记（访客端�?*/
+/* 已完成任务的完成标记（访客端�?*/
 .todo-item.todo-completed .todo-done-mark {
 	width: 24px;
 	height: 24px;
@@ -12872,7 +12877,7 @@ html.darkmode .todo-add-form input:focus {
 	border-color: var(--themecolor);
 }
 
-/* ===== 多邻国连�?===== */
+/* ===== 多邻国连�?===== */
 .duolingo-streak {
 	display: inline-flex;
 	align-items: center;
@@ -12902,7 +12907,7 @@ html.darkmode .todo-add-form input:focus {
 	opacity: 0.6;
 }
 
-/* 多邻国火焰动�?*/
+/* 多邻国火焰动�?*/
 @keyframes duolingoFlameGlow {
 	0%, 100% {
 		filter: drop-shadow(0 0 2px rgba(255, 150, 0, 0.4));
@@ -12977,23 +12982,15 @@ input {
 /* ===== 禁止图片拖动（文章内容除外） ===== */
 img {
 	-webkit-user-drag: none;
-	-khtml-user-drag: none;
-	-moz-user-drag: none;
-	-o-user-drag: none;
-	user-drag: none;
 	pointer-events: auto;
 }
 
 #post_content img,
 .post-content img {
 	-webkit-user-drag: auto;
-	-khtml-user-drag: auto;
-	-moz-user-drag: auto;
-	-o-user-drag: auto;
-	user-drag: auto;
 }
 
-/* ===== 修复评论框溢�?===== */
+/* ===== 修复评论框溢�?===== */
 #post_comment.card {
 	overflow: visible;
 }
@@ -13299,7 +13296,7 @@ html.darkmode .friend-link-name {
     transform: translateX(0);
 }
 
-/* 空状�?*/
+/* 空状�?*/
 .argon-fl-empty {
     text-align: center;
     padding: 60px 20px;
@@ -13466,7 +13463,7 @@ html.darkmode .argon-fl-item:hover {
    顶栏增强样式 - Toolbar Enhancement
    ======================================== */
 
-/* 顶栏基础增强 - 柔和毛玻璃效�?*/
+/* 顶栏基础增强 - 柔和毛玻璃效�?*/
 #navbar-main {
     -webkit-backdrop-filter: blur(12px) saturate(120%);
     backdrop-filter: blur(12px) saturate(120%);
@@ -13474,7 +13471,7 @@ html.darkmode .argon-fl-item:hover {
     box-shadow: none;
 }
 
-/* 顶栏底部柔和过渡伪元�?*/
+/* 顶栏底部柔和过渡伪元�?*/
 #navbar-main::after {
     content: '';
     position: absolute;
@@ -13492,7 +13489,7 @@ html.darkmode .argon-fl-item:hover {
     transition: opacity 0.3s ease;
 }
 
-/* 滚动后显示底部渐�?*/
+/* 滚动后显示底部渐�?*/
 #navbar-main:not(.navbar-ontop)::after {
     opacity: 1;
 }
@@ -13516,7 +13513,7 @@ html.toolbar-gradient #navbar-main {
     ) !important;
 }
 
-/* 顶栏玻璃态模�?*/
+/* 顶栏玻璃态模�?*/
 html.toolbar-glass #navbar-main {
     background: rgba(255, 255, 255, 0.12) !important;
     -webkit-backdrop-filter: blur(20px) saturate(180%);
@@ -13527,7 +13524,7 @@ html.toolbar-glass.darkmode #navbar-main {
     background: rgba(0, 0, 0, 0.25) !important;
 }
 
-/* 顶栏阴影增强 - 更柔�?*/
+/* 顶栏阴影增强 - 更柔�?*/
 html.toolbar-shadow #navbar-main {
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08);
 }
@@ -13535,7 +13532,7 @@ html.toolbar-shadow.darkmode #navbar-main {
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.25);
 }
 
-/* 顶栏底部边框 - 更柔�?*/
+/* 顶栏底部边框 - 更柔�?*/
 html.toolbar-border #navbar-main {
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -13563,7 +13560,7 @@ html.toolbar-border.darkmode #navbar-main {
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* 顶栏菜单项增�?*/
+/* 顶栏菜单项增�?*/
 .navbar-nav .nav-link {
     position: relative;
     transition: all 0.25s ease;
@@ -13615,7 +13612,7 @@ html.toolbar-border.darkmode #navbar-main {
     padding-left: 24px;
 }
 
-/* 顶栏搜索框增�?*/
+/* 顶栏搜索框增�?*/
 #navbar_search_input_container .input-group {
     border-radius: 25px;
 }
@@ -13650,7 +13647,7 @@ html.toolbar-center .navbar-nav.navbar-nav-hover {
     }
 }
 
-/* 移动端顶栏优�?*/
+/* 移动端顶栏优�?*/
 @media (max-width: 991px) {
     #navbar-main {
         padding-left: 8px;
@@ -13779,7 +13776,7 @@ article.post.card:hover {
     transform: translateY(-1px);
 }
 
-/* M3 输入框样�?*/
+/* M3 输入框样�?*/
 .form-control {
     border-radius: var(--m3-shape-sm) !important;
     border: 1px solid var(--color-border);
@@ -13793,7 +13790,7 @@ article.post.card:hover {
     outline: none;
 }
 
-/* M3 侧边栏样�?*/
+/* M3 侧边栏样�?*/
 #leftbar .card {
     border-radius: var(--m3-shape-lg) !important;
     overflow: hidden;
@@ -13807,7 +13804,7 @@ article.post.card:hover {
     border-radius: var(--m3-shape-lg) !important;
 }
 
-/* M3 侧边栏菜�?*/
+/* M3 侧边栏菜�?*/
 .leftbar-menu-item > a {
     border-radius: var(--m3-shape-xl);
     transition: all var(--m3-motion-duration-short) var(--m3-motion-standard);
@@ -13835,7 +13832,7 @@ article.post.card:hover {
     background: var(--m3-state-hover) !important;
 }
 
-/* M3 标签�?*/
+/* M3 标签�?*/
 .nav-pills .nav-link {
     border-radius: var(--m3-shape-xl);
     transition: all var(--m3-motion-duration-short) var(--m3-motion-standard);
@@ -13886,7 +13883,7 @@ article.post.card:hover {
     margin-top: 2px;
 }
 
-/* M3 作者链�?*/
+/* M3 作者链�?*/
 .site-author-links {
     display: flex;
     justify-content: center;
@@ -13960,7 +13957,7 @@ article.post.card:hover {
     box-shadow: var(--m3-elevation-1);
 }
 
-/* M3 评论�?*/
+/* M3 评论�?*/
 #comments.card,
 #post_comment.card {
     border-radius: var(--m3-shape-lg) !important;
@@ -14100,7 +14097,7 @@ article.post.card:hover {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
 }
 
-/* M3 代码�?*/
+/* M3 代码�?*/
 article pre:not(.hljs-codeblock) {
     border-radius: var(--m3-shape-md) !important;
 }
@@ -14110,7 +14107,7 @@ article pre:not(.hljs-codeblock) {
     overflow: hidden;
 }
 
-/* M3 引用�?*/
+/* M3 引用�?*/
 article .post-content blockquote {
     border-radius: 0 var(--m3-shape-sm) var(--m3-shape-sm) 0;
     background: var(--m3-surface-1);
@@ -14137,7 +14134,7 @@ article table > thead > tr > th {
     background: var(--m3-surface-2);
 }
 
-/* M3 滚动�?*/
+/* M3 滚动�?*/
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -14214,7 +14211,7 @@ article .post-content a:hover {
     color: #fff;
 }
 
-/* M3 头像�?*/
+/* M3 头像�?*/
 #leftbar_overview_author_image {
     border: 3px solid var(--m3-surface-3);
     transition: all var(--m3-motion-duration-short) var(--m3-motion-standard);
@@ -14225,7 +14222,7 @@ article .post-content a:hover {
     transform: scale(1.05);
 }
 
-/* M3 响应式优�?*/
+/* M3 响应式优�?*/
 @media (max-width: 768px) {
     :root {
         --m3-shape-lg: 12px;
@@ -14433,7 +14430,7 @@ article .post-content a:hover {
     }
 }
 
-/* 4. Topbar 自定义链接样�?*/
+/* 4. Topbar 自定义链接样�?*/
 .navbar-custom-links {
     display: flex;
     align-items: center;
@@ -14483,7 +14480,7 @@ article .post-content a:hover {
     white-space: nowrap;
 }
 
-/* 标签和徽章防止换�?*/
+/* 标签和徽章防止换�?*/
 .badge,
 .tag,
 .post-categories a,
@@ -14495,7 +14492,7 @@ article .post-content a:hover {
    全局视觉优化 - 保持原有风格融入 M3
    ======================================== */
 
-/* 全局平滑滚动�?JS 库处理，此处不设�?*/
+/* 全局平滑滚动�?JS 库处理，此处不设�?*/
 
 /* 页面背景微妙纹理 */
 body {
@@ -14536,12 +14533,12 @@ article.post.card:hover {
         0 12px 28px rgba(var(--themecolor-rgbstr), 0.08);
 }
 
-/* 文章导航卡片透明�?*/
+/* 文章导航卡片透明�?*/
 .post-navigation.card {
     background: var(--color-foreground);
 }
 
-/* 相关文章卡片透明�?*/
+/* 相关文章卡片透明�?*/
 .related-posts.card {
     background: var(--color-foreground);
 }
@@ -14559,7 +14556,7 @@ article.post.card:hover {
     filter: brightness(1.1);
 }
 
-/* 文章预览卡片缩略图优�?*/
+/* 文章预览卡片缩略图优�?*/
 .post-thumbnail {
     transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
@@ -14568,7 +14565,7 @@ article.post.card:hover .post-thumbnail {
     transform: scale(1.03);
 }
 
-/* 侧边栏卡片优�?*/
+/* 侧边栏卡片优�?*/
 #leftbar .card,
 #leftbar_part1,
 #leftbar_part2 {
@@ -14581,7 +14578,7 @@ html.darkmode #leftbar_part2 {
     border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-/* 侧边栏头像光晕效�?*/
+/* 侧边栏头像光晕效�?*/
 #leftbar_overview_author_image {
     box-shadow: 
         0 0 0 3px rgba(var(--themecolor-rgbstr), 0.1),
@@ -14594,7 +14591,7 @@ html.darkmode #leftbar_part2 {
         0 8px 24px rgba(var(--themecolor-rgbstr), 0.25);
 }
 
-/* 按钮优化 - 纯色主题�?+ Material 3 动画 */
+/* 按钮优化 - 纯色主题�?+ Material 3 动画 */
 .btn-primary {
     background-color: var(--themecolor);
     border: none;
@@ -14649,13 +14646,13 @@ html.darkmode #leftbar_part2 {
     border-color: var(--themecolor);
 }
 
-/* 评论区优�?*/
+/* 评论区优�?*/
 #comments.card,
 #post_comment.card {
     /* 使用全局 --color-foreground */
 }
 
-/* 评论项悬浮效�?*/
+/* 评论项悬浮效�?*/
 .comment-body {
     transition: all 0.25s ease;
     border-radius: var(--m3-shape-md);
@@ -14671,7 +14668,7 @@ html.darkmode .comment-body:hover {
     background: rgba(255, 255, 255, 0.03);
 }
 
-/* 输入框聚焦效�?*/
+/* 输入框聚焦效�?*/
 .form-control:focus,
 textarea.form-control:focus {
     border-color: var(--themecolor);
@@ -14770,7 +14767,7 @@ html.darkmode .page-link {
     color: #fff;
 }
 
-/* 代码块优�?*/
+/* 代码块优�?*/
 article pre,
 .hljs-codeblock {
     background: rgba(30, 30, 40, 0.95) !important;
@@ -14779,7 +14776,7 @@ article pre,
         0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
-/* 引用块优�?*/
+/* 引用块优�?*/
 article .post-content blockquote {
     background: linear-gradient(135deg, 
         rgba(var(--themecolor-rgbstr), 0.06) 0%, 
@@ -14826,7 +14823,7 @@ article .post-content blockquote {
     animation: skeleton-loading 1.5s infinite;
 }
 
-/* 链接下划线动�?*/
+/* 链接下划线动�?*/
 a {
     text-decoration: none;
 }
@@ -14877,7 +14874,7 @@ html.darkmode .friend-link-card {
     border-color: rgba(255, 255, 255, 0.06);
 }
 
-/* 时间线优�?*/
+/* 时间线优�?*/
 .timeline-item {
     position: relative;
 }
@@ -14913,7 +14910,7 @@ body {
     text-rendering: optimizeLegibility;
 }
 
-/* 响应式优�?*/
+/* 响应式优�?*/
 @media (max-width: 768px) {
     .card {
         -webkit-backdrop-filter: blur(6px);
@@ -15017,7 +15014,7 @@ html.darkmode article.post.card:hover {
     transition: transform 0s, opacity 0s;
 }
 
-/* 输入�?Apple 风格 */
+/* 输入�?Apple 风格 */
 .form-control {
     border: 1px solid rgba(0, 0, 0, 0.1);
     box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
@@ -15036,7 +15033,7 @@ html.darkmode .form-control {
     box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
-/* 侧边栏卡片光�?*/
+/* 侧边栏卡片光�?*/
 #leftbar .card,
 #leftbar_part1,
 #leftbar_part2 {
@@ -15055,7 +15052,7 @@ html.darkmode #leftbar_part2 {
         inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
-/* 头像环发光效�?*/
+/* 头像环发光效�?*/
 #leftbar_overview_author_image {
     border: 3px solid rgba(255, 255, 255, 0.9);
     box-shadow: 
@@ -15133,7 +15130,7 @@ html.darkmode #float_action_buttons .fabtn {
     box-shadow: 0 3px 8px rgba(var(--themecolor-rgbstr), 0.3);
 }
 
-/* 评论区卡�?*/
+/* 评论区卡�?*/
 #comments.card,
 #post_comment.card {
     border: 1px solid rgba(255, 255, 255, 0.15);
@@ -15161,7 +15158,7 @@ html.darkmode #post_comment.card {
     box-shadow: 0 4px 16px rgba(var(--themecolor-rgbstr), 0.2);
 }
 
-/* 导航和推荐卡�?*/
+/* 导航和推荐卡�?*/
 .post-navigation.card,
 .related-posts.card {
     border: 1px solid rgba(255, 255, 255, 0.15);
@@ -15210,7 +15207,7 @@ html.darkmode .modal-content {
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* 代码块优雅阴�?*/
+/* 代码块优雅阴�?*/
 article pre,
 .hljs-codeblock {
     box-shadow: 
@@ -15251,7 +15248,7 @@ article .post-content img:hover {
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
 }
 
-/* 链接下划线动�?*/
+/* 链接下划线动�?*/
 article .post-content a:not(.btn):not(.tag):not(.badge) {
     text-decoration: none;
     background: linear-gradient(var(--themecolor), var(--themecolor)) no-repeat right bottom;
@@ -15265,7 +15262,7 @@ article .post-content a:not(.btn):not(.tag):not(.badge):hover {
     background-position: left bottom;
 }
 
-/* 滚动条美�?*/
+/* 滚动条美�?*/
 ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
@@ -15391,7 +15388,7 @@ html.darkmode.style-glass .card:hover {
 }
 
 /* ========================================
-   主题变体 - 新拟�?(Neumorphism)
+   主题变体 - 新拟�?(Neumorphism)
    ======================================== */
 
 html.style-neumorphism .card {
@@ -15458,8 +15455,8 @@ html.style-neumorphism #fabtn_blog_settings_popup {
 }
 
 
-/* ========== 玻璃风格下文�?页面卡片样式统一 ========== */
-/* 使用 CSS 变量，确保与首页卡片一�?*/
+/* ========== 玻璃风格下文�?页面卡片样式统一 ========== */
+/* 使用 CSS 变量，确保与首页卡片一�?*/
 html.style-glass article.post.post-full.card {
     background: rgba(255, 255, 255, var(--card-opacity, 0.7)) !important;
     -webkit-backdrop-filter: blur(var(--card-blur, 20px)) saturate(var(--card-saturate, 180%));
@@ -15476,7 +15473,7 @@ html.darkmode.style-glass article.post.post-full.card {
 
 /* ========== 移动端侧边栏重新设计 ========== */
 @media screen and (max-width: 900px) {
-    /* 侧边栏容�?*/
+    /* 侧边栏容�?*/
     #leftbar {
         width: min(300px, 82vw);
         background: var(--color-foreground);
@@ -15491,7 +15488,7 @@ html.darkmode.style-glass article.post.post-full.card {
         -webkit-overflow-scrolling: touch;
     }
     
-    /* ===== 顶部用户信息�?===== */
+    /* ===== 顶部用户信息�?===== */
     .leftbar-mobile-profile {
         padding: 32px 24px 28px;
         padding-top: calc(32px + env(safe-area-inset-top, 0));
@@ -15648,7 +15645,7 @@ html.darkmode.style-glass article.post.post-full.card {
         font-weight: 500;
     }
     
-    /* ===== 搜索�?===== */
+    /* ===== 搜索�?===== */
     .leftbar-mobile-search {
         padding: 18px 18px 10px;
     }
@@ -15753,7 +15750,7 @@ html.darkmode.style-glass article.post.post-full.card {
         transform: rotate(180deg);
     }
     
-    /* 子菜�?*/
+    /* 子菜�?*/
     .leftbar-mobile-submenu {
         list-style: none;
         padding: 0;
@@ -16025,7 +16022,7 @@ html.darkmode.style-glass article.post.post-full.card {
         transform: scale(0.9);
     }
     
-    /* ===== 底部操作�?===== */
+    /* ===== 底部操作�?===== */
     .leftbar-mobile-footer {
         margin-top: auto;
         padding: 14px 18px 22px;
@@ -16145,7 +16142,7 @@ html.darkmode.style-glass article.post.post-full.card {
     }
 }
 
-/* ========== 移动端玻璃风格文章卡�?========== */
+/* ========== 移动端玻璃风格文章卡�?========== */
 @media screen and (max-width: 900px) {
     html.style-glass article.post.post-full.card {
         background: rgba(255, 255, 255, var(--card-opacity, 0.7)) !important;
@@ -16160,9 +16157,9 @@ html.darkmode.style-glass article.post.post-full.card {
     }
 }
 
-/* ========== 暗色模式移动端目录样式补�?========== */
+/* ========== 暗色模式移动端目录样式补�?========== */
 @media screen and (max-width: 900px) {
-    /* 暗色模式下目录链接颜�?*/
+    /* 暗色模式下目录链接颜�?*/
     html.darkmode #leftbar_mobile_catalog .index-link {
         color: #bbb;
     }
@@ -16188,8 +16185,8 @@ html.darkmode.style-glass article.post.post-full.card {
 }
 
 
-/* ========== backdrop-filter 移动端兼容性修�?========== */
-/* 针对不支�?backdrop-filter 的浏览器提供降级方案 */
+/* ========== backdrop-filter 移动端兼容性修�?========== */
+/* 针对不支�?backdrop-filter 的浏览器提供降级方案 */
 
 /* 检测不支持 backdrop-filter 的浏览器，使用更高不透明度的背景作为降级 */
 @supports not (backdrop-filter: blur(1px)) {
@@ -16198,12 +16195,12 @@ html.darkmode.style-glass article.post.post-full.card {
         background-color: rgba(var(--themecolor-rgbstr), 0.92) !important;
     }
     
-    /* 搜索框降�?*/
+    /* 搜索框降�?*/
     #navbar_search_input_container.open .input-group {
         background: rgba(255, 255, 255, 0.95);
     }
     
-    /* 侧边栏遮罩降�?*/
+    /* 侧边栏遮罩降�?*/
     #sidebar_mask {
         background: rgba(0, 0, 0, 0.65);
     }
@@ -16231,7 +16228,7 @@ html.darkmode.style-glass article.post.post-full.card {
         }
     }
     
-    /* 玻璃态顶栏降�?*/
+    /* 玻璃态顶栏降�?*/
     html.toolbar-glass #navbar-main {
         background: rgba(255, 255, 255, 0.88) !important;
     }
@@ -16246,7 +16243,7 @@ html.darkmode.style-glass article.post.post-full.card {
         background: rgba(0, 0, 0, 0.7);
     }
     
-    /* 图片查看器遮罩降�?*/
+    /* 图片查看器遮罩降�?*/
     .fancybox-bg {
         background: rgba(0, 0, 0, 0.92);
     }
@@ -16270,7 +16267,7 @@ html.darkmode.style-glass article.post.post-full.card {
 }
 
 /* ========== iOS Safari 特殊处理 ========== */
-/* iOS Safari 需�?-webkit- 前缀，且在某些情况下需要强制开启硬件加�?*/
+/* iOS Safari 需�?-webkit- 前缀，且在某些情况下需要强制开启硬件加�?*/
 @media screen and (max-width: 900px) {
     #leftbar,
     #navbar-main,
@@ -16280,7 +16277,7 @@ html.darkmode.style-glass article.post.post-full.card {
     }
 }
 
-/* ========== Modern UI Enhancements - 现代化布局和动画优�?========== */
+/* ========== Modern UI Enhancements - 现代化布局和动画优�?========== */
 
 /* 1. 增强动画变量 */
 :root {
@@ -16307,7 +16304,7 @@ html.darkmode {
     --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.35), 0 4px 10px rgba(var(--themecolor-rgbstr), 0.15);
 }
 
-/* 2. 桌面端卡片悬停效果增�?*/
+/* 2. 桌面端卡片悬停效果增�?*/
 @media (hover: hover) and (pointer: fine) {
     article.post.card {
         transition: transform var(--animation-normal) var(--ease-out-expo), box-shadow var(--animation-normal) var(--ease-standard);
@@ -16339,7 +16336,7 @@ html.darkmode {
     }
 }
 
-/* 3. 按钮和链接悬停效�?*/
+/* 3. 按钮和链接悬停效�?*/
 @media (hover: hover) and (pointer: fine) {
     .btn { transition: all var(--animation-fast) var(--ease-standard); position: relative; overflow: hidden; }
     .btn::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%); opacity: 0; transition: opacity var(--animation-fast) var(--ease-standard); pointer-events: none; }
@@ -16384,7 +16381,7 @@ html.darkmode {
 #rightbar .card:nth-child(2) { animation-delay: 150ms; }
 #rightbar .card:nth-child(3) { animation-delay: 200ms; }
 
-/* 5. 页面过渡和浮动按钮动�?*/
+/* 5. 页面过渡和浮动按钮动�?*/
 #primary.pjax-loading { opacity: 0.6; transform: translateY(10px); pointer-events: none; }
 #primary { transition: opacity var(--animation-normal) var(--ease-standard), transform var(--animation-normal) var(--ease-standard); }
 @keyframes modernContentFadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
@@ -16418,7 +16415,7 @@ article.post.post-full { animation: modernContentFadeIn var(--animation-slow) va
 @keyframes modernCommentSuccess { 0% { transform: scale(0.8); opacity: 0; } 50% { transform: scale(1.02); } 100% { transform: scale(1); opacity: 1; } }
 .comment-item.new-comment { animation: modernCommentSuccess var(--animation-slow) var(--ease-spring); }
 
-/* 7. 图片和表单动�?*/
+/* 7. 图片和表单动�?*/
 article img, .post-thumbnail img { transition: opacity var(--animation-normal) var(--ease-standard); }
 article img[loading="lazy"], .post-thumbnail img[loading="lazy"] { opacity: 0; }
 article img.loaded, .post-thumbnail img.loaded, article img:not([loading="lazy"]), .post-thumbnail img:not([loading="lazy"]) { opacity: 1; }
@@ -16429,14 +16426,14 @@ article img.loaded, .post-thumbnail img.loaded, article img:not([loading="lazy"]
 .form-group.floating-label label { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); transition: all var(--animation-fast) var(--ease-standard); pointer-events: none; color: #999; background: var(--color-foreground); padding: 0 4px; }
 .form-group.floating-label .form-control:focus ~ label, .form-group.floating-label .form-control:not(:placeholder-shown) ~ label { top: 0; font-size: 12px; color: var(--themecolor); }
 
-/* 8. 滚动条美�?*/
+/* 8. 滚动条美�?*/
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(var(--themecolor-rgbstr), 0.3); border-radius: 4px; border: 2px solid transparent; background-clip: content-box; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(var(--themecolor-rgbstr), 0.5); background-clip: content-box; }
 * { scrollbar-width: thin; scrollbar-color: rgba(var(--themecolor-rgbstr), 0.3) transparent; }
 
-/* 9. 移动端触摸优�?*/
+/* 9. 移动端触摸优�?*/
 @media (hover: none) and (pointer: coarse) {
     article.post.card:hover { transform: none; box-shadow: var(--shadow-1); }
     * { -webkit-tap-highlight-color: transparent; }
@@ -16465,7 +16462,7 @@ article img.loaded, .post-thumbnail img.loaded, article img:not([loading="lazy"]
 .loading-spinner { width: 24px; height: 24px; border: 2px solid var(--color-border); border-top-color: var(--themecolor); border-radius: 50%; animation: modernSpinnerRotate 0.8s linear infinite; }
 #page-loading-bar { position: fixed; top: 0; left: 0; height: 3px; background: var(--themecolor-gradient); z-index: 9999; transition: width var(--animation-fast) var(--ease-out-expo); box-shadow: 0 0 10px rgba(var(--themecolor-rgbstr), 0.5); }
 
-/* 12. 模态框和下拉菜单动�?*/
+/* 12. 模态框和下拉菜单动�?*/
 .modal { transition: opacity var(--animation-normal) var(--ease-standard); }
 .modal.show { opacity: 1; }
 .modal-dialog { transition: transform var(--animation-normal) var(--ease-emphasized-decelerate), opacity var(--animation-normal) var(--ease-standard); transform: scale(0.9) translateY(-20px); opacity: 0; }
@@ -16478,7 +16475,7 @@ article img.loaded, .post-thumbnail img.loaded, article img:not([loading="lazy"]
 .dropdown-menu.show { opacity: 1; transform: translateY(0) scale(1); visibility: visible; }
 .dropdown-item { transition: background var(--animation-fast) var(--ease-standard), color var(--animation-fast) var(--ease-standard); }
 
-/* 13. 工具提示、标签、分页动�?*/
+/* 13. 工具提示、标签、分页动�?*/
 .tooltip { opacity: 0; transform: translateY(5px); transition: opacity var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-emphasized-decelerate); }
 .tooltip.show { opacity: 1; transform: translateY(0); }
 .badge, .tag { transition: transform var(--animation-fast) var(--ease-spring), background var(--animation-fast) var(--ease-standard); }
@@ -16493,7 +16490,7 @@ article img.loaded, .post-thumbnail img.loaded, article img:not([loading="lazy"]
 .index-link::before { content: ""; position: absolute; left: -8px; top: 50%; transform: translateY(-50%) scaleY(0); width: 3px; height: 60%; background: var(--themecolor); border-radius: 2px; transition: transform var(--animation-normal) var(--ease-spring); }
 .index-item.current > .index-link::before { transform: translateY(-50%) scaleY(1); }
 
-/* 15. 时间线动�?*/
+/* 15. 时间线动�?*/
 .timeline-item { opacity: 0; transform: translateX(-20px); animation: modernTimelineSlideIn var(--animation-slow) var(--ease-emphasized-decelerate) forwards; }
 @keyframes modernTimelineSlideIn { to { opacity: 1; transform: translateX(0); } }
 .timeline-item:nth-child(1) { animation-delay: 0ms; }
