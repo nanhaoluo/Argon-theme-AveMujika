@@ -76,7 +76,7 @@ $model_display = !empty($model) ? $model : __('未知模型', 'argon');
 			<span class="ai-summary-model"><?php _e('使用模型', 'argon'); ?>: <?php echo esc_html($model_display); ?></span>
 			<?php endif; ?>
 			<?php if (!empty($summary_code)): ?>
-			<span class="ai-summary-code" title="<?php _e('文章识别码，可用于反向查询', 'argon'); ?>"><?php _e('识别码', 'argon'); ?>: <?php echo esc_html($summary_code); ?></span>
+			<span class="ai-summary-code"><?php _e('识别码', 'argon'); ?>: <a href="<?php echo home_url('/ai-summary-query/?code=' . $summary_code); ?>"><?php echo esc_html($summary_code); ?></a></span>
 			<?php endif; ?>
 		<?php endif; ?>
 	</div>
@@ -121,7 +121,7 @@ $model_display = !empty($model) ? $model : __('未知模型', 'argon');
 						footerHTML += '<span class="ai-summary-model"><?php _e('使用模型', 'argon'); ?>: ' + data.data.model + '</span>';
 					}
 					if (data.data.code) {
-						footerHTML += '<span class="ai-summary-code" title="<?php _e('文章识别码，可用于反向查询', 'argon'); ?>"><?php _e('识别码', 'argon'); ?>: ' + data.data.code + '</span>';
+						footerHTML += '<span class="ai-summary-code"><?php _e('识别码', 'argon'); ?>: <a href="<?php echo home_url('/ai-summary-query/?code='); ?>' + data.data.code + '">' + data.data.code + '</a></span>';
 					}
 					footerDiv.innerHTML = footerHTML;
 				}
@@ -212,7 +212,16 @@ $model_display = !empty($model) ? $model : __('未知模型', 'argon');
 	opacity: 0.7;
 	font-family: 'Consolas', 'Monaco', monospace;
 	letter-spacing: 0.5px;
-	cursor: help;
+}
+.ai-summary-code a {
+	color: inherit;
+	text-decoration: none;
+	border-bottom: 1px dashed currentColor;
+	transition: all var(--animation-fast) var(--ease-standard);
+}
+.ai-summary-code a:hover {
+	opacity: 1;
+	border-bottom-style: solid;
 }
 .ai-summary-loading {
 	display: flex;
