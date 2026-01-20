@@ -4225,9 +4225,11 @@ article.post-preview-layout-2 .post-content {
 }
 
 article.post-preview-layout-2 .post-title {
-
 	max-width: max-content;
+}
 
+article.post-preview-layout-2 .post-meta {
+	justify-content: flex-start;
 }
 
 article.post-preview-layout-2 .loading-css-animation {
@@ -11728,18 +11730,8 @@ html.darkmode.amoled-dark #content:after {
 	}
 
 	html.darkmode #navbar_global .navbar-toggler * {
-
 		background: #eee;
-
 	}
-
-	html.darkmode .navbar-collapse .navbar-collapse-header {
-
-		/*border-bottom: 1px solid rgba(255,255,255,.1);*/
-
-	}
-
-
 
 	/*.navbar-brand.navbar-icon {
 
@@ -13070,9 +13062,6 @@ html.darkmode .friend-link-card {
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-html.darkmode .friend-link-card:hover {
-}
-
 html.darkmode .friend-link-name {
 	color: var(--font-color);
 }
@@ -13689,16 +13678,10 @@ html.darkmode {
     box-shadow: var(--m3-elevation-1) !important;
 }
 
-.card:hover {
-}
-
 /* M3 文章卡片 */
 article.post.card {
     overflow: hidden;
     border: none !important;
-}
-
-article.post.card:hover {
 }
 
 /* M3 按钮样式 */
@@ -14053,10 +14036,7 @@ article.post.card:hover {
     transition: all var(--m3-motion-duration-short) var(--m3-motion-standard);
 }
 
-.related-post-card:hover {
-}
-
-/* M3 代码�?*/
+/* M3 代码块 */
 article pre:not(.hljs-codeblock) {
     border-radius: var(--m3-shape-md) !important;
 }
@@ -14605,13 +14585,7 @@ html.darkmode #leftbar_part2 {
     border-color: var(--themecolor);
 }
 
-/* 评论区优�?*/
-#comments.card,
-#post_comment.card {
-    /* 使用全局 --color-foreground */
-}
-
-/* 评论项悬浮效�?*/
+/* 评论项悬浮效果 */
 .comment-body {
     transition: all 0.25s ease;
     border-radius: var(--m3-shape-md);
@@ -14927,13 +14901,6 @@ article.post.card:hover {
         0 8px 25px rgba(0, 0, 0, 0.08),
         0 20px 40px rgba(var(--themecolor-rgbstr), 0.06),
         inset 0 1px 0 rgba(255, 255, 255, 0.8);
-}
-
-html.darkmode article.post.card:hover {
-} 
-        0 8px 25px rgba(0, 0, 0, 0.3),
-        0 20px 40px rgba(0, 0, 0, 0.2),
-        inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 /* 按钮 Apple + Material 3 融合风格 */
@@ -16265,9 +16232,8 @@ html.darkmode {
     article.post.card {
         transition: transform var(--animation-normal) var(--ease-out-expo), box-shadow var(--animation-normal) var(--ease-standard);
     }
-    article.post.card:hover {
-    }
-    article.post.card .post-thumbnail {
+
+article.post.card .post-thumbnail {
         transition: transform var(--animation-slow) var(--ease-out-expo);
     }
     article.post.card:hover .post-thumbnail {
@@ -16275,8 +16241,6 @@ html.darkmode {
     }
     .card:not(article):not(.no-hover-effect) {
         transition: box-shadow var(--animation-normal) var(--ease-standard);
-    }
-    .card:not(article):not(.no-hover-effect):hover {
     }
     #leftbar .card, #rightbar .card {
         transition: box-shadow var(--animation-normal) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard);
@@ -16298,7 +16262,6 @@ html.darkmode {
     .navbar-nav .nav-link::before { content: ""; position: absolute; bottom: 0; left: 50%; width: 0; height: 2px; background: currentColor; transition: width var(--animation-normal) var(--ease-out-expo), left var(--animation-normal) var(--ease-out-expo); border-radius: 1px; }
     .navbar-nav .nav-link:hover::before { width: 100%; left: 0; }
     .comment-item { transition: box-shadow var(--animation-normal) var(--ease-standard); }
-    .comment-item:hover { }
 }
 
 /* 4. 滚动入场动画 */
@@ -16448,12 +16411,8 @@ article img.loaded, .post-thumbnail img.loaded, article img:not([loading="lazy"]
 
 /* 16. 友链和代码块动画 */
 .friend-link-item { transition: box-shadow var(--animation-normal) var(--ease-standard); }
-@media (hover: hover) {
-    .friend-link-item:hover { }
-}
 .friend-link-avatar { transition: transform var(--animation-normal) var(--ease-spring); }
 .hljs-codeblock { transition: box-shadow var(--animation-normal) var(--ease-standard); }
-@media (hover: hover) { .hljs-codeblock:hover { } }
 .code-copy-btn { opacity: 0; transition: opacity var(--animation-fast) var(--ease-standard), background var(--animation-fast) var(--ease-standard); }
 .hljs-codeblock:hover .code-copy-btn { opacity: 1; }
 
