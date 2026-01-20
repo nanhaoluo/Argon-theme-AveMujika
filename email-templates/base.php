@@ -314,8 +314,20 @@ function argon_replace_placeholders($template, $vars, $escape = false) {
     
     $vars = array_merge($global_vars, $vars);
     
+    // 处理条件语句 {{#if variable}}...{{/if}}
+    $template = preg_replace_callback('/\{\{#if\s+(\w+)\}\}(.*?)\{\{\/if\}\}/s', function($matches) use ($vars) {
+        $var_name = $matches[1];
+        $content = $matches[2];
+        // 如果变量存在且不为空，返回内容，否则返回空字符串
+        if (isset($vars[$var_name]) && !empty($vars[$var_name])) {
+            return $content;
+        }
+        return '';
+    }, $template);
+    
+    // 替换普通占位符
     foreach ($vars as $key => $value) {
-        if ($escape && !in_array($key, array('theme_color', 'blog_url', 'post_url', 'comment_url', 'reset_url', 'login_url'))) {
+        if ($escape && !in_array($key, array('theme_color', 'blog_url', 'post_url', 'comment_url', 'reset_url', 'login_url', 'feedback_manage_url', 'feedback_view_url'))) {
             $value = esc_html($value);
         }
         $template = str_replace('{{' . $key . '}}', $value, $template);
