@@ -26,9 +26,10 @@ if (!empty($exclude_ids)) {
 $summary = argon_get_ai_summary($post_id);
 $is_generating = empty($summary);
 
-// 获取模型信息
+// 获取模型信息和识别码
 $model = get_post_meta($post_id, '_argon_ai_summary_model', true);
 $provider = get_post_meta($post_id, '_argon_ai_summary_provider', true);
+$summary_code = get_post_meta($post_id, '_argon_ai_summary_code', true);
 
 // 提供商名称映射
 $provider_names = [
@@ -70,8 +71,13 @@ $model_display = !empty($model) ? $model : __('未知模型', 'argon');
 	</div>
 	<div class="ai-summary-footer">
 		<span class="ai-summary-disclaimer"><i class="fa fa-info-circle"></i> <?php _e('内容由AI生成，请注意甄别', 'argon'); ?></span>
-		<?php if (!$is_generating && !empty($model)): ?>
-		<span class="ai-summary-model"><?php _e('使用模型', 'argon'); ?>: <?php echo esc_html($model_display); ?></span>
+		<?php if (!$is_generating): ?>
+			<?php if (!empty($model)): ?>
+			<span class="ai-summary-model"><?php _e('使用模型', 'argon'); ?>: <?php echo esc_html($model_display); ?></span>
+			<?php endif; ?>
+			<?php if (!empty($summary_code)): ?>
+			<span class="ai-summary-code" title="<?php _e('文章识别码，可用于反向查询', 'argon'); ?>"><?php _e('识别码', 'argon'); ?>: <?php echo esc_html($summary_code); ?></span>
+			<?php endif; ?>
 		<?php endif; ?>
 	</div>
 </div>
@@ -109,9 +115,15 @@ $model_display = !empty($model) ? $model : __('未知模型', 'argon');
 				if (contentDiv) {
 					contentDiv.innerHTML = '<p>' + data.data.summary + '</p>';
 				}
-				if (footerDiv && data.data.model) {
-					let modelInfo = '<span class="ai-summary-model"><?php _e('使用模型', 'argon'); ?>: ' + data.data.model + '</span>';
-					footerDiv.innerHTML = '<span class="ai-summary-disclaimer"><i class="fa fa-info-circle"></i> <?php _e('内容由AI生成，请注意甄别', 'argon'); ?></span>' + modelInfo;
+				if (footerDiv) {
+					let footerHTML = '<span class="ai-summary-disclaimer"><i class="fa fa-info-circle"></i> <?php _e('内容由AI生成，请注意甄别', 'argon'); ?></span>';
+					if (data.data.model) {
+						footerHTML += '<span class="ai-summary-model"><?php _e('使用模型', 'argon'); ?>: ' + data.data.model + '</span>';
+					}
+					if (data.data.code) {
+						footerHTML += '<span class="ai-summary-code" title="<?php _e('文章识别码，可用于反向查询', 'argon'); ?>"><?php _e('识别码', 'argon'); ?>: ' + data.data.code + '</span>';
+					}
+					footerDiv.innerHTML = footerHTML;
 				}
 			} else if (data.success === false) {
 				let loadingEl = document.querySelector('.ai-summary-loading');
@@ -195,6 +207,12 @@ $model_display = !empty($model) ? $model : __('未知模型', 'argon');
 .ai-summary-model {
 	opacity: 0.6;
 	font-family: 'Consolas', 'Monaco', monospace;
+}
+.ai-summary-code {
+	opacity: 0.7;
+	font-family: 'Consolas', 'Monaco', monospace;
+	letter-spacing: 0.5px;
+	cursor: help;
 }
 .ai-summary-loading {
 	display: flex;

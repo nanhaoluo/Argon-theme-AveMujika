@@ -2679,69 +2679,69 @@ function comment_markdown_parse($comment_content){
 	return $res;
 }
 function argon_apply_comment_macros($text){
-    // 黑幕：{{黑幕|内容}} 或 {{黑幕|内容|提示}}
-    $text = preg_replace_callback('/\{\{黑幕\|([\s\S]*?)(?:\|([\s\S]*?))?\}\}/u', function($m){
-        $content = trim($m[1]);
-        $title = isset($m[2]) ? trim($m[2]) : '你知道的太多了';
-        return '<span class="heimu"' . (strlen($title) ? ' title="' . htmlspecialchars($title, ENT_QUOTES) . '"' : '') . '>' . htmlspecialchars($content) . '</span>';
-    }, $text);
-    // 胡话：{{胡话|内容}} 或 {{胡话|内容|提示}}
-    $text = preg_replace_callback('/\{\{胡话\|([\s\S]*?)\}\}/u', function($m){
-        $parts = explode('|', $m[1]);
-        $content = isset($parts[0]) ? trim($parts[0]) : '';
-        $tip = isset($parts[1]) ? trim($parts[1]) : '只为博君一笑，不必照单全收XD';
-        return '<span class="huhua"' . (strlen($tip) ? ' title="' . htmlspecialchars($tip, ENT_QUOTES) . '"' : '') . '>' . htmlspecialchars($content) . '</span>';
-    }, $text);
-    // 文字模糊：{{文字模糊|内容|提示|颜色|时间}}
-    $text = preg_replace_callback('/\{\{文字模糊\|([\s\S]*?)\}\}/u', function($m){
-        $parts = explode('|', $m[1]);
-        $content = isset($parts[0]) ? trim($parts[0]) : '';
-        $tip = isset($parts[1]) ? trim($parts[1]) : '你知道的太多了';
-        $color = isset($parts[2]) ? trim($parts[2]) : '';
-        $time = isset($parts[3]) ? trim($parts[3]) : '0.2';
-        $style = '--text-blur-transition-time: ' . preg_replace('/[^0-9\.]/', '', $time) . 's;';
-        if (strlen($color) > 0) {
-            $style .= ' --text-blur-color: ' . htmlspecialchars($color, ENT_QUOTES) . ';';
-        }
-        return '<span class="text-blur"' . (strlen($tip) ? ' title="' . htmlspecialchars($tip, ENT_QUOTES) . '"' : '') . ' style="' . $style . '">' . htmlspecialchars($content) . '</span>';
-    }, $text);
-    // 彩幕：{{彩幕|内容|背景色|提示|前景色}}
-    $text = preg_replace_callback('/\{\{彩幕\|([\s\S]*?)\}\}/u', function($m){
-        $parts = explode('|', $m[1]);
-        $content = isset($parts[0]) ? trim($parts[0]) : '';
-        $bg = isset($parts[1]) ? trim($parts[1]) : '#252525';
-        $tip = isset($parts[2]) ? trim($parts[2]) : '你知道的太多了';
-        $fg = isset($parts[3]) ? trim($parts[3]) : '';
-        
-        // 确保背景色有 # 前缀
-        $bghex = (substr($bg, 0, 1) == '#') ? $bg : ('#' . $bg);
-        
-        // 如果没有指定前景色，根据背景色亮度自动计算
-        if (empty($fg)) {
-            $hex = ltrim($bghex, '#');
-            if (strlen($hex) == 3) {
-                $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
-            }
-            if (strlen($hex) == 6) {
-                $r = hexdec(substr($hex, 0, 2));
-                $g = hexdec(substr($hex, 2, 2));
-                $b = hexdec(substr($hex, 4, 2));
-                $luma = 0.2126 * $r + 0.7152 * $g + 0.0722 * $b;
-                $fg = ($luma >= 180) ? '#000' : '#fff';
-            } else {
-                $fg = '#fff';
-            }
-        }
-        
-        $style = '--curtain-bg: ' . htmlspecialchars($bghex, ENT_QUOTES) . '; --curtain-fg: ' . htmlspecialchars($fg, ENT_QUOTES) . ';';
-        return '<span class="color-curtain"' . (strlen($tip) ? ' title="' . htmlspecialchars($tip, ENT_QUOTES) . '"' : '') . ' style="' . $style . '">' . htmlspecialchars($content) . '</span>';
-    }, $text);
-    return $text;
+	// 黑幕：{{黑幕|内容}} 或 {{黑幕|内容|提示}}
+	$text = preg_replace_callback('/\{\{黑幕\|([\s\S]*?)(?:\|([\s\S]*?))?\}\}/u', function($m){
+		$content = trim($m[1]);
+		$title = isset($m[2]) ? trim($m[2]) : '你知道的太多了';
+		return '<span class="heimu"' . (strlen($title) ? ' title="' . htmlspecialchars($title, ENT_QUOTES) . '"' : '') . '>' . htmlspecialchars($content) . '</span>';
+	}, $text);
+	// 胡话：{{胡话|内容}} 或 {{胡话|内容|提示}}
+	$text = preg_replace_callback('/\{\{胡话\|([\s\S]*?)\}\}/u', function($m){
+		$parts = explode('|', $m[1]);
+		$content = isset($parts[0]) ? trim($parts[0]) : '';
+		$tip = isset($parts[1]) ? trim($parts[1]) : '只为博君一笑，不必照单全收XD';
+		return '<span class="huhua"' . (strlen($tip) ? ' title="' . htmlspecialchars($tip, ENT_QUOTES) . '"' : '') . '>' . htmlspecialchars($content) . '</span>';
+	}, $text);
+	// 文字模糊：{{文字模糊|内容|提示|颜色|时间}}
+	$text = preg_replace_callback('/\{\{文字模糊\|([\s\S]*?)\}\}/u', function($m){
+		$parts = explode('|', $m[1]);
+		$content = isset($parts[0]) ? trim($parts[0]) : '';
+		$tip = isset($parts[1]) ? trim($parts[1]) : '你知道的太多了';
+		$color = isset($parts[2]) ? trim($parts[2]) : '';
+		$time = isset($parts[3]) ? trim($parts[3]) : '0.2';
+		$style = '--text-blur-transition-time: ' . preg_replace('/[^0-9\.]/', '', $time) . 's;';
+		if (strlen($color) > 0) {
+			$style .= ' --text-blur-color: ' . htmlspecialchars($color, ENT_QUOTES) . ';';
+		}
+		return '<span class="text-blur"' . (strlen($tip) ? ' title="' . htmlspecialchars($tip, ENT_QUOTES) . '"' : '') . ' style="' . $style . '">' . htmlspecialchars($content) . '</span>';
+	}, $text);
+	// 彩幕：{{彩幕|内容|背景色|提示|前景色}}
+	$text = preg_replace_callback('/\{\{彩幕\|([\s\S]*?)\}\}/u', function($m){
+		$parts = explode('|', $m[1]);
+		$content = isset($parts[0]) ? trim($parts[0]) : '';
+		$bg = isset($parts[1]) ? trim($parts[1]) : '#252525';
+		$tip = isset($parts[2]) ? trim($parts[2]) : '你知道的太多了';
+		$fg = isset($parts[3]) ? trim($parts[3]) : '';
+		
+		// 确保背景色有 # 前缀
+		$bghex = (substr($bg, 0, 1) == '#') ? $bg : ('#' . $bg);
+		
+		// 如果没有指定前景色，根据背景色亮度自动计算
+		if (empty($fg)) {
+			$hex = ltrim($bghex, '#');
+			if (strlen($hex) == 3) {
+				$hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+			}
+			if (strlen($hex) == 6) {
+				$r = hexdec(substr($hex, 0, 2));
+				$g = hexdec(substr($hex, 2, 2));
+				$b = hexdec(substr($hex, 4, 2));
+				$luma = 0.2126 * $r + 0.7152 * $g + 0.0722 * $b;
+				$fg = ($luma >= 180) ? '#000' : '#fff';
+			} else {
+				$fg = '#fff';
+			}
+		}
+		
+		$style = '--curtain-bg: ' . htmlspecialchars($bghex, ENT_QUOTES) . '; --curtain-fg: ' . htmlspecialchars($fg, ENT_QUOTES) . ';';
+		return '<span class="color-curtain"' . (strlen($tip) ? ' title="' . htmlspecialchars($tip, ENT_QUOTES) . '"' : '') . ' style="' . $style . '">' . htmlspecialchars($content) . '</span>';
+	}, $text);
+	return $text;
 }
 function argon_extend_comment_allowed_tags($tags, $context){
-    if ($context !== 'comment') { return $tags; }
-    $tags['span'] = array('class' => true, 'style' => true, 'title' => true);
-    return $tags;
+	if ($context !== 'comment') { return $tags; }
+	$tags['span'] = array('class' => true, 'style' => true, 'title' => true);
+	return $tags;
 }
 add_filter('wp_kses_allowed_html', 'argon_extend_comment_allowed_tags', 10, 2);
 function argon_comment_text_render($text){
@@ -4217,7 +4217,7 @@ function shortcode_hidden($attr,$content=""){
 	}
 	$out .= "'";
 	if ($tip != ''){
-		$out .= " title='" . $tip ."'";
+		$out .= " title='" . esc_attr($tip) ."'";
 	}
 	$out .= ">" . $content . "</span>";
 	return $out;
@@ -6073,6 +6073,32 @@ add_action('argon_daily_link_check', 'argon_scheduled_link_check');
 // ==================== AI 文章摘要功能 ====================
 
 /**
+ * 生成 8 位唯一识别码
+ * @return string 8 位识别码
+ */
+function argon_generate_summary_code() {
+	$characters = '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ'; // 去除易混淆字符 I, O
+	$code = '';
+	for ($i = 0; $i < 8; $i++) {
+		$code .= $characters[wp_rand(0, strlen($characters) - 1)];
+	}
+	
+	// 检查是否已存在
+	global $wpdb;
+	$exists = $wpdb->get_var($wpdb->prepare(
+		"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_argon_ai_summary_code' AND meta_value = %s",
+		$code
+	));
+	
+	// 如果存在，递归生成新的
+	if ($exists) {
+		return argon_generate_summary_code();
+	}
+	
+	return $code;
+}
+
+/**
  * 获取文章的 AI 摘要
  * @param int $post_id 文章 ID
  * @return string|false 摘要内容或 false
@@ -6483,11 +6509,19 @@ function argon_check_ai_summary() {
 		delete_transient('argon_ai_summary_generating_' . $post_id);
 		$model = get_post_meta($post_id, '_argon_ai_summary_model', true);
 		$provider = get_post_meta($post_id, '_argon_ai_summary_provider', true);
+		$code = get_post_meta($post_id, '_argon_ai_summary_code', true);
+		
+		// 如果没有识别码，生成一个
+		if (empty($code)) {
+			$code = argon_generate_summary_code();
+			update_post_meta($post_id, '_argon_ai_summary_code', $code);
+		}
 		
 		wp_send_json_success([
 			'summary' => esc_html($summary),
 			'model' => esc_html($model),
 			'provider' => esc_html($provider),
+			'code' => esc_html($code),
 			'generated' => true
 		]);
 	}
@@ -6508,12 +6542,16 @@ function argon_check_ai_summary() {
 				$provider = get_option('argon_ai_summary_provider', 'openai');
 				$model = get_option('argon_ai_summary_model', '');
 				
+				// 生成唯一识别码
+				$summary_code = argon_generate_summary_code();
+				
 				// 保存摘要和模型信息
 				update_post_meta($post_id, '_argon_ai_summary', $summary);
 				update_post_meta($post_id, '_argon_ai_summary_hash', $current_hash);
 				update_post_meta($post_id, '_argon_ai_summary_time', current_time('timestamp'));
 				update_post_meta($post_id, '_argon_ai_summary_model', $model);
 				update_post_meta($post_id, '_argon_ai_summary_provider', $provider);
+				update_post_meta($post_id, '_argon_ai_summary_code', $summary_code);
 				
 				delete_transient('argon_ai_summary_generating_' . $post_id);
 				
@@ -6521,6 +6559,7 @@ function argon_check_ai_summary() {
 					'summary' => esc_html($summary),
 					'model' => esc_html($model),
 					'provider' => esc_html($provider),
+					'code' => esc_html($summary_code),
 					'generated' => true
 				]);
 			} else {
@@ -6541,6 +6580,52 @@ function argon_check_ai_summary() {
 }
 add_action('wp_ajax_argon_check_ai_summary', 'argon_check_ai_summary');
 add_action('wp_ajax_nopriv_argon_check_ai_summary', 'argon_check_ai_summary');
+
+/**
+ * AJAX: 通过识别码查询 AI 摘要信息
+ */
+function argon_query_ai_summary_by_code() {
+	check_ajax_referer('argon_query_summary_code', 'nonce');
+	
+	$code = sanitize_text_field($_POST['code']);
+	if (empty($code) || strlen($code) !== 8) {
+		wp_send_json_error(['message' => __('识别码格式无效', 'argon')]);
+	}
+	
+	global $wpdb;
+	$post_id = $wpdb->get_var($wpdb->prepare(
+		"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_argon_ai_summary_code' AND meta_value = %s",
+		$code
+	));
+	
+	if (!$post_id) {
+		wp_send_json_error(['message' => __('未找到对应的摘要记录', 'argon')]);
+	}
+	
+	$post = get_post($post_id);
+	if (!$post) {
+		wp_send_json_error(['message' => __('文章不存在', 'argon')]);
+	}
+	
+	$summary = get_post_meta($post_id, '_argon_ai_summary', true);
+	$model = get_post_meta($post_id, '_argon_ai_summary_model', true);
+	$provider = get_post_meta($post_id, '_argon_ai_summary_provider', true);
+	$time = get_post_meta($post_id, '_argon_ai_summary_time', true);
+	
+	wp_send_json_success([
+		'post_id' => $post_id,
+		'post_title' => get_the_title($post_id),
+		'post_url' => get_permalink($post_id),
+		'summary' => esc_html($summary),
+		'model' => esc_html($model),
+		'provider' => esc_html($provider),
+		'generated_time' => $time ? date('Y-m-d H:i:s', $time) : '',
+		'code' => esc_html($code)
+	]);
+}
+add_action('wp_ajax_argon_query_ai_summary_by_code', 'argon_query_ai_summary_by_code');
+add_action('wp_ajax_nopriv_argon_query_ai_summary_by_code', 'argon_query_ai_summary_by_code');
+
 
 
 
