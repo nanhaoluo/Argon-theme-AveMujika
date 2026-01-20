@@ -7,60 +7,173 @@ $wp_load_path = dirname(dirname(dirname(dirname(__FILE__)))) . '/wp-load.php';
 if (!file_exists($wp_load_path)) $wp_load_path = $_SERVER['DOCUMENT_ROOT'] . '/wp-load.php';
 require_once($wp_load_path);
 
+// ==========================================================================
+// 安全防护：IP 访问限制
+// ==========================================================================
+
+/**
+ * 获取客户端真实 IP
+ */
+function argon_ai_query_get_client_ip() {
+	$ip = '';
+	if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+		$ip = $_SERVER['HTTP_CF_CONNECTING_IP'];
+	} elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+		$ip = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0];
+	} elseif (!empty($_SERVER['HTTP_X_REAL_IP'])) {
+		$ip = $_SERVER['HTTP_X_REAL_IP'];
+	} else {
+		$ip = $_SERVER['REMOTE_ADDR'];
+	}
+	return filter_var(trim($ip), FILTER_VALIDATE_IP) ? trim($ip) : '';
+}
+
+/**
+ * 检查 IP 访问频率限制
+ * @return bool|string true 表示允许访问，字符串表示错误信息
+ */
+function argon_ai_query_check_rate_limit() {
+	$client_ip = argon_ai_query_get_client_ip();
+	if (empty($client_ip)) {
+		return __('无法获取客户端 IP', 'argon');
+	}
+	
+	$transient_key = 'ai_query_lock_' . md5($client_ip);
+	$rate_limit_key = 'ai_query_rate_' . md5($client_ip);
+	
+	// 检查是否有正在进行的查询（单线程限制）
+	if (get_transient($transient_key)) {
+		return __('请等待上一次查询完成', 'argon');
+	}
+	
+	// 检查访问频率（60秒内最多10次）
+	$access_count = get_transient($rate_limit_key);
+	if ($access_count === false) {
+		set_transient($rate_limit_key, 1, 60);
+	} else {
+		if ($access_count >= 10) {
+			return __('访问过于频繁，请稍后再试', 'argon');
+		}
+		set_transient($rate_limit_key, $access_count + 1, 60);
+	}
+	
+	// 设置查询锁（3秒超时）
+	set_transient($transient_key, 1, 3);
+	
+	return true;
+}
+
+// 执行访问限制检查
+$rate_limit_check = argon_ai_query_check_rate_limit();
+if ($rate_limit_check !== true) {
+	// 访问受限，显示错误页面
+	get_header();
+	?>
+	<div class="page-information-card-container"></div>
+	<?php get_sidebar(); ?>
+	<div id="primary" class="content-area">
+	<style id="ai-verify-page-style">
+	@media screen and (min-width: 901px) {
+		body.ai-verify-page #leftbar_part, body.ai-verify-page #leftbar { display: none !important; }
+	}
+	body.ai-verify-page #primary { width: 100% !important; max-width: 1000px !important; margin: 0 auto !important; float: none !important; }
+	body.ai-verify-page #content { margin-top: -50vh !important; }
+	body.ai-verify-page .site-footer { max-width: 1000px !important; margin: 0 auto !important; width: 100% !important; float: none !important; }
+	</style>
+	<script data-pjax>
+	document.body.classList.add('ai-verify-page');
+	</script>
+	<main id="main" class="site-main" role="main">
+	<article class="post card shadow-sm bg-white border-0" style="padding: 60px 40px; text-align: center; margin-bottom: 16px;">
+		<div style="font-size: 48px; color: #f59e0b; margin-bottom: 20px;"><i class="fa fa-exclamation-triangle"></i></div>
+		<h2 style="font-size: 20px; font-weight: 600; color: var(--color-text-deeper); margin-bottom: 12px;"><?php _e('访问受限', 'argon'); ?></h2>
+		<p style="color: var(--color-text-muted); margin-bottom: 24px;"><?php echo esc_html($rate_limit_check); ?></p>
+		<a href="<?php echo home_url('/ai-query'); ?>" class="btn btn-primary"><?php _e('返回查询页面', 'argon'); ?></a>
+	</article>
+	</main>
+	<?php
+	get_footer();
+	exit;
+}
+
+// ==========================================================================
+// 查询逻辑
+// ==========================================================================
+
 $query_code = isset($_GET['code']) ? sanitize_text_field($_GET['code']) : '';
 if (empty($query_code)) {
 	$query_code = get_query_var('code') ? sanitize_text_field(get_query_var('code')) : '';
 }
 $result = null;
 $error = '';
+$from_cache = false;
 
 if (!empty($query_code)) {
 	if (strlen($query_code) !== 8) {
 		$error = __('识别码格式无效', 'argon');
 	} else {
-		global $wpdb;
-		$post_id = $wpdb->get_var($wpdb->prepare(
-			"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_argon_ai_summary_code' AND meta_value = %s",
-			$query_code
-		));
+		// 尝试从缓存获取
+		$cache_key = 'ai_query_result_' . $query_code;
+		$cached_result = get_transient($cache_key);
 		
-		if ($post_id) {
-			$post = get_post($post_id);
-			if ($post && $post->post_status === 'publish') {
-				$result = [
-					'post_id' => $post_id,
-					'post_title' => get_the_title($post_id),
-					'post_url' => get_permalink($post_id),
-					'post_date' => get_the_date('Y-m-d H:i:s', $post_id),
-					'post_modified' => get_the_modified_date('Y-m-d H:i:s', $post_id),
-					'post_author' => get_the_author_meta('display_name', $post->post_author),
-					'summary' => get_post_meta($post_id, '_argon_ai_summary', true),
-					'model' => get_post_meta($post_id, '_argon_ai_summary_model', true),
-					'provider' => get_post_meta($post_id, '_argon_ai_summary_provider', true),
-					'generated_time' => get_post_meta($post_id, '_argon_ai_summary_time', true),
-					'code' => $query_code
-				];
-				
-				$provider_names = [
-					'openai' => 'OpenAI',
-					'anthropic' => 'Anthropic',
-					'deepseek' => 'DeepSeek',
-					'qianwen' => '通义千问',
-					'wenxin' => '文心一言',
-					'doubao' => '豆包',
-					'kimi' => 'Kimi',
-					'zhipu' => '智谱',
-					'siliconflow' => 'SiliconFlow'
-				];
-				
-				$result['provider_display'] = isset($provider_names[$result['provider']]) ? $provider_names[$result['provider']] : $result['provider'];
-			} else {
-				$error = __('文章不存在或未发布', 'argon');
-			}
+		if ($cached_result !== false) {
+			$result = $cached_result;
+			$from_cache = true;
 		} else {
-			$error = __('未找到对应的 AI 生成内容记录', 'argon');
+			// 从数据库查询
+			global $wpdb;
+			$post_id = $wpdb->get_var($wpdb->prepare(
+				"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_argon_ai_summary_code' AND meta_value = %s",
+				$query_code
+			));
+			
+			if ($post_id) {
+				$post = get_post($post_id);
+				if ($post && $post->post_status === 'publish') {
+					$result = [
+						'post_id' => $post_id,
+						'post_title' => get_the_title($post_id),
+						'post_url' => get_permalink($post_id),
+						'post_date' => get_the_date('Y-m-d H:i:s', $post_id),
+						'post_modified' => get_the_modified_date('Y-m-d H:i:s', $post_id),
+						'post_author' => get_the_author_meta('display_name', $post->post_author),
+						'summary' => get_post_meta($post_id, '_argon_ai_summary', true),
+						'model' => get_post_meta($post_id, '_argon_ai_summary_model', true),
+						'provider' => get_post_meta($post_id, '_argon_ai_summary_provider', true),
+						'generated_time' => get_post_meta($post_id, '_argon_ai_summary_time', true),
+						'code' => $query_code
+					];
+					
+					$provider_names = [
+						'openai' => 'OpenAI',
+						'anthropic' => 'Anthropic',
+						'deepseek' => 'DeepSeek',
+						'qianwen' => '通义千问',
+						'wenxin' => '文心一言',
+						'doubao' => '豆包',
+						'kimi' => 'Kimi',
+						'zhipu' => '智谱',
+						'siliconflow' => 'SiliconFlow'
+					];
+					
+					$result['provider_display'] = isset($provider_names[$result['provider']]) ? $provider_names[$result['provider']] : $result['provider'];
+					
+					// 缓存结果（1小时）
+					set_transient($cache_key, $result, 3600);
+				} else {
+					$error = __('文章不存在或未发布', 'argon');
+				}
+			} else {
+				$error = __('未找到对应的 AI 生成内容记录', 'argon');
+			}
 		}
 	}
+}
+
+// 释放查询锁
+$client_ip = argon_ai_query_get_client_ip();
+if (!empty($client_ip)) {
+	delete_transient('ai_query_lock_' . md5($client_ip));
 }
 
 get_header();
