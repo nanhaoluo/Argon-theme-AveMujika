@@ -13,19 +13,49 @@ require_once($wp_load_path);
 
 /**
  * 获取客户端真实 IP
+ * 优先级：CF-Connecting-IP > X-Real-IP > X-Forwarded-For > REMOTE_ADDR
  */
 function argon_ai_query_get_client_ip() {
 	$ip = '';
+	
+	// Cloudflare
 	if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
 		$ip = $_SERVER['HTTP_CF_CONNECTING_IP'];
-	} elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-		$ip = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0];
-	} elseif (!empty($_SERVER['HTTP_X_REAL_IP'])) {
+	}
+	// Nginx proxy_pass 或其他反向代理
+	elseif (!empty($_SERVER['HTTP_X_REAL_IP'])) {
 		$ip = $_SERVER['HTTP_X_REAL_IP'];
-	} else {
+	}
+	// 通过代理转发（取第一个 IP）
+	elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+		$ip = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0];
+	}
+	// 直连 IP
+	else {
 		$ip = $_SERVER['REMOTE_ADDR'];
 	}
-	return filter_var(trim($ip), FILTER_VALIDATE_IP) ? trim($ip) : '';
+	
+	$ip = trim($ip);
+	
+	// 验证 IP 格式
+	if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+		return '';
+	}
+	
+	// 如果是内网 IP 或 CDN IP，尝试从其他头获取
+	if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+		// 内网 IP，尝试从 X-Forwarded-For 获取真实公网 IP
+		if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+			$ips = array_map('trim', explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']));
+			foreach ($ips as $forwarded_ip) {
+				if (filter_var($forwarded_ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+					return $forwarded_ip;
+				}
+			}
+		}
+	}
+	
+	return $ip;
 }
 
 /**
