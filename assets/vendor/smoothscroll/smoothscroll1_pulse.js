@@ -123,8 +123,20 @@ function init() {
             if (pendingRefresh) return; // could also be: clearTimeout(pendingRefresh);
             pendingRefresh = setTimeout(function () {
                 if (isExcluded) return; // could be running after cleanup
+                // 先重置高度，强制重新计算
                 fullPageElem.style.height = '0';
-                fullPageElem.style.height = root.scrollHeight + 'px';
+                // 使用 requestAnimationFrame 确保在下一帧更新，避免高度计算错误
+                requestAnimationFrame(function() {
+                    // 获取实际内容高度，取 body 和 html 的最大值
+                    var actualHeight = Math.max(
+                        body.scrollHeight,
+                        body.offsetHeight,
+                        html.clientHeight,
+                        html.scrollHeight,
+                        html.offsetHeight
+                    );
+                    fullPageElem.style.height = actualHeight + 'px';
+                });
                 pendingRefresh = null;
             }, 500); // act rarely to stay fast
         };

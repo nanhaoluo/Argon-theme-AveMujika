@@ -34,14 +34,17 @@
         
         // 加载备用系统
         loadFallbackSystems: function() {
+            var self = this;
+            
             if (this.config.enableFallbackCSS) {
-                this.loadCSS('/wp-content/themes/argon/assets/vendor/external/css-fallback.css');
-                this.loadCSS('/wp-content/themes/argon/assets/vendor/external/fonts/font-fallback.css');
+                // 使用 silent 模式加载，失败时不抛出错误
+                this.loadCSS('/wp-content/themes/argon/assets/vendor/external/css-fallback.css', null, true);
+                this.loadCSS('/wp-content/themes/argon/assets/vendor/external/fonts/font-fallback.css', null, true);
             }
             
             if (this.config.enableFallbackJS) {
-                this.loadJS('/wp-content/themes/argon/assets/vendor/external/js-fallback.js');
-                this.loadJS('/wp-content/themes/argon/assets/vendor/external/resource-monitor.js');
+                this.loadJS('/wp-content/themes/argon/assets/vendor/external/js-fallback.js', null, true);
+                this.loadJS('/wp-content/themes/argon/assets/vendor/external/resource-monitor.js', null, true);
             }
         },
         
@@ -94,25 +97,32 @@
         },
         
         // 加载CSS资源
-        loadCSS: function(url, fallbackUrl) {
+        loadCSS: function(url, fallbackUrl, silent) {
             var self = this;
             return new Promise(function(resolve, reject) {
                 var link = document.createElement('link');
                 link.rel = 'stylesheet';
                 link.href = url;
                 
-                var timeout = setTimeout(function() {
-                    self.log('CSS资源加载超时: ' + url);
+                var handleFailure = function(reason) {
+                    self.log('CSS资源加载' + reason + ': ' + url);
                     if (fallbackUrl) {
-                        self.loadCSS(fallbackUrl).then(resolve).catch(reject);
+                        self.loadCSS(fallbackUrl, null, silent).then(resolve).catch(reject);
                     } else {
                         var autoFallback = self.getFallbackUrl(url);
                         if (autoFallback) {
-                            self.loadCSS(autoFallback).then(resolve).catch(reject);
+                            self.loadCSS(autoFallback, null, silent).then(resolve).catch(reject);
+                        } else if (silent) {
+                            // 静默模式下不抛出错误
+                            resolve();
                         } else {
-                            reject(new Error('CSS加载失败且无备用资源'));
+                            reject(new Error('CSS加载失败且无备用资源: ' + url));
                         }
                     }
+                };
+                
+                var timeout = setTimeout(function() {
+                    handleFailure('超时');
                 }, self.config.timeout);
                 
                 link.onload = function() {
@@ -123,17 +133,7 @@
                 
                 link.onerror = function() {
                     clearTimeout(timeout);
-                    self.log('CSS资源加载失败: ' + url);
-                    if (fallbackUrl) {
-                        self.loadCSS(fallbackUrl).then(resolve).catch(reject);
-                    } else {
-                        var autoFallback = self.getFallbackUrl(url);
-                        if (autoFallback) {
-                            self.loadCSS(autoFallback).then(resolve).catch(reject);
-                        } else {
-                            reject(new Error('CSS加载失败且无备用资源'));
-                        }
-                    }
+                    handleFailure('失败');
                 };
                 
                 document.head.appendChild(link);
@@ -141,25 +141,32 @@
         },
         
         // 加载JS资源
-        loadJS: function(url, fallbackUrl) {
+        loadJS: function(url, fallbackUrl, silent) {
             var self = this;
             return new Promise(function(resolve, reject) {
                 var script = document.createElement('script');
                 script.src = url;
                 script.async = true;
                 
-                var timeout = setTimeout(function() {
-                    self.log('JS资源加载超时: ' + url);
+                var handleFailure = function(reason) {
+                    self.log('JS资源加载' + reason + ': ' + url);
                     if (fallbackUrl) {
-                        self.loadJS(fallbackUrl).then(resolve).catch(reject);
+                        self.loadJS(fallbackUrl, null, silent).then(resolve).catch(reject);
                     } else {
                         var autoFallback = self.getFallbackUrl(url);
                         if (autoFallback) {
-                            self.loadJS(autoFallback).then(resolve).catch(reject);
+                            self.loadJS(autoFallback, null, silent).then(resolve).catch(reject);
+                        } else if (silent) {
+                            // 静默模式下不抛出错误
+                            resolve();
                         } else {
-                            reject(new Error('JS加载失败且无备用资源'));
+                            reject(new Error('JS加载失败且无备用资源: ' + url));
                         }
                     }
+                };
+                
+                var timeout = setTimeout(function() {
+                    handleFailure('超时');
                 }, self.config.timeout);
                 
                 script.onload = function() {
@@ -170,17 +177,7 @@
                 
                 script.onerror = function() {
                     clearTimeout(timeout);
-                    self.log('JS资源加载失败: ' + url);
-                    if (fallbackUrl) {
-                        self.loadJS(fallbackUrl).then(resolve).catch(reject);
-                    } else {
-                        var autoFallback = self.getFallbackUrl(url);
-                        if (autoFallback) {
-                            self.loadJS(autoFallback).then(resolve).catch(reject);
-                        } else {
-                            reject(new Error('JS加载失败且无备用资源'));
-                        }
-                    }
+                    handleFailure('失败');
                 };
                 
                 document.head.appendChild(script);
