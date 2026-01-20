@@ -2663,11 +2663,16 @@ function themeoptions_page(){
 
 												<div>
 
+													<label style="display: block; margin-bottom: 10px;">
+														<input type="checkbox" name="argon_mathjax3_use_local" value="true" <?php if (get_option('argon_mathjax3_use_local')=='true'){echo 'checked';}?>/> 
+														<?php _e('使用本地镜像', 'argon');?>
+													</label>
+
 													Mathjax 3 CDN <?php _e('地址', 'argon');?>:
 
 													<input type="text" class="regular-text" name="argon_mathjax_cdn_url" value="<?php echo get_option('argon_mathjax_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js' : get_option('argon_mathjax_cdn_url'); ?>"/>
 
-													<p class="description">Mathjax 3.0+<?php _e('，默认为', 'argon');?> <code>//cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js</code></p>
+													<p class="description">Mathjax 3.0+<?php _e('，默认为', 'argon');?> <code>//cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js</code><br/><?php _e('勾选"使用本地镜像"后将优先使用主题内置的完整版本', 'argon');?></p>
 
 												</div>
 
@@ -2689,11 +2694,16 @@ function themeoptions_page(){
 
 												<div>
 
+													<label style="display: block; margin-bottom: 10px;">
+														<input type="checkbox" name="argon_mathjax2_use_local" value="true" <?php if (get_option('argon_mathjax2_use_local')=='true'){echo 'checked';}?>/> 
+														<?php _e('使用本地镜像', 'argon');?>
+													</label>
+
 													Mathjax 2 CDN <?php _e('地址', 'argon');?>:
 
 													<input type="text" class="regular-text" name="argon_mathjax_v2_cdn_url" value="<?php echo get_option('argon_mathjax_v2_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/mathjax@2.7.5/MathJax.js?config=TeX-AMS_HTML' : get_option('argon_mathjax_v2_cdn_url'); ?>"/>
 
-													<p class="description">Mathjax 2.0+<?php _e('，默认为', 'argon');?> <code>//cdn.jsdelivr.net/npm/mathjax@2.7.5/MathJax.js?config=TeX-AMS_HTML</code></p>
+													<p class="description">Mathjax 2.0+<?php _e('，默认为', 'argon');?> <code>//cdn.jsdelivr.net/npm/mathjax@2.7.5/MathJax.js?config=TeX-AMS_HTML</code><br/><?php _e('勾选"使用本地镜像"后将优先使用主题内置的完整版本', 'argon');?></p>
 
 												</div>
 
@@ -2715,11 +2725,16 @@ function themeoptions_page(){
 
 												<div>
 
+													<label style="display: block; margin-bottom: 10px;">
+														<input type="checkbox" name="argon_katex_use_local" value="true" <?php if (get_option('argon_katex_use_local')=='true'){echo 'checked';}?>/> 
+														<?php _e('使用本地镜像', 'argon');?>
+													</label>
+
 													Katex CDN <?php _e('地址', 'argon');?>:
 
 													<input type="text" class="regular-text" name="argon_katex_cdn_url" value="<?php echo get_option('argon_katex_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/katex@0.11.1/dist/' : get_option('argon_katex_cdn_url'); ?>"/>
 
-													<p class="description"><?php _e('Argon 会同时引用', 'argon');?> <code>katex.min.css</code> <?php _e('和', 'argon');?> <code>katex.min.js</code> <?php _e('两个文件，所以在此填写的是上层的路径，而不是具体的文件。注意路径后要带一个斜杠。', 'argon');?><br/><?php _e('默认为', 'argon');?> <code>//cdn.jsdelivr.net/npm/katex@0.11.1/dist/</code></p>
+													<p class="description"><?php _e('Argon 会同时引用', 'argon');?> <code>katex.min.css</code> <?php _e('和', 'argon');?> <code>katex.min.js</code> <?php _e('两个文件，所以在此填写的是上层的路径，而不是具体的文件。注意路径后要带一个斜杠。', 'argon');?><br/><?php _e('默认为', 'argon');?> <code>//cdn.jsdelivr.net/npm/katex@0.11.1/dist/</code><br/><?php _e('勾选"使用本地镜像"后将优先使用主题内置的完整版本', 'argon');?></p>
 
 												</div>
 
@@ -6345,6 +6360,12 @@ function argon_update_themeoptions(){
 		argon_update_option('argon_mathjax_v2_cdn_url');
 
 		argon_update_option('argon_katex_cdn_url');
+
+		argon_update_option_checkbox('argon_mathjax3_use_local');
+
+		argon_update_option_checkbox('argon_mathjax2_use_local');
+
+		argon_update_option_checkbox('argon_katex_use_local');
 
 
 
