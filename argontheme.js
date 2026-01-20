@@ -2312,7 +2312,7 @@ function lazyloadInit() {
 	}
 	
 	// 检查是否启用懒加载
-	if (argonConfig.lazyload === false) {
+	if (argonConfig.lazyload === false || argonConfig.lazyload === 'false') {
 		// 未启用懒加载时，直接加载所有图片
 		let images = document.querySelectorAll('img.lazyload[data-src]');
 		images.forEach(function(img) {
@@ -2328,7 +2328,9 @@ function lazyloadInit() {
 	}
 	
 	let images = document.querySelectorAll('img.lazyload[data-src]');
-	if (images.length === 0) return;
+	if (images.length === 0) {
+		return;
+	}
 	
 	let effect = argonConfig.lazyload_effect || 'fadeIn';
 	let threshold = parseInt(argonConfig.lazyload_threshold) || 800;
@@ -2413,7 +2415,14 @@ function loadImage(img, effect) {
 	};
 	tempImg.src = src;
 }
-lazyloadInit();
+
+// 确保 DOM 加载完成后再初始化懒加载
+if (document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', lazyloadInit);
+} else {
+	// DOM 已经加载完成，立即初始化
+	lazyloadInit();
+}
 
 /*Pangu.js*/
 function panguInit(){

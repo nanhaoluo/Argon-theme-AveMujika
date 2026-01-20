@@ -459,7 +459,7 @@
 			pangu: "<?php echo get_option('argon_enable_pangu', 'false'); ?>",
 
 			// 懒加载配置
-			lazyload: <?php echo (get_option('argon_enable_lazyload') !== 'false' ? 'true' : 'false'); ?>,
+			lazyload: <?php echo (get_option('argon_enable_lazyload', 'true') == 'false' ? 'false' : 'true'); ?>,
 			lazyload_effect: "<?php echo get_option('argon_lazyload_effect', 'fadeIn'); ?>",
 			lazyload_threshold: <?php echo (get_option('argon_lazyload_threshold') == '' ? '800' : get_option('argon_lazyload_threshold')); ?>,
 
