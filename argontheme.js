@@ -587,10 +587,18 @@ $(document).on("change" , ".search-filter" , function(e){
 		part1OuterHeight = $leftbarPart1.outerHeight();
 		changeLeftbarStickyStatus();
 	});
+	
+	// 防抖处理 MutationObserver
+	let leftbarMutationTimer = null;
 	new MutationObserver(function(){
-		part1OffsetTop = $leftbarPart1.offset().top;
-		part1OuterHeight = $leftbarPart1.outerHeight();
-		changeLeftbarStickyStatus();
+		if (leftbarMutationTimer) {
+			clearTimeout(leftbarMutationTimer);
+		}
+		leftbarMutationTimer = setTimeout(function() {
+			part1OffsetTop = $leftbarPart1.offset().top;
+			part1OuterHeight = $leftbarPart1.outerHeight();
+			changeLeftbarStickyStatus();
+		}, 150);
 	}).observe(leftbarPart1, {attributes: true, childList: true, subtree: true});
 }();
 
@@ -616,15 +624,56 @@ if (argonConfig.headroom == "true"){
 }
 
 /*瀑布流布局*/
+let waterflowTimer = null;
+let waterflowImagesLoaded = false;
+
 function waterflowInit() {
 	if (argonConfig.waterflow_columns == "1") {
 		return;
 	}
-	$("#main.article-list img").each(function(index, ele){
-		ele.onload = function(){
-			waterflowInit();
+	
+	// 防抖处理，避免频繁重新计算
+	if (waterflowTimer) {
+		clearTimeout(waterflowTimer);
+	}
+	
+	waterflowTimer = setTimeout(function() {
+		waterflowRender();
+	}, 100);
+}
+
+function waterflowRender() {
+	// 检查图片是否已加载
+	if (!waterflowImagesLoaded) {
+		let images = $("#main.article-list img");
+		let loadedCount = 0;
+		let totalImages = images.length;
+		
+		if (totalImages > 0) {
+			images.each(function(index, ele){
+				if (ele.complete) {
+					loadedCount++;
+				} else {
+					ele.onload = function(){
+						loadedCount++;
+						if (loadedCount === totalImages) {
+							waterflowImagesLoaded = true;
+							waterflowRender();
+						}
+					};
+				}
+			});
+			
+			// 如果所有图片已加载
+			if (loadedCount === totalImages) {
+				waterflowImagesLoaded = true;
+			} else {
+				// 等待图片加载
+				return;
+			}
 		}
-	});
+	}
+	
 	let columns;
 	if (argonConfig.waterflow_columns == "2and3") {
 		if ($("#main").outerWidth() > 1000) {
@@ -659,45 +708,62 @@ function waterflowInit() {
 		}
 		return res;
 	}
-	$("#primary").css("transition", "none")
-		.addClass("waterflow");
+	
 	let $container = $("#main.article-list");
 	if (!$container.length){
 		return;
 	}
+	
 	let $items = $container.find("article.post:not(.no-results), .shuoshuo-preview-container");
 	columns = Math.max(Math.min(columns, $items.length), 1);
-	if (columns == 1) {
-		$container.removeClass("waterflow");
-		$items.css("transition", "").css("position", "").css("width", "").css("top", "").css("left", "").css("margin", "");
-		$(".waterflow-placeholder").remove();
-	}else{
-		$container.addClass("waterflow");
-		$items.each(function(index, item) {
-			let $item = $(item);
-			$item.css("transition", "none")
-				.css("position", "absolute")
-				.css("width", "calc(" + (100 / columns) + "% - " + (10 * (columns - 1) / columns) + "px)").css("margin", 0);
-			let itemHeight = $item.outerHeight() + 10;
-			let pos = getMinHeightPosition();
-			$item.css("top", heights[getMinHeightPosition()] + "px")
-				.css("left", (pos * $item.outerWidth() + 10 * pos) + "px");
-			heights[pos] += itemHeight;
-		});
-	}
-	if ($(".waterflow-placeholder").length) {
-		$(".waterflow-placeholder").css("height", getMaxHeight() + "px");
-	}else{
-		$container.prepend("<div class='waterflow-placeholder' style='height: " + getMaxHeight() +"px;'></div>");
-	}
+	
+	// 使用 requestAnimationFrame 优化性能
+	requestAnimationFrame(function() {
+		$("#primary").css("transition", "none").addClass("waterflow");
+		
+		if (columns == 1) {
+			$container.removeClass("waterflow");
+			$items.css("transition", "").css("position", "").css("width", "").css("top", "").css("left", "").css("margin", "");
+			$(".waterflow-placeholder").remove();
+		}else{
+			$container.addClass("waterflow");
+			$items.each(function(index, item) {
+				let $item = $(item);
+				$item.css("transition", "none")
+					.css("position", "absolute")
+					.css("width", "calc(" + (100 / columns) + "% - " + (10 * (columns - 1) / columns) + "px)").css("margin", 0);
+				let itemHeight = $item.outerHeight() + 10;
+				let pos = getMinHeightPosition();
+				$item.css("top", heights[getMinHeightPosition()] + "px")
+					.css("left", (pos * $item.outerWidth() + 10 * pos) + "px");
+				heights[pos] += itemHeight;
+			});
+		}
+		
+		if ($(".waterflow-placeholder").length) {
+			$(".waterflow-placeholder").css("height", getMaxHeight() + "px");
+		}else{
+			$container.prepend("<div class='waterflow-placeholder' style='height: " + getMaxHeight() +"px;'></div>");
+		}
+	});
 }
 waterflowInit();
 if (argonConfig.waterflow_columns != "1") {
 	$(window).resize(function(){
 		waterflowInit();
 	});
+	
+	// 防抖处理 MutationObserver
+	let waterflowMutationTimer = null;
 	new MutationObserver(function(mutations, observer){
-		waterflowInit();
+		if (waterflowMutationTimer) {
+			clearTimeout(waterflowMutationTimer);
+		}
+		waterflowMutationTimer = setTimeout(function() {
+			// 重置图片加载状态，以便重新检查
+			waterflowImagesLoaded = false;
+			waterflowInit();
+		}, 150);
 	}).observe(document.querySelector("#primary"), {
 		'childList': true
 	});
@@ -924,8 +990,18 @@ if (argonConfig.waterflow_columns != "1") {
 		}
 	}
 	changefabtnDisplayStatus();
+	
+	// 节流处理滚动事件
+	let fabtnScrollTimer = null;
+	let fabtnScrollTicking = false;
 	$(window).scroll(function(){
-		changefabtnDisplayStatus();
+		if (!fabtnScrollTicking) {
+			window.requestAnimationFrame(function() {
+				changefabtnDisplayStatus();
+				fabtnScrollTicking = false;
+			});
+			fabtnScrollTicking = true;
+		}
 	});
 	$(window).resize(function(){
 		changefabtnDisplayStatus();
@@ -2331,29 +2407,31 @@ function loadImage(img, effect) {
 		// 移除所有 lazyload-style-* 类
 		img.className = img.className.replace(/\blazyload-style-\d+\b/g, '').trim();
 		
-		// 应用加载效果
-		if (effect === 'fadeIn') {
-			img.style.opacity = '0';
-			img.style.transition = 'opacity 0.3s ease';
-			setTimeout(function() {
-				img.style.opacity = '1';
-			}, 10);
-			setTimeout(function() {
-				img.style.transition = '';
-			}, 310);
-		} else if (effect === 'slideDown') {
-			img.style.opacity = '0';
-			img.style.transform = 'translateY(-20px)';
-			img.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-			setTimeout(function() {
-				img.style.opacity = '1';
-				img.style.transform = 'translateY(0)';
-			}, 10);
-			setTimeout(function() {
-				img.style.transition = '';
-				img.style.transform = '';
-			}, 310);
-		}
+		// 应用加载效果（使用 requestAnimationFrame 优化性能）
+		requestAnimationFrame(function() {
+			if (effect === 'fadeIn') {
+				img.style.opacity = '0';
+				img.style.transition = 'opacity 0.3s ease';
+				requestAnimationFrame(function() {
+					img.style.opacity = '1';
+				});
+				setTimeout(function() {
+					img.style.transition = '';
+				}, 310);
+			} else if (effect === 'slideDown') {
+				img.style.opacity = '0';
+				img.style.transform = 'translateY(-20px)';
+				img.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+				requestAnimationFrame(function() {
+					img.style.opacity = '1';
+					img.style.transform = 'translateY(0)';
+				});
+				setTimeout(function() {
+					img.style.transition = '';
+					img.style.transform = '';
+				}, 310);
+			}
+		});
 	};
 	tempImg.onerror = function() {
 		// 加载失败时使用原始 src
@@ -2417,8 +2495,16 @@ if ($("html").hasClass("banner-as-cover")){
 		}
 	}
 	classInit();
+	
+	// 防抖处理 MutationObserver
+	let classInitTimer = null;
 	new MutationObserver(function(mutations, observer){
-		classInit();
+		if (classInitTimer) {
+			clearTimeout(classInitTimer);
+		}
+		classInitTimer = setTimeout(function() {
+			classInit();
+		}, 150);
 	}).observe(document.querySelector("#primary"), {
 		'childList': true
 	});
@@ -2442,8 +2528,17 @@ if ($("html").hasClass("banner-as-cover")){
 		}
 	}
 	changeWidgetsDisplayStatus();
+	
+	// 节流处理滚动事件
+	let widgetsScrollTicking = false;
 	$(window).scroll(function(){
-		changeWidgetsDisplayStatus();
+		if (!widgetsScrollTicking) {
+			window.requestAnimationFrame(function() {
+				changeWidgetsDisplayStatus();
+				widgetsScrollTicking = false;
+			});
+			widgetsScrollTicking = true;
+		}
 	});
 	$(window).resize(function(){
 		changeWidgetsDisplayStatus();
@@ -3791,8 +3886,15 @@ void 0;
         ripple.className = 'touch-ripple';
         var oldRipple = element.querySelector('.touch-ripple');
         if (oldRipple) oldRipple.remove();
-        element.style.position = 'relative';
-        element.style.overflow = 'hidden';
+        // 只在元素没有 position 样式时才设置，避免布局突变
+        var computedStyle = window.getComputedStyle(element);
+        if (computedStyle.position === 'static') {
+            element.style.position = 'relative';
+        }
+        // 只在元素没有 overflow 样式时才设置，避免内容换行
+        if (computedStyle.overflow === 'visible') {
+            element.style.overflow = 'hidden';
+        }
         element.appendChild(ripple);
         setTimeout(function() { ripple.remove(); }, 600);
     }
