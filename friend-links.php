@@ -332,7 +332,6 @@ html.darkmode .flink-url { color: #888; }
 .flinks-mysite-title { font-size: 12px; font-weight: 600; color: var(--themecolor); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
 .flinks-mysite-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .flinks-mysite-item { background: transparent; border-radius: calc(var(--card-radius) * 0.6); padding: 6px 10px; cursor: pointer; transition: all var(--animation-fast) var(--ease-standard); border: none; }
-.flinks-mysite-item:hover { background: rgba(var(--themecolor-rgbstr), 0.05); border-color: rgba(var(--themecolor-rgbstr), 0.3); }
 .flinks-mysite-item label { display: block; font-size: 10px; color: #999; margin-bottom: 1px; text-transform: uppercase; pointer-events: none; }
 .flinks-mysite-item span { font-size: 12px; color: var(--color-text-deeper); word-break: break-all; font-weight: 500; pointer-events: none; }
 
