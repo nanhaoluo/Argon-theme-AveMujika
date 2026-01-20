@@ -82,6 +82,64 @@ function argon_force_refresh_headers() {
 add_action('send_headers', 'argon_force_refresh_headers');
 
 /**
+ * 安全性 HTTP 头部设置
+ * 修复安全扫描工具报告的问题
+ */
+function argon_security_headers() {
+	if (is_admin()) {
+		return;
+	}
+	
+	// 移除已废弃的 Pragma 头（由 argon_prevent_mobile_cache 和 argon_force_refresh_headers 设置）
+	// 注意：Pragma 仅在需要禁用缓存时使用，这里不移除以保持兼容性
+	
+	// 使用 Content-Security-Policy 替代 X-Frame-Options
+	// 允许同源嵌入，防止点击劫持
+	if (!headers_sent()) {
+		header("Content-Security-Policy: frame-ancestors 'self'", false);
+		
+		// 移除 X-Frame-Options（如果存在）
+		header_remove('X-Frame-Options');
+		
+		// 简化 Server 头（需要服务器配置支持）
+		// header('Server: Argon', true);
+		
+		// 确保字符集正确
+		// 注意：WordPress 已经设置了 Content-Type，这里不重复设置
+	}
+}
+add_action('send_headers', 'argon_security_headers', 20);
+
+/**
+ * 为静态资源添加缓存头部
+ * 提升性能评分
+ */
+function argon_static_resource_headers() {
+	if (is_admin() || argon_is_force_refresh_enabled()) {
+		return;
+	}
+	
+	// 检查是否是静态资源请求
+	$request_uri = $_SERVER['REQUEST_URI'] ?? '';
+	$static_extensions = array('.css', '.js', '.jpg', '.jpeg', '.png', '.gif', '.svg', '.woff', '.woff2', '.ttf', '.eot', '.ico');
+	
+	$is_static = false;
+	foreach ($static_extensions as $ext) {
+		if (strpos($request_uri, $ext) !== false) {
+			$is_static = true;
+			break;
+		}
+	}
+	
+	if ($is_static && !headers_sent()) {
+		// 静态资源缓存 1 年
+		header('Cache-Control: public, max-age=31536000, immutable', true);
+	}
+}
+add_action('send_headers', 'argon_static_resource_headers', 30);
+
+
+/**
  * 启用强制刷新缓存
  */
 function argon_enable_force_refresh() {
@@ -224,6 +282,7 @@ if (version_compare($argon_last_version, $GLOBALS['theme_version'], '<' )){
 require_once(get_template_directory() . '/email-templates/base.php');
 require_once(get_template_directory() . '/email-templates/comment-notify.php');
 require_once(get_template_directory() . '/email-templates/reply-notify.php');
+require_once(get_template_directory() . '/email-templates/feedback-notify.php');
 
 //检测更新
 require_once(get_template_directory() . '/theme-update-checker/plugin-update-checker.php');
@@ -2260,6 +2319,67 @@ function argon_is_captcha_enabled() {
     return $enabled !== 'false';
 }
 
+// ========== 全局安全函数 ==========
+
+/**
+ * 获取用户标识符（用于频率限制）
+ */
+function argon_get_user_identifier() {
+	if (is_user_logged_in()) {
+		return 'user_' . get_current_user_id();
+	}
+	$ip = $_SERVER['HTTP_CLIENT_IP'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['HTTP_X_REAL_IP'] ?? $_SERVER['REMOTE_ADDR'] ?? '';
+	if (strpos($ip, ',') !== false) $ip = trim(explode(',', $ip)[0]);
+	$user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+	return substr(hash('sha256', $ip . '|' . $user_agent), 0, 16);
+}
+
+/**
+ * 全局 IP 黑名单检查
+ */
+function argon_is_ip_blocked_global() {
+	$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+	if (empty($ip)) return false;
+	
+	$blocked_ips = get_option('argon_global_blocked_ips', '');
+	if (empty($blocked_ips)) return false;
+	
+	$blocked_list = array_filter(array_map('trim', explode("\n", $blocked_ips)));
+	foreach ($blocked_list as $blocked_ip) {
+		// 支持 CIDR 格式和通配符
+		if (strpos($blocked_ip, '/') !== false) {
+			// CIDR 格式
+			if (argon_ip_in_range($ip, $blocked_ip)) {
+				return true;
+			}
+		} elseif (strpos($blocked_ip, '*') !== false) {
+			// 通配符格式
+			$pattern = '/^' . str_replace(['.', '*'], ['\.', '.*'], $blocked_ip) . '$/';
+			if (preg_match($pattern, $ip)) {
+				return true;
+			}
+		} else {
+			// 精确匹配
+			if ($ip === $blocked_ip) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+/**
+ * 检查 IP 是否在 CIDR 范围内
+ */
+function argon_ip_in_range($ip, $cidr) {
+	list($subnet, $mask) = explode('/', $cidr);
+	$ip_long = ip2long($ip);
+	$subnet_long = ip2long($subnet);
+	$mask_long = -1 << (32 - (int)$mask);
+	$subnet_long &= $mask_long;
+	return ($ip_long & $mask_long) === $subnet_long;
+}
+
 /**
  * 通用验证码验证函数
  * @param string $context 验证场景: 'comment', 'todo' 或 'flink'
@@ -2387,6 +2507,15 @@ add_action('wp_ajax_get_captcha', 'ajax_get_captcha');
 add_action('wp_ajax_nopriv_get_captcha', 'ajax_get_captcha');
 //Ajax 发送评论
 function ajax_post_comment(){
+	// IP 黑名单检查
+	if (argon_is_ip_blocked_global()) {
+		exit(json_encode(array(
+			'status' => 'failed',
+			'msg' => __('您的 IP 已被限制访问', 'argon'),
+			'isAdmin' => current_user_can('level_7')
+		)));
+	}
+	
 	$parentID = $_POST['comment_parent'];
 	if (is_comment_private_mode($parentID)){
 		if (!user_can_view_comment($parentID)){
@@ -4347,17 +4476,25 @@ function argon_friend_links_rewrite() {
     add_rewrite_rule('^friends/?$', 'index.php?argon_friend_links=1', 'top');
 }
 
+// 反馈页面 URL 重写
+add_action('init', 'argon_feedback_rewrite');
+function argon_feedback_rewrite() {
+    add_rewrite_rule('^feedback/?$', 'index.php?argon_feedback_view=1', 'top');
+}
+
 // 主题激活或更新时刷新重写规则
 add_action('after_switch_theme', 'argon_flush_rewrite_rules');
 add_action('upgrader_process_complete', 'argon_flush_rewrite_rules');
 function argon_flush_rewrite_rules() {
     argon_friend_links_rewrite();
+    argon_feedback_rewrite();
     flush_rewrite_rules();
 }
 
 add_filter('query_vars', 'argon_friend_links_query_vars');
 function argon_friend_links_query_vars($vars) {
     $vars[] = 'argon_friend_links';
+    $vars[] = 'argon_feedback_view';
     return $vars;
 }
 
@@ -4365,6 +4502,15 @@ add_action('template_redirect', 'argon_friend_links_template');
 function argon_friend_links_template() {
     if (get_query_var('argon_friend_links')) {
         include(get_template_directory() . '/friend-links.php');
+        exit;
+    }
+}
+
+// 反馈页面路由
+add_action('template_redirect', 'argon_feedback_template');
+function argon_feedback_template() {
+    if (get_query_var('argon_feedback_view') || isset($_GET['argon_feedback_view'])) {
+        include(get_template_directory() . '/feedback.php');
         exit;
     }
 }
@@ -4618,6 +4764,11 @@ add_action('wp_ajax_argon_complete_todo', 'argon_ajax_complete_todo');
 
 // 催促作者完成 TODO
 function argon_ajax_urge_todo() {
+    // IP 黑名单检查
+    if (argon_is_ip_blocked_global()) {
+        wp_send_json_error(__('您的 IP 已被限制访问', 'argon'));
+    }
+    
     check_ajax_referer('argon_todo_nonce', 'nonce');
     
     $captcha_result = argon_verify_captcha('todo');
@@ -5303,6 +5454,21 @@ function argon_handle_link_application_v2($post_data) {
  * 处理友链申请 V3（服务器端获取网站信息）
  */
 function argon_handle_link_application_v3($post_data) {
+    // IP 黑名单检查
+    if (argon_is_ip_blocked_global()) {
+        return array('success' => false, 'message' => __('您的 IP 已被限制访问', 'argon'));
+    }
+    
+    // 频率限制
+    $user_identifier = argon_get_user_identifier();
+    $rate_limit_key = 'flink_apply_' . $user_identifier;
+    $apply_count = get_transient($rate_limit_key);
+    $max_applies = intval(get_option('argon_flink_apply_limit', 3));
+    $limit_period = intval(get_option('argon_flink_apply_period', 3600));
+    if ($apply_count !== false && $apply_count >= $max_applies) {
+        return array('success' => false, 'message' => __('申请过于频繁，请稍后再试', 'argon'));
+    }
+    
     // 验证 nonce
     if (!isset($post_data['argon_link_apply_nonce']) || 
         !wp_verify_nonce($post_data['argon_link_apply_nonce'], 'argon_link_apply')) {
@@ -5426,6 +5592,13 @@ function argon_handle_link_application_v3($post_data) {
     
     $links[] = $new_link;
     update_option('argon_friend_links', $links);
+    
+    // 更新频率限制计数
+    if ($apply_count === false) {
+        set_transient($rate_limit_key, 1, $limit_period);
+    } else {
+        set_transient($rate_limit_key, $apply_count + 1, $limit_period);
+    }
     
     if ($auto_approved) {
         return array('success' => true, 'message' => __('检测到您已添加本站链接，友链已自动通过！', 'argon'));
@@ -5895,3 +6068,1099 @@ if (!wp_next_scheduled('argon_daily_link_check')) {
     wp_schedule_event(time(), 'daily', 'argon_daily_link_check');
 }
 add_action('argon_daily_link_check', 'argon_scheduled_link_check');
+
+
+// ==================== AI 文章摘要功能 ====================
+
+/**
+ * 获取文章的 AI 摘要
+ * @param int $post_id 文章 ID
+ * @return string|false 摘要内容或 false
+ */
+function argon_get_ai_summary($post_id) {
+	// 检查是否启用
+	if (get_option('argon_ai_summary_enable', 'false') !== 'true') {
+		return false;
+	}
+
+	// 检查是否在排除列表中
+	$exclude_ids = get_option('argon_ai_summary_exclude_ids', '');
+	if (!empty($exclude_ids)) {
+		$exclude_array = array_map('trim', explode(',', $exclude_ids));
+		if (in_array($post_id, $exclude_array)) {
+			return false;
+		}
+	}
+
+	// 尝试从缓存获取
+	$cached_summary = get_post_meta($post_id, '_argon_ai_summary', true);
+	$cached_hash = get_post_meta($post_id, '_argon_ai_summary_hash', true);
+	
+	// 计算当前文章内容的哈希值
+	$post = get_post($post_id);
+	$current_hash = md5($post->post_content . $post->post_title);
+	
+	// 如果缓存存在且内容未变化，返回缓存
+	if (!empty($cached_summary) && $cached_hash === $current_hash) {
+		return $cached_summary;
+	}
+
+	// 如果内容变化了，清除旧缓存
+	if (!empty($cached_summary) && $cached_hash !== $current_hash) {
+		delete_post_meta($post_id, '_argon_ai_summary');
+		delete_post_meta($post_id, '_argon_ai_summary_hash');
+		delete_post_meta($post_id, '_argon_ai_summary_time');
+	}
+
+	// 不在这里生成摘要，返回 false 让前端异步处理
+	return false;
+}
+
+/**
+ * 生成 AI 摘要
+ * @param WP_Post $post 文章对象
+ * @return string|false 摘要内容或 false
+ */
+function argon_generate_ai_summary($post) {
+	$provider = get_option('argon_ai_summary_provider', 'openai');
+	$api_key = get_option('argon_ai_summary_api_key', '');
+	
+	if (empty($api_key)) {
+		return false;
+	}
+
+	// 准备文章内容
+	$content = wp_strip_all_tags($post->post_content);
+	$content = preg_replace('/\s+/', ' ', $content);
+	$content = mb_substr($content, 0, 8000); // 限制长度
+	
+	$prompt = get_option('argon_ai_summary_prompt', '你是一个专业的内容摘要助手。请仔细阅读以下文章内容，用简洁、准确的语言总结文章的核心观点和主要内容。要求：1) 控制在 100-150 字以内；2) 突出文章的关键信息和亮点；3) 使用通俗易懂的语言；4) 保持客观中立的语气。');
+	
+	// 根据不同服务商调用 API
+	switch ($provider) {
+		case 'openai':
+			return argon_call_openai_api($api_key, $prompt, $content);
+		case 'anthropic':
+			return argon_call_anthropic_api($api_key, $prompt, $content);
+		case 'deepseek':
+			return argon_call_deepseek_api($api_key, $prompt, $content);
+		case 'qianwen':
+			return argon_call_qianwen_api($api_key, $prompt, $content);
+		case 'wenxin':
+			return argon_call_wenxin_api($api_key, $prompt, $content);
+		case 'doubao':
+			return argon_call_doubao_api($api_key, $prompt, $content);
+		case 'kimi':
+			return argon_call_kimi_api($api_key, $prompt, $content);
+		case 'zhipu':
+			return argon_call_zhipu_api($api_key, $prompt, $content);
+		case 'siliconflow':
+			return argon_call_siliconflow_api($api_key, $prompt, $content);
+		default:
+			return false;
+	}
+}
+
+/**
+ * 调用 OpenAI API
+ */
+function argon_call_openai_api($api_key, $prompt, $content) {
+	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
+	if (empty($endpoint)) {
+		$endpoint = 'https://api.openai.com/v1/chat/completions';
+	}
+	
+	$model = get_option('argon_ai_summary_model', '');
+	if (empty($model)) {
+		$model = 'gpt-4o-mini';
+	}
+
+	$data = [
+		'model' => $model,
+		'messages' => [
+			['role' => 'system', 'content' => $prompt],
+			['role' => 'user', 'content' => $content]
+		],
+		'temperature' => 0.7,
+		'max_tokens' => 500
+	];
+
+	$response = wp_remote_post($endpoint, [
+		'headers' => [
+			'Content-Type' => 'application/json',
+			'Authorization' => 'Bearer ' . $api_key
+		],
+		'body' => json_encode($data),
+		'timeout' => 30
+	]);
+
+	if (is_wp_error($response)) {
+		return false;
+	}
+
+	$body = json_decode(wp_remote_retrieve_body($response), true);
+	
+	if (isset($body['choices'][0]['message']['content'])) {
+		return trim($body['choices'][0]['message']['content']);
+	}
+
+	return false;
+}
+
+/**
+ * 调用 Anthropic Claude API
+ */
+function argon_call_anthropic_api($api_key, $prompt, $content) {
+	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
+	if (empty($endpoint)) {
+		$endpoint = 'https://api.anthropic.com/v1/messages';
+	}
+	
+	$model = get_option('argon_ai_summary_model', '');
+	if (empty($model)) {
+		$model = 'claude-3-5-haiku-20241022';
+	}
+
+	$data = [
+		'model' => $model,
+		'max_tokens' => 500,
+		'messages' => [
+			['role' => 'user', 'content' => $prompt . "\n\n" . $content]
+		]
+	];
+
+	$response = wp_remote_post($endpoint, [
+		'headers' => [
+			'Content-Type' => 'application/json',
+			'x-api-key' => $api_key,
+			'anthropic-version' => '2023-06-01'
+		],
+		'body' => json_encode($data),
+		'timeout' => 30
+	]);
+
+	if (is_wp_error($response)) {
+		error_log('Argon AI Summary Error: ' . $response->get_error_message());
+		return false;
+	}
+
+	$body = json_decode(wp_remote_retrieve_body($response), true);
+	
+	if (isset($body['content'][0]['text'])) {
+		return trim($body['content'][0]['text']);
+	}
+
+	return false;
+}
+
+/**
+ * 调用通义千问 API
+ */
+function argon_call_qianwen_api($api_key, $prompt, $content) {
+	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
+	if (empty($endpoint)) {
+		$endpoint = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation';
+	}
+	
+	$model = get_option('argon_ai_summary_model', '');
+	if (empty($model)) {
+		$model = 'qwen-turbo';
+	}
+
+	$data = [
+		'model' => $model,
+		'input' => [
+			'messages' => [
+				['role' => 'system', 'content' => $prompt],
+				['role' => 'user', 'content' => $content]
+			]
+		],
+		'parameters' => [
+			'result_format' => 'message'
+		]
+	];
+
+	$response = wp_remote_post($endpoint, [
+		'headers' => [
+			'Content-Type' => 'application/json',
+			'Authorization' => 'Bearer ' . $api_key
+		],
+		'body' => json_encode($data),
+		'timeout' => 30
+	]);
+
+	if (is_wp_error($response)) {
+		error_log('Argon AI Summary Error: ' . $response->get_error_message());
+		return false;
+	}
+
+	$body = json_decode(wp_remote_retrieve_body($response), true);
+	
+	if (isset($body['output']['choices'][0]['message']['content'])) {
+		return trim($body['output']['choices'][0]['message']['content']);
+	}
+
+	return false;
+}
+
+/**
+ * 调用文心一言 API
+ */
+function argon_call_wenxin_api($api_key, $prompt, $content) {
+	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
+	$model = get_option('argon_ai_summary_model', '');
+	if (empty($model)) {
+		$model = 'ernie-4.0-turbo-8k';
+	}
+	
+	if (empty($endpoint)) {
+		// 文心一言需要先获取 access_token
+		$endpoint = 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/' . $model . '?access_token=' . $api_key;
+	}
+
+	$data = [
+		'messages' => [
+			['role' => 'user', 'content' => $prompt . "\n\n" . $content]
+		]
+	];
+
+	$response = wp_remote_post($endpoint, [
+		'headers' => [
+			'Content-Type' => 'application/json'
+		],
+		'body' => json_encode($data),
+		'timeout' => 30
+	]);
+
+	if (is_wp_error($response)) {
+		error_log('Argon AI Summary Error: ' . $response->get_error_message());
+		return false;
+	}
+
+	$body = json_decode(wp_remote_retrieve_body($response), true);
+	
+	if (isset($body['result'])) {
+		return trim($body['result']);
+	}
+
+	return false;
+}
+
+/**
+ * 调用 Kimi (Moonshot) API
+ */
+function argon_call_kimi_api($api_key, $prompt, $content) {
+	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
+	if (empty($endpoint)) {
+		$endpoint = 'https://api.moonshot.cn/v1/chat/completions';
+	}
+	
+	$model = get_option('argon_ai_summary_model', '');
+	if (empty($model)) {
+		$model = 'moonshot-v1-8k';
+	}
+
+	$data = [
+		'model' => $model,
+		'messages' => [
+			['role' => 'system', 'content' => $prompt],
+			['role' => 'user', 'content' => $content]
+		],
+		'temperature' => 0.7
+	];
+
+	$response = wp_remote_post($endpoint, [
+		'headers' => [
+			'Content-Type' => 'application/json',
+			'Authorization' => 'Bearer ' . $api_key
+		],
+		'body' => json_encode($data),
+		'timeout' => 30
+	]);
+
+	if (is_wp_error($response)) {
+		error_log('Argon AI Summary Error: ' . $response->get_error_message());
+		return false;
+	}
+
+	$body = json_decode(wp_remote_retrieve_body($response), true);
+	
+	if (isset($body['choices'][0]['message']['content'])) {
+		return trim($body['choices'][0]['message']['content']);
+	}
+
+	return false;
+}
+
+/**
+ * 调用智谱 AI API
+ */
+function argon_call_zhipu_api($api_key, $prompt, $content) {
+	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
+	if (empty($endpoint)) {
+		$endpoint = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+	}
+	
+	$model = get_option('argon_ai_summary_model', '');
+	if (empty($model)) {
+		$model = 'glm-4-flash';
+	}
+
+	$data = [
+		'model' => $model,
+		'messages' => [
+			['role' => 'system', 'content' => $prompt],
+			['role' => 'user', 'content' => $content]
+		]
+	];
+
+	$response = wp_remote_post($endpoint, [
+		'headers' => [
+			'Content-Type' => 'application/json',
+			'Authorization' => 'Bearer ' . $api_key
+		],
+		'body' => json_encode($data),
+		'timeout' => 30
+	]);
+
+	if (is_wp_error($response)) {
+		error_log('Argon AI Summary Error: ' . $response->get_error_message());
+		return false;
+	}
+
+	$body = json_decode(wp_remote_retrieve_body($response), true);
+	
+	if (isset($body['choices'][0]['message']['content'])) {
+		return trim($body['choices'][0]['message']['content']);
+	}
+
+	return false;
+}
+
+/**
+ * AJAX: 清除所有 AI 摘要缓存
+ */
+function argon_clear_ai_summaries() {
+	check_ajax_referer('argon_clear_ai_summaries', 'nonce');
+	
+	if (!current_user_can('manage_options')) {
+		wp_send_json_error(__('权限不足', 'argon'));
+	}
+	
+	global $wpdb;
+	$wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key IN ('_argon_ai_summary', '_argon_ai_summary_hash', '_argon_ai_summary_time')");
+	
+	wp_send_json_success(__('已清除所有 AI 摘要缓存', 'argon'));
+}
+add_action('wp_ajax_argon_clear_ai_summaries', 'argon_clear_ai_summaries');
+
+/**
+ * 文章更新时清除该文章的 AI 摘要缓存
+ */
+function argon_clear_post_ai_summary($post_id) {
+	delete_post_meta($post_id, '_argon_ai_summary');
+	delete_post_meta($post_id, '_argon_ai_summary_hash');
+	delete_post_meta($post_id, '_argon_ai_summary_time');
+}
+add_action('save_post', 'argon_clear_post_ai_summary');
+
+/**
+ * AJAX: 检查 AI 摘要生成状态
+ */
+function argon_check_ai_summary() {
+	check_ajax_referer('argon_check_ai_summary', 'nonce');
+	
+	$post_id = intval($_POST['post_id']);
+	if (empty($post_id)) {
+		wp_send_json_error(__('文章 ID 无效', 'argon'));
+	}
+	
+	// 尝试获取摘要
+	$summary = get_post_meta($post_id, '_argon_ai_summary', true);
+	
+	if (!empty($summary)) {
+		// 摘要已生成，清除生成标记
+		delete_transient('argon_ai_summary_generating_' . $post_id);
+		$model = get_post_meta($post_id, '_argon_ai_summary_model', true);
+		$provider = get_post_meta($post_id, '_argon_ai_summary_provider', true);
+		
+		wp_send_json_success([
+			'summary' => esc_html($summary),
+			'model' => esc_html($model),
+			'provider' => esc_html($provider),
+			'generated' => true
+		]);
+	}
+	
+	// 检查是否正在生成
+	$generating = get_transient('argon_ai_summary_generating_' . $post_id);
+	if (!$generating) {
+		// 设置生成标记，防止重复生成
+		set_transient('argon_ai_summary_generating_' . $post_id, true, 300);
+		
+		// 触发生成
+		$post = get_post($post_id);
+		if ($post) {
+			$summary = argon_generate_ai_summary($post);
+			
+			if ($summary !== false) {
+				$current_hash = md5($post->post_content . $post->post_title);
+				$provider = get_option('argon_ai_summary_provider', 'openai');
+				$model = get_option('argon_ai_summary_model', '');
+				
+				// 保存摘要和模型信息
+				update_post_meta($post_id, '_argon_ai_summary', $summary);
+				update_post_meta($post_id, '_argon_ai_summary_hash', $current_hash);
+				update_post_meta($post_id, '_argon_ai_summary_time', current_time('timestamp'));
+				update_post_meta($post_id, '_argon_ai_summary_model', $model);
+				update_post_meta($post_id, '_argon_ai_summary_provider', $provider);
+				
+				delete_transient('argon_ai_summary_generating_' . $post_id);
+				
+				wp_send_json_success([
+					'summary' => esc_html($summary),
+					'model' => esc_html($model),
+					'provider' => esc_html($provider),
+					'generated' => true
+				]);
+			} else {
+				// 生成失败，清除标记并返回错误
+				delete_transient('argon_ai_summary_generating_' . $post_id);
+				wp_send_json_error([
+					'message' => __('AI 摘要生成失败，请检查 API 配置', 'argon')
+				]);
+			}
+		}
+	}
+	
+	// 仍在生成中
+	wp_send_json_success([
+		'summary' => '',
+		'generated' => false
+	]);
+}
+add_action('wp_ajax_argon_check_ai_summary', 'argon_check_ai_summary');
+add_action('wp_ajax_nopriv_argon_check_ai_summary', 'argon_check_ai_summary');
+
+
+
+/**
+ * 调用 DeepSeek API
+ */
+function argon_call_deepseek_api($api_key, $prompt, $content) {
+	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
+	if (empty($endpoint)) {
+		$endpoint = 'https://api.deepseek.com/v1/chat/completions';
+	}
+	
+	$model = get_option('argon_ai_summary_model', '');
+	if (empty($model)) {
+		$model = 'deepseek-chat';
+	}
+
+	$data = [
+		'model' => $model,
+		'messages' => [
+			['role' => 'system', 'content' => $prompt],
+			['role' => 'user', 'content' => $content]
+		],
+		'temperature' => 0.7,
+		'max_tokens' => 500
+	];
+
+	$response = wp_remote_post($endpoint, [
+		'headers' => [
+			'Content-Type' => 'application/json',
+			'Authorization' => 'Bearer ' . $api_key
+		],
+		'body' => json_encode($data),
+		'timeout' => 30
+	]);
+
+	if (is_wp_error($response)) {
+		error_log('Argon AI Summary Error: ' . $response->get_error_message());
+		return false;
+	}
+
+	$body = json_decode(wp_remote_retrieve_body($response), true);
+	
+	if (isset($body['choices'][0]['message']['content'])) {
+		return trim($body['choices'][0]['message']['content']);
+	}
+
+	return false;
+}
+
+/**
+ * 调用豆包 (火山引擎) API
+ */
+function argon_call_doubao_api($api_key, $prompt, $content) {
+	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
+	if (empty($endpoint)) {
+		$endpoint = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
+	}
+	
+	$model = get_option('argon_ai_summary_model', '');
+	if (empty($model)) {
+		$model = 'doubao-pro-32k';
+	}
+
+	$data = [
+		'model' => $model,
+		'messages' => [
+			['role' => 'system', 'content' => $prompt],
+			['role' => 'user', 'content' => $content]
+		],
+		'temperature' => 0.7,
+		'max_tokens' => 500
+	];
+
+	$response = wp_remote_post($endpoint, [
+		'headers' => [
+			'Content-Type' => 'application/json',
+			'Authorization' => 'Bearer ' . $api_key
+		],
+		'body' => json_encode($data),
+		'timeout' => 30
+	]);
+
+	if (is_wp_error($response)) {
+		error_log('Argon AI Summary Error: ' . $response->get_error_message());
+		return false;
+	}
+
+	$body = json_decode(wp_remote_retrieve_body($response), true);
+	
+	if (isset($body['choices'][0]['message']['content'])) {
+		return trim($body['choices'][0]['message']['content']);
+	}
+
+	return false;
+}
+
+/**
+ * 调用硅基流动 (SiliconFlow) API
+ */
+function argon_call_siliconflow_api($api_key, $prompt, $content) {
+	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
+	if (empty($endpoint)) {
+		$endpoint = 'https://api.siliconflow.cn/v1/chat/completions';
+	}
+	
+	$model = get_option('argon_ai_summary_model', '');
+	if (empty($model)) {
+		$model = 'Qwen/Qwen2.5-7B-Instruct';
+	}
+
+	$data = [
+		'model' => $model,
+		'messages' => [
+			['role' => 'system', 'content' => $prompt],
+			['role' => 'user', 'content' => $content]
+		],
+		'temperature' => 0.7,
+		'max_tokens' => 500
+	];
+
+	$response = wp_remote_post($endpoint, [
+		'headers' => [
+			'Content-Type' => 'application/json',
+			'Authorization' => 'Bearer ' . $api_key
+		],
+		'body' => json_encode($data),
+		'timeout' => 30
+	]);
+
+	if (is_wp_error($response)) {
+		error_log('Argon AI Summary Error: ' . $response->get_error_message());
+		return false;
+	}
+
+	$body = json_decode(wp_remote_retrieve_body($response), true);
+	
+	if (isset($body['choices'][0]['message']['content'])) {
+		return trim($body['choices'][0]['message']['content']);
+	}
+
+	return false;
+}
+
+
+/**
+ * AJAX: 获取 AI 模型列表
+ */
+function argon_get_ai_models() {
+	check_ajax_referer('argon_get_ai_models', 'nonce');
+	
+	if (!current_user_can('manage_options')) {
+		wp_send_json_error(__('权限不足', 'argon'));
+	}
+	
+	$provider = sanitize_text_field($_POST['provider']);
+	$api_key = sanitize_text_field($_POST['api_key']);
+	$api_endpoint = sanitize_text_field($_POST['api_endpoint']);
+	
+	if (empty($api_key)) {
+		wp_send_json_error(__('API 密钥不能为空', 'argon'));
+	}
+	
+	$models = [];
+	
+	switch ($provider) {
+		case 'openai':
+			$models = argon_get_openai_models($api_key, $api_endpoint);
+			break;
+		case 'anthropic':
+			$models = argon_get_anthropic_models();
+			break;
+		case 'deepseek':
+			$models = argon_get_deepseek_models($api_key, $api_endpoint);
+			break;
+		case 'qianwen':
+			$models = argon_get_qianwen_models($api_key, $api_endpoint);
+			break;
+		case 'wenxin':
+			$models = argon_get_wenxin_models($api_key, $api_endpoint);
+			break;
+		case 'doubao':
+			$models = argon_get_doubao_models($api_key, $api_endpoint);
+			break;
+		case 'kimi':
+			$models = argon_get_kimi_models($api_key, $api_endpoint);
+			break;
+		case 'zhipu':
+			$models = argon_get_zhipu_models($api_key, $api_endpoint);
+			break;
+		case 'siliconflow':
+			$models = argon_get_siliconflow_models($api_key, $api_endpoint);
+			break;
+		default:
+			wp_send_json_error(__('不支持的服务商', 'argon'));
+	}
+	
+	if ($models === false || empty($models)) {
+		wp_send_json_error(__('获取模型列表失败，请检查 API 密钥和网络连接', 'argon'));
+	}
+	
+	wp_send_json_success(['models' => $models]);
+}
+add_action('wp_ajax_argon_get_ai_models', 'argon_get_ai_models');
+
+/**
+ * 获取 OpenAI 模型列表
+ */
+function argon_get_openai_models($api_key, $custom_endpoint = '') {
+	$endpoint = !empty($custom_endpoint) ? $custom_endpoint : 'https://api.openai.com/v1/models';
+	// 移除 chat/completions 路径
+	$endpoint = preg_replace('#/v1/chat/completions$#', '/v1/models', $endpoint);
+	
+	$response = wp_remote_get($endpoint, [
+		'headers' => [
+			'Authorization' => 'Bearer ' . $api_key
+		],
+		'timeout' => 15
+	]);
+	
+	if (is_wp_error($response)) {
+		// API 调用失败，返回预设列表
+		return [
+			['id' => 'gpt-4o', 'name' => 'GPT-4o'],
+			['id' => 'gpt-4o-mini', 'name' => 'GPT-4o Mini (推荐)'],
+			['id' => 'gpt-4-turbo', 'name' => 'GPT-4 Turbo'],
+			['id' => 'gpt-3.5-turbo', 'name' => 'GPT-3.5 Turbo']
+		];
+	}
+	
+	$body = json_decode(wp_remote_retrieve_body($response), true);
+	
+	if (!isset($body['data'])) {
+		// 响应格式错误，返回预设列表
+		return [
+			['id' => 'gpt-4o', 'name' => 'GPT-4o'],
+			['id' => 'gpt-4o-mini', 'name' => 'GPT-4o Mini (推荐)'],
+			['id' => 'gpt-4-turbo', 'name' => 'GPT-4 Turbo'],
+			['id' => 'gpt-3.5-turbo', 'name' => 'GPT-3.5 Turbo']
+		];
+	}
+	
+	$models = [];
+	foreach ($body['data'] as $model) {
+		// 只显示 GPT 聊天模型
+		if (strpos($model['id'], 'gpt') !== false && strpos($model['id'], 'instruct') === false) {
+			$models[] = [
+				'id' => $model['id'],
+				'name' => $model['id']
+			];
+		}
+	}
+	
+	// 如果 API 没返回模型，使用预设列表
+	if (empty($models)) {
+		$models = [
+			['id' => 'gpt-4o', 'name' => 'GPT-4o'],
+			['id' => 'gpt-4o-mini', 'name' => 'GPT-4o Mini (推荐)'],
+			['id' => 'gpt-4-turbo', 'name' => 'GPT-4 Turbo'],
+			['id' => 'gpt-3.5-turbo', 'name' => 'GPT-3.5 Turbo']
+		];
+	}
+	
+	return $models;
+}
+
+/**
+ * 获取 Anthropic Claude 模型列表
+ */
+function argon_get_anthropic_models() {
+	return [
+		['id' => 'claude-3-5-sonnet-20241022', 'name' => 'Claude 3.5 Sonnet'],
+		['id' => 'claude-3-5-haiku-20241022', 'name' => 'Claude 3.5 Haiku (推荐)'],
+		['id' => 'claude-3-opus-20240229', 'name' => 'Claude 3 Opus'],
+		['id' => 'claude-3-sonnet-20240229', 'name' => 'Claude 3 Sonnet'],
+		['id' => 'claude-3-haiku-20240307', 'name' => 'Claude 3 Haiku']
+	];
+}
+
+/**
+ * 获取 DeepSeek 模型列表
+ */
+function argon_get_deepseek_models($api_key, $custom_endpoint = '') {
+	$endpoint = !empty($custom_endpoint) ? $custom_endpoint : 'https://api.deepseek.com/v1/models';
+	$endpoint = preg_replace('#/v1/chat/completions$#', '/v1/models', $endpoint);
+	
+	$response = wp_remote_get($endpoint, [
+		'headers' => [
+			'Authorization' => 'Bearer ' . $api_key
+		],
+		'timeout' => 15
+	]);
+	
+	if (is_wp_error($response)) {
+		// API 调用失败,返回预设列表
+		return [
+			['id' => 'deepseek-chat', 'name' => 'DeepSeek Chat (推荐)'],
+			['id' => 'deepseek-reasoner', 'name' => 'DeepSeek Reasoner (R1)']
+		];
+	}
+	
+	$body = json_decode(wp_remote_retrieve_body($response), true);
+	
+	if (!isset($body['data'])) {
+		return [
+			['id' => 'deepseek-chat', 'name' => 'DeepSeek Chat (推荐)'],
+			['id' => 'deepseek-reasoner', 'name' => 'DeepSeek Reasoner (R1)']
+		];
+	}
+	
+	$models = [];
+	foreach ($body['data'] as $model) {
+		if (isset($model['id'])) {
+			$models[] = [
+				'id' => $model['id'],
+				'name' => $model['id']
+			];
+		}
+	}
+	
+	return !empty($models) ? $models : [
+		['id' => 'deepseek-chat', 'name' => 'DeepSeek Chat (推荐)'],
+		['id' => 'deepseek-reasoner', 'name' => 'DeepSeek Reasoner (R1)']
+	];
+}
+
+/**
+ * 获取通义千问模型列表
+ */
+function argon_get_qianwen_models($api_key, $custom_endpoint = '') {
+	// 通义千问使用阿里云 DashScope API
+	$endpoint = !empty($custom_endpoint) ? $custom_endpoint : 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation';
+	
+	// 通义千问没有标准的 models 端点,使用预设列表但尝试验证 API 可用性
+	$test_endpoint = preg_replace('#/api/v1/.*$#', '/api/v1/models', $endpoint);
+	
+	$response = wp_remote_get($test_endpoint, [
+		'headers' => [
+			'Authorization' => 'Bearer ' . $api_key
+		],
+		'timeout' => 10
+	]);
+	
+	// 无论 API 是否成功,都返回完整的预设列表
+	return [
+		['id' => 'qwen-max', 'name' => 'Qwen Max'],
+		['id' => 'qwen-max-longcontext', 'name' => 'Qwen Max (长文本)'],
+		['id' => 'qwen-plus', 'name' => 'Qwen Plus'],
+		['id' => 'qwen-turbo', 'name' => 'Qwen Turbo (推荐)'],
+		['id' => 'qwen-long', 'name' => 'Qwen Long (超长文本)'],
+		['id' => 'qwen2.5-72b-instruct', 'name' => 'Qwen 2.5 72B'],
+		['id' => 'qwen2.5-32b-instruct', 'name' => 'Qwen 2.5 32B'],
+		['id' => 'qwen2.5-14b-instruct', 'name' => 'Qwen 2.5 14B'],
+		['id' => 'qwen2.5-7b-instruct', 'name' => 'Qwen 2.5 7B']
+	];
+}
+
+/**
+ * 获取文心一言模型列表
+ */
+function argon_get_wenxin_models($api_key, $custom_endpoint = '') {
+	// 文心一言使用百度智能云 API,没有标准的 models 端点
+	// 返回官方支持的模型列表
+	return [
+		['id' => 'ernie-4.0-turbo-8k', 'name' => 'ERNIE 4.0 Turbo 8K (推荐)'],
+		['id' => 'ernie-4.0-turbo-128k', 'name' => 'ERNIE 4.0 Turbo 128K (长文本)'],
+		['id' => 'ernie-4.0-8k', 'name' => 'ERNIE 4.0 8K'],
+		['id' => 'ernie-3.5-8k', 'name' => 'ERNIE 3.5 8K'],
+		['id' => 'ernie-3.5-128k', 'name' => 'ERNIE 3.5 128K (长文本)'],
+		['id' => 'ernie-speed-128k', 'name' => 'ERNIE Speed 128K'],
+		['id' => 'ernie-speed-8k', 'name' => 'ERNIE Speed 8K'],
+		['id' => 'ernie-lite-8k', 'name' => 'ERNIE Lite 8K'],
+		['id' => 'ernie-tiny-8k', 'name' => 'ERNIE Tiny 8K']
+	];
+}
+
+/**
+ * 获取豆包模型列表
+ */
+function argon_get_doubao_models($api_key, $custom_endpoint = '') {
+	// 豆包(火山引擎)兼容 OpenAI API 格式
+	$endpoint = !empty($custom_endpoint) ? $custom_endpoint : 'https://ark.cn-beijing.volces.com/api/v3/models';
+	$endpoint = preg_replace('#/api/v3/chat/completions$#', '/api/v3/models', $endpoint);
+	
+	$response = wp_remote_get($endpoint, [
+		'headers' => [
+			'Authorization' => 'Bearer ' . $api_key
+		],
+		'timeout' => 15
+	]);
+	
+	if (is_wp_error($response)) {
+		// API 调用失败,返回预设列表
+		return [
+			['id' => 'doubao-pro-32k', 'name' => 'Doubao Pro 32K (推荐)'],
+			['id' => 'doubao-pro-128k', 'name' => 'Doubao Pro 128K (长文本)'],
+			['id' => 'doubao-pro-256k', 'name' => 'Doubao Pro 256K (超长文本)'],
+			['id' => 'doubao-lite-32k', 'name' => 'Doubao Lite 32K'],
+			['id' => 'doubao-lite-128k', 'name' => 'Doubao Lite 128K']
+		];
+	}
+	
+	$body = json_decode(wp_remote_retrieve_body($response), true);
+	
+	if (!isset($body['data'])) {
+		return [
+			['id' => 'doubao-pro-32k', 'name' => 'Doubao Pro 32K (推荐)'],
+			['id' => 'doubao-pro-128k', 'name' => 'Doubao Pro 128K (长文本)'],
+			['id' => 'doubao-pro-256k', 'name' => 'Doubao Pro 256K (超长文本)'],
+			['id' => 'doubao-lite-32k', 'name' => 'Doubao Lite 32K'],
+			['id' => 'doubao-lite-128k', 'name' => 'Doubao Lite 128K']
+		];
+	}
+	
+	$models = [];
+	foreach ($body['data'] as $model) {
+		if (isset($model['id'])) {
+			$name = isset($model['name']) ? $model['name'] : $model['id'];
+			$models[] = [
+				'id' => $model['id'],
+				'name' => $name
+			];
+		}
+	}
+	
+	return !empty($models) ? $models : [
+		['id' => 'doubao-pro-32k', 'name' => 'Doubao Pro 32K (推荐)'],
+		['id' => 'doubao-pro-128k', 'name' => 'Doubao Pro 128K (长文本)'],
+		['id' => 'doubao-pro-256k', 'name' => 'Doubao Pro 256K (超长文本)'],
+		['id' => 'doubao-lite-32k', 'name' => 'Doubao Lite 32K'],
+		['id' => 'doubao-lite-128k', 'name' => 'Doubao Lite 128K']
+	];
+}
+
+/**
+ * 获取 Kimi 模型列表
+ */
+function argon_get_kimi_models($api_key, $custom_endpoint = '') {
+	// Kimi (Moonshot) 兼容 OpenAI API 格式
+	$endpoint = !empty($custom_endpoint) ? $custom_endpoint : 'https://api.moonshot.cn/v1/models';
+	$endpoint = preg_replace('#/v1/chat/completions$#', '/v1/models', $endpoint);
+	
+	$response = wp_remote_get($endpoint, [
+		'headers' => [
+			'Authorization' => 'Bearer ' . $api_key
+		],
+		'timeout' => 15
+	]);
+	
+	if (is_wp_error($response)) {
+		// API 调用失败,返回预设列表
+		return [
+			['id' => 'moonshot-v1-8k', 'name' => 'Moonshot v1 8K (推荐)'],
+			['id' => 'moonshot-v1-32k', 'name' => 'Moonshot v1 32K'],
+			['id' => 'moonshot-v1-128k', 'name' => 'Moonshot v1 128K (长文本)'],
+			['id' => 'kimi-k2', 'name' => 'Kimi K2 (最新)']
+		];
+	}
+	
+	$body = json_decode(wp_remote_retrieve_body($response), true);
+	
+	if (!isset($body['data'])) {
+		return [
+			['id' => 'moonshot-v1-8k', 'name' => 'Moonshot v1 8K (推荐)'],
+			['id' => 'moonshot-v1-32k', 'name' => 'Moonshot v1 32K'],
+			['id' => 'moonshot-v1-128k', 'name' => 'Moonshot v1 128K (长文本)'],
+			['id' => 'kimi-k2', 'name' => 'Kimi K2 (最新)']
+		];
+	}
+	
+	$models = [];
+	foreach ($body['data'] as $model) {
+		if (isset($model['id'])) {
+			$name = isset($model['name']) ? $model['name'] : $model['id'];
+			$models[] = [
+				'id' => $model['id'],
+				'name' => $name
+			];
+		}
+	}
+	
+	return !empty($models) ? $models : [
+		['id' => 'moonshot-v1-8k', 'name' => 'Moonshot v1 8K (推荐)'],
+		['id' => 'moonshot-v1-32k', 'name' => 'Moonshot v1 32K'],
+		['id' => 'moonshot-v1-128k', 'name' => 'Moonshot v1 128K (长文本)'],
+		['id' => 'kimi-k2', 'name' => 'Kimi K2 (最新)']
+	];
+}
+
+/**
+ * 获取智谱 AI 模型列表
+ */
+function argon_get_zhipu_models($api_key, $custom_endpoint = '') {
+	// 智谱 AI 兼容 OpenAI API 格式
+	$endpoint = !empty($custom_endpoint) ? $custom_endpoint : 'https://open.bigmodel.cn/api/paas/v4/models';
+	$endpoint = preg_replace('#/api/paas/v4/chat/completions$#', '/api/paas/v4/models', $endpoint);
+	
+	$response = wp_remote_get($endpoint, [
+		'headers' => [
+			'Authorization' => 'Bearer ' . $api_key
+		],
+		'timeout' => 15
+	]);
+	
+	if (is_wp_error($response)) {
+		// API 调用失败,返回预设列表
+		return [
+			['id' => 'glm-4-flash', 'name' => 'GLM-4 Flash (推荐)'],
+			['id' => 'glm-4-plus', 'name' => 'GLM-4 Plus'],
+			['id' => 'glm-4-air', 'name' => 'GLM-4 Air'],
+			['id' => 'glm-4-airx', 'name' => 'GLM-4 AirX'],
+			['id' => 'glm-4-long', 'name' => 'GLM-4 Long (长文本)'],
+			['id' => 'glm-4', 'name' => 'GLM-4'],
+			['id' => 'glm-3-turbo', 'name' => 'GLM-3 Turbo']
+		];
+	}
+	
+	$body = json_decode(wp_remote_retrieve_body($response), true);
+	
+	if (!isset($body['data'])) {
+		return [
+			['id' => 'glm-4-flash', 'name' => 'GLM-4 Flash (推荐)'],
+			['id' => 'glm-4-plus', 'name' => 'GLM-4 Plus'],
+			['id' => 'glm-4-air', 'name' => 'GLM-4 Air'],
+			['id' => 'glm-4-airx', 'name' => 'GLM-4 AirX'],
+			['id' => 'glm-4-long', 'name' => 'GLM-4 Long (长文本)'],
+			['id' => 'glm-4', 'name' => 'GLM-4'],
+			['id' => 'glm-3-turbo', 'name' => 'GLM-3 Turbo']
+		];
+	}
+	
+	$models = [];
+	foreach ($body['data'] as $model) {
+		if (isset($model['id'])) {
+			$name = isset($model['name']) ? $model['name'] : $model['id'];
+			$models[] = [
+				'id' => $model['id'],
+				'name' => $name
+			];
+		}
+	}
+	
+	return !empty($models) ? $models : [
+		['id' => 'glm-4-flash', 'name' => 'GLM-4 Flash (推荐)'],
+		['id' => 'glm-4-plus', 'name' => 'GLM-4 Plus'],
+		['id' => 'glm-4-air', 'name' => 'GLM-4 Air'],
+		['id' => 'glm-4-airx', 'name' => 'GLM-4 AirX'],
+		['id' => 'glm-4-long', 'name' => 'GLM-4 Long (长文本)'],
+		['id' => 'glm-4', 'name' => 'GLM-4'],
+		['id' => 'glm-3-turbo', 'name' => 'GLM-3 Turbo']
+	];
+}
+
+/**
+ * 获取硅基流动模型列表
+ */
+function argon_get_siliconflow_models($api_key, $custom_endpoint = '') {
+	$endpoint = !empty($custom_endpoint) ? $custom_endpoint : 'https://api.siliconflow.cn/v1/models';
+	// 移除 chat/completions 路径
+	$endpoint = preg_replace('#/v1/chat/completions$#', '/v1/models', $endpoint);
+	
+	$response = wp_remote_get($endpoint, [
+		'headers' => [
+			'Authorization' => 'Bearer ' . $api_key
+		],
+		'timeout' => 15
+	]);
+	
+	if (is_wp_error($response)) {
+		// 如果 API 调用失败，返回预设列表
+		return [
+			['id' => 'Qwen/Qwen2.5-7B-Instruct', 'name' => 'Qwen 2.5 7B (推荐)'],
+			['id' => 'Qwen/Qwen2.5-14B-Instruct', 'name' => 'Qwen 2.5 14B'],
+			['id' => 'Qwen/Qwen2.5-32B-Instruct', 'name' => 'Qwen 2.5 32B'],
+			['id' => 'Qwen/Qwen2.5-72B-Instruct', 'name' => 'Qwen 2.5 72B'],
+			['id' => 'deepseek-ai/DeepSeek-V2.5', 'name' => 'DeepSeek V2.5'],
+			['id' => 'meta-llama/Meta-Llama-3.1-8B-Instruct', 'name' => 'Llama 3.1 8B'],
+			['id' => 'meta-llama/Meta-Llama-3.1-70B-Instruct', 'name' => 'Llama 3.1 70B']
+		];
+	}
+	
+	$body = json_decode(wp_remote_retrieve_body($response), true);
+	
+	if (!isset($body['data'])) {
+		// 响应格式错误，返回预设列表
+		return [
+			['id' => 'Qwen/Qwen2.5-7B-Instruct', 'name' => 'Qwen 2.5 7B (推荐)'],
+			['id' => 'Qwen/Qwen2.5-14B-Instruct', 'name' => 'Qwen 2.5 14B'],
+			['id' => 'Qwen/Qwen2.5-32B-Instruct', 'name' => 'Qwen 2.5 32B'],
+			['id' => 'Qwen/Qwen2.5-72B-Instruct', 'name' => 'Qwen 2.5 72B'],
+			['id' => 'deepseek-ai/DeepSeek-V2.5', 'name' => 'DeepSeek V2.5'],
+			['id' => 'meta-llama/Meta-Llama-3.1-8B-Instruct', 'name' => 'Llama 3.1 8B'],
+			['id' => 'meta-llama/Meta-Llama-3.1-70B-Instruct', 'name' => 'Llama 3.1 70B']
+		];
+	}
+	
+	$models = [];
+	foreach ($body['data'] as $model) {
+		// 只显示聊天模型
+		if (isset($model['id']) && strpos($model['id'], 'Instruct') !== false) {
+			$name = isset($model['name']) ? $model['name'] : $model['id'];
+			$models[] = [
+				'id' => $model['id'],
+				'name' => $name
+			];
+		}
+	}
+	
+	// 如果没有找到模型，返回预设列表
+	if (empty($models)) {
+		return [
+			['id' => 'Qwen/Qwen2.5-7B-Instruct', 'name' => 'Qwen 2.5 7B (推荐)'],
+			['id' => 'Qwen/Qwen2.5-14B-Instruct', 'name' => 'Qwen 2.5 14B'],
+			['id' => 'Qwen/Qwen2.5-32B-Instruct', 'name' => 'Qwen 2.5 32B'],
+			['id' => 'Qwen/Qwen2.5-72B-Instruct', 'name' => 'Qwen 2.5 72B'],
+			['id' => 'deepseek-ai/DeepSeek-V2.5', 'name' => 'DeepSeek V2.5'],
+			['id' => 'meta-llama/Meta-Llama-3.1-8B-Instruct', 'name' => 'Llama 3.1 8B'],
+			['id' => 'meta-llama/Meta-Llama-3.1-70B-Instruct', 'name' => 'Llama 3.1 70B']
+		];
+	}
+	
+	return $models;
+}
