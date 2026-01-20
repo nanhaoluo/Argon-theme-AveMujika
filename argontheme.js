@@ -831,11 +831,8 @@ if (argonConfig.waterflow_columns != "1") {
 		$("html").addClass("use-serif");
 		localStorage['Argon_Use_Serif'] = "true";
 	});
-	if (localStorage['Argon_Use_Serif'] == "true"){
-		$("html").addClass("use-serif");
-	}else if (localStorage['Argon_Use_Serif'] == "false"){
-		$("html").removeClass("use-serif");
-	}
+	// 字体设置已在 header.php 中预加载，此处无需重复应用
+	
 	//阴影
 	$("#blog_setting_shadow_small").on("click" , function(){
 		$("html").removeClass("use-big-shadow");
@@ -845,11 +842,7 @@ if (argonConfig.waterflow_columns != "1") {
 		$("html").addClass("use-big-shadow");
 		localStorage['Argon_Use_Big_Shadow'] = "true";
 	});
-	if (localStorage['Argon_Use_Big_Shadow'] == "true"){
-		$("html").addClass("use-big-shadow");
-	}else if (localStorage['Argon_Use_Big_Shadow'] == "false"){
-		$("html").removeClass("use-big-shadow");
-	}
+	// 阴影设置已在 header.php 中预加载，此处无需重复应用
 	//滤镜
 	function setBlogFilter(name){
 		if (name == undefined || name == ""){
@@ -865,7 +858,9 @@ if (argonConfig.waterflow_columns != "1") {
 		$("#blog_setting_filters .blog-setting-filter-btn[filter-name='" + name + "']").addClass("active");
 		localStorage['Argon_Filter'] = name;
 	}
-	setBlogFilter(localStorage['Argon_Filter']);
+	// 滤镜设置已在 header.php 中预加载，此处只需设置按钮状态
+	let currentFilter = localStorage['Argon_Filter'] || 'off';
+	$("#blog_setting_filters .blog-setting-filter-btn[filter-name='" + currentFilter + "']").addClass("active");
 	$(".blog-setting-filter-btn").on("click" , function(){
 		setBlogFilter(this.getAttribute("filter-name"));
 	});
@@ -883,7 +878,9 @@ if (argonConfig.waterflow_columns != "1") {
 		$(".blog-setting-style-btn[style-name='" + style + "']").addClass("active");
 		localStorage['Argon_UI_Style'] = style;
 	}
-	setUIStyle(localStorage['Argon_UI_Style']);
+	// UI 样式设置已在 header.php 中预加载，此处只需设置按钮状态
+	let currentUIStyle = localStorage['Argon_UI_Style'] || 'default';
+	$(".blog-setting-style-btn[style-name='" + currentUIStyle + "']").addClass("active");
 	$(".blog-setting-style-btn").on("click" , function(){
 		setUIStyle(this.getAttribute("style-name"));
 	});

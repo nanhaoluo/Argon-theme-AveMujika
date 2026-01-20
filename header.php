@@ -254,7 +254,39 @@
 
 	<meta name="theme-version" content="<?php echo $GLOBALS['theme_version']; ?>">
 
-
+	<!-- 预加载用户样式设置 - 避免样式跳变 -->
+	<script>
+	(function() {
+		var html = document.documentElement;
+		var ls = localStorage;
+		
+		// 字体设置
+		if (ls.getItem('Argon_Use_Serif') === 'true') {
+			html.classList.add('use-serif');
+		} else if (ls.getItem('Argon_Use_Serif') === 'false') {
+			html.classList.remove('use-serif');
+		}
+		
+		// 阴影设置
+		if (ls.getItem('Argon_Use_Big_Shadow') === 'true') {
+			html.classList.add('use-big-shadow');
+		} else if (ls.getItem('Argon_Use_Big_Shadow') === 'false') {
+			html.classList.remove('use-big-shadow');
+		}
+		
+		// 滤镜设置
+		var filter = ls.getItem('Argon_Filter');
+		if (filter && filter !== 'off') {
+			html.classList.add('filter-' + filter);
+		}
+		
+		// UI 样式设置
+		var uiStyle = ls.getItem('Argon_UI_Style');
+		if (uiStyle && uiStyle !== 'default') {
+			html.classList.add('style-' + uiStyle);
+		}
+	})();
+	</script>
 
 	<link rel="profile" href="http://gmpg.org/xfn/11">
 
@@ -302,7 +334,37 @@
 		
 		// 版本变化时清除所有缓存
 		if (lastVersion !== currentVersion) {
+			// 如果不是首次访问且需要刷新，先标记再刷新
+			if (lastVersion !== null) {
+				// 设置刷新标记
+				sessionStorage.setItem('argon_needs_refresh', '1');
+				
+				// 清除 sessionStorage 中的其他数据
+				var needsRefresh = sessionStorage.getItem('argon_needs_refresh');
+				try { 
+					var keys = Object.keys(sessionStorage);
+					keys.forEach(function(key) {
+						if (key !== 'argon_needs_refresh') {
+							sessionStorage.removeItem(key);
+						}
+					});
+				} catch(e) {}
+				
+				// 更新版本号
+				localStorage.setItem(forceRefreshKey, currentVersion);
+				
+				// 强制硬刷新（绕过缓存）
+				window.location.reload(true);
+				return; // 阻止后续代码执行
+			}
+			
+			// 首次访问，只更新版本号
 			localStorage.setItem(forceRefreshKey, currentVersion);
+		}
+		
+		// 检查是否是刷新后的页面
+		if (sessionStorage.getItem('argon_needs_refresh') === '1') {
+			sessionStorage.removeItem('argon_needs_refresh');
 			
 			// 清除 Service Worker 缓存
 			if ('caches' in window) {
@@ -320,17 +382,6 @@
 						registration.unregister();
 					});
 				});
-			}
-			
-			// 如果不是首次访问，强制硬刷新
-			if (lastVersion !== null) {
-				// 清除 sessionStorage
-				try { sessionStorage.clear(); } catch(e) {}
-				
-				// 强制硬刷新（绕过缓存）
-				if (window.location.reload) {
-					window.location.reload(true);
-				}
 			}
 		}
 	})();
