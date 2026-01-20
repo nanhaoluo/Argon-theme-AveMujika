@@ -51,6 +51,8 @@
 		?>
 	</header>
 
+	<?php get_template_part('template-parts/ai-summary'); ?>
+
 	<div class="post-content" id="post_content">
 		<?php if (post_password_required()){ ?>
 			<div class="text-center container">
