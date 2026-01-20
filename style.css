@@ -14,8 +14,6 @@ License: GNU General Public License v3.0
 
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
-Tags: 简�? 两栏, 侧栏在左�? 浮动侧栏, 文章目录, 自适应, 夜间模式, 可自定义
-
 */
 
 
@@ -3927,13 +3925,23 @@ html.filter-grayscale {
 
 .post-header {
 
-	margin-bottom: 20px;
+	margin-bottom: 12px;
 
 }
 
 .post-meta {
 
-	margin-top: 10px;
+	margin-top: 6px;
+
+	display: flex;
+
+	flex-wrap: wrap;
+
+	align-items: center;
+
+	justify-content: center;
+
+	gap: 6px;
 
 }
 
@@ -3946,6 +3954,8 @@ html.filter-grayscale {
 	opacity: 0.8;
 
 	display: inline-block;
+
+	white-space: nowrap;
 
 }
 
@@ -3962,10 +3972,6 @@ html.filter-grayscale {
 	font-size: 14.5px;
 
 	line-height: 24px;
-
-	margin-left: 3px;
-
-	margin-right: 3px;
 
 	opacity: 0.5;
 
@@ -4098,7 +4104,7 @@ html.filter-grayscale {
 
 	line-height: 1.8;
 
-	margin-bottom: 10px;
+	margin-bottom: 8px;
 
 }
 
@@ -4110,7 +4116,7 @@ html.filter-grayscale {
 
 .post-tags {
 
-	margin-top: 15px;
+	margin-top: 10px;
 
 	margin-bottom: -4px;
 
@@ -4134,7 +4140,7 @@ html.filter-grayscale {
 
 .additional-content-after-post + .post-tags {
 
-	margin-top: 25px;
+	margin-top: 12px;
 
 }
 
@@ -4856,9 +4862,9 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 
 	margin-right: 0;
 
-	margin-top: 20px;
+	margin-top: 12px;
 
-	margin-bottom: 30px;
+	margin-bottom: 12px;
 
 }
 
@@ -4904,7 +4910,7 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 
 	border-radius: 3px;
 
-	margin-top: 10px;
+	margin-top: 8px;
 
 }
 
@@ -5346,7 +5352,7 @@ html.darkmode .comment-operations {
 }
 
 .comment-operations .btn:hover {
-	transform: translateY(-1px);
+	opacity: 0.8;
 }
 
 /* ---------- 评论 UA 信息 ---------- */
@@ -7439,46 +7445,30 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 /*短代�?隐藏文本*/
 
 .argon-hidden-text {
-
 	transition: all 0.3s ease;
-
 }
 
 .argon-hidden-text.argon-hidden-text-blur {
-
 	filter: blur(4px);
-
 }
 
 .argon-hidden-text.argon-hidden-text-blur:hover {
-
 	filter: blur(0px);
-
 }
 
 .argon-hidden-text.argon-hidden-text-background {
-
 	background: #000;
-
 	color: transparent;
-
 	border-radius: 1px;
-
 }
 
 .argon-hidden-text.argon-hidden-text-background:hover {
-
 	background: transparent;
-
 	color: inherit;
-
 	border-radius: 0px;
-
 }
 
-
-
-/*短代�?Github*/
+/*短代码 Github*/
 
 .github-info-card {
 
@@ -10584,29 +10574,6 @@ html.darkmode.amoled-dark #content:after {
 		background: rgba(var(--themecolor-rgbstr), 0.04);
 	}
 	
-	/* 点击波纹效果 */
-	.collapse-ripple {
-		position: absolute;
-		width: 10px;
-		height: 10px;
-		background: rgba(var(--themecolor-rgbstr), 0.25);
-		border-radius: 50%;
-		transform: translate(-50%, -50%) scale(0);
-		animation: collapseRipple 0.6s var(--ease-emphasized-decelerate) forwards;
-		pointer-events: none;
-	}
-	
-	@keyframes collapseRipple {
-		0% {
-			transform: translate(-50%, -50%) scale(0);
-			opacity: 1;
-		}
-		100% {
-			transform: translate(-50%, -50%) scale(25);
-			opacity: 0;
-		}
-	}
-	
 	.collapse-header-left {
 		display: flex;
 		align-items: center;
@@ -13041,8 +13008,6 @@ img {
 }
 
 .friend-link-card:hover {
-	transform: translateY(-3px);
-	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
 	text-decoration: none;
 	color: inherit;
 }
@@ -13106,7 +13071,6 @@ html.darkmode .friend-link-card {
 }
 
 html.darkmode .friend-link-card:hover {
-	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
 }
 
 html.darkmode .friend-link-name {
@@ -13726,7 +13690,6 @@ html.darkmode {
 }
 
 .card:hover {
-    box-shadow: var(--m3-elevation-2) !important;
 }
 
 /* M3 文章卡片 */
@@ -13736,8 +13699,6 @@ article.post.card {
 }
 
 article.post.card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--m3-elevation-3) !important;
 }
 
 /* M3 按钮样式 */
@@ -14093,8 +14054,6 @@ article.post.card:hover {
 }
 
 .related-post-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
 }
 
 /* M3 代码�?*/
@@ -14562,7 +14521,7 @@ article.post.card:hover {
 }
 
 article.post.card:hover .post-thumbnail {
-    transform: scale(1.03);
+    transform: none;
 }
 
 /* 侧边栏卡片优�?*/
@@ -14862,7 +14821,6 @@ article table > tbody > tr:hover {
 }
 
 .friend-link-card:hover {
-    transform: translateY(-4px);
     box-shadow: 
         0 8px 24px rgba(var(--themecolor-rgbstr), 0.12),
         0 16px 48px rgba(0, 0, 0, 0.08);
@@ -14965,7 +14923,6 @@ article.post.card {
 }
 
 article.post.card:hover {
-    transform: translateY(-4px);
     box-shadow: 
         0 8px 25px rgba(0, 0, 0, 0.08),
         0 20px 40px rgba(var(--themecolor-rgbstr), 0.06),
@@ -14973,7 +14930,7 @@ article.post.card:hover {
 }
 
 html.darkmode article.post.card:hover {
-    box-shadow: 
+} 
         0 8px 25px rgba(0, 0, 0, 0.3),
         0 20px 40px rgba(0, 0, 0, 0.2),
         inset 0 1px 0 rgba(255, 255, 255, 0.08);
@@ -15307,7 +15264,7 @@ html.darkmode ::-webkit-scrollbar-thumb:hover {
 /* 移动端响应式调整 */
 @media (max-width: 768px) {
     article.post.card:hover {
-        transform: translateY(-2px);
+        transform: none;
     }
 }
 
@@ -15373,7 +15330,6 @@ html.style-glass #fabtn_blog_settings_popup {
 
 html.style-glass .card:hover {
     background: rgba(255, 255, 255, calc(var(--card-opacity, 0.7) + 0.1));
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
 }
 
 html.darkmode.style-glass .card,
@@ -16310,28 +16266,22 @@ html.darkmode {
         transition: transform var(--animation-normal) var(--ease-out-expo), box-shadow var(--animation-normal) var(--ease-standard);
     }
     article.post.card:hover {
-        transform: translateY(-6px) scale(1.005);
-        box-shadow: var(--shadow-hover);
     }
     article.post.card .post-thumbnail {
         transition: transform var(--animation-slow) var(--ease-out-expo);
     }
     article.post.card:hover .post-thumbnail {
-        transform: scale(1.05);
+        transform: none;
     }
     .card:not(article):not(.no-hover-effect) {
-        transition: transform var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard);
+        transition: box-shadow var(--animation-normal) var(--ease-standard);
     }
     .card:not(article):not(.no-hover-effect):hover {
-        transform: translateY(-3px);
-        box-shadow: var(--shadow-3);
     }
     #leftbar .card, #rightbar .card {
-        transition: transform var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard);
+        transition: box-shadow var(--animation-normal) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard);
     }
     #leftbar .card:hover, #rightbar .card:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-2);
         border-color: rgba(var(--themecolor-rgbstr), 0.15);
     }
 }
@@ -16341,15 +16291,14 @@ html.darkmode {
     .btn { transition: all var(--animation-fast) var(--ease-standard); position: relative; overflow: hidden; }
     .btn::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%); opacity: 0; transition: opacity var(--animation-fast) var(--ease-standard); pointer-events: none; }
     .btn:hover::after { opacity: 1; }
-    .btn:hover { transform: translateY(-1px); }
-    .btn:active { transform: translateY(0) scale(0.98); transition-duration: var(--micro-duration); }
+    .btn:active { transform: scale(0.98); transition-duration: var(--micro-duration); }
     article .post-content a:not([class*="button"]):not(.no-underline) { background-image: linear-gradient(var(--themecolor), var(--themecolor)); background-size: 0% 2px; background-position: 0 100%; background-repeat: no-repeat; transition: background-size var(--animation-normal) var(--ease-out-expo); }
     article .post-content a:not([class*="button"]):not(.no-underline):hover { background-size: 100% 2px; }
     .navbar-nav .nav-link { position: relative; transition: color var(--animation-fast) var(--ease-standard); }
     .navbar-nav .nav-link::before { content: ""; position: absolute; bottom: 0; left: 50%; width: 0; height: 2px; background: currentColor; transition: width var(--animation-normal) var(--ease-out-expo), left var(--animation-normal) var(--ease-out-expo); border-radius: 1px; }
     .navbar-nav .nav-link:hover::before { width: 100%; left: 0; }
-    .comment-item { transition: transform var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard); }
-    .comment-item:hover { transform: translateX(4px); box-shadow: -4px 0 0 var(--themecolor); }
+    .comment-item { transition: box-shadow var(--animation-normal) var(--ease-standard); }
+    .comment-item:hover { }
 }
 
 /* 4. 滚动入场动画 */
@@ -16388,8 +16337,7 @@ html.darkmode {
 article.post.post-full { animation: modernContentFadeIn var(--animation-slow) var(--ease-emphasized-decelerate); }
 
 #float_action_buttons { transition: transform var(--animation-normal) var(--ease-back), opacity var(--animation-normal) var(--ease-standard); }
-#float_action_buttons .fabtn { transition: transform var(--animation-fast) var(--ease-spring), background var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), opacity var(--animation-normal) var(--ease-standard); }
-@media (hover: hover) { #float_action_buttons .fabtn:hover { transform: scale(1.1); box-shadow: var(--shadow-3); } }
+#float_action_buttons .fabtn { transition: background var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), opacity var(--animation-normal) var(--ease-standard); }
 #float_action_buttons .fabtn:active { transform: scale(0.9); transition-duration: var(--micro-duration); }
 @keyframes modernFabtnBounceIn { 0% { opacity: 0; transform: scale(0.3); } 50% { transform: scale(1.05); } 70% { transform: scale(0.95); } 100% { opacity: 1; transform: scale(1); } }
 #float_action_buttons:not(.fabtns-unloaded) .fabtn:not(.fabtn-hidden) { animation: modernFabtnBounceIn var(--animation-slow) var(--ease-spring) both; }
@@ -16478,12 +16426,10 @@ article img.loaded, .post-thumbnail img.loaded, article img:not([loading="lazy"]
 /* 13. 工具提示、标签、分页动�?*/
 .tooltip { opacity: 0; transform: translateY(5px); transition: opacity var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-emphasized-decelerate); }
 .tooltip.show { opacity: 1; transform: translateY(0); }
-.badge, .tag { transition: transform var(--animation-fast) var(--ease-spring), background var(--animation-fast) var(--ease-standard); }
-@media (hover: hover) { .badge:hover, .tag:hover { transform: scale(1.05); } }
+.badge, .tag { transition: background var(--animation-fast) var(--ease-standard); }
 .badge:active, .tag:active { transform: scale(0.95); }
 .pagination .page-link { transition: all var(--animation-fast) var(--ease-standard); }
-@media (hover: hover) { .pagination .page-link:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); } }
-.pagination .page-link:active { transform: translateY(0) scale(0.95); }
+.pagination .page-link:active { transform: scale(0.95); }
 
 /* 14. 目录导航动画 */
 .index-link { transition: all var(--animation-fast) var(--ease-standard); position: relative; }
@@ -16501,16 +16447,15 @@ article img.loaded, .post-thumbnail img.loaded, article img:not([loading="lazy"]
 .timeline-item:nth-child(n+6) { animation-delay: 500ms; }
 
 /* 16. 友链和代码块动画 */
-.friend-link-item { transition: transform var(--animation-normal) var(--ease-spring), box-shadow var(--animation-normal) var(--ease-standard); }
+.friend-link-item { transition: box-shadow var(--animation-normal) var(--ease-standard); }
 @media (hover: hover) {
-    .friend-link-item:hover { transform: translateY(-5px) rotate(1deg); box-shadow: var(--shadow-4); }
-    .friend-link-item:hover .friend-link-avatar { transform: scale(1.1) rotate(-5deg); }
+    .friend-link-item:hover { }
 }
 .friend-link-avatar { transition: transform var(--animation-normal) var(--ease-spring); }
 .hljs-codeblock { transition: box-shadow var(--animation-normal) var(--ease-standard); }
-@media (hover: hover) { .hljs-codeblock:hover { box-shadow: var(--shadow-3); } }
-.code-copy-btn { opacity: 0; transform: translateY(-5px); transition: opacity var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-standard), background var(--animation-fast) var(--ease-standard); }
-.hljs-codeblock:hover .code-copy-btn { opacity: 1; transform: translateY(0); }
+@media (hover: hover) { .hljs-codeblock:hover { } }
+.code-copy-btn { opacity: 0; transition: opacity var(--animation-fast) var(--ease-standard), background var(--animation-fast) var(--ease-standard); }
+.hljs-codeblock:hover .code-copy-btn { opacity: 1; }
 
 /* 17. 减少动画偏好支持 */
 @media (prefers-reduced-motion: reduce) {
