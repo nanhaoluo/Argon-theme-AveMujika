@@ -13,7 +13,7 @@ $error = '';
 
 if (!empty($query_code)) {
 	if (strlen($query_code) !== 8) {
-		$error = __('识别码格式无效，应为 8 位字符', 'argon');
+		$error = __('识别码格式无效', 'argon');
 	} else {
 		global $wpdb;
 		$post_id = $wpdb->get_var($wpdb->prepare(
@@ -32,7 +32,6 @@ if (!empty($query_code)) {
 					'post_modified' => get_the_modified_date('Y-m-d H:i:s', $post_id),
 					'post_author' => get_the_author_meta('display_name', $post->post_author),
 					'summary' => get_post_meta($post_id, '_argon_ai_summary', true),
-					'summary_hash' => get_post_meta($post_id, '_argon_ai_summary_hash', true),
 					'model' => get_post_meta($post_id, '_argon_ai_summary_model', true),
 					'provider' => get_post_meta($post_id, '_argon_ai_summary_provider', true),
 					'generated_time' => get_post_meta($post_id, '_argon_ai_summary_time', true),
@@ -52,9 +51,6 @@ if (!empty($query_code)) {
 				];
 				
 				$result['provider_display'] = isset($provider_names[$result['provider']]) ? $provider_names[$result['provider']] : $result['provider'];
-				
-				$current_hash = md5($post->post_content . $post->post_title);
-				$result['is_modified'] = ($result['summary_hash'] !== $current_hash);
 			} else {
 				$error = __('文章不存在或未发布', 'argon');
 			}
@@ -199,8 +195,7 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 
 <div class="ai-verify-header-card" style="margin-bottom: 16px;">
 	<div class="ai-verify-header-icon"><i class="fa fa-shield"></i></div>
-	<h1 class="ai-verify-title"><?php _e('AI 内容验证与查询', 'argon'); ?></h1>
-	<p class="ai-verify-subtitle"><?php _e('通过唯一识别码验证 AI 生成内容的真实性、完整性和时效性', 'argon'); ?></p>
+	<h1 class="ai-verify-title"><?php _e('AI 内容查询', 'argon'); ?></h1>
 </div>
 
 <article class="post card shadow-sm bg-white border-0 ai-verify-card">
@@ -227,24 +222,6 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 			<span><?php echo esc_html($error); ?></span>
 		</div>
 	<?php elseif ($result): ?>
-		<?php if ($result['is_modified']): ?>
-			<div class="ai-alert ai-alert-warning">
-				<span class="ai-alert-icon">⚠</span>
-				<div>
-					<strong><?php _e('内容已变更', 'argon'); ?></strong><br>
-					<?php _e('原文内容在 AI 摘要生成后发生了修改，当前摘要可能与最新文章内容不完全一致', 'argon'); ?>
-				</div>
-			</div>
-		<?php else: ?>
-			<div class="ai-alert ai-alert-info">
-				<span class="ai-alert-icon">✓</span>
-				<div>
-					<strong><?php _e('验证通过', 'argon'); ?></strong><br>
-					<?php _e('AI 生成内容与原文保持一致，未检测到内容变更', 'argon'); ?>
-				</div>
-			</div>
-		<?php endif; ?>
-		
 		<div class="ai-code-display"><?php echo esc_html($result['code']); ?></div>
 		
 		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('关联文章', 'argon'); ?></h4>
@@ -270,16 +247,6 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 			<div class="ai-info-item">
 				<span class="ai-info-label"><?php _e('作者', 'argon'); ?></span>
 				<span class="ai-info-value"><?php echo esc_html($result['post_author']); ?></span>
-			</div>
-			<div class="ai-info-item">
-				<span class="ai-info-label"><?php _e('内容状态', 'argon'); ?></span>
-				<span class="ai-info-value">
-					<?php if ($result['is_modified']): ?>
-						<span class="ai-status-badge ai-status-modified"><?php _e('已变更', 'argon'); ?></span>
-					<?php else: ?>
-						<span class="ai-status-badge ai-status-valid"><?php _e('一致', 'argon'); ?></span>
-					<?php endif; ?>
-				</span>
 			</div>
 		</div>
 		
@@ -315,10 +282,9 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 	<?php elseif (empty($query_code)): ?>
 		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('功能说明', 'argon'); ?></h4>
 		<ul class="ai-help-list">
-			<li><?php _e('每个 AI 生成内容都有唯一的 8 位识别码，用于内容溯源和验证', 'argon'); ?></li>
+			<li><?php _e('每个 AI 生成内容都有唯一的 8 位识别码，用于内容溯源', 'argon'); ?></li>
 			<li><?php _e('识别码显示在文章页面的 AI 摘要底部，点击可直接跳转到本页面', 'argon'); ?></li>
-			<li><?php _e('通过识别码可以查询 AI 内容的生成信息、关联文章和验证状态', 'argon'); ?></li>
-			<li><?php _e('系统会自动检测原文是否在 AI 内容生成后发生变更', 'argon'); ?></li>
+			<li><?php _e('通过识别码可以查询 AI 内容的生成信息和关联文章', 'argon'); ?></li>
 			<li><?php _e('识别码由数字和大写字母组成，不包含易混淆字符（I、O）', 'argon'); ?></li>
 		</ul>
 	<?php endif; ?>

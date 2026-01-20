@@ -2662,20 +2662,6 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		var header = $(this);
 		var isExpanded = section.hasClass("expanded");
 		
-		// 添加点击波纹效果
-		var ripple = $('<span class="collapse-ripple"></span>');
-		var rect = this.getBoundingClientRect();
-		var x = e.clientX - rect.left;
-		var y = e.clientY - rect.top;
-		ripple.css({
-			left: x + 'px',
-			top: y + 'px'
-		});
-		header.append(ripple);
-		setTimeout(function() {
-			ripple.remove();
-		}, 600);
-		
 		// 切换展开状态
 		section.toggleClass("expanded");
 		
@@ -3776,35 +3762,7 @@ void 0;
 (function() {
     'use strict';
 
-    // 1. 触摸涟漪效果
-    function createRipple(event, element) {
-        if (window.matchMedia('(hover: hover)').matches) return;
-        var rect = element.getBoundingClientRect();
-        var ripple = document.createElement('span');
-        var size = Math.max(rect.width, rect.height);
-        ripple.style.width = ripple.style.height = size + 'px';
-        ripple.style.left = ((event.clientX || event.touches[0].clientX) - rect.left - size / 2) + 'px';
-        ripple.style.top = ((event.clientY || event.touches[0].clientY) - rect.top - size / 2) + 'px';
-        ripple.className = 'touch-ripple';
-        var oldRipple = element.querySelector('.touch-ripple');
-        if (oldRipple) oldRipple.remove();
-        element.style.position = 'relative';
-        element.style.overflow = 'hidden';
-        element.appendChild(ripple);
-        setTimeout(function() { ripple.remove(); }, 600);
-    }
-
-    function initRippleEffect() {
-        // 排除大尺寸卡片（文章、评论区、相关文章、页脚等），避免触摸时产生布局问题
-        var rippleElements = document.querySelectorAll('.btn, .card:not(article.post):not(#comments):not(#post_comment):not(.related-posts):not(.post-navigation):not(#footer), .nav-link, .dropdown-item, .page-link, .leftbar-mobile-menu-item > a, .leftbar-mobile-action, .fabtn, .comment-reply, .tag, .badge');
-        rippleElements.forEach(function(el) {
-            if (el.dataset.rippleInit) return;
-            el.dataset.rippleInit = 'true';
-            el.addEventListener('touchstart', function(e) { createRipple(e, this); }, { passive: true });
-        });
-    }
-
-    // 2. 图片加载动画
+    // 1. 图片加载动画
     function initImageLoadAnimation() {
         var images = document.querySelectorAll('article img[loading="lazy"], .post-thumbnail img');
         images.forEach(function(img) {
@@ -3875,7 +3833,7 @@ void 0;
             jQuery('#primary').removeClass('pjax-loading');
             var bar = document.getElementById('page-loading-bar');
             if (bar) { bar.style.width = '100%'; setTimeout(function() { bar.style.opacity = '0'; setTimeout(function() { bar.remove(); }, 300); }, 200); }
-            setTimeout(function() { initRippleEffect(); initImageLoadAnimation(); initScrollAnimations(); initSmoothScroll(); }, 100);
+            setTimeout(function() { initImageLoadAnimation(); initScrollAnimations(); initSmoothScroll(); }, 100);
         });
     }
 
@@ -3895,7 +3853,6 @@ void 0;
     // 初始化
     function init() {
         checkReducedMotion();
-        initRippleEffect();
         initImageLoadAnimation();
         initScrollAnimations();
         initSmoothScroll();

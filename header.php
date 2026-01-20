@@ -748,12 +748,6 @@ if ($card_opacity == '' || $card_opacity == '1') {
 	}
 </style>
 
-<?php
-// 动画效果设置 - 使用融合风格（Material 3 + Apple + 简约的最佳组合）
-$card_hover_effect = get_option('argon_card_hover_effect', 'lift');
-$button_click_effect = get_option('argon_button_click_effect', 'both');
-?>
-
 <style id="theme_animation_css">
 	:root {
 		/* 动画时长 - Material 3 规范 */
@@ -764,32 +758,6 @@ $button_click_effect = get_option('argon_button_click_effect', 'both');
 		--ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1); /* Apple 风格，更流畅 */
 		--ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* Material 弹性，有活力 */
 	}
-	
-	<?php if ($card_hover_effect == 'none'): ?>
-	.post-item:hover, article.card:hover {
-		transform: none !important;
-		box-shadow: inherit !important;
-	}
-	<?php elseif ($card_hover_effect == 'glow'): ?>
-	.post-item:hover, article.card:hover {
-		transform: none !important;
-		box-shadow: 0 0 20px rgba(var(--themecolor-rgbstr), 0.3) !important;
-	}
-	<?php elseif ($card_hover_effect == 'scale'): ?>
-	.post-item:hover, article.card:hover {
-		transform: scale(1.02) !important;
-	}
-	<?php endif; ?>
-	
-	<?php if ($button_click_effect == 'none'): ?>
-	.btn:active, button:active:not(:disabled) {
-		transform: none !important;
-	}
-	<?php elseif ($button_click_effect == 'scale'): ?>
-	.btn:active, button:active:not(:disabled) {
-		transform: scale(0.95) !important;
-	}
-	<?php endif; ?>
 </style>
 
 

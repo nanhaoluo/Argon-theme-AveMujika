@@ -10,7 +10,6 @@
 			link.href = 'https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700';
 			link.rel = 'stylesheet';
 			link.onerror = function() {
-				console.warn('Google Fonts 加载失败，使用系统字体');
 				document.body.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 			};
 			document.head.appendChild(link);

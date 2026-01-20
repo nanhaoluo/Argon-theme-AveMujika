@@ -3073,34 +3073,6 @@ window.pjaxLoaded = function(){
 					<tr><th class="subtitle"><h3 id="subsection-animation"><?php _e('动画效果', 'argon');?></h3></th></tr>
 
 					<tr>
-						<th><label><?php _e('卡片悬浮效果', 'argon');?></label></th>
-						<td>
-							<select name="argon_card_hover_effect">
-								<?php $argon_card_hover_effect = get_option('argon_card_hover_effect', 'lift'); ?>
-								<option value="lift" <?php if ($argon_card_hover_effect=='lift'){echo 'selected';} ?>><?php _e('上浮 (推荐)', 'argon');?></option>
-								<option value="glow" <?php if ($argon_card_hover_effect=='glow'){echo 'selected';} ?>><?php _e('发光', 'argon');?></option>
-								<option value="scale" <?php if ($argon_card_hover_effect=='scale'){echo 'selected';} ?>><?php _e('放大', 'argon');?></option>
-								<option value="none" <?php if ($argon_card_hover_effect=='none'){echo 'selected';} ?>><?php _e('无效果', 'argon');?></option>
-							</select>
-							<p class="description"><?php _e('鼠标悬浮在卡片上时的动画效果', 'argon');?></p>
-						</td>
-					</tr>
-
-					<tr>
-						<th><label><?php _e('按钮点击效果', 'argon');?></label></th>
-						<td>
-							<select name="argon_button_click_effect">
-								<?php $argon_button_click_effect = get_option('argon_button_click_effect', 'both'); ?>
-								<option value="ripple" <?php if ($argon_button_click_effect=='ripple'){echo 'selected';} ?>><?php _e('涟漪效果 (Material)', 'argon');?></option>
-								<option value="scale" <?php if ($argon_button_click_effect=='scale'){echo 'selected';} ?>><?php _e('缩放效果 (Apple)', 'argon');?></option>
-								<option value="both" <?php if ($argon_button_click_effect=='both'){echo 'selected';} ?>><?php _e('涟漪 + 缩放 (推荐)', 'argon');?></option>
-								<option value="none" <?php if ($argon_button_click_effect=='none'){echo 'selected';} ?>><?php _e('无效果', 'argon');?></option>
-							</select>
-							<p class="description"><?php _e('点击按钮时的反馈动画', 'argon');?></p>
-						</td>
-					</tr>
-
-					<tr>
 
 						<th><label><?php _e('是否启用平滑滚动', 'argon');?></label></th>
 
@@ -6067,8 +6039,6 @@ function argon_update_themeoptions(){
 		argon_update_option('argon_disable_pjax_animation');
 
 		// 动画效果相关配置
-		argon_update_option('argon_card_hover_effect');
-		argon_update_option('argon_button_click_effect');
 
 		argon_update_option('argon_fab_show_darkmode_button');
 
