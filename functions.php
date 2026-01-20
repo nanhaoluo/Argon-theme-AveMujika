@@ -6581,51 +6581,6 @@ function argon_check_ai_summary() {
 add_action('wp_ajax_argon_check_ai_summary', 'argon_check_ai_summary');
 add_action('wp_ajax_nopriv_argon_check_ai_summary', 'argon_check_ai_summary');
 
-/**
- * AJAX: 通过识别码查询 AI 摘要信息
- */
-function argon_query_ai_summary_by_code() {
-	check_ajax_referer('argon_query_summary_code', 'nonce');
-	
-	$code = sanitize_text_field($_POST['code']);
-	if (empty($code) || strlen($code) !== 8) {
-		wp_send_json_error(['message' => __('识别码格式无效', 'argon')]);
-	}
-	
-	global $wpdb;
-	$post_id = $wpdb->get_var($wpdb->prepare(
-		"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_argon_ai_summary_code' AND meta_value = %s",
-		$code
-	));
-	
-	if (!$post_id) {
-		wp_send_json_error(['message' => __('未找到对应的摘要记录', 'argon')]);
-	}
-	
-	$post = get_post($post_id);
-	if (!$post) {
-		wp_send_json_error(['message' => __('文章不存在', 'argon')]);
-	}
-	
-	$summary = get_post_meta($post_id, '_argon_ai_summary', true);
-	$model = get_post_meta($post_id, '_argon_ai_summary_model', true);
-	$provider = get_post_meta($post_id, '_argon_ai_summary_provider', true);
-	$time = get_post_meta($post_id, '_argon_ai_summary_time', true);
-	
-	wp_send_json_success([
-		'post_id' => $post_id,
-		'post_title' => get_the_title($post_id),
-		'post_url' => get_permalink($post_id),
-		'summary' => esc_html($summary),
-		'model' => esc_html($model),
-		'provider' => esc_html($provider),
-		'generated_time' => $time ? date('Y-m-d H:i:s', $time) : '',
-		'code' => esc_html($code)
-	]);
-}
-add_action('wp_ajax_argon_query_ai_summary_by_code', 'argon_query_ai_summary_by_code');
-add_action('wp_ajax_nopriv_argon_query_ai_summary_by_code', 'argon_query_ai_summary_by_code');
-
 
 
 

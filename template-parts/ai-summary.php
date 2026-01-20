@@ -76,7 +76,7 @@ $model_display = !empty($model) ? $model : __('未知模型', 'argon');
 			<span class="ai-summary-model"><?php _e('使用模型', 'argon'); ?>: <?php echo esc_html($model_display); ?></span>
 			<?php endif; ?>
 			<?php if (!empty($summary_code)): ?>
-			<span class="ai-summary-code"><?php _e('识别码', 'argon'); ?>: <a href="<?php echo home_url('/ai-summary-query/?code=' . $summary_code); ?>"><?php echo esc_html($summary_code); ?></a></span>
+			<span class="ai-summary-code"><?php _e('识别码', 'argon'); ?>: <a href="<?php echo get_template_directory_uri(); ?>/ai-summary-query.php?code=<?php echo esc_attr($summary_code); ?>"><?php echo esc_html($summary_code); ?></a></span>
 			<?php endif; ?>
 		<?php endif; ?>
 	</div>
@@ -121,7 +121,7 @@ $model_display = !empty($model) ? $model : __('未知模型', 'argon');
 						footerHTML += '<span class="ai-summary-model"><?php _e('使用模型', 'argon'); ?>: ' + data.data.model + '</span>';
 					}
 					if (data.data.code) {
-						footerHTML += '<span class="ai-summary-code"><?php _e('识别码', 'argon'); ?>: <a href="<?php echo home_url('/ai-summary-query/?code='); ?>' + data.data.code + '">' + data.data.code + '</a></span>';
+						footerHTML += '<span class="ai-summary-code"><?php _e('识别码', 'argon'); ?>: <a href="<?php echo get_template_directory_uri(); ?>/ai-summary-query.php?code=' + data.data.code + '">' + data.data.code + '</a></span>';
 					}
 					footerDiv.innerHTML = footerHTML;
 				}
