@@ -3,12 +3,9 @@
  * AI 内容验证与查询页面
  * @package Argon
  */
-
 $wp_load_path = dirname(dirname(dirname(dirname(__FILE__)))) . '/wp-load.php';
 if (!file_exists($wp_load_path)) $wp_load_path = $_SERVER['DOCUMENT_ROOT'] . '/wp-load.php';
 require_once($wp_load_path);
-
-get_header();
 
 $query_code = isset($_GET['code']) ? sanitize_text_field($_GET['code']) : '';
 $result = null;
@@ -42,7 +39,6 @@ if (!empty($query_code)) {
 					'code' => $query_code
 				];
 				
-				// 提供商名称映射
 				$provider_names = [
 					'openai' => 'OpenAI',
 					'anthropic' => 'Anthropic',
@@ -57,7 +53,6 @@ if (!empty($query_code)) {
 				
 				$result['provider_display'] = isset($provider_names[$result['provider']]) ? $provider_names[$result['provider']] : $result['provider'];
 				
-				// 检查内容是否被修改
 				$current_hash = md5($post->post_content . $post->post_title);
 				$result['is_modified'] = ($result['summary_hash'] !== $current_hash);
 			} else {
@@ -68,365 +63,268 @@ if (!empty($query_code)) {
 		}
 	}
 }
+
+get_header();
 ?>
 
-<style>
-.ai-verify-page {
-	max-width: 900px;
-	margin: 0 auto;
+<div class="page-information-card-container"></div>
+<?php get_sidebar(); ?>
+
+<div id="primary" class="content-area">
+
+<style id="ai-verify-page-style">
+@media screen and (min-width: 901px) {
+	body.ai-verify-page #leftbar_part, body.ai-verify-page #leftbar { display: none !important; }
 }
-.ai-verify-card {
-	background: var(--color-foreground);
-	border-radius: var(--card-radius);
-	box-shadow: var(--card-shadow);
-	padding: 2rem;
-	margin-bottom: 1.5rem;
+@media screen and (max-width: 900px) {
+	body.ai-verify-page #leftbar {
+		display: block;
+		position: fixed;
+		background: var(--color-foreground);
+		top: 0;
+		left: -300px;
+		height: 100vh;
+		width: 280px;
+		padding: 0;
+		overflow-y: auto;
+		overflow-x: hidden;
+		z-index: 1002;
+		box-shadow: 0 15px 35px rgba(50, 50, 93, 0.1), 0 5px 15px rgba(0, 0, 0, 0.07) !important;
+		transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+	}
+	html.leftbar-opened body.ai-verify-page #leftbar { left: 0px; }
+	body.ai-verify-page .leftbar-mobile-nav { display: flex; flex-direction: column; min-height: 100%; }
+	body.ai-verify-page .leftbar-desktop-content { display: none !important; }
+	body.ai-verify-page .leftbar-mobile-footer {
+		margin-top: auto;
+		position: sticky;
+		bottom: 0;
+		background: var(--color-foreground);
+		z-index: 10;
+	}
 }
-.ai-verify-header {
-	margin-bottom: 2rem;
-	padding-bottom: 1.5rem;
-	border-bottom: 1px solid var(--color-border);
-}
-.ai-verify-title {
-	font-size: 1.75rem;
-	font-weight: 600;
-	color: var(--color-text-deeper);
-	margin: 0 0 0.5rem 0;
-}
-.ai-verify-subtitle {
-	font-size: 0.9375rem;
-	color: var(--color-text-muted);
-	margin: 0;
-	line-height: 1.6;
-}
-.ai-query-form {
-	margin-bottom: 2rem;
-}
-.ai-query-input {
-	flex: 1;
-	min-width: 200px;
-	padding: 0.625rem 1rem;
-	border: 1px solid var(--color-border);
-	border-radius: var(--card-radius);
-	font-family: 'Consolas', 'Monaco', monospace;
-	font-size: 1rem;
-	letter-spacing: 1px;
-	background: var(--color-foreground);
-	color: var(--color-text);
-	transition: all var(--animation-fast) var(--ease-standard);
-}
-.ai-query-input:focus {
-	outline: none;
-	border-color: var(--themecolor);
-	box-shadow: 0 0 0 3px rgba(var(--themecolor-rgbstr), 0.1);
-}
-.ai-alert {
-	padding: 1rem 1.25rem;
-	border-radius: var(--card-radius);
-	margin-bottom: 1.5rem;
-	display: flex;
-	align-items: flex-start;
-	gap: 0.75rem;
-}
-.ai-alert-warning {
-	background: rgba(255, 193, 7, 0.1);
-	border: 1px solid rgba(255, 193, 7, 0.3);
-	color: var(--color-text);
-}
-.ai-alert-info {
-	background: rgba(var(--themecolor-rgbstr), 0.08);
-	border: 1px solid rgba(var(--themecolor-rgbstr), 0.2);
-	color: var(--color-text);
-}
-.ai-alert-icon {
-	flex-shrink: 0;
-	margin-top: 0.125rem;
-}
-.ai-section {
-	margin-bottom: 2rem;
-}
-.ai-section:last-child {
-	margin-bottom: 0;
-}
-.ai-section-title {
-	font-size: 1.125rem;
-	font-weight: 600;
-	color: var(--color-text-deeper);
-	margin: 0 0 1rem 0;
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-}
-.ai-section-icon {
-	color: var(--themecolor);
-	opacity: 0.9;
-}
-.ai-code-display {
-	font-family: 'Consolas', 'Monaco', monospace;
-	font-size: 1.5rem;
-	letter-spacing: 2px;
-	color: var(--themecolor);
-	font-weight: 600;
-	padding: 1rem;
-	background: rgba(var(--themecolor-rgbstr), 0.05);
-	border-radius: var(--card-radius);
-	text-align: center;
-}
-.ai-info-grid {
-	display: grid;
-	gap: 0.875rem;
-}
-.ai-info-item {
-	display: flex;
-	align-items: baseline;
-	gap: 0.5rem;
-}
-.ai-info-label {
-	color: var(--color-text-muted);
-	font-size: 0.875rem;
-	min-width: 80px;
-	flex-shrink: 0;
-}
-.ai-info-value {
-	color: var(--color-text);
-	flex: 1;
-}
-.ai-info-value-mono {
-	font-family: 'Consolas', 'Monaco', monospace;
-}
-.ai-info-value-link {
-	color: var(--themecolor);
-	text-decoration: none;
-	font-weight: 500;
-	transition: opacity var(--animation-fast) var(--ease-standard);
-}
-.ai-info-value-link:hover {
-	opacity: 0.8;
-}
-.ai-content-box {
-	padding: 1.25rem;
-	background: rgba(var(--themecolor-rgbstr), 0.03);
-	border: 1px solid rgba(var(--themecolor-rgbstr), 0.1);
-	border-radius: var(--card-radius);
-	line-height: 1.7;
-	color: var(--color-text);
-}
-.ai-status-badge {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.375rem;
-	padding: 0.25rem 0.75rem;
-	border-radius: 999px;
-	font-size: 0.8125rem;
-	font-weight: 500;
-}
-.ai-status-valid {
-	background: rgba(40, 167, 69, 0.1);
-	color: #28a745;
-	border: 1px solid rgba(40, 167, 69, 0.2);
-}
-.ai-status-modified {
-	background: rgba(255, 193, 7, 0.1);
-	color: #ffc107;
-	border: 1px solid rgba(255, 193, 7, 0.3);
-}
-.ai-actions {
-	margin-top: 2rem;
-	padding-top: 1.5rem;
-	border-top: 1px solid var(--color-border);
-	display: flex;
-	gap: 0.75rem;
-	flex-wrap: wrap;
-}
-.ai-help-list {
-	padding-left: 1.5rem;
-	margin: 0;
-	color: var(--color-text-muted);
-	line-height: 1.8;
-}
-.ai-help-list li {
-	margin-bottom: 0.5rem;
-}
+body.ai-verify-page #primary { width: 100% !important; max-width: 1000px !important; margin: 0 auto !important; float: none !important; }
+body.ai-verify-page #content { margin-top: -50vh !important; }
+
+.ai-verify-header-card { text-align: center; padding: 40px 24px 32px; background: transparent !important; box-shadow: none !important; }
+.ai-verify-header-icon { width: 64px; height: 64px; margin: 0 auto 20px; background: var(--themecolor-gradient); border-radius: var(--card-radius); display: flex; align-items: center; justify-content: center; font-size: 28px; color: #fff; box-shadow: 0 4px 12px rgba(var(--themecolor-rgbstr), 0.2); transition: transform var(--animation-fast) var(--ease-standard); }
+.ai-verify-header-icon:hover { transform: translateY(-2px); }
+.ai-verify-title { font-size: 24px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper); background: none !important; }
+.ai-verify-title::before, .ai-verify-title::after { display: none !important; }
+.ai-verify-subtitle { font-size: 14px; color: var(--color-text-muted); margin: 0; line-height: 1.6; }
+html.darkmode .ai-verify-subtitle { color: #aaa; }
+
+.ai-verify-card { padding: 24px 28px; margin-bottom: 16px; }
+.ai-verify-section-title { font-size: 17px; font-weight: 600; margin: 0 0 16px; color: var(--color-text-deeper); display: flex; align-items: center; gap: 8px; background: none !important; }
+.ai-verify-section-title::before, .ai-verify-section-title::after { display: none !important; }
+.ai-verify-section-title i { color: var(--themecolor); font-size: 16px; }
+
+.ai-query-form { margin-bottom: 20px; }
+.ai-query-form form { display: flex; gap: 12px; flex-wrap: wrap; }
+.ai-query-input { flex: 1; min-width: 200px; padding: 10px 14px; border: 1px solid var(--color-border); border-radius: var(--card-radius); font-family: 'Consolas', 'Monaco', monospace; font-size: 15px; letter-spacing: 1px; background: var(--color-foreground); color: var(--color-text); transition: all var(--animation-fast) var(--ease-standard); }
+.ai-query-input:focus { outline: none; border-color: var(--themecolor); box-shadow: 0 0 0 3px rgba(var(--themecolor-rgbstr), 0.1); }
+
+.ai-alert { padding: 14px 16px; border-radius: var(--card-radius); margin-bottom: 20px; display: flex; align-items: flex-start; gap: 10px; line-height: 1.6; }
+.ai-alert-warning { background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); color: var(--color-text); }
+.ai-alert-info { background: rgba(var(--themecolor-rgbstr), 0.08); border: 1px solid rgba(var(--themecolor-rgbstr), 0.2); color: var(--color-text); }
+.ai-alert-icon { flex-shrink: 0; font-size: 16px; margin-top: 2px; }
+
+.ai-code-display { font-family: 'Consolas', 'Monaco', monospace; font-size: 28px; letter-spacing: 3px; color: var(--themecolor); font-weight: 600; padding: 20px; background: rgba(var(--themecolor-rgbstr), 0.05); border-radius: var(--card-radius); text-align: center; margin-bottom: 20px; }
+
+.ai-info-grid { display: grid; gap: 12px; }
+.ai-info-item { display: flex; align-items: baseline; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--color-border-on-foreground); }
+.ai-info-item:last-child { border-bottom: none; }
+.ai-info-label { color: var(--color-text-muted); font-size: 14px; min-width: 100px; flex-shrink: 0; }
+.ai-info-value { color: var(--color-text); flex: 1; word-break: break-word; }
+.ai-info-value-mono { font-family: 'Consolas', 'Monaco', monospace; }
+.ai-info-value-link { color: var(--themecolor); text-decoration: none; font-weight: 500; transition: opacity var(--animation-fast) var(--ease-standard); }
+.ai-info-value-link:hover { opacity: 0.8; }
+
+.ai-status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 500; }
+.ai-status-valid { background: rgba(40, 167, 69, 0.1); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.2); }
+.ai-status-modified { background: rgba(255, 193, 7, 0.1); color: #ffc107; border: 1px solid rgba(255, 193, 7, 0.3); }
+
+.ai-content-box { padding: 16px; background: rgba(var(--themecolor-rgbstr), 0.03); border: 1px solid rgba(var(--themecolor-rgbstr), 0.1); border-radius: var(--card-radius); line-height: 1.8; color: var(--color-text); margin-bottom: 20px; }
+
+.ai-actions { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--color-border-on-foreground); display: flex; gap: 10px; flex-wrap: wrap; }
+
+.ai-help-list { padding-left: 20px; margin: 0; color: var(--color-text-muted); line-height: 1.8; }
+.ai-help-list li { margin-bottom: 8px; }
+
 @media (max-width: 768px) {
-	.ai-verify-card {
-		padding: 1.5rem;
-	}
-	.ai-verify-title {
-		font-size: 1.5rem;
-	}
-	.ai-code-display {
-		font-size: 1.25rem;
-		letter-spacing: 1.5px;
-	}
+	.ai-verify-card { padding: 20px; }
+	.ai-verify-header-card { padding: 30px 20px 24px; }
+	.ai-code-display { font-size: 22px; letter-spacing: 2px; padding: 16px; }
+	.ai-info-label { min-width: 80px; font-size: 13px; }
+	.ai-query-form form { flex-direction: column; }
+	.ai-query-input { width: 100%; }
 }
 </style>
 
-<div id="primary" class="content-area">
-	<main id="main" class="site-main">
-		<div class="ai-verify-page">
-			<div class="ai-verify-card">
-				<div class="ai-verify-header">
-					<h1 class="ai-verify-title"><?php _e('AI 内容验证与查询', 'argon'); ?></h1>
-					<p class="ai-verify-subtitle"><?php _e('通过唯一识别码验证 AI 生成内容的真实性、完整性和时效性', 'argon'); ?></p>
+<script data-pjax>
+(function() {
+	function cleanupAIVerifyPage() {
+		document.body.classList.remove('ai-verify-page');
+		var s = document.getElementById('ai-verify-page-style');
+		if (s) s.remove();
+	}
+	
+	if (!document.getElementById('ai-verify-page-style')) {
+		document.body.classList.remove('ai-verify-page');
+	}
+	
+	document.body.classList.add('ai-verify-page');
+	
+	if (typeof jQuery !== 'undefined') {
+		var $ = jQuery;
+		$(document).off('pjax:start.aiverify pjax:popstate.aiverify');
+		
+		$(document).on('pjax:start.aiverify', function() {
+			cleanupAIVerifyPage();
+			$(document).off('pjax:start.aiverify pjax:popstate.aiverify');
+		});
+		
+		$(document).on('pjax:popstate.aiverify', function() {
+			setTimeout(function() {
+				if (!document.getElementById('ai-verify-page-style')) {
+					document.body.classList.remove('ai-verify-page');
+				}
+			}, 50);
+		});
+	}
+})();
+</script>
+
+<main id="main" class="site-main" role="main">
+
+<div class="ai-verify-header-card" style="margin-bottom: 16px;">
+	<div class="ai-verify-header-icon"><i class="fa fa-shield"></i></div>
+	<h1 class="ai-verify-title"><?php _e('AI 内容验证与查询', 'argon'); ?></h1>
+	<p class="ai-verify-subtitle"><?php _e('通过唯一识别码验证 AI 生成内容的真实性、完整性和时效性', 'argon'); ?></p>
+</div>
+
+<article class="post card shadow-sm bg-white border-0 ai-verify-card">
+	<h3 class="ai-verify-section-title"><i class="fa fa-search"></i><?php _e('查询验证', 'argon'); ?></h3>
+	
+	<div class="ai-query-form">
+		<form method="get" action="">
+			<input type="text" 
+				name="code" 
+				value="<?php echo esc_attr($query_code); ?>" 
+				placeholder="<?php _e('输入 8 位识别码', 'argon'); ?>"
+				maxlength="8"
+				class="ai-query-input"
+				required>
+			<button type="submit" class="btn btn-primary" style="padding: 10px 24px; white-space: nowrap;">
+				<?php _e('查询验证', 'argon'); ?>
+			</button>
+		</form>
+	</div>
+	
+	<?php if (!empty($error)): ?>
+		<div class="ai-alert ai-alert-warning">
+			<span class="ai-alert-icon">⚠</span>
+			<span><?php echo esc_html($error); ?></span>
+		</div>
+	<?php elseif ($result): ?>
+		<?php if ($result['is_modified']): ?>
+			<div class="ai-alert ai-alert-warning">
+				<span class="ai-alert-icon">⚠</span>
+				<div>
+					<strong><?php _e('内容已变更', 'argon'); ?></strong><br>
+					<?php _e('原文内容在 AI 摘要生成后发生了修改，当前摘要可能与最新文章内容不完全一致', 'argon'); ?>
 				</div>
-				
-				<!-- 查询表单 -->
-				<div class="ai-query-form">
-					<form method="get" action="" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-						<input type="text" 
-							name="code" 
-							value="<?php echo esc_attr($query_code); ?>" 
-							placeholder="<?php _e('输入 8 位识别码', 'argon'); ?>"
-							maxlength="8"
-							class="ai-query-input"
-							required>
-						<button type="submit" class="btn btn-primary" style="padding: 0.625rem 1.5rem; white-space: nowrap;">
-							<?php _e('查询验证', 'argon'); ?>
-						</button>
-					</form>
+			</div>
+		<?php else: ?>
+			<div class="ai-alert ai-alert-info">
+				<span class="ai-alert-icon">✓</span>
+				<div>
+					<strong><?php _e('验证通过', 'argon'); ?></strong><br>
+					<?php _e('AI 生成内容与原文保持一致，未检测到内容变更', 'argon'); ?>
 				</div>
-				
-				<?php if (!empty($error)): ?>
-					<!-- 错误信息 -->
-					<div class="ai-alert ai-alert-warning">
-						<span class="ai-alert-icon">⚠</span>
-						<span><?php echo esc_html($error); ?></span>
-					</div>
-				<?php elseif ($result): ?>
-					<!-- 查询结果 -->
-					<div class="ai-query-result">
-						<!-- 验证状态 -->
-						<?php if ($result['is_modified']): ?>
-							<div class="ai-alert ai-alert-warning">
-								<span class="ai-alert-icon">⚠</span>
-								<div>
-									<strong><?php _e('内容已变更', 'argon'); ?></strong><br>
-									<?php _e('原文内容在 AI 摘要生成后发生了修改，当前摘要可能与最新文章内容不完全一致', 'argon'); ?>
-								</div>
-							</div>
-						<?php else: ?>
-							<div class="ai-alert ai-alert-info">
-								<span class="ai-alert-icon">✓</span>
-								<div>
-									<strong><?php _e('验证通过', 'argon'); ?></strong><br>
-									<?php _e('AI 生成内容与原文保持一致，未检测到内容变更', 'argon'); ?>
-								</div>
-							</div>
-						<?php endif; ?>
-						
-						<!-- 识别码信息 -->
-						<div class="ai-section">
-							<h3 class="ai-section-title">
-								<span class="ai-section-icon">🔖</span>
-								<?php _e('识别码', 'argon'); ?>
-							</h3>
-							<div class="ai-code-display"><?php echo esc_html($result['code']); ?></div>
-						</div>
-						
-						<!-- 关联文章 -->
-						<div class="ai-section">
-							<h3 class="ai-section-title">
-								<span class="ai-section-icon">📄</span>
-								<?php _e('关联文章', 'argon'); ?>
-							</h3>
-							<div class="ai-info-grid">
-								<div class="ai-info-item">
-									<span class="ai-info-label"><?php _e('文章标题', 'argon'); ?></span>
-									<a href="<?php echo esc_url($result['post_url']); ?>" class="ai-info-value ai-info-value-link">
-										<?php echo esc_html($result['post_title']); ?>
-									</a>
-								</div>
-								<div class="ai-info-item">
-									<span class="ai-info-label"><?php _e('文章 ID', 'argon'); ?></span>
-									<span class="ai-info-value ai-info-value-mono"><?php echo esc_html($result['post_id']); ?></span>
-								</div>
-								<div class="ai-info-item">
-									<span class="ai-info-label"><?php _e('发布时间', 'argon'); ?></span>
-									<span class="ai-info-value"><?php echo esc_html($result['post_date']); ?></span>
-								</div>
-								<div class="ai-info-item">
-									<span class="ai-info-label"><?php _e('最后修改', 'argon'); ?></span>
-									<span class="ai-info-value"><?php echo esc_html($result['post_modified']); ?></span>
-								</div>
-								<div class="ai-info-item">
-									<span class="ai-info-label"><?php _e('作者', 'argon'); ?></span>
-									<span class="ai-info-value"><?php echo esc_html($result['post_author']); ?></span>
-								</div>
-								<div class="ai-info-item">
-									<span class="ai-info-label"><?php _e('内容状态', 'argon'); ?></span>
-									<span class="ai-info-value">
-										<?php if ($result['is_modified']): ?>
-											<span class="ai-status-badge ai-status-modified"><?php _e('已变更', 'argon'); ?></span>
-										<?php else: ?>
-											<span class="ai-status-badge ai-status-valid"><?php _e('一致', 'argon'); ?></span>
-										<?php endif; ?>
-									</span>
-								</div>
-							</div>
-						</div>
-						
-						<!-- AI 生成内容 -->
-						<div class="ai-section">
-							<h3 class="ai-section-title">
-								<span class="ai-section-icon">📝</span>
-								<?php _e('AI 生成内容', 'argon'); ?>
-							</h3>
-							<div class="ai-content-box">
-								<?php echo esc_html($result['summary']); ?>
-							</div>
-						</div>
-						
-						<!-- 生成信息 -->
-						<div class="ai-section">
-							<h3 class="ai-section-title">
-								<span class="ai-section-icon">⚙</span>
-								<?php _e('生成信息', 'argon'); ?>
-							</h3>
-							<div class="ai-info-grid">
-								<div class="ai-info-item">
-									<span class="ai-info-label"><?php _e('AI 提供商', 'argon'); ?></span>
-									<span class="ai-info-value"><?php echo esc_html($result['provider_display']); ?></span>
-								</div>
-								<div class="ai-info-item">
-									<span class="ai-info-label"><?php _e('使用模型', 'argon'); ?></span>
-									<span class="ai-info-value ai-info-value-mono"><?php echo esc_html($result['model']); ?></span>
-								</div>
-								<div class="ai-info-item">
-									<span class="ai-info-label"><?php _e('生成时间', 'argon'); ?></span>
-									<span class="ai-info-value"><?php echo esc_html(date('Y-m-d H:i:s', $result['generated_time'])); ?></span>
-								</div>
-							</div>
-						</div>
-						
-						<!-- 操作按钮 -->
-						<div class="ai-actions">
-							<a href="<?php echo esc_url($result['post_url']); ?>" class="btn btn-primary">
-								<?php _e('查看原文', 'argon'); ?>
-							</a>
-							<a href="<?php echo esc_url(get_template_directory_uri() . '/ai-summary-query.php'); ?>" class="btn btn-outline-secondary">
-								<?php _e('查询其他识别码', 'argon'); ?>
-							</a>
-						</div>
-					</div>
-				<?php elseif (empty($query_code)): ?>
-					<!-- 使用说明 -->
-					<div class="ai-section">
-						<h3 class="ai-section-title">
-							<span class="ai-section-icon">ℹ</span>
-							<?php _e('功能说明', 'argon'); ?>
-						</h3>
-						<ul class="ai-help-list">
-							<li><?php _e('每个 AI 生成内容都有唯一的 8 位识别码，用于内容溯源和验证', 'argon'); ?></li>
-							<li><?php _e('识别码显示在文章页面的 AI 摘要底部，点击可直接跳转到本页面', 'argon'); ?></li>
-							<li><?php _e('通过识别码可以查询 AI 内容的生成信息、关联文章和验证状态', 'argon'); ?></li>
-							<li><?php _e('系统会自动检测原文是否在 AI 内容生成后发生变更', 'argon'); ?></li>
-							<li><?php _e('识别码由数字和大写字母组成，不包含易混淆字符（I、O）', 'argon'); ?></li>
-						</ul>
-					</div>
-				<?php endif; ?>
+			</div>
+		<?php endif; ?>
+		
+		<div class="ai-code-display"><?php echo esc_html($result['code']); ?></div>
+		
+		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('关联文章', 'argon'); ?></h4>
+		<div class="ai-info-grid" style="margin-bottom: 24px;">
+			<div class="ai-info-item">
+				<span class="ai-info-label"><?php _e('文章标题', 'argon'); ?></span>
+				<a href="<?php echo esc_url($result['post_url']); ?>" class="ai-info-value ai-info-value-link">
+					<?php echo esc_html($result['post_title']); ?>
+				</a>
+			</div>
+			<div class="ai-info-item">
+				<span class="ai-info-label"><?php _e('文章 ID', 'argon'); ?></span>
+				<span class="ai-info-value ai-info-value-mono"><?php echo esc_html($result['post_id']); ?></span>
+			</div>
+			<div class="ai-info-item">
+				<span class="ai-info-label"><?php _e('发布时间', 'argon'); ?></span>
+				<span class="ai-info-value"><?php echo esc_html($result['post_date']); ?></span>
+			</div>
+			<div class="ai-info-item">
+				<span class="ai-info-label"><?php _e('最后修改', 'argon'); ?></span>
+				<span class="ai-info-value"><?php echo esc_html($result['post_modified']); ?></span>
+			</div>
+			<div class="ai-info-item">
+				<span class="ai-info-label"><?php _e('作者', 'argon'); ?></span>
+				<span class="ai-info-value"><?php echo esc_html($result['post_author']); ?></span>
+			</div>
+			<div class="ai-info-item">
+				<span class="ai-info-label"><?php _e('内容状态', 'argon'); ?></span>
+				<span class="ai-info-value">
+					<?php if ($result['is_modified']): ?>
+						<span class="ai-status-badge ai-status-modified"><?php _e('已变更', 'argon'); ?></span>
+					<?php else: ?>
+						<span class="ai-status-badge ai-status-valid"><?php _e('一致', 'argon'); ?></span>
+					<?php endif; ?>
+				</span>
 			</div>
 		</div>
-	</main>
+		
+		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('AI 生成内容', 'argon'); ?></h4>
+		<div class="ai-content-box">
+			<?php echo esc_html($result['summary']); ?>
+		</div>
+		
+		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('生成信息', 'argon'); ?></h4>
+		<div class="ai-info-grid">
+			<div class="ai-info-item">
+				<span class="ai-info-label"><?php _e('AI 提供商', 'argon'); ?></span>
+				<span class="ai-info-value"><?php echo esc_html($result['provider_display']); ?></span>
+			</div>
+			<div class="ai-info-item">
+				<span class="ai-info-label"><?php _e('使用模型', 'argon'); ?></span>
+				<span class="ai-info-value ai-info-value-mono"><?php echo esc_html($result['model']); ?></span>
+			</div>
+			<div class="ai-info-item">
+				<span class="ai-info-label"><?php _e('生成时间', 'argon'); ?></span>
+				<span class="ai-info-value"><?php echo esc_html(date('Y-m-d H:i:s', $result['generated_time'])); ?></span>
+			</div>
+		</div>
+		
+		<div class="ai-actions">
+			<a href="<?php echo esc_url($result['post_url']); ?>" class="btn btn-primary">
+				<?php _e('查看原文', 'argon'); ?>
+			</a>
+			<a href="<?php echo esc_url(get_template_directory_uri() . '/ai-summary-query.php'); ?>" class="btn btn-outline-secondary">
+				<?php _e('查询其他识别码', 'argon'); ?>
+			</a>
+		</div>
+	<?php elseif (empty($query_code)): ?>
+		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('功能说明', 'argon'); ?></h4>
+		<ul class="ai-help-list">
+			<li><?php _e('每个 AI 生成内容都有唯一的 8 位识别码，用于内容溯源和验证', 'argon'); ?></li>
+			<li><?php _e('识别码显示在文章页面的 AI 摘要底部，点击可直接跳转到本页面', 'argon'); ?></li>
+			<li><?php _e('通过识别码可以查询 AI 内容的生成信息、关联文章和验证状态', 'argon'); ?></li>
+			<li><?php _e('系统会自动检测原文是否在 AI 内容生成后发生变更', 'argon'); ?></li>
+			<li><?php _e('识别码由数字和大写字母组成，不包含易混淆字符（I、O）', 'argon'); ?></li>
+		</ul>
+	<?php endif; ?>
+</article>
+
+</main>
 </div>
 
 <?php
