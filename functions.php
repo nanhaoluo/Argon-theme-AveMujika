@@ -4504,6 +4504,7 @@ function argon_friend_links_query_vars($vars) {
     $vars[] = 'argon_friend_links';
     $vars[] = 'argon_feedback_view';
     $vars[] = 'argon_ai_query';
+    $vars[] = 'code';
     return $vars;
 }
 
