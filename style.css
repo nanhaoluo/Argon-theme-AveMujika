@@ -2682,16 +2682,15 @@ html.darkmode .wp-block-calendar tbody td {
 /* 容器样式 */
 #float_action_buttons {
 	position: fixed;
-	top: auto;
 	bottom: 35px;
 	right: 20px;
-	left: auto;
+	z-index: 10002;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: 8px;
-	z-index: 10002;
-	transition: all var(--animation-normal) var(--ease-standard);
+	transition: 
+		opacity var(--animation-normal) var(--ease-standard),
+		transform var(--animation-normal) var(--ease-standard);
 }
 
 #float_action_buttons.fabtns-float-left {
@@ -2728,8 +2727,7 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 	padding: 0;
 	overflow: visible;
 	display: block;
-	margin: 0;
-	flex-shrink: 0;
+	margin-top: 8px;
 	border: none !important;
 	transition: all var(--animation-normal) var(--ease-standard);
 	background-color: var(--color-foreground) !important;
