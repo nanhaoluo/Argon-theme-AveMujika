@@ -325,13 +325,13 @@ html.darkmode .flink-url { color: #888; }
 .flinks-apply-content { max-height: 0; overflow: hidden; transition: max-height var(--animation-slow) var(--ease-standard); }
 .flinks-apply-content.open { max-height: 1200px; }
 
-.flinks-requirements { background: rgba(var(--themecolor-rgbstr), 0.05); border-radius: var(--card-radius); padding: 10px 12px; margin: 10px 0 8px; border-left: 3px solid var(--themecolor); font-size: 13px; line-height: 1.5; }
+.flinks-requirements { background: rgba(var(--themecolor-rgbstr), 0.05); border-radius: var(--card-radius); padding: 10px 12px; margin: 10px 0 8px; border: none; border-left: 3px solid var(--themecolor); font-size: 13px; line-height: 1.5; }
 .flinks-requirements p { margin: 0; }
 
-.flinks-mysite-info { background: transparent; border-radius: var(--card-radius); padding: 10px 12px; margin: 8px 0; border: 1px solid var(--color-border-on-foreground); }
+.flinks-mysite-info { background: transparent; border-radius: var(--card-radius); padding: 10px 12px; margin: 8px 0; border: none; }
 .flinks-mysite-title { font-size: 12px; font-weight: 600; color: var(--themecolor); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
 .flinks-mysite-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.flinks-mysite-item { background: transparent; border-radius: calc(var(--card-radius) * 0.6); padding: 6px 10px; cursor: pointer; transition: all var(--animation-fast) var(--ease-standard); border: 1px solid var(--color-border-on-foreground); }
+.flinks-mysite-item { background: transparent; border-radius: calc(var(--card-radius) * 0.6); padding: 6px 10px; cursor: pointer; transition: all var(--animation-fast) var(--ease-standard); border: none; }
 .flinks-mysite-item:hover { background: rgba(var(--themecolor-rgbstr), 0.05); border-color: rgba(var(--themecolor-rgbstr), 0.3); }
 .flinks-mysite-item label { display: block; font-size: 10px; color: #999; margin-bottom: 1px; text-transform: uppercase; pointer-events: none; }
 .flinks-mysite-item span { font-size: 12px; color: var(--color-text-deeper); word-break: break-all; font-weight: 500; pointer-events: none; }
@@ -341,14 +341,14 @@ html.darkmode .flink-url { color: #888; }
 .flinks-form .row > [class*="col-"] { padding-left: 6px; padding-right: 6px; }
 .flinks-form .form-group { margin-bottom: 8px; }
 .flinks-form .form-control-label { font-size: 12px; font-weight: 600; margin-bottom: 3px; color: var(--color-text-deeper); display: block; font-family: var(--font); }
-.flinks-form .form-control { border-radius: calc(var(--card-radius) * 0.6); border: 1px solid var(--color-border); padding: 7px 10px; font-size: 13px; font-family: var(--font); }
-.flinks-form .form-control:focus { border-color: var(--themecolor); box-shadow: 0 0 0 2px rgba(var(--themecolor-rgbstr), 0.1); }
+.flinks-form .form-control { border-radius: calc(var(--card-radius) * 0.6); border: none; padding: 7px 10px; font-size: 13px; font-family: var(--font); background: rgba(var(--themecolor-rgbstr), 0.05); }
+.flinks-form .form-control:focus { border: none; box-shadow: 0 0 0 2px rgba(var(--themecolor-rgbstr), 0.15); outline: none; }
 .flinks-form .char-count { font-size: 11px; color: #999; float: right; }
 .flinks-submit { margin-top: 10px; text-align: center; }
 .flinks-submit .btn { padding: 8px 24px; font-size: 13px; font-weight: 600; font-family: var(--font); }
 
 /* 自动获取预览 */
-.flinks-auto-preview { background: transparent; border-radius: var(--card-radius); padding: 12px; margin: 10px 0; display: none; border: 1px solid var(--color-border-on-foreground); }
+.flinks-auto-preview { background: transparent; border-radius: var(--card-radius); padding: 12px; margin: 10px 0; display: none; border: none; }
 .flinks-auto-preview.show { display: block; }
 .flinks-auto-preview-title { font-size: 12px; font-weight: 600; color: var(--themecolor); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
 .flinks-auto-preview-content { display: flex; gap: 12px; align-items: flex-start; }
