@@ -1914,13 +1914,16 @@ body.leftbar-can-headroom.headroom---unpinned #navbar-main {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	padding-top: 0.625rem;
+	padding-bottom: 0.625rem;
 	transition: all var(--animation-slow) var(--ease-emphasized);
 }
 
 #navbar_search_input_container input.form-control {
-	display: flex;
-	align-items: center;
 	width: 200px;
+	padding-top: 0.625rem;
+	padding-bottom: 0.625rem;
+	line-height: 1.5;
 	transition: all 0.5s cubic-bezier(0.4, 0, 0, 1);
 }
 
