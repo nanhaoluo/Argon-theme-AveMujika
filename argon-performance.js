@@ -467,6 +467,9 @@ class ArgonRenderOptimizer {
 		this.readQueue = [];      // DOM 读取操作队列
 		this.writeQueue = [];     // DOM 写入操作队列
 		this.scheduled = false;   // 是否已调度执行
+		this.activeAnimations = new Set();  // 当前活动的动画元素集合
+		this.maxAnimations = 3;   // 最大同时运行的动画数量
+		this.animationQueue = []; // 等待执行的动画队列
 	}
 	
 	/**
@@ -563,6 +566,114 @@ class ArgonRenderOptimizer {
 	disableGPU(element) {
 		if (!element) return;
 		element.style.willChange = 'auto';
+	}
+	
+	/**
+	 * 开始动画
+	 * 如果当前活动动画数量未达到上限，立即启动动画并启用 GPU 加速
+	 * 否则将动画加入等待队列
+	 * 
+	 * @param {Element} element - 要动画的 DOM 元素
+	 * @param {Function} animationFn - 动画函数，接收 element 作为参数
+	 * @returns {boolean} 如果动画立即启动返回 true，否则返回 false
+	 */
+	startAnimation(element, animationFn) {
+		if (!element) return false;
+		
+		// 如果当前活动动画数量未达到上限，立即启动
+		if (this.activeAnimations.size < this.maxAnimations) {
+			this._executeAnimation(element, animationFn);
+			return true;
+		}
+		
+		// 否则加入等待队列
+		this.animationQueue.push({ element, animationFn });
+		return false;
+	}
+	
+	/**
+	 * 结束动画
+	 * 移除 GPU 加速提示，从活动动画集合中移除元素
+	 * 如果有等待的动画，启动队列中的下一个动画
+	 * 
+	 * @param {Element} element - 动画完成的 DOM 元素
+	 * @returns {void}
+	 */
+	endAnimation(element) {
+		if (!element) return;
+		
+		// 禁用 GPU 加速
+		this.disableGPU(element);
+		
+		// 从活动动画集合中移除
+		this.activeAnimations.delete(element);
+		
+		// 如果有等待的动画，启动下一个
+		if (this.animationQueue.length > 0) {
+			const { element: nextElement, animationFn } = this.animationQueue.shift();
+			this._executeAnimation(nextElement, animationFn);
+		}
+	}
+	
+	/**
+	 * 执行动画
+	 * 启用 GPU 加速，将元素加入活动动画集合，执行动画函数
+	 * 
+	 * @private
+	 * @param {Element} element - DOM 元素
+	 * @param {Function} animationFn - 动画函数
+	 * @returns {void}
+	 */
+	_executeAnimation(element, animationFn) {
+		// 启用 GPU 加速
+		this.enableGPU(element);
+		
+		// 加入活动动画集合
+		this.activeAnimations.add(element);
+		
+		// 执行动画函数
+		try {
+			animationFn(element);
+		} catch (error) {
+			console.error('Error executing animation:', error);
+			// 出错时也要清理
+			this.endAnimation(element);
+		}
+	}
+	
+	/**
+	 * 获取当前活动动画数量
+	 * 
+	 * @returns {number} 当前活动的动画数量
+	 */
+	getActiveAnimationCount() {
+		return this.activeAnimations.size;
+	}
+	
+	/**
+	 * 获取等待队列中的动画数量
+	 * 
+	 * @returns {number} 等待队列中的动画数量
+	 */
+	getQueuedAnimationCount() {
+		return this.animationQueue.length;
+	}
+	
+	/**
+	 * 清除所有动画
+	 * 停止所有活动动画，清空等待队列
+	 * 
+	 * @returns {void}
+	 */
+	clearAllAnimations() {
+		// 禁用所有活动动画的 GPU 加速
+		this.activeAnimations.forEach(element => {
+			this.disableGPU(element);
+		});
+		
+		// 清空集合和队列
+		this.activeAnimations.clear();
+		this.animationQueue = [];
 	}
 }
 

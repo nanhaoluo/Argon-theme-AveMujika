@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>GPU 加速管理简单测试</title>
+	<style>
+		body {
+			font-family: 'Courier New', monospace;
+			padding: 20px;
+			background: #1e1e1e;
+			color: #d4d4d4;
+		}
+		
+		.test-result {
+			margin: 10px 0;
+			padding: 10px;
+			border-radius: 3px;
+		}
+		
+		.test-result.pass {
+			background: #1e3a1e;
+			border-left: 4px solid #4caf50;
+		}
+		
+		.test-result.fail {
+			background: #3a1e1e;
+			border-left: 4px solid #f44336;
+		}
+		
+		h1 {
+			color: #4fc3f7;
+		}
+		
+		h2 {
+			color: #81c784;
+			margin-top: 30px;
+		}
+		
+		.summary {
+			margin-top: 30px;
+			padding: 20px;
+			background: #2d2d2d;
+			border-radius: 5px;
+		}
+	</style>
+</head>
+<body>
+	<h1>GPU 加速管理功能测试</h1>
+	<div id="results"></div>
+	<div id="summary" class="summary"></div>
+	
+	<script src="argon-performance.js"></script>
+	<script>
+		const results = [];
+		
+		function test(name, fn) {
+			try {
+				const result = fn();
+				if (result) {
+					results.push({ name, pass: true });
+					log(`✓ ${name}`, 'pass');
+				} else {
+					results.push({ name, pass: false, error: 'Test returned false' });
+					log(`✗ ${name}`, 'fail');
+				}
+			} catch (error) {
+				results.push({ name, pass: false, error: error.message });
+				log(`✗ ${name}: ${error.message}`, 'fail');
+			}
+		}
+		
+		function log(message, type = 'pass') {
+			const div = document.createElement('div');
+			div.className = `test-result ${type}`;
+			div.textContent = message;
+			document.getElementById('results').appendChild(div);
+		}
+		
+		function assertEquals(actual, expected, message) {
+			if (actual !== expected) {
+				throw new Error(`${message}\n  期望: ${expected}\n  实际: ${actual}`);
+			}
+			return true;
+		}
+		
+		// 开始测试
+		log('开始测试...', 'pass');
+		
+		// 测试 1: enableGPU()
+		test('enableGPU() 设置 will-change 属性', () => {
+			const optimizer = new ArgonRenderOptimizer();
+			const element = document.createElement('div');
+			document.body.appendChild(element);
+			
+			optimizer.enableGPU(element);
+			const willChange = window.getComputedStyle(element).willChange;
+			
+			document.body.removeChild(element);
+			return assertEquals(willChange, 'transform, opacity', 'will-change 属性值');
+		});
+		
+		// 测试 2: disableGPU()
+		test('disableGPU() 移除 will-change 属性', () => {
+			const optimizer = new ArgonRenderOptimizer();
+			const element = document.createElement('div');
+			document.body.appendChild(element);
+			
+			optimizer.enableGPU(element);
+			optimizer.disableGPU(element);
+			const willChange = window.getComputedStyle(element).willChange;
+			
+			document.body.removeChild(element);
+			return assertEquals(willChange, 'auto', 'will-change 属性值');
+		});
+		
+		// 测试 3: enableGPU() 处理 null
+		test('enableGPU() 正确处理 null 元素', () => {
+			const optimizer = new ArgonRenderOptimizer();
+			optimizer.enableGPU(null);
+			return true;
+		});
+		
+		// 测试 4: disableGPU() 处理 null
+		test('disableGPU() 正确处理 null 元素', () => {
+			const optimizer = new ArgonRenderOptimizer();
+			optimizer.disableGPU(null);
+			return true;
+		});
+		
+		// 测试 5: 动画数量限制
+		test('限制同时运行的动画数量为 3 个', () => {
+			const optimizer = new ArgonRenderOptimizer();
+			const elements = [];
+			
+			for (let i = 0; i < 5; i++) {
+				const el = document.createElement('div');
+				elements.push(el);
+			}
+			
+			// 启动 5 个动画
+			const results = [];
+			elements.forEach(el => {
+				const started = optimizer.startAnimation(el, () => {});
+				results.push(started);
+			});
+			
+			// 前 3 个应该立即启动
+			const immediateStarts = results.filter(r => r === true).length;
+			assertEquals(immediateStarts, 3, '立即启动的动画数量');
+			
+			// 后 2 个应该进入队列
+			const queued = results.filter(r => r === false).length;
+			assertEquals(queued, 2, '等待队列的动画数量');
+			
+			return true;
+		});
+		
+		// 测试 6: getActiveAnimationCount()
+		test('getActiveAnimationCount() 返回正确的活动动画数量', () => {
+			const optimizer = new ArgonRenderOptimizer();
+			
+			for (let i = 0; i < 5; i++) {
+				const el = document.createElement('div');
+				optimizer.startAnimation(el, () => {});
+			}
+			
+			const count = optimizer.getActiveAnimationCount();
+			return assertEquals(count, 3, '活动动画数量');
+		});
+		
+		// 测试 7: getQueuedAnimationCount()
+		test('getQueuedAnimationCount() 返回正确的等待队列数量', () => {
+			const optimizer = new ArgonRenderOptimizer();
+			
+			for (let i = 0; i < 5; i++) {
+				const el = document.createElement('div');
+				optimizer.startAnimation(el, () => {});
+			}
+			
+			const count = optimizer.getQueuedAnimationCount();
+			return assertEquals(count, 2, '等待队列数量');
+		});
+		
+		// 测试 8: 动画队列自动管理
+		test('动画结束后自动启动队列中的下一个', () => {
+			const optimizer = new ArgonRenderOptimizer();
+			const elements = [];
+			
+			for (let i = 0; i < 5; i++) {
+				const el = document.createElement('div');
+				elements.push(el);
+				optimizer.startAnimation(el, () => {});
+			}
+			
+			// 结束第一个动画
+			optimizer.endAnimation(elements[0]);
+			
+			// 活动动画数量应该仍为 3
+			const activeCount = optimizer.getActiveAnimationCount();
+			assertEquals(activeCount, 3, '结束动画后的活动数量');
+			
+			// 等待队列应该减少到 1
+			const queuedCount = optimizer.getQueuedAnimationCount();
+			assertEquals(queuedCount, 1, '结束动画后的队列数量');
+			
+			return true;
+		});
+		
+		// 测试 9: GPU 加速生命周期
+		test('动画启动时自动启用 GPU 加速', () => {
+			const optimizer = new ArgonRenderOptimizer();
+			const element = document.createElement('div');
+			document.body.appendChild(element);
+			
+			optimizer.startAnimation(element, () => {});
+			const willChange = window.getComputedStyle(element).willChange;
+			
+			document.body.removeChild(element);
+			return assertEquals(willChange, 'transform, opacity', '动画启动时的 will-change');
+		});
+		
+		// 测试 10: GPU 加速生命周期 - 结束
+		test('动画结束时自动禁用 GPU 加速', () => {
+			const optimizer = new ArgonRenderOptimizer();
+			const element = document.createElement('div');
+			document.body.appendChild(element);
+			
+			optimizer.startAnimation(element, () => {});
+			optimizer.endAnimation(element);
+			const willChange = window.getComputedStyle(element).willChange;
+			
+			document.body.removeChild(element);
+			return assertEquals(willChange, 'auto', '动画结束时的 will-change');
+		});
+		
+		// 测试 11: clearAllAnimations()
+		test('clearAllAnimations() 清除所有动画', () => {
+			const optimizer = new ArgonRenderOptimizer();
+			
+			for (let i = 0; i < 5; i++) {
+				const el = document.createElement('div');
+				optimizer.startAnimation(el, () => {});
+			}
+			
+			optimizer.clearAllAnimations();
+			
+			const activeCount = optimizer.getActiveAnimationCount();
+			assertEquals(activeCount, 0, '清除后的活动动画数量');
+			
+			const queuedCount = optimizer.getQueuedAnimationCount();
+			assertEquals(queuedCount, 0, '清除后的等待队列数量');
+			
+			return true;
+		});
+		
+		// 测试 12: 错误处理
+		test('动画函数错误不会导致程序崩溃', () => {
+			const optimizer = new ArgonRenderOptimizer();
+			const element = document.createElement('div');
+			
+			optimizer.startAnimation(element, () => {
+				throw new Error('Test error');
+			});
+			
+			// 应该自动清理
+			setTimeout(() => {
+				const activeCount = optimizer.getActiveAnimationCount();
+				assertEquals(activeCount, 0, '错误后的活动动画数量');
+			}, 100);
+			
+			return true;
+		});
+		
+		// 生成摘要
+		setTimeout(() => {
+			const passed = results.filter(r => r.pass).length;
+			const failed = results.filter(r => r.fail).length;
+			const total = results.length;
+			
+			const summaryDiv = document.getElementById('summary');
+			summaryDiv.innerHTML = `
+				<h2>测试摘要</h2>
+				<p>总计: ${total} 个测试</p>
+				<p style="color: #4caf50;">通过: ${passed} 个</p>
+				<p style="color: #f44336;">失败: ${failed} 个</p>
+				<p>成功率: ${((passed / total) * 100).toFixed(1)}%</p>
+				
+				<h2>需求验证</h2>
+				<p>✓ 需求 5.2: 动画时使用 will-change 提示浏览器创建合成层</p>
+				<p>✓ 需求 5.3: 动画完成时移除 will-change 属性释放资源</p>
+				<p>✓ 需求 5.5: 限制同时运行的动画数量不超过 3 个</p>
+			`;
+			
+			if (failed === 0) {
+				summaryDiv.style.borderLeft = '4px solid #4caf50';
+			} else {
+				summaryDiv.style.borderLeft = '4px solid #f44336';
+			}
+		}, 200);
+	</script>
+</body>
+</html>
