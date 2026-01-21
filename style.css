@@ -1856,9 +1856,8 @@ body.leftbar-can-headroom.headroom---unpinned #navbar-main {
 }
 
 #navbar_search_input_container .input-group-text i.fa {
-
 	font-size: 16px;
-
+	line-height: 1;
 }
 
 #navbar_search_input_container:not(.open) input.form-control {
@@ -1912,17 +1911,17 @@ body.leftbar-can-headroom.headroom---unpinned #navbar-main {
 }
 
 #navbar_search_input_container .input-group-text {
-
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	transition: all var(--animation-slow) var(--ease-emphasized);
-
 }
 
 #navbar_search_input_container input.form-control {
-
+	display: flex;
+	align-items: center;
 	width: 200px;
-
 	transition: all 0.5s cubic-bezier(0.4, 0, 0, 1);
-
 }
 
 #navbar_search_btn_mobile {
