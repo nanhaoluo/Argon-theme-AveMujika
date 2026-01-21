@@ -1105,6 +1105,33 @@ function argon_get_post_thumbnail($postID = 0){
 	}
 	return apply_filters("argon_post_thumbnail", argon_get_first_image_of_article());
 }
+
+/**
+ * 生成带懒加载的缩略图 HTML
+ * @param int $postID 文章 ID
+ * @param string $class 额外的 CSS 类
+ * @param string $alt 图片 alt 属性
+ * @return string 图片 HTML 标签
+ */
+function argon_get_post_thumbnail_html($postID = 0, $class = 'post-thumbnail', $alt = 'thumbnail'){
+	$thumbnail_url = argon_get_post_thumbnail($postID);
+	if (!$thumbnail_url) {
+		return '';
+	}
+	
+	// 检查是否启用懒加载
+	if (get_option('argon_enable_lazyload', 'true') == 'false') {
+		// 未启用懒加载，直接输出图片
+		return "<img class='" . esc_attr($class) . "' src='" . esc_url($thumbnail_url) . "' alt='" . esc_attr($alt) . "' loading='lazy'>";
+	}
+	
+	// 启用懒加载
+	$loading_style = get_option('argon_lazyload_loading_style', '1');
+	$style_class = ($loading_style !== 'none') ? ' lazyload-style-' . $loading_style : '';
+	$placeholder = 'data:image/svg+xml;base64,PCEtLUFyZ29uTG9hZGluZy0tPg==';
+	
+	return "<img class='" . esc_attr($class) . " lazyload" . $style_class . "' src='" . $placeholder . "' data-src='" . esc_url($thumbnail_url) . "' alt='" . esc_attr($alt) . "' loading='lazy'>";
+}
 //文末附加内容
 function get_additional_content_after_post(){
 	global $post;
@@ -3229,7 +3256,8 @@ function get_banner_background_url(){
 }
 //懒加载：对 <img> 标签添加懒加载支持
 function argon_lazyload($content){
-	if (!is_feed() && !is_robots() && !is_home()) {
+	// 移除 !is_home() 限制，允许在首页也使用懒加载
+	if (!is_feed() && !is_robots()) {
 		$loading_style = get_option('argon_lazyload_loading_style', '1');
 		// 占位图 base64（用于触发 CSS 加载动画）
 		$placeholder = 'data:image/svg+xml;base64,PCEtLUFyZ29uTG9hZGluZy0tPg==';

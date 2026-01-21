@@ -6,9 +6,7 @@
 
 			if (argon_has_post_thumbnail()){
 
-				$thumbnail_url = argon_get_post_thumbnail();
-
-				echo "<img class='post-thumbnail' src='" . $thumbnail_url . "' alt='thumbnail' loading='lazy'>";
+				echo argon_get_post_thumbnail_html(0, 'post-thumbnail', 'thumbnail');
 
 			}
 
