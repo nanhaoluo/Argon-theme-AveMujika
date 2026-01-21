@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>ArgonMemoryManager 测试</title>
+	<style>
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+			max-width: 1200px;
+			margin: 0 auto;
+			padding: 20px;
+			background: #f5f5f5;
+		}
+		.test-section {
+			background: white;
+			border-radius: 8px;
+			padding: 20px;
+			margin-bottom: 20px;
+			box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+		}
+		.test-section h2 {
+			margin-top: 0;
+			color: #333;
+			border-bottom: 2px solid #4CAF50;
+			padding-bottom: 10px;
+		}
+		.test-result {
+			padding: 10px;
+			margin: 10px 0;
+			border-radius: 4px;
+			font-family: monospace;
+		}
+		.test-result.pass {
+			background: #d4edda;
+			color: #155724;
+			border: 1px solid #c3e6cb;
+		}
+		.test-result.fail {
+			background: #f8d7da;
+			color: #721c24;
+			border: 1px solid #f5c6cb;
+		}
+		.test-result.info {
+			background: #d1ecf1;
+			color: #0c5460;
+			border: 1px solid #bee5eb;
+		}
+		button {
+			background: #4CAF50;
+			color: white;
+			border: none;
+			padding: 10px 20px;
+			border-radius: 4px;
+			cursor: pointer;
+			font-size: 14px;
+			margin: 5px;
+		}
+		button:hover {
+			background: #45a049;
+		}
+	</style>
+</head>
+<body>
+	<h1>🧠 ArgonMemoryManager 内存管理模块测试</h1>
+
+	<!-- setTimeout 测试 -->
+	<div class="test-section">
+		<h2>1. setTimeout 跟踪测试</h2>
+		<button onclick="testSetTimeout()">运行测试</button>
+		<div id="setTimeout-results"></div>
+	</div>
+
+	<!-- setInterval 测试 -->
+	<div class="test-section">
+		<h2>2. setInterval 跟踪测试</h2>
+		<button onclick="testSetInterval()">运行测试</button>
+		<div id="setInterval-results"></div>
+	</div>
+
+	<!-- requestAnimationFrame 测试 -->
+	<div class="test-section">
+		<h2>3. requestAnimationFrame 跟踪测试</h2>
+		<button onclick="testRequestAnimationFrame()">运行测试</button>
+		<div id="requestAnimationFrame-results"></div>
+	</div>
+
+	<!-- clearTimeout 测试 -->
+	<div class="test-section">
+		<h2>4. clearTimeout 测试</h2>
+		<button onclick="testClearTimeout()">运行测试</button>
+		<div id="clearTimeout-results"></div>
+	</div>
+
+	<!-- clearAll 测试 -->
+	<div class="test-section">
+		<h2>5. clearAll 统一清理测试</h2>
+		<button onclick="testClearAll()">运行测试</button>
+		<div id="clearAll-results"></div>
+	</div>
+
+	<!-- 参数传递测试 -->
+	<div class="test-section">
+		<h2>6. 参数传递测试</h2>
+		<button onclick="testArgumentPassing()">运行测试</button>
+		<div id="argumentPassing-results"></div>
+	</div>
+
+	<!-- 统计信息测试 -->
+	<div class="test-section">
+		<h2>7. getStats 统计信息测试</h2>
+		<button onclick="testGetStats()">运行测试</button>
+		<div id="getStats-results"></div>
+	</div>
+
+	<!-- 综合测试 -->
+	<div class="test-section">
+		<h2>8. 综合测试</h2>
+		<button onclick="runAllTests()">运行所有测试</button>
+		<div id="all-tests-results"></div>
+	</div>
+
+	<!-- 加载性能优化模块 -->
+	<script src="argon-performance.js"></script>
+
+	<script>
+		// 工具函数：输出测试结果
+		function logResult(containerId, message, type = 'info') {
+			const container = document.getElementById(containerId);
+			const div = document.createElement('div');
+			div.className = `test-result ${type}`;
+			div.textContent = message;
+			container.appendChild(div);
+		}
+
+		function clearResults(containerId) {
+			document.getElementById(containerId).innerHTML = '';
+		}
+
+		// 测试 1: setTimeout 跟踪
+		function testSetTimeout() {
+			clearResults('setTimeout-results');
+			logResult('setTimeout-results', '开始测试 setTimeout 跟踪...', 'info');
+
+			try {
+				const memoryManager = new ArgonMemoryManager();
+				logResult('setTimeout-results', '✓ ArgonMemoryManager 实例创建成功', 'pass');
+
+				let executed = false;
+				const id = memoryManager.setTimeout(() => {
+					executed = true;
+				}, 50);
+
+				// 验证 ID 被跟踪
+				if (memoryManager.timers.has(id)) {
+					logResult('setTimeout-results', `✓ setTimeout ID (${id}) 已被跟踪`, 'pass');
+				} else {
+					logResult('setTimeout-results', '✗ setTimeout ID 未被跟踪', 'fail');
+				}
+
+				// 验证统计信息
+				const stats = memoryManager.getStats();
+				if (stats.timers === 1) {
+					logResult('setTimeout-results', `✓ 统计信息正确：timers = ${stats.timers}`, 'pass');
+				} else {
+					logResult('setTimeout-results', `✗ 统计信息错误：timers = ${stats.timers}`, 'fail');
+				}
+
+				// 等待执行完成
+				setTimeout(() => {
+					if (executed) {
+						logResult('setTimeout-results', '✓ setTimeout 回调函数执行成功', 'pass');
+					} else {
+						logResult('setTimeout-results', '✗ setTimeout 回调函数未执行', 'fail');
+					}
+
+					// 验证执行后自动移除
+					if (!memoryManager.timers.has(id)) {
+						logResult('setTimeout-results', '✓ 执行后自动从跟踪集合中移除', 'pass');
+					} else {
+						logResult('setTimeout-results', '✗ 执行后未从跟踪集合中移除', 'fail');
+					}
+
+					const statsAfter = memoryManager.getStats();
+					if (statsAfter.timers === 0) {
+						logResult('setTimeout-results', '✓ 统计信息已更新：timers = 0', 'pass');
+					} else {
+						logResult('setTimeout-results', `✗ 统计信息未更新：timers = ${statsAfter.timers}`, 'fail');
+					}
+
+					logResult('setTimeout-results', '✅ setTimeout 跟踪测试完成', 'info');
+				}, 100);
+
+			} catch (error) {
+				logResult('setTimeout-results', `✗ 测试出错: ${error.message}`, 'fail');
+			}
+		}
+
+		// 测试 2: setInterval 跟踪
+		function testSetInterval() {
+			clearResults('setInterval-results');
+			logResult('setInterval-results', '开始测试 setInterval 跟踪...', 'info');
+
+			try {
+				const memoryManager = new ArgonMemoryManager();
+				let count = 0;
+
+				const id = memoryManager.setInterval(() => {
+					count++;
+				}, 30);
+
+				// 验证 ID 被跟踪
+				if (memoryManager.intervals.has(id)) {
+					logResult('setInterval-results', `✓ setInterval ID (${id}) 已被跟踪`, 'pass');
+				} else {
+					logResult('setInterval-results', '✗ setInterval ID 未被跟踪', 'fail');
+				}
+
+				// 验证统计信息
+				const stats = memoryManager.getStats();
+				if (stats.intervals === 1) {
+					logResult('setInterval-results', `✓ 统计信息正确：intervals = ${stats.intervals}`, 'pass');
+				} else {
+					logResult('setInterval-results', `✗ 统计信息错误：intervals = ${stats.intervals}`, 'fail');
+				}
+
+				// 等待执行几次
+				setTimeout(() => {
+					if (count >= 2) {
+						logResult('setInterval-results', `✓ setInterval 回调函数执行了 ${count} 次`, 'pass');
+					} else {
+						logResult('setInterval-results', `✗ setInterval 回调函数只执行了 ${count} 次`, 'fail');
+					}
+
+					// 手动清除
+					memoryManager.clearInterval(id);
+
+					if (!memoryManager.intervals.has(id)) {
+						logResult('setInterval-results', '✓ clearInterval 后从跟踪集合中移除', 'pass');
+					} else {
+						logResult('setInterval-results', '✗ clearInterval 后未从跟踪集合中移除', 'fail');
+					}
+
+					const countBeforeWait = count;
+					// 等待一段时间，验证已停止执行
+					setTimeout(() => {
+						if (count === countBeforeWait) {
+							logResult('setInterval-results', '✓ clearInterval 后停止执行', 'pass');
+						} else {
+							logResult('setInterval-results', '✗ clearInterval 后仍在执行', 'fail');
+						}
+
+						logResult('setInterval-results', '✅ setInterval 跟踪测试完成', 'info');
+					}, 100);
+				}, 100);
+
+			} catch (error) {
+				logResult('setInterval-results', `✗ 测试出错: ${error.message}`, 'fail');
+			}
+		}
+
+		// 测试 3: requestAnimationFrame 跟踪
+		function testRequestAnimationFrame() {
+			clearResults('requestAnimationFrame-results');
+			logResult('requestAnimationFrame-results', '开始测试 requestAnimationFrame 跟踪...', 'info');
+
+			try {
+				const memoryManager = new ArgonMemoryManager();
+				let executed = false;
+				let receivedTimestamp = null;
+
+				const id = memoryManager.requestAnimationFrame((timestamp) => {
+					executed = true;
+					receivedTimestamp = timestamp;
+				});
+
+				// 验证 ID 被跟踪
+				if (memoryManager.frames.has(id)) {
+					logResult('requestAnimationFrame-results', `✓ requestAnimationFrame ID (${id}) 已被跟踪`, 'pass');
+				} else {
+					logResult('requestAnimationFrame-results', '✗ requestAnimationFrame ID 未被跟踪', 'fail');
+				}
+
+				// 验证统计信息
+				const stats = memoryManager.getStats();
+				if (stats.frames === 1) {
+					logResult('requestAnimationFrame-results', `✓ 统计信息正确：frames = ${stats.frames}`, 'pass');
+				} else {
+					logResult('requestAnimationFrame-results', `✗ 统计信息错误：frames = ${stats.frames}`, 'fail');
+				}
+
+				// 等待执行完成
+				setTimeout(() => {
+					if (executed) {
+						logResult('requestAnimationFrame-results', '✓ requestAnimationFrame 回调函数执行成功', 'pass');
+					} else {
+						logResult('requestAnimationFrame-results', '✗ requestAnimationFrame 回调函数未执行', 'fail');
+					}
+
+					if (receivedTimestamp !== null) {
+						logResult('requestAnimationFrame-results', `✓ 接收到 timestamp 参数: ${receivedTimestamp}`, 'pass');
+					} else {
+						logResult('requestAnimationFrame-results', '✗ 未接收到 timestamp 参数', 'fail');
+					}
+
+					// 验证执行后自动移除
+					if (!memoryManager.frames.has(id)) {
+						logResult('requestAnimationFrame-results', '✓ 执行后自动从跟踪集合中移除', 'pass');
+					} else {
+						logResult('requestAnimationFrame-results', '✗ 执行后未从跟踪集合中移除', 'fail');
+					}
+
+					logResult('requestAnimationFrame-results', '✅ requestAnimationFrame 跟踪测试完成', 'info');
+				}, 50);
+
+			} catch (error) {
+				logResult('requestAnimationFrame-results', `✗ 测试出错: ${error.message}`, 'fail');
+			}
+		}
+
+		// 测试 4: clearTimeout
+		function testClearTimeout() {
+			clearResults('clearTimeout-results');
+			logResult('clearTimeout-results', '开始测试 clearTimeout...', 'info');
+
+			try {
+				const memoryManager = new ArgonMemoryManager();
+				let executed = false;
+
+				const id = memoryManager.setTimeout(() => {
+					executed = true;
+				}, 100);
+
+				if (memoryManager.timers.has(id)) {
+					logResult('clearTimeout-results', '✓ setTimeout ID 已被跟踪', 'pass');
+				} else {
+					logResult('clearTimeout-results', '✗ setTimeout ID 未被跟踪', 'fail');
+				}
+
+				// 立即清除
+				memoryManager.clearTimeout(id);
+
+				if (!memoryManager.timers.has(id)) {
+					logResult('clearTimeout-results', '✓ clearTimeout 后从跟踪集合中移除', 'pass');
+				} else {
+					logResult('clearTimeout-results', '✗ clearTimeout 后未从跟踪集合中移除', 'fail');
+				}
+
+				// 等待一段时间，验证未执行
+				setTimeout(() => {
+					if (!executed) {
+						logResult('clearTimeout-results', '✓ clearTimeout 后回调函数未执行', 'pass');
+					} else {
+						logResult('clearTimeout-results', '✗ clearTimeout 后回调函数仍然执行了', 'fail');
+					}
+
+					// 测试 cancelAnimationFrame
+					let frameExecuted = false;
+					const frameId = memoryManager.requestAnimationFrame(() => {
+						frameExecuted = true;
+					});
+
+					memoryManager.cancelAnimationFrame(frameId);
+
+					if (!memoryManager.frames.has(frameId)) {
+						logResult('clearTimeout-results', '✓ cancelAnimationFrame 后从跟踪集合中移除', 'pass');
+					} else {
+						logResult('clearTimeout-results', '✗ cancelAnimationFrame 后未从跟踪集合中移除', 'fail');
+					}
+
+					setTimeout(() => {
+						if (!frameExecuted) {
+							logResult('clearTimeout-results', '✓ cancelAnimationFrame 后回调函数未执行', 'pass');
+						} else {
+							logResult('clearTimeout-results', '✗ cancelAnimationFrame 后回调函数仍然执行了', 'fail');
+						}
+
+						logResult('clearTimeout-results', '✅ clearTimeout 测试完成', 'info');
+					}, 50);
+				}, 150);
+
+			} catch (error) {
+				logResult('clearTimeout-results', `✗ 测试出错: ${error.message}`, 'fail');
+			}
+		}
+
+		// 测试 5: clearAll 统一清理
+		function testClearAll() {
+			clearResults('clearAll-results');
+			logResult('clearAll-results', '开始测试 clearAll 统一清理...', 'info');
+
+			try {
+				const memoryManager = new ArgonMemoryManager();
+				let timeoutCount = 0;
+				let intervalCount = 0;
+				let frameCount = 0;
+
+				// 创建多个定时器
+				memoryManager.setTimeout(() => { timeoutCount++; }, 200);
+				memoryManager.setTimeout(() => { timeoutCount++; }, 300);
+				memoryManager.setInterval(() => { intervalCount++; }, 50);
+				memoryManager.setInterval(() => { intervalCount++; }, 60);
+				memoryManager.requestAnimationFrame(() => { frameCount++; });
+				memoryManager.requestAnimationFrame(() => { frameCount++; });
+
+				const stats = memoryManager.getStats();
+				logResult('clearAll-results', `创建定时器 - timers: ${stats.timers}, intervals: ${stats.intervals}, frames: ${stats.frames}`, 'info');
+
+				if (stats.timers === 2 && stats.intervals === 2 && stats.frames === 2) {
+					logResult('clearAll-results', '✓ 所有定时器已创建并跟踪', 'pass');
+				} else {
+					logResult('clearAll-results', '✗ 定时器创建或跟踪失败', 'fail');
+				}
+
+				// 清理所有
+				memoryManager.clearAll();
+
+				const statsAfter = memoryManager.getStats();
+				logResult('clearAll-results', `清理后 - timers: ${statsAfter.timers}, intervals: ${statsAfter.intervals}, frames: ${statsAfter.frames}`, 'info');
+
+				if (statsAfter.timers === 0 && statsAfter.intervals === 0 && statsAfter.frames === 0) {
+					logResult('clearAll-results', '✓ clearAll 后所有跟踪集合已清空', 'pass');
+				} else {
+					logResult('clearAll-results', '✗ clearAll 后跟踪集合未完全清空', 'fail');
+				}
+
+				// 等待一段时间，验证所有回调都未执行
+				setTimeout(() => {
+					if (timeoutCount === 0 && intervalCount === 0 && frameCount === 0) {
+						logResult('clearAll-results', '✓ clearAll 后所有回调函数都未执行', 'pass');
+					} else {
+						logResult('clearAll-results', `✗ clearAll 后仍有回调执行 (timeout: ${timeoutCount}, interval: ${intervalCount}, frame: ${frameCount})`, 'fail');
+					}
+
+					logResult('clearAll-results', '✅ clearAll 统一清理测试完成', 'info');
+				}, 400);
+
+			} catch (error) {
+				logResult('clearAll-results', `✗ 测试出错: ${error.message}`, 'fail');
+			}
+		}
+
+		// 测试 6: 参数传递
+		function testArgumentPassing() {
+			clearResults('argumentPassing-results');
+			logResult('argumentPassing-results', '开始测试参数传递...', 'info');
+
+			try {
+				const memoryManager = new ArgonMemoryManager();
+
+				// 测试 setTimeout 参数传递
+				let timeoutArgs = null;
+				memoryManager.setTimeout((a, b, c) => {
+					timeoutArgs = [a, b, c];
+				}, 50, 'arg1', 'arg2', 'arg3');
+
+				// 测试 setInterval 参数传递
+				let intervalArgs = null;
+				const intervalId = memoryManager.setInterval((x, y) => {
+					if (!intervalArgs) {
+						intervalArgs = [x, y];
+					}
+				}, 50, 'test1', 'test2');
+
+				setTimeout(() => {
+					// 验证 setTimeout 参数
+					if (timeoutArgs && timeoutArgs[0] === 'arg1' && timeoutArgs[1] === 'arg2' && timeoutArgs[2] === 'arg3') {
+						logResult('argumentPassing-results', '✓ setTimeout 参数传递正确', 'pass');
+					} else {
+						logResult('argumentPassing-results', `✗ setTimeout 参数传递错误: ${JSON.stringify(timeoutArgs)}`, 'fail');
+					}
+
+					// 验证 setInterval 参数
+					if (intervalArgs && intervalArgs[0] === 'test1' && intervalArgs[1] === 'test2') {
+						logResult('argumentPassing-results', '✓ setInterval 参数传递正确', 'pass');
+					} else {
+						logResult('argumentPassing-results', `✗ setInterval 参数传递错误: ${JSON.stringify(intervalArgs)}`, 'fail');
+					}
+
+					memoryManager.clearInterval(intervalId);
+					logResult('argumentPassing-results', '✅ 参数传递测试完成', 'info');
+				}, 150);
+
+			} catch (error) {
+				logResult('argumentPassing-results', `✗ 测试出错: ${error.message}`, 'fail');
+			}
+		}
+
+		// 测试 7: getStats 统计信息
+		function testGetStats() {
+			clearResults('getStats-results');
+			logResult('getStats-results', '开始测试 getStats 统计信息...', 'info');
+
+			try {
+				const memoryManager = new ArgonMemoryManager();
+
+				// 初始状态
+				let stats = memoryManager.getStats();
+				if (stats.timers === 0 && stats.intervals === 0 && stats.frames === 0 && stats.total === 0) {
+					logResult('getStats-results', '✓ 初始状态统计信息正确（全为 0）', 'pass');
+				} else {
+					logResult('getStats-results', `✗ 初始状态统计信息错误: ${JSON.stringify(stats)}`, 'fail');
+				}
+
+				// 创建各种定时器
+				memoryManager.setTimeout(() => {}, 1000);
+				memoryManager.setTimeout(() => {}, 2000);
+				memoryManager.setInterval(() => {}, 1000);
+				memoryManager.requestAnimationFrame(() => {});
+				memoryManager.requestAnimationFrame(() => {});
+				memoryManager.requestAnimationFrame(() => {});
+
+				stats = memoryManager.getStats();
+				logResult('getStats-results', `当前统计: ${JSON.stringify(stats)}`, 'info');
+
+				if (stats.timers === 2 && stats.intervals === 1 && stats.frames === 3 && stats.total === 6) {
+					logResult('getStats-results', '✓ 创建定时器后统计信息正确', 'pass');
+				} else {
+					logResult('getStats-results', `✗ 统计信息错误: ${JSON.stringify(stats)}`, 'fail');
+				}
+
+				// 清理所有
+				memoryManager.clearAll();
+				stats = memoryManager.getStats();
+
+				if (stats.timers === 0 && stats.intervals === 0 && stats.frames === 0 && stats.total === 0) {
+					logResult('getStats-results', '✓ clearAll 后统计信息正确（全为 0）', 'pass');
+				} else {
+					logResult('getStats-results', `✗ clearAll 后统计信息错误: ${JSON.stringify(stats)}`, 'fail');
+				}
+
+				logResult('getStats-results', '✅ getStats 统计信息测试完成', 'info');
+
+			} catch (error) {
+				logResult('getStats-results', `✗ 测试出错: ${error.message}`, 'fail');
+			}
+		}
+
+		// 运行所有测试
+		function runAllTests() {
+			clearResults('all-tests-results');
+			logResult('all-tests-results', '🚀 开始运行所有测试...', 'info');
+
+			testSetTimeout();
+			setTimeout(() => testSetInterval(), 200);
+			setTimeout(() => testRequestAnimationFrame(), 400);
+			setTimeout(() => testClearTimeout(), 600);
+			setTimeout(() => testClearAll(), 1000);
+			setTimeout(() => testArgumentPassing(), 1500);
+			setTimeout(() => testGetStats(), 1700);
+
+			setTimeout(() => {
+				logResult('all-tests-results', '✅ 所有测试已启动，请查看各模块的测试结果', 'info');
+			}, 1800);
+		}
+
+		// 页面加载完成后的提示
+		window.addEventListener('load', () => {
+			console.log('ArgonMemoryManager 测试页面已加载');
+			console.log('ArgonMemoryManager:', ArgonMemoryManager);
+		});
+	</script>
+</body>
+</html>

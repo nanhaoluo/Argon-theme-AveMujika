@@ -678,6 +678,176 @@ class ArgonRenderOptimizer {
 }
 
 // ==========================================================================
+// 内存管理模块
+// ==========================================================================
+
+/**
+ * 内存管理类
+ * 跟踪和管理定时器、间隔定时器和动画帧，确保正确清理避免内存泄漏
+ * 
+ * @class ArgonMemoryManager
+ */
+class ArgonMemoryManager {
+	/**
+	 * 构造函数
+	 * 初始化 ID 跟踪集合
+	 */
+	constructor() {
+		this.timers = new Set();      // setTimeout ID 集合
+		this.intervals = new Set();   // setInterval ID 集合
+		this.frames = new Set();      // requestAnimationFrame ID 集合
+	}
+	
+	/**
+	 * 设置定时器并跟踪
+	 * 包装原生 setTimeout，自动跟踪 timer ID
+	 * 
+	 * @param {Function} callback - 回调函数
+	 * @param {number} delay - 延迟时间（毫秒）
+	 * @param {...*} args - 传递给回调函数的参数
+	 * @returns {number} timer ID，可用于手动清除
+	 */
+	setTimeout(callback, delay, ...args) {
+		const id = setTimeout(() => {
+			// 执行完成后自动从跟踪集合中移除
+			this.timers.delete(id);
+			callback(...args);
+		}, delay);
+		
+		this.timers.add(id);
+		return id;
+	}
+	
+	/**
+	 * 设置间隔定时器并跟踪
+	 * 包装原生 setInterval，自动跟踪 interval ID
+	 * 
+	 * @param {Function} callback - 回调函数
+	 * @param {number} interval - 间隔时间（毫秒）
+	 * @param {...*} args - 传递给回调函数的参数
+	 * @returns {number} interval ID，可用于手动清除
+	 */
+	setInterval(callback, interval, ...args) {
+		const id = setInterval(() => {
+			callback(...args);
+		}, interval);
+		
+		this.intervals.add(id);
+		return id;
+	}
+	
+	/**
+	 * 请求动画帧并跟踪
+	 * 包装原生 requestAnimationFrame，自动跟踪 frame ID
+	 * 
+	 * @param {Function} callback - 回调函数
+	 * @returns {number} frame ID，可用于手动取消
+	 */
+	requestAnimationFrame(callback) {
+		const id = requestAnimationFrame((timestamp) => {
+			// 执行完成后自动从跟踪集合中移除
+			this.frames.delete(id);
+			callback(timestamp);
+		});
+		
+		this.frames.add(id);
+		return id;
+	}
+	
+	/**
+	 * 清除定时器
+	 * 包装原生 clearTimeout，同时从跟踪集合中移除
+	 * 
+	 * @param {number} id - timer ID
+	 * @returns {void}
+	 */
+	clearTimeout(id) {
+		clearTimeout(id);
+		this.timers.delete(id);
+	}
+	
+	/**
+	 * 清除间隔定时器
+	 * 包装原生 clearInterval，同时从跟踪集合中移除
+	 * 
+	 * @param {number} id - interval ID
+	 * @returns {void}
+	 */
+	clearInterval(id) {
+		clearInterval(id);
+		this.intervals.delete(id);
+	}
+	
+	/**
+	 * 取消动画帧
+	 * 包装原生 cancelAnimationFrame，同时从跟踪集合中移除
+	 * 
+	 * @param {number} id - frame ID
+	 * @returns {void}
+	 */
+	cancelAnimationFrame(id) {
+		cancelAnimationFrame(id);
+		this.frames.delete(id);
+	}
+	
+	/**
+	 * 清理所有定时器和动画帧
+	 * 通常在 PJAX 页面切换或组件销毁时调用
+	 * 确保所有待执行的回调都被取消，避免内存泄漏
+	 * 
+	 * @returns {void}
+	 */
+	clearAll() {
+		// 清除所有 setTimeout
+		this.timers.forEach(id => {
+			try {
+				clearTimeout(id);
+			} catch (e) {
+				// 静默失败，ID 可能已失效
+			}
+		});
+		
+		// 清除所有 setInterval
+		this.intervals.forEach(id => {
+			try {
+				clearInterval(id);
+			} catch (e) {
+				// 静默失败，ID 可能已失效
+			}
+		});
+		
+		// 取消所有 requestAnimationFrame
+		this.frames.forEach(id => {
+			try {
+				cancelAnimationFrame(id);
+			} catch (e) {
+				// 静默失败，ID 可能已失效
+			}
+		});
+		
+		// 清空所有集合
+		this.timers.clear();
+		this.intervals.clear();
+		this.frames.clear();
+	}
+	
+	/**
+	 * 获取当前跟踪的定时器数量
+	 * 用于调试和性能监控
+	 * 
+	 * @returns {Object} 包含各类定时器数量的对象
+	 */
+	getStats() {
+		return {
+			timers: this.timers.size,
+			intervals: this.intervals.size,
+			frames: this.frames.size,
+			total: this.timers.size + this.intervals.size + this.frames.size
+		};
+	}
+}
+
+// ==========================================================================
 // 模块导出和初始化接口
 // ==========================================================================
 
@@ -702,5 +872,6 @@ if (typeof window !== 'undefined') {
 	window.ArgonEventManager = ArgonEventManager;
 	window.ArgonResourceLoader = ArgonResourceLoader;
 	window.ArgonRenderOptimizer = ArgonRenderOptimizer;
+	window.ArgonMemoryManager = ArgonMemoryManager;
 	window.initArgonPerformance = initArgonPerformance;
 }
