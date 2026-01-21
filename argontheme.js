@@ -2305,7 +2305,7 @@ $.fancybox.defaults.i18n = {
 var lazyloadObserver = null;
 
 function lazyloadInit() {
-	// 清理旧的 Observer
+	// 清理旧的 Observer（防御性编程）
 	if (lazyloadObserver) {
 		lazyloadObserver.disconnect();
 		lazyloadObserver = null;
@@ -2314,16 +2314,7 @@ function lazyloadInit() {
 	// 检查是否启用懒加载
 	if (argonConfig.lazyload === false || argonConfig.lazyload === 'false') {
 		// 未启用懒加载时，直接加载所有图片
-		let images = document.querySelectorAll('img.lazyload[data-src]');
-		images.forEach(function(img) {
-			let src = img.getAttribute('data-src');
-			if (src) {
-				img.src = src;
-				img.removeAttribute('data-src');
-				img.classList.remove('lazyload');
-				img.className = img.className.replace(/\blazyload-style-\d+\b/g, '').trim();
-			}
-		});
+		loadAllImagesImmediately();
 		return;
 	}
 	
@@ -2341,7 +2332,7 @@ function lazyloadInit() {
 			entries.forEach(function(entry) {
 				if (entry.isIntersecting) {
 					let img = entry.target;
-					loadImage(img, effect);
+					loadImageOptimized(img, effect);
 					lazyloadObserver.unobserve(img);
 				}
 			});
@@ -2357,19 +2348,16 @@ function lazyloadInit() {
 			lazyloadObserver.observe(img);
 		});
 	} else {
-		// 降级方案：直接加载所有图片
-		images.forEach(function(img) {
-			loadImage(img, effect);
-		});
+		// 降级方案：使用滚动监听
+		lazyloadFallback(images, effect, threshold);
 	}
 }
 
 /**
- * 加载单张图片
- * @param {HTMLImageElement} img - 图片元素
- * @param {string} effect - 加载效果
+ * 优化的图片加载函数
+ * 使用 requestAnimationFrame 替代 setTimeout
  */
-function loadImage(img, effect) {
+function loadImageOptimized(img, effect) {
 	let src = img.getAttribute('data-src');
 	if (!src) return;
 	
@@ -2383,37 +2371,106 @@ function loadImage(img, effect) {
 		// 移除所有 lazyload-style-* 类
 		img.className = img.className.replace(/\blazyload-style-\d+\b/g, '').trim();
 		
-		// 应用加载效果
-		if (effect === 'fadeIn') {
-			img.style.opacity = '0';
-			img.style.transition = 'opacity 0.3s ease';
-			setTimeout(function() {
-				img.style.opacity = '1';
-			}, 10);
-			setTimeout(function() {
-				img.style.transition = '';
-			}, 310);
-		} else if (effect === 'slideDown') {
-			img.style.opacity = '0';
-			img.style.transform = 'translateY(-20px)';
-			img.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-			setTimeout(function() {
-				img.style.opacity = '1';
-				img.style.transform = 'translateY(0)';
-			}, 10);
-			setTimeout(function() {
-				img.style.transition = '';
-				img.style.transform = '';
-			}, 310);
-		}
+		// 使用 requestAnimationFrame 应用加载效果
+		applyLoadEffectOptimized(img, effect);
 	};
 	tempImg.onerror = function() {
 		// 加载失败时使用原始 src
 		img.src = src;
 		img.removeAttribute('data-src');
 		img.classList.remove('lazyload');
+		img.className = img.className.replace(/\blazyload-style-\d+\b/g, '').trim();
 	};
 	tempImg.src = src;
+}
+
+/**
+ * 使用 requestAnimationFrame 应用加载效果
+ */
+function applyLoadEffectOptimized(img, effect) {
+	if (effect === 'fadeIn') {
+		img.style.opacity = '0';
+		img.style.transition = 'opacity 0.3s ease';
+		requestAnimationFrame(function() {
+			requestAnimationFrame(function() {
+				img.style.opacity = '1';
+			});
+		});
+		// 清理 transition 样式
+		setTimeout(function() {
+			img.style.transition = '';
+		}, 310);
+	} else if (effect === 'slideDown') {
+		img.style.opacity = '0';
+		img.style.transform = 'translateY(-20px)';
+		img.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+		requestAnimationFrame(function() {
+			requestAnimationFrame(function() {
+				img.style.opacity = '1';
+				img.style.transform = 'translateY(0)';
+			});
+		});
+		// 清理样式
+		setTimeout(function() {
+			img.style.transition = '';
+			img.style.transform = '';
+		}, 310);
+	}
+}
+
+/**
+ * 降级方案：使用滚动监听实现懒加载
+ */
+function lazyloadFallback(images, effect, threshold) {
+	let loadedImages = new Set();
+	
+	function checkImagesInView() {
+		let viewportHeight = window.innerHeight;
+		let scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+		
+		images.forEach(function(img) {
+			if (loadedImages.has(img)) return;
+			
+			let rect = img.getBoundingClientRect();
+			if (rect.top < viewportHeight + threshold && rect.bottom > -threshold) {
+				loadImageOptimized(img, effect);
+				loadedImages.add(img);
+			}
+		});
+	}
+	
+	// 使用节流函数优化性能
+	let throttleTimer = null;
+	function throttledCheck() {
+		if (throttleTimer) return;
+		throttleTimer = setTimeout(function() {
+			checkImagesInView();
+			throttleTimer = null;
+		}, 100);
+	}
+	
+	// 绑定事件监听器
+	window.addEventListener('scroll', throttledCheck, {passive: true});
+	window.addEventListener('resize', throttledCheck, {passive: true});
+	
+	// 立即检查一次
+	checkImagesInView();
+}
+
+/**
+ * 立即加载所有图片（懒加载禁用时）
+ */
+function loadAllImagesImmediately() {
+	let images = document.querySelectorAll('img.lazyload[data-src]');
+	images.forEach(function(img) {
+		let src = img.getAttribute('data-src');
+		if (src) {
+			img.src = src;
+			img.removeAttribute('data-src');
+			img.classList.remove('lazyload');
+			img.className = img.className.replace(/\blazyload-style-\d+\b/g, '').trim();
+		}
+	});
 }
 
 // 确保 DOM 加载完成后再初始化懒加载
@@ -2511,6 +2568,82 @@ if ($("html").hasClass("banner-as-cover")){
 
 /*Pjax*/
 var pjaxScrollTop = 0, pjaxLoading = false;
+
+/**
+ * 清理 PJAX 页面切换前的所有资源
+ * 在 pjax:beforeReplace 事件中调用
+ */
+function cleanupPjaxResources() {
+	// 清理 LazyLoad Observer
+	if (lazyloadObserver) {
+		lazyloadObserver.disconnect();
+		lazyloadObserver = null;
+	}
+	
+	// 清理 Zoomify 实例
+	if (zoomifyInstances && zoomifyInstances.length > 0) {
+		zoomifyInstances.forEach(function(instance) {
+			try {
+				if (instance && typeof instance.destroy === 'function') {
+					instance.destroy();
+				}
+			} catch(e) {
+				console.warn('Failed to destroy Zoomify instance:', e);
+			}
+		});
+		zoomifyInstances = [];
+	}
+	$('img.zoomify-initialized').removeClass('zoomify-initialized');
+	
+	// 清理 Tippy 实例
+	if (typeof tippy !== 'undefined') {
+		document.querySelectorAll('[data-tippy-root]').forEach(function(el) {
+			try {
+				if (el._tippy && typeof el._tippy.destroy === 'function') {
+					el._tippy.destroy();
+				}
+			} catch(e) {
+				console.warn('Failed to destroy Tippy instance:', e);
+			}
+		});
+		$('.tippy-initialized').removeClass('tippy-initialized');
+	}
+}
+
+/**
+ * 重置 GT4 验证码
+ * 在 pjax:end 事件中调用
+ */
+function resetGT4Captcha() {
+	try {
+		if ($('#geetest-captcha').length > 0) {
+			// 重置前端状态，避免重复提交阻塞
+			window.geetestVerified = false;
+			window.geetestAutoSubmitting = false;
+			
+			// 清空隐藏字段，防止残留导致 pass_token 复用
+			$('#geetest_lot_number').val('');
+			$('#geetest_captcha_output').val('');
+			$('#geetest_pass_token').val('');
+			$('#geetest_gen_time').val('');
+			
+			// 清空容器，防止重复 appendTo 导致多个实例
+			$('#geetest-captcha').empty();
+			
+			// 若页面脚本已提供初始化方法，则调用以加载验证码
+			if (typeof initGeetestCaptcha === 'function') {
+				initGeetestCaptcha();
+			} else if (typeof loadGeetestScript === 'function' && typeof initGeetestCaptchaCore === 'function') {
+				loadGeetestScript(function() {
+					initGeetestCaptchaCore();
+				});
+			}
+		}
+	} catch (e) {
+		console.warn('Geetest init on PJAX failed:', e);
+	}
+}
+
 $.pjax.defaults.timeout = 10000;
 $.pjax.defaults.container = ['#primary', '#leftbar_part1_menu', '#leftbar_part2_inner', '.page-information-card-container', '#rightbar', '#wpadminbar'];
 $.pjax.defaults.fragment = ['#primary', '#leftbar_part1_menu', '#leftbar_part2_inner', '.page-information-card-container', '#rightbar', '#wpadminbar'];
@@ -2557,39 +2690,16 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 	NProgress.set(0.618);
 }).on('pjax:beforeReplace', function(e, dom) {
 	// 清理旧页面的资源
-	if (lazyloadObserver) {
-		lazyloadObserver.disconnect();
-		lazyloadObserver = null;
-	}
+	cleanupPjaxResources();
 	
-	// 清理 Zoomify 实例
-	if (zoomifyInstances.length > 0) {
-		zoomifyInstances.forEach(function(instance) {
-			try {
-				if (instance && typeof instance.destroy === 'function') {
-					instance.destroy();
-				}
-			} catch(e) {}
-		});
-		zoomifyInstances = [];
-	}
-	$('img.zoomify-initialized').removeClass('zoomify-initialized');
-	
-	// 清理 Tippy 实例
-	if (typeof tippy !== 'undefined') {
-		document.querySelectorAll('[data-tippy-root]').forEach(function(el) {
-			try {
-				el._tippy?.destroy?.();
-			} catch(e) {}
-		});
-		$('.tippy-initialized').removeClass('tippy-initialized');
-	}
-	
+	// 更新 UI 状态
 	if ($("#post_comment", dom[0]).length > 0){
 		$("#fabtn_go_to_comment").removeClass("d-none");
 	}else{
 		$("#fabtn_go_to_comment").addClass("d-none");
 	}
+	
+	// 处理滚动位置
 	if ($("html").hasClass("banner-as-cover")){
 		if (!$("#main").hasClass("article-list-home")){
 			pjaxScrollTop = 0;
@@ -2649,40 +2759,17 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 
 	NProgress.done();
 }).on('pjax:end', function() {
-	// 再次确保资源正确加载
-	setTimeout(function() {
-		waterflowInit();
-		lazyloadInit();
-		
-		// 重置移动端目录状态
-		if (typeof window.resetMobileCatalog === 'function') {
+	// 重置移动端目录状态
+	if (typeof window.resetMobileCatalog === 'function') {
+		try {
 			window.resetMobileCatalog();
+		} catch (err) {
+			console.warn('resetMobileCatalog failed:', err);
 		}
-	}, 100);
+	}
 	
 	// GT4: PJAX 后确保评论页验证码已初始化
-	try {
-		if ($('#geetest-captcha').length > 0) {
-			// 重置前端状态，避免重复提交阻塞
-			window.geetestVerified = false;
-			window.geetestAutoSubmitting = false;
-			// 清空隐藏字段，防止残留导致 pass_token 复用
-			$('#geetest_lot_number').val('');
-			$('#geetest_captcha_output').val('');
-			$('#geetest_pass_token').val('');
-			$('#geetest_gen_time').val('');
-			// 清空容器，防止重复 appendTo 导致多个实例
-			$('#geetest-captcha').empty();
-			// 若页面脚本已提供初始化方法，则调用以加载验证码
-			if (typeof initGeetestCaptcha === 'function') {
-				initGeetestCaptcha();
-			} else if (typeof loadGeetestScript === 'function' && typeof initGeetestCaptchaCore === 'function') {
-				loadGeetestScript(function(){ initGeetestCaptchaCore(); });
-			}
-		}
-	} catch (e) {
-		console.warn('Geetest init on PJAX failed:', e);
-	}
+	resetGT4Captcha();
 });
 
 /*Reference 跳转*/
