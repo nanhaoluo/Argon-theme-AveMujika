@@ -147,6 +147,77 @@ class ArgonEventManager {
 	}
 	
 	/**
+	 * 节流函数
+	 * 限制函数执行频率，使用 requestAnimationFrame 优化性能
+	 * 
+	 * @param {Function} func - 要节流的函数
+	 * @param {number} wait - 等待时间（毫秒），默认 16ms（约 60fps）
+	 * @returns {Function} 节流后的函数
+	 */
+	throttle(func, wait = 16) {
+		let lastTime = 0;
+		let timeoutId = null;
+		
+		return function(...args) {
+			const now = Date.now();
+			const remaining = wait - (now - lastTime);
+			
+			if (remaining <= 0) {
+				// 如果距离上次执行已超过等待时间，立即执行
+				if (timeoutId) {
+					cancelAnimationFrame(timeoutId);
+					timeoutId = null;
+				}
+				lastTime = now;
+				func.apply(this, args);
+			} else if (!timeoutId) {
+				// 否则使用 requestAnimationFrame 在下一帧执行
+				timeoutId = requestAnimationFrame(() => {
+					lastTime = Date.now();
+					timeoutId = null;
+					func.apply(this, args);
+				});
+			}
+		};
+	}
+	
+	/**
+	 * 防抖函数
+	 * 延迟执行函数，直到事件停止触发指定时间后才执行
+	 * 如果在等待期间再次触发，则重新计时
+	 * 
+	 * @param {Function} func - 要防抖的函数
+	 * @param {number} wait - 等待时间（毫秒），默认 150ms
+	 * @returns {Function} 防抖后的函数，包含 cancel 方法用于取消待执行任务
+	 */
+	debounce(func, wait = 150) {
+		let timeoutId = null;
+		
+		const debounced = function(...args) {
+			// 取消之前的待执行任务
+			if (timeoutId) {
+				clearTimeout(timeoutId);
+			}
+			
+			// 设置新的延迟执行任务
+			timeoutId = setTimeout(() => {
+				timeoutId = null;
+				func.apply(this, args);
+			}, wait);
+		};
+		
+		// 提供取消方法，允许手动取消待执行任务
+		debounced.cancel = function() {
+			if (timeoutId) {
+				clearTimeout(timeoutId);
+				timeoutId = null;
+			}
+		};
+		
+		return debounced;
+	}
+	
+	/**
 	 * 添加事件监听器
 	 * 自动跟踪监听器以便后续清理
 	 * 
@@ -231,6 +302,271 @@ class ArgonEventManager {
 }
 
 // ==========================================================================
+// 资源加载模块
+// ==========================================================================
+
+/**
+ * 资源加载类
+ * 提供第三方库按需加载和缓存管理功能
+ * 
+ * @class ArgonResourceLoader
+ */
+class ArgonResourceLoader {
+	/**
+	 * 构造函数
+	 * 初始化加载状态管理
+	 */
+	constructor() {
+		this.loaded = new Set();      // 已加载的资源集合
+		this.loading = new Map();     // 正在加载的资源 Promise Map
+	}
+	
+	/**
+	 * 按需加载脚本
+	 * 如果资源已加载或正在加载，则复用缓存
+	 * 
+	 * @param {string} name - 资源名称（如 'prism', 'zoomify', 'tippy'）
+	 * @param {string} url - 资源 URL
+	 * @returns {Promise<void>} 加载完成的 Promise
+	 */
+	async loadScript(name, url) {
+		// 如果已加载，直接返回
+		if (this.loaded.has(name)) {
+			return Promise.resolve();
+		}
+		
+		// 如果正在加载，返回现有的 Promise
+		if (this.loading.has(name)) {
+			return this.loading.get(name);
+		}
+		
+		// 创建新的加载 Promise
+		const promise = new Promise((resolve, reject) => {
+			const script = document.createElement('script');
+			script.src = url;
+			script.async = true;
+			
+			script.onload = () => {
+				this.loaded.add(name);
+				this.loading.delete(name);
+				resolve();
+			};
+			
+			script.onerror = () => {
+				this.loading.delete(name);
+				reject(new Error(`Failed to load ${name} from ${url}`));
+			};
+			
+			document.head.appendChild(script);
+		});
+		
+		this.loading.set(name, promise);
+		return promise;
+	}
+	
+	/**
+	 * 检查页面是否需要某个库
+	 * 通过 CSS 选择器判断页面中是否存在需要该库的元素
+	 * 
+	 * @param {string} selector - CSS 选择器
+	 * @returns {boolean} 如果页面包含匹配的元素则返回 true
+	 */
+	needsLibrary(selector) {
+		return document.querySelector(selector) !== null;
+	}
+	
+	/**
+	 * 条件加载 Prism 代码高亮库
+	 * 仅在页面包含代码块时加载
+	 * 
+	 * @returns {Promise<void>}
+	 */
+	async loadPrismIfNeeded() {
+		// 检查是否需要加载
+		if (!this.needsLibrary('pre code')) {
+			return;
+		}
+		
+		// 检查是否已经存在
+		if (typeof window.Prism !== 'undefined' && window.Prism.highlightAll) {
+			this.loaded.add('prism');
+			return;
+		}
+		
+		// 加载 Prism
+		if (typeof argonConfig !== 'undefined' && argonConfig.prism_url) {
+			await this.loadScript('prism', argonConfig.prism_url);
+		}
+	}
+	
+	/**
+	 * 条件加载 Zoomify 图片放大库
+	 * 仅在页面包含图片时加载
+	 * 
+	 * @returns {Promise<void>}
+	 */
+	async loadZoomifyIfNeeded() {
+		// 检查是否需要加载
+		if (!this.needsLibrary('.post-content img')) {
+			return;
+		}
+		
+		// 检查是否已经存在
+		if (typeof window.Zoomify !== 'undefined') {
+			this.loaded.add('zoomify');
+			return;
+		}
+		
+		// 加载 Zoomify
+		if (typeof argonConfig !== 'undefined' && argonConfig.zoomify_url) {
+			await this.loadScript('zoomify', argonConfig.zoomify_url);
+		}
+	}
+	
+	/**
+	 * 条件加载 Tippy 提示框库
+	 * 仅在页面包含提示框元素时加载
+	 * 
+	 * @returns {Promise<void>}
+	 */
+	async loadTippyIfNeeded() {
+		// 检查是否需要加载
+		if (!this.needsLibrary('[data-tippy-content]')) {
+			return;
+		}
+		
+		// 检查是否已经存在
+		if (typeof window.tippy !== 'undefined') {
+			this.loaded.add('tippy');
+			return;
+		}
+		
+		// 加载 Tippy
+		if (typeof argonConfig !== 'undefined' && argonConfig.tippy_url) {
+			await this.loadScript('tippy', argonConfig.tippy_url);
+		}
+	}
+}
+
+// ==========================================================================
+// 渲染优化模块
+// ==========================================================================
+
+/**
+ * 渲染优化类
+ * 批量读写 DOM 避免布局抖动，管理 GPU 加速属性
+ * 
+ * @class ArgonRenderOptimizer
+ */
+class ArgonRenderOptimizer {
+	/**
+	 * 构造函数
+	 * 初始化读写队列和调度状态
+	 */
+	constructor() {
+		this.readQueue = [];      // DOM 读取操作队列
+		this.writeQueue = [];     // DOM 写入操作队列
+		this.scheduled = false;   // 是否已调度执行
+	}
+	
+	/**
+	 * 批量读取 DOM 属性
+	 * 将读取操作加入队列，在下一帧统一执行
+	 * 
+	 * @param {Function} readFn - 读取函数，应该只包含 DOM 读取操作
+	 * @returns {void}
+	 */
+	read(readFn) {
+		this.readQueue.push(readFn);
+		this._schedule();
+	}
+	
+	/**
+	 * 批量写入 DOM
+	 * 将写入操作加入队列，在所有读取操作完成后统一执行
+	 * 
+	 * @param {Function} writeFn - 写入函数，应该只包含 DOM 写入操作
+	 * @returns {void}
+	 */
+	write(writeFn) {
+		this.writeQueue.push(writeFn);
+		this._schedule();
+	}
+	
+	/**
+	 * 调度执行
+	 * 使用 requestAnimationFrame 在下一帧执行队列中的操作
+	 * 
+	 * @private
+	 * @returns {void}
+	 */
+	_schedule() {
+		if (this.scheduled) return;
+		
+		this.scheduled = true;
+		requestAnimationFrame(() => {
+			this._flush();
+		});
+	}
+	
+	/**
+	 * 执行队列
+	 * 先执行所有读取操作，再执行所有写入操作
+	 * 这样可以避免布局抖动（layout thrashing）
+	 * 
+	 * @private
+	 * @returns {void}
+	 */
+	_flush() {
+		// 先执行所有读取操作
+		while (this.readQueue.length) {
+			const readFn = this.readQueue.shift();
+			try {
+				readFn();
+			} catch (error) {
+				console.error('Error in read operation:', error);
+			}
+		}
+		
+		// 再执行所有写入操作
+		while (this.writeQueue.length) {
+			const writeFn = this.writeQueue.shift();
+			try {
+				writeFn();
+			} catch (error) {
+				console.error('Error in write operation:', error);
+			}
+		}
+		
+		this.scheduled = false;
+	}
+	
+	/**
+	 * 添加 GPU 加速提示
+	 * 设置 will-change 属性，提示浏览器创建合成层
+	 * 
+	 * @param {Element} element - DOM 元素
+	 * @returns {void}
+	 */
+	enableGPU(element) {
+		if (!element) return;
+		element.style.willChange = 'transform, opacity';
+	}
+	
+	/**
+	 * 移除 GPU 加速提示
+	 * 移除 will-change 属性，释放资源
+	 * 
+	 * @param {Element} element - DOM 元素
+	 * @returns {void}
+	 */
+	disableGPU(element) {
+		if (!element) return;
+		element.style.willChange = 'auto';
+	}
+}
+
+// ==========================================================================
 // 模块导出和初始化接口
 // ==========================================================================
 
@@ -253,5 +589,7 @@ if (typeof window !== 'undefined') {
 	window.ArgonPerformanceConfig = ArgonPerformanceConfig;
 	window.ArgonDOMCache = ArgonDOMCache;
 	window.ArgonEventManager = ArgonEventManager;
+	window.ArgonResourceLoader = ArgonResourceLoader;
+	window.ArgonRenderOptimizer = ArgonRenderOptimizer;
 	window.initArgonPerformance = initArgonPerformance;
 }
