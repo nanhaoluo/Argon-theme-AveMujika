@@ -2301,6 +2301,14 @@ $.fancybox.defaults.i18n = {
 };
 
 /*Lazyload - 使用 IntersectionObserver 实现懒加载*/
+/*
+ * 优化说明：
+ * 1. 使用全局 lazyloadObserver 变量，便于在 PJAX 切换时清理
+ * 2. 添加 Observer 存在性检查，防止重复初始化
+ * 3. 使用 requestAnimationFrame 替代 setTimeout 实现加载效果
+ * 4. 实现滚动监听降级方案，支持不兼容 IntersectionObserver 的浏览器
+ * 5. 使用 transitionend 事件清理样式，避免固定延迟
+ */
 // 全局 Observer 实例，用于清理
 var lazyloadObserver = null;
 
@@ -2356,6 +2364,8 @@ function lazyloadInit() {
 /**
  * 优化的图片加载函数
  * 使用 requestAnimationFrame 替代 setTimeout
+ * @param {HTMLImageElement} img - 图片元素
+ * @param {string} effect - 加载效果类型 ('fadeIn' 或 'slideDown')
  */
 function loadImageOptimized(img, effect) {
 	let src = img.getAttribute('data-src');
@@ -2386,6 +2396,8 @@ function loadImageOptimized(img, effect) {
 
 /**
  * 使用 requestAnimationFrame 应用加载效果
+ * @param {HTMLImageElement} img - 图片元素
+ * @param {string} effect - 加载效果类型 ('fadeIn' 或 'slideDown')
  */
 function applyLoadEffectOptimized(img, effect) {
 	if (effect === 'fadeIn') {
@@ -2396,10 +2408,11 @@ function applyLoadEffectOptimized(img, effect) {
 				img.style.opacity = '1';
 			});
 		});
-		// 清理 transition 样式
-		setTimeout(function() {
+		// 使用 transitionend 事件清理样式，更可靠
+		img.addEventListener('transitionend', function cleanup() {
 			img.style.transition = '';
-		}, 310);
+			img.removeEventListener('transitionend', cleanup);
+		}, {once: true});
 	} else if (effect === 'slideDown') {
 		img.style.opacity = '0';
 		img.style.transform = 'translateY(-20px)';
@@ -2410,16 +2423,21 @@ function applyLoadEffectOptimized(img, effect) {
 				img.style.transform = 'translateY(0)';
 			});
 		});
-		// 清理样式
-		setTimeout(function() {
+		// 使用 transitionend 事件清理样式
+		img.addEventListener('transitionend', function cleanup() {
 			img.style.transition = '';
 			img.style.transform = '';
-		}, 310);
+			img.removeEventListener('transitionend', cleanup);
+		}, {once: true});
 	}
 }
 
 /**
  * 降级方案：使用滚动监听实现懒加载
+ * 当浏览器不支持 IntersectionObserver 时使用
+ * @param {NodeList|Array} images - 需要懒加载的图片元素列表
+ * @param {string} effect - 加载效果类型
+ * @param {number} threshold - 提前加载的阈值（像素）
  */
 function lazyloadFallback(images, effect, threshold) {
 	let loadedImages = new Set();
@@ -2459,6 +2477,7 @@ function lazyloadFallback(images, effect, threshold) {
 
 /**
  * 立即加载所有图片（懒加载禁用时）
+ * 不应用任何加载效果，直接替换 src
  */
 function loadAllImagesImmediately() {
 	let images = document.querySelectorAll('img.lazyload[data-src]');
@@ -2571,6 +2590,7 @@ var pjaxScrollTop = 0, pjaxLoading = false;
 
 /**
  * 清理 PJAX 页面切换前的所有资源
+ * 包括 LazyLoad Observer、Zoomify 实例、Tippy 实例
  * 在 pjax:beforeReplace 事件中调用
  */
 function cleanupPjaxResources() {
@@ -2612,6 +2632,7 @@ function cleanupPjaxResources() {
 
 /**
  * 重置 GT4 验证码
+ * 清理状态变量、隐藏字段和容器，然后重新初始化
  * 在 pjax:end 事件中调用
  */
 function resetGT4Captcha() {
@@ -2647,6 +2668,14 @@ function resetGT4Captcha() {
 $.pjax.defaults.timeout = 10000;
 $.pjax.defaults.container = ['#primary', '#leftbar_part1_menu', '#leftbar_part2_inner', '.page-information-card-container', '#rightbar', '#wpadminbar'];
 $.pjax.defaults.fragment = ['#primary', '#leftbar_part1_menu', '#leftbar_part2_inner', '.page-information-card-container', '#rightbar', '#wpadminbar'];
+
+/*
+ * PJAX 事件处理优化说明：
+ * 1. pjax:beforeReplace - 统一清理资源（LazyLoad Observer、Zoomify、Tippy）
+ * 2. pjax:complete - 单次初始化所有功能模块，添加错误处理
+ * 3. pjax:end - 只处理特定任务（移动端目录重置、GT4 验证码重置）
+ * 4. 移除了重复的初始化调用，避免资源泄漏和性能问题
+ */
 $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):not([download]):not(.reference-link):not(.reference-list-backlink)")
 .on('pjax:click', function(e, f, g){
 	if (argonConfig.disable_pjax == true){
@@ -2729,18 +2758,19 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 		}
 	}catch (err){}
 
-	waterflowInit();
-	lazyloadInit();
-	zoomifyInit();
-	highlightJsRender();
-	panguInit();
-	clampInit();
-	tippyInit();
-	getGithubInfoCardContent();
-	showPostOutdateToast();
-	calcHumanTimesOnPage();
-	foldLongComments();
-	foldLongShuoshuo();
+	// 初始化各个功能模块（添加错误处理确保单个模块失败不影响其他模块）
+	try { waterflowInit(); } catch (err) { console.error('waterflowInit failed:', err); }
+	try { lazyloadInit(); } catch (err) { console.error('lazyloadInit failed:', err); }
+	try { zoomifyInit(); } catch (err) { console.error('zoomifyInit failed:', err); }
+	try { highlightJsRender(); } catch (err) { console.error('highlightJsRender failed:', err); }
+	try { panguInit(); } catch (err) { console.error('panguInit failed:', err); }
+	try { clampInit(); } catch (err) { console.error('clampInit failed:', err); }
+	try { tippyInit(); } catch (err) { console.error('tippyInit failed:', err); }
+	try { getGithubInfoCardContent(); } catch (err) { console.error('getGithubInfoCardContent failed:', err); }
+	try { showPostOutdateToast(); } catch (err) { console.error('showPostOutdateToast failed:', err); }
+	try { calcHumanTimesOnPage(); } catch (err) { console.error('calcHumanTimesOnPage failed:', err); }
+	try { foldLongComments(); } catch (err) { console.error('foldLongComments failed:', err); }
+	try { foldLongShuoshuo(); } catch (err) { console.error('foldLongShuoshuo failed:', err); }
 	$("html").trigger("resize");
 	
 	// 恢复滚动位置
