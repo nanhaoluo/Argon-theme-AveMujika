@@ -2540,8 +2540,8 @@ html.navbar-absolute #leftbar_part2.sticky {
 	overflow-y: auto;
 }
 
+#leftbar_part2_inner::-webkit-scrollbar {
 	width: 6px;
-
 }
 
 #leftbar_part2_inner::-webkit-scrollbar-track {
@@ -12623,9 +12623,8 @@ html.navbar-absolute #leftbar_part3.sticky {
 }
 
 .todo-list-scroll {
-	max-height: none;
-	overflow-y: auto;
-	padding-right: 5px;
+	overflow-y: visible;
+	padding-right: 0;
 }
 
 .todo-list-scroll::-webkit-scrollbar {
