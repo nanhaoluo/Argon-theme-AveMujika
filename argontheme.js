@@ -2898,9 +2898,13 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 	});
 	$(document).on("click" , "#sidebar_mask, #leftbar_close_btn" , function(){
 		$("html").removeClass("leftbar-opened");
+		// 关闭侧边栏时折叠所有面板
+		$(".leftbar-mobile-collapse-section.expanded").removeClass("expanded");
 	});
 	$(document).on("click" , "#leftbar a[href]:not([no-pjax]):not([href^='#']):not(.has-submenu)" , function(){
 		$("html").removeClass("leftbar-opened");
+		// 关闭侧边栏时折叠所有面板
+		$(".leftbar-mobile-collapse-section.expanded").removeClass("expanded");
 	});
 	// 移动端子菜单展开/收起
 	$(document).on("click" , ".leftbar-mobile-menu-item.has-children > a.has-submenu" , function(e){
@@ -2917,6 +2921,8 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 			return;
 		}
 		$("html").removeClass("leftbar-opened");
+		// 关闭侧边栏时折叠所有面板
+		$(".leftbar-mobile-collapse-section.expanded").removeClass("expanded");
 		searchPosts(word);
 	});
 	$(document).on("click" , "#navbar_global.show .navbar-nav a[href]:not([no-pjax]):not([href^='#'])" , function(){
@@ -3020,6 +3026,8 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 					// 点击后关闭侧边栏
 					setTimeout(function() {
 						$("html").removeClass("leftbar-opened");
+						// 关闭侧边栏时折叠所有面板
+						$(".leftbar-mobile-collapse-section.expanded").removeClass("expanded");
 					}, 150);
 				}
 			}
