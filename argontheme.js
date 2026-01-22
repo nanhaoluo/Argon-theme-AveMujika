@@ -3891,7 +3891,7 @@ function highlightJsRender(){
 		clipboard.on('success', function(e) {
 			iziToast.show({
 				title: __("复制成功"),
-				message: __("代码已复制到剪贴板),
+				message: __("代码已复制到剪贴板"),
 				class: 'shadow',
 				position: 'topRight',
 				backgroundColor: '#2dce89',
@@ -3906,7 +3906,7 @@ function highlightJsRender(){
 		clipboard.on('error', function(e) {
 			iziToast.show({
 				title: __("复制失败"),
-				message: __("请手动复制代码),
+				message: __("请手动复制代码"),
 				class: 'shadow',
 				position: 'topRight',
 				backgroundColor: '#f5365c',
