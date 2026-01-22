@@ -291,6 +291,38 @@ function themeoptions_page(){
 
 					</tr>
 
+					<tr><th class="subtitle"><h3 id="subsection-subdirectory"><?php _e('子目录', 'argon');?></h3></th></tr>
+
+					<tr>
+
+						<th><label><?php _e('Wordpress 安装目录', 'argon');?></label></th>
+
+						<td>
+
+							<input type="text" class="regular-text" name="argon_wp_path" value="<?php echo get_option('argon_wp_path', '/'); ?>"/>
+
+							<p class="description"><?php _e('如果 Wordpress 安装在子目录中，请在此填写子目录地址（例如', 'argon');?> <code>/blog/</code><?php _e('），注意前后各有一个斜杠。默认为', 'argon');?> <code>/</code> <?php _e('。', 'argon');?><br/><?php _e('如果不清楚该选项的用处，请保持默认。', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
+					<tr><th class="subtitle"><h3 id="subsection-subdirectory"><?php _e('子目录', 'argon');?></h3></th></tr>
+
+					<tr>
+
+						<th><label><?php _e('Wordpress 安装目录', 'argon');?></label></th>
+
+						<td>
+
+							<input type="text" class="regular-text" name="argon_wp_path" value="<?php echo get_option('argon_wp_path', '/'); ?>"/>
+
+							<p class="description"><?php _e('如果 Wordpress 安装在子目录中，请在此填写子目录地址（例如', 'argon');?> <code>/blog/</code><?php _e('），注意前后各有一个斜杠。默认为', 'argon');?> <code>/</code> <?php _e('。', 'argon');?><br/><?php _e('如果不清楚该选项的用处，请保持默认。', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
 					<!-- ========== 2. 外观样式 ========== -->
 					<tr><th class="subtitle"><h2 id="section-appearance"><?php _e('外观样式', 'argon');?></h2></th></tr>
 
@@ -1538,8 +1570,8 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 9. 高级设置 ========== -->
-					<tr><th class="subtitle"><h2 id="section-advanced"><?php _e('高级设置', 'argon');?></h2></th></tr>
+					<!-- ========== 9. SEO 与性能 ========== -->
+					<tr><th class="subtitle"><h2 id="section-seo-performance"><?php _e('SEO 与性能', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-seo">SEO</h3></th></tr>
 
@@ -1566,6 +1598,182 @@ function themeoptions_page(){
 							<input type="text" class="regular-text" name="argon_seo_keywords" value="<?php echo get_option('argon_seo_keywords'); ?>"/>
 
 							<p class="description"><?php _e('设置针对搜索引擎使用的关键词（Keywords Meta 标签内容）。用英文逗号隔开。不设置则不输出该 Meta 标签。', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
+					<tr><th class="subtitle"><h3 id="subsection-cdn"><?php _e('CDN 加速', 'argon');?></h3></th></tr>
+
+					<tr>
+
+						<th><label>CDN</label></th>
+
+						<td>
+
+							<select name="argon_assets_path">
+
+								<?php $argon_assets_path = get_option('argon_assets_path'); ?>
+
+								<option value="default" <?php if ($argon_assets_path=='default'){echo 'selected';} ?>><?php _e('不使用', 'argon');?></option>
+
+								<option value="jsdelivr" <?php if ($argon_assets_path=='jsdelivr'){echo 'selected';} ?>>Jsdelivr</option>
+
+								<option value="fastgit" <?php if ($argon_assets_path=='fastgit'){echo 'selected';} ?>>Fastgit</option>
+
+								<option value="sourcegcdn" <?php if ($argon_assets_path=='sourcegcdn'){echo 'selected';} ?>>Source Global CDN</option>
+
+								<option value="jsdelivr_gcore" <?php if ($argon_assets_path=='jsdelivr_gcore'){echo 'selected';} ?>>Jsdelivr (gcore)</option>
+
+								<option value="jsdelivr_fastly" <?php if ($argon_assets_path=='jsdelivr_fastly'){echo 'selected';} ?>>Jsdelivr (fastly)</option>
+
+								<option value="jsdelivr_cf" <?php if ($argon_assets_path=='jsdelivr_cf'){echo 'selected';} ?>>Jsdelivr (cf)</option>
+
+								<option value="custom" <?php if ($argon_assets_path=='custom'){echo 'selected';} ?>><?php _e('自定义...', 'argon');?></option>
+
+							</select>
+
+							<input type="text" class="regular-text" name="argon_custom_assets_path" placeholder="https://" value="<?php echo get_option('argon_custom_assets_path', ''); ?>" autocomplete="off">
+
+							<p class="description"><?php _e('选择主题资源文件的引用地址。使用 CDN 可以加速资源文件的访问并减少服务器压力。', 'argon');?></p>
+
+							<p class="description custom-assets-path-desctiption"><?php _e('在自定义路径中使用 <code>%theme_version%</code> 来表示主题版本号。', 'argon');?></p>
+
+						</td>
+
+						<script>
+
+							$("select[name='argon_assets_path']").change(function(){
+
+								if ($(this).val() == 'custom') {
+
+									$("input[name='argon_custom_assets_path']").css('display', '');
+
+									$(".custom-assets-path-desctiption").css('display', '');
+
+								} else {
+
+									$("input[name='argon_custom_assets_path']").css('display', 'none');
+
+									$(".custom-assets-path-desctiption").css('display', 'none');
+
+								}
+
+							}).change();
+
+						</script>
+
+					</tr>
+
+					<tr><th class="subtitle"><h3 id="subsection-date-format"><?php _e('日期格式', 'argon');?></h3></th></tr>
+
+					<tr>
+
+						<th><label><?php _e('日期格式', 'argon');?></label></th>
+
+						<td>
+
+							<select name="argon_dateformat">
+
+								<?php $argon_dateformat = get_option('argon_dateformat'); ?>
+
+								<option value="YMD" <?php if ($argon_dateformat=='YMD'){echo 'selected';} ?>>Y-M-D</option>
+
+								<option value="DMY" <?php if ($argon_dateformat=='DMY'){echo 'selected';} ?>>D-M-Y</option>
+
+								<option value="MDY" <?php if ($argon_dateformat=='MDY'){echo 'selected';} ?>>M-D-Y</option>
+
+							</select>
+
+							<p class="description"></p>
+
+						</td>
+
+					</tr>
+
+					<tr><th class="subtitle"><h3 id="subsection-cdn"><?php _e('CDN 加速', 'argon');?></h3></th></tr>
+
+					<tr>
+
+						<th><label>CDN</label></th>
+
+						<td>
+
+							<select name="argon_assets_path">
+
+								<?php $argon_assets_path = get_option('argon_assets_path'); ?>
+
+								<option value="default" <?php if ($argon_assets_path=='default'){echo 'selected';} ?>><?php _e('不使用', 'argon');?></option>
+
+								<option value="jsdelivr" <?php if ($argon_assets_path=='jsdelivr'){echo 'selected';} ?>>Jsdelivr</option>
+
+								<option value="fastgit" <?php if ($argon_assets_path=='fastgit'){echo 'selected';} ?>>Fastgit</option>
+
+								<option value="sourcegcdn" <?php if ($argon_assets_path=='sourcegcdn'){echo 'selected';} ?>>Source Global CDN</option>
+
+								<option value="jsdelivr_gcore" <?php if ($argon_assets_path=='jsdelivr_gcore'){echo 'selected';} ?>>Jsdelivr (gcore)</option>
+
+								<option value="jsdelivr_fastly" <?php if ($argon_assets_path=='jsdelivr_fastly'){echo 'selected';} ?>>Jsdelivr (fastly)</option>
+
+								<option value="jsdelivr_cf" <?php if ($argon_assets_path=='jsdelivr_cf'){echo 'selected';} ?>>Jsdelivr (cf)</option>
+
+								<option value="custom" <?php if ($argon_assets_path=='custom'){echo 'selected';} ?>><?php _e('自定义...', 'argon');?></option>
+
+							</select>
+
+							<input type="text" class="regular-text" name="argon_custom_assets_path" placeholder="https://" value="<?php echo get_option('argon_custom_assets_path', ''); ?>" autocomplete="off">
+
+							<p class="description"><?php _e('选择主题资源文件的引用地址。使用 CDN 可以加速资源文件的访问并减少服务器压力。', 'argon');?></p>
+
+							<p class="description custom-assets-path-desctiption"><?php _e('在自定义路径中使用 <code>%theme_version%</code> 来表示主题版本号。', 'argon');?></p>
+
+						</td>
+
+						<script>
+
+							$("select[name='argon_assets_path']").change(function(){
+
+								if ($(this).val() == 'custom') {
+
+									$("input[name='argon_custom_assets_path']").css('display', '');
+
+									$(".custom-assets-path-desctiption").css('display', '');
+
+								} else {
+
+									$("input[name='argon_custom_assets_path']").css('display', 'none');
+
+									$(".custom-assets-path-desctiption").css('display', 'none');
+
+								}
+
+							}).change();
+
+						</script>
+
+					</tr>
+
+					<tr><th class="subtitle"><h3 id="subsection-date-format"><?php _e('日期格式', 'argon');?></h3></th></tr>
+
+					<tr>
+
+						<th><label><?php _e('日期格式', 'argon');?></label></th>
+
+						<td>
+
+							<select name="argon_dateformat">
+
+								<?php $argon_dateformat = get_option('argon_dateformat'); ?>
+
+								<option value="YMD" <?php if ($argon_dateformat=='YMD'){echo 'selected';} ?>>Y-M-D</option>
+
+								<option value="DMY" <?php if ($argon_dateformat=='DMY'){echo 'selected';} ?>>D-M-Y</option>
+
+								<option value="MDY" <?php if ($argon_dateformat=='MDY'){echo 'selected';} ?>>M-D-Y</option>
+
+							</select>
+
+							<p class="description"></p>
 
 						</td>
 
