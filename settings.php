@@ -3089,7 +3089,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 19. 高级设置 ========== -->
+					<!-- ========== 15. 高级设置 ========== -->
 				<tr><th class="subtitle"><h2 id="section-advanced"><?php _e('高级设置', 'argon');?></h2></th></tr>
 
 				<tr><th class="subtitle"><h3 id="subsection-scripts"><?php _e('自定义脚本', 'argon');?></h3></th></tr>
