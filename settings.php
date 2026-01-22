@@ -2350,8 +2350,6 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-friend-links"><?php _e('友情链接', 'argon');?></h3></th></tr>
-
 					<tr>
 
 						<th><label><?php _e('在时间轴上显示月份', 'argon');?></label></th>
