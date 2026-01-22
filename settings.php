@@ -608,7 +608,10 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-cdn">CDN</h3></th></tr>
+					<!-- ========== 4. 顶栏设置 ========== -->
+				<tr><th class="subtitle"><h2 id="section-toolbar"><?php _e('顶栏设置', 'argon');?></h2></th></tr>
+
+				<tr><th class="subtitle"><h3 id="subsection-toolbar-basic"><?php _e('基本设置', 'argon');?></h3></th></tr>
 
 					<tr>
 
@@ -741,7 +744,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-toolbar-title"><?php _e('标题', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h3 id="subsection-toolbar-title"><?php _e('顶栏标题', 'argon');?></h3></th></tr>
 
 					<tr>
 
@@ -1832,7 +1835,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-thumbnail"><?php _e('文章头图 (特色图片)', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h3 id="subsection-thumbnail"><?php _e('文章头图', 'argon');?></h3></th></tr>
 
 					<tr>
 
@@ -2113,7 +2116,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-toc"><?php _e('左侧栏文章目录', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h3 id="subsection-toc"><?php _e('文章目录', 'argon');?></h3></th></tr>
 
 					<tr>
 
@@ -2153,7 +2156,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-post-footer"><?php _e('文末附加内容', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h3 id="subsection-post-footer"><?php _e('文末内容', 'argon');?></h3></th></tr>
 
 					<tr>
 
@@ -2259,7 +2262,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-title-style"><?php _e('文章内标题样式', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h3 id="subsection-title-style"><?php _e('标题样式', 'argon');?></h3></th></tr>
 
 					<tr>
 
@@ -2357,7 +2360,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-post-other"><?php _e('其他', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h3 id="subsection-post-other"><?php _e('过时提示', 'argon');?></h3></th></tr>
 
 					<tr>
 
@@ -2422,7 +2425,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-archive-appearance"><?php _e('归档外观', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h3 id="subsection-friend-links"><?php _e('友情链接', 'argon');?></h3></th></tr>
 
 					<tr>
 
@@ -2446,7 +2449,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-archive-config"><?php _e('归档配置', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h3 id="subsection-footer"><?php _e('页脚', 'argon');?></h3></th></tr>
 
 					<tr>
 
@@ -3012,7 +3015,26 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-scripts"><?php _e('自定义脚本', 'argon');?></h3></th></tr>
+					<!-- ========== 14. 高级设置 ========== -->
+				<tr><th class="subtitle"><h2 id="section-advanced"><?php _e('高级设置', 'argon');?></h2></th></tr>
+
+				<tr><th class="subtitle"><h3 id="subsection-date-format"><?php _e('日期格式', 'argon');?></h3></th></tr>
+
+				<tr>
+					<th><label><?php _e('日期格式', 'argon');?></label></th>
+					<td>
+						<select name="argon_dateformat">
+							<?php $argon_dateformat = get_option('argon_dateformat'); ?>
+							<option value="type1" <?php if ($argon_dateformat=='type1'){echo 'selected';} ?>><?php _e('样式 1 (Y-m-d)', 'argon');?></option>
+							<option value="type2" <?php if ($argon_dateformat=='type2'){echo 'selected';} ?>><?php _e('样式 2 (Y/m/d)', 'argon');?></option>
+							<option value="type3" <?php if ($argon_dateformat=='type3'){echo 'selected';} ?>><?php _e('样式 3 (Y.m.d)', 'argon');?></option>
+							<option value="type4" <?php if ($argon_dateformat=='type4'){echo 'selected';} ?>><?php _e('样式 4 (Y年m月d日)', 'argon');?></option>
+						</select>
+						<p class="description"><?php _e('日期显示格式', 'argon');?></p>
+					</td>
+				</tr>
+
+				<tr><th class="subtitle"><h3 id="subsection-scripts"><?php _e('自定义脚本', 'argon');?></h3></th></tr>
 
 					<tr>
 
@@ -3070,7 +3092,7 @@ window.pjaxLoaded = function(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-animation"><?php _e('动画效果', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h3 id="subsection-misc"><?php _e('杂项', 'argon');?></h3></th></tr>
 
 					<tr>
 
@@ -3466,7 +3488,7 @@ window.pjaxLoaded = function(){
 
 				</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-captcha-scenes"><?php _e('各场景验证码', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h3 id="subsection-captcha-scenes"><?php _e('场景验证码', 'argon');?></h3></th></tr>
 
 					<tr>
 
