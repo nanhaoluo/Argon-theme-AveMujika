@@ -7504,7 +7504,7 @@ function argon_async_spam_detection_handler($comment_id) {
 add_action('argon_async_spam_detection', 'argon_async_spam_detection_handler');
 
 /**
- * AJAX: 开始批量扫描
+ * AJAX: 开始批量扫描（一次性发送所有评论）
  */
 function argon_spam_detection_scan() {
 	check_ajax_referer('argon_spam_detection_scan', 'nonce');
@@ -7524,73 +7524,237 @@ function argon_spam_detection_scan() {
 	];
 	
 	$comments = get_comments($args);
-	$comment_ids = array_map(function($comment) {
-		return $comment->comment_ID;
-	}, $comments);
 	
-	// 保存扫描任务
-	set_transient('argon_spam_scan_task', [
-		'status' => 'running',
-		'total' => count($comment_ids),
-		'processed' => 0,
-		'comment_ids' => $comment_ids,
-		'results' => [],
-		'current_index' => 0
-	], 3600);
+	if (empty($comments)) {
+		wp_send_json_success([
+			'status' => 'completed',
+			'total' => 0,
+			'results' => []
+		]);
+		return;
+	}
 	
-	// 启动后台处理
-	wp_schedule_single_event(time(), 'argon_spam_scan_process');
+	// 构建评论数据
+	$comments_data = [];
+	foreach ($comments as $comment) {
+		$comments_data[] = [
+			'id' => $comment->comment_ID,
+			'author' => $comment->comment_author,
+			'email' => $comment->comment_author_email,
+			'url' => $comment->comment_author_url,
+			'content' => strip_tags($comment->comment_content)
+		];
+	}
 	
-	wp_send_json_success(['message' => __('扫描已开始', 'argon')]);
+	// 调用 AI 进行批量检测
+	$result = argon_batch_detect_spam_comments($comments_data);
+	
+	if ($result === false) {
+		wp_send_json_error(__('AI 检测失败，请检查 API 配置', 'argon'));
+		return;
+	}
+	
+	// 处理结果
+	$spam_results = [];
+	foreach ($result as $item) {
+		if (isset($item['is_spam']) && $item['is_spam']) {
+			$comment = get_comment($item['id']);
+			if ($comment) {
+				$spam_results[] = [
+					'comment_id' => $item['id'],
+					'author' => $comment->comment_author,
+					'content' => mb_substr(strip_tags($comment->comment_content), 0, 100),
+					'reason' => isset($item['reason']) ? $item['reason'] : __('未知原因', 'argon')
+				];
+				
+				// 保存检测结果
+				update_comment_meta($item['id'], '_argon_spam_detection_result', [
+					'is_spam' => true,
+					'reason' => $item['reason']
+				]);
+				update_comment_meta($item['id'], '_argon_spam_detection_time', time());
+			}
+		}
+	}
+	
+	wp_send_json_success([
+		'status' => 'completed',
+		'total' => count($comments),
+		'results' => $spam_results
+	]);
 }
 add_action('wp_ajax_argon_spam_detection_scan', 'argon_spam_detection_scan');
 
 /**
- * 后台处理扫描任务
+ * 批量检测垃圾评论（一次性发送所有评论）
+ * @param array $comments_data 评论数据数组
+ * @return array|false 检测结果或 false
+ */
+function argon_batch_detect_spam_comments($comments_data) {
+	// 获取 AI 配置
+	$provider = get_option('argon_ai_summary_provider', 'openai');
+	$api_key = get_option('argon_ai_summary_api_key', '');
+	$model = get_option('argon_ai_summary_model', '');
+	$prompt = get_option('argon_comment_spam_detection_prompt', '');
+	
+	if (empty($api_key)) {
+		return false;
+	}
+	
+	if (empty($prompt)) {
+		$prompt = '你是一个专业的内容审核助手。请判断以下评论是否为垃圾评论。垃圾评论包括但不限于：广告推广、反动言论、错误政治观点、时政敏感内容、违法信息、色情暴力、恶意攻击等。
+
+请仅返回 JSON 格式：{"is_spam": true/false, "reason": "理由(25字以内)"}
+
+如果是正常评论，reason 填写 "正常"。如果是垃圾评论，简要说明原因。';
+	}
+	
+	// 构建批量检测内容
+	$batch_content = "请逐一检查以下评论，对每条评论返回检测结果。\n\n";
+	foreach ($comments_data as $comment) {
+		$batch_content .= sprintf(
+			"[评论ID: %d]\n作者: %s\n邮箱: %s\n网站: %s\n内容: %s\n\n",
+			$comment['id'],
+			$comment['author'],
+			$comment['email'],
+			$comment['url'],
+			$comment['content']
+		);
+	}
+	
+	$batch_content .= "\n请返回 JSON 数组格式：[{\"id\": 评论ID, \"is_spam\": true/false, \"reason\": \"理由(25字以内)\"}]";
+	
+	// 调用 AI API
+	$ai_response = argon_call_ai_api_for_batch_spam_detection($provider, $api_key, $model, $prompt, $batch_content);
+	
+	if (!$ai_response) {
+		return false;
+	}
+	
+	// 解析 JSON 响应
+	$result = json_decode($ai_response, true);
+	if (!$result || !is_array($result)) {
+		// 尝试从文本中提取 JSON 数组
+		if (preg_match('/\[\s*\{[^\]]*\}\s*\]/s', $ai_response, $matches)) {
+			$result = json_decode($matches[0], true);
+		}
+	}
+	
+	if (!$result || !is_array($result)) {
+		return false;
+	}
+	
+	return $result;
+}
+
+/**
+ * 调用 AI API 进行批量垃圾评论检测
+ */
+function argon_call_ai_api_for_batch_spam_detection($provider, $api_key, $model, $prompt, $content) {
+	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
+	
+	// 根据不同服务商设置默认端点和模型
+	$default_models = [
+		'openai' => 'gpt-4o-mini',
+		'anthropic' => 'claude-3-5-haiku-20241022',
+		'deepseek' => 'deepseek-chat',
+		'qianwen' => 'qwen-turbo',
+		'wenxin' => 'ernie-4.0-turbo-8k',
+		'doubao' => 'doubao-pro-32k',
+		'kimi' => 'moonshot-v1-8k',
+		'zhipu' => 'glm-4-flash',
+		'siliconflow' => 'Qwen/Qwen2.5-7B-Instruct'
+	];
+	
+	if (empty($model) && isset($default_models[$provider])) {
+		$model = $default_models[$provider];
+	}
+	
+	// 构建请求
+	$messages = [
+		['role' => 'system', 'content' => $prompt],
+		['role' => 'user', 'content' => $content]
+	];
+	
+	$body = [
+		'model' => $model,
+		'messages' => $messages,
+		'temperature' => 0.3,
+		'max_tokens' => 4000 // 批量检测需要更多 token
+	];
+	
+	// 根据服务商设置端点
+	if (empty($endpoint)) {
+		$endpoints = [
+			'openai' => 'https://api.openai.com/v1/chat/completions',
+			'anthropic' => 'https://api.anthropic.com/v1/messages',
+			'deepseek' => 'https://api.deepseek.com/v1/chat/completions',
+			'qianwen' => 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+			'wenxin' => 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions',
+			'doubao' => 'https://ark.cn-beijing.volces.com/api/v3/chat/completions',
+			'kimi' => 'https://api.moonshot.cn/v1/chat/completions',
+			'zhipu' => 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+			'siliconflow' => 'https://api.siliconflow.cn/v1/chat/completions'
+		];
+		$endpoint = isset($endpoints[$provider]) ? $endpoints[$provider] : $endpoints['openai'];
+	}
+	
+	// Anthropic 特殊处理
+	if ($provider === 'anthropic') {
+		$body = [
+			'model' => $model,
+			'messages' => [['role' => 'user', 'content' => $prompt . "\n\n" . $content]],
+			'max_tokens' => 4000
+		];
+		$headers = [
+			'x-api-key' => $api_key,
+			'anthropic-version' => '2023-06-01',
+			'Content-Type' => 'application/json'
+		];
+	} else {
+		$headers = [
+			'Authorization' => 'Bearer ' . $api_key,
+			'Content-Type' => 'application/json'
+		];
+	}
+	
+	$response = wp_remote_post($endpoint, [
+		'headers' => $headers,
+		'body' => json_encode($body),
+		'timeout' => 60 // 批量检测需要更长超时时间
+	]);
+	
+	if (is_wp_error($response)) {
+		return false;
+	}
+	
+	$response_body = json_decode(wp_remote_retrieve_body($response), true);
+	
+	// 解析响应
+	$ai_response = '';
+	if ($provider === 'anthropic') {
+		if (isset($response_body['content'][0]['text'])) {
+			$ai_response = $response_body['content'][0]['text'];
+		}
+	} else {
+		if (isset($response_body['choices'][0]['message']['content'])) {
+			$ai_response = $response_body['choices'][0]['message']['content'];
+		}
+	}
+	
+	return $ai_response;
+}
+
+/**
+ * 后台处理扫描任务（已废弃，保留以兼容旧代码）
  */
 function argon_spam_scan_process_handler() {
-	$task = get_transient('argon_spam_scan_task');
-	if (!$task || $task['status'] !== 'running') {
-		return;
-	}
-	
-	$batch_size = 5; // 每批处理 5 条
-	$end_index = min($task['current_index'] + $batch_size, $task['total']);
-	
-	for ($i = $task['current_index']; $i < $end_index; $i++) {
-		$comment_id = $task['comment_ids'][$i];
-		$result = argon_detect_spam_comment($comment_id);
-		
-		if ($result && $result['is_spam']) {
-			$comment = get_comment($comment_id);
-			$task['results'][] = [
-				'comment_id' => $comment_id,
-				'author' => $comment->comment_author,
-				'content' => mb_substr(strip_tags($comment->comment_content), 0, 100),
-				'reason' => $result['reason']
-			];
-		}
-		
-		$task['processed']++;
-	}
-	
-	$task['current_index'] = $end_index;
-	
-	if ($task['current_index'] >= $task['total']) {
-		$task['status'] = 'completed';
-	}
-	
-	set_transient('argon_spam_scan_task', $task, 3600);
-	
-	// 继续处理
-	if ($task['status'] === 'running') {
-		wp_schedule_single_event(time() + 2, 'argon_spam_scan_process');
-	}
+	// 此函数已废弃，批量检测改为一次性完成
 }
 add_action('argon_spam_scan_process', 'argon_spam_scan_process_handler');
 
 /**
- * AJAX: 获取扫描进度
+ * AJAX: 获取扫描进度（已废弃，保留以兼容）
  */
 function argon_spam_detection_get_progress() {
 	check_ajax_referer('argon_spam_detection_get_progress', 'nonce');
@@ -7599,16 +7763,12 @@ function argon_spam_detection_get_progress() {
 		wp_send_json_error(__('权限不足', 'argon'));
 	}
 	
-	$task = get_transient('argon_spam_scan_task');
-	if (!$task) {
-		wp_send_json_error(__('未找到扫描任务', 'argon'));
-	}
-	
+	// 批量检测已改为同步完成，此接口保留以兼容前端
 	wp_send_json_success([
-		'status' => $task['status'],
-		'total' => $task['total'],
-		'processed' => $task['processed'],
-		'results' => isset($task['results']) ? $task['results'] : []
+		'status' => 'completed',
+		'total' => 0,
+		'processed' => 0,
+		'results' => []
 	]);
 }
 add_action('wp_ajax_argon_spam_detection_get_progress', 'argon_spam_detection_get_progress');

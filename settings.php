@@ -3945,7 +3945,6 @@ window.pjaxLoaded = function(){
 							<script>
 							jQuery(document).ready(function($) {
 								let isScanning = false;
-								let scanAborted = false;
 								
 								function startScan(scanType) {
 									if (isScanning) {
@@ -3953,87 +3952,59 @@ window.pjaxLoaded = function(){
 										return;
 									}
 									
-									if (!confirm('<?php _e('确定要开始扫描吗？这可能需要一些时间。', 'argon');?>')) {
+									if (!confirm('<?php _e('确定要开始扫描吗？这将一次性检测所有评论，可能需要较长时间。', 'argon');?>')) {
 										return;
 									}
 									
 									isScanning = true;
-									scanAborted = false;
 									$('#argon-spam-detection-scan-all, #argon-spam-detection-scan-pending').prop('disabled', true);
-									$('#argon-spam-detection-status').text('<?php _e('正在扫描...', 'argon');?>');
+									$('#argon-spam-detection-status').text('<?php _e('正在扫描...请耐心等待', 'argon');?>');
 									$('#argon-spam-detection-progress').show();
 									$('#argon-spam-detection-results').hide();
-									$('#argon-spam-detection-progress-bar').css('width', '0%');
-									$('#argon-spam-detection-progress-text').text('0%');
+									$('#argon-spam-detection-progress-bar').css('width', '50%');
+									$('#argon-spam-detection-progress-text').text('<?php _e('处理中...', 'argon');?>');
 									
 									$.post(ajaxurl, {
 										action: 'argon_spam_detection_scan',
 										nonce: '<?php echo wp_create_nonce('argon_spam_detection_scan'); ?>',
 										scan_type: scanType
 									}, function(response) {
+										isScanning = false;
+										$('#argon-spam-detection-scan-all, #argon-spam-detection-scan-pending').prop('disabled', false);
+										$('#argon-spam-detection-progress-bar').css('width', '100%');
+										$('#argon-spam-detection-progress-text').text('100%');
+										
 										if (response.success) {
-											pollScanProgress();
+											const data = response.data;
+											$('#argon-spam-detection-status').text('<?php _e('扫描完成', 'argon');?> - <?php _e('共检测', 'argon');?> ' + data.total + ' <?php _e('条评论', 'argon');?>');
+											displayResults(data.results);
 										} else {
-											isScanning = false;
-											$('#argon-spam-detection-scan-all, #argon-spam-detection-scan-pending').prop('disabled', false);
 											$('#argon-spam-detection-status').text('<?php _e('扫描失败', 'argon');?>: ' + (response.data || ''));
 											$('#argon-spam-detection-progress').hide();
 										}
-									}).fail(function() {
+									}).fail(function(xhr, status, error) {
 										isScanning = false;
 										$('#argon-spam-detection-scan-all, #argon-spam-detection-scan-pending').prop('disabled', false);
-										$('#argon-spam-detection-status').text('<?php _e('请求失败', 'argon');?>');
+										$('#argon-spam-detection-status').text('<?php _e('请求失败', 'argon');?>: ' + error);
 										$('#argon-spam-detection-progress').hide();
-									});
-								}
-								
-								function pollScanProgress() {
-									if (scanAborted) {
-										return;
-									}
-									
-									$.post(ajaxurl, {
-										action: 'argon_spam_detection_get_progress',
-										nonce: '<?php echo wp_create_nonce('argon_spam_detection_get_progress'); ?>'
-									}, function(response) {
-										if (response.success) {
-											const data = response.data;
-											const percent = Math.round((data.processed / data.total) * 100);
-											$('#argon-spam-detection-progress-bar').css('width', percent + '%');
-											$('#argon-spam-detection-progress-text').text(percent + '% (' + data.processed + '/' + data.total + ')');
-											$('#argon-spam-detection-status').text('<?php _e('已处理', 'argon');?> ' + data.processed + ' / ' + data.total);
-											
-											if (data.status === 'completed') {
-												isScanning = false;
-												$('#argon-spam-detection-scan-all, #argon-spam-detection-scan-pending').prop('disabled', false);
-												$('#argon-spam-detection-status').text('<?php _e('扫描完成', 'argon');?>');
-												displayResults(data.results);
-											} else if (data.status === 'error') {
-												isScanning = false;
-												$('#argon-spam-detection-scan-all, #argon-spam-detection-scan-pending').prop('disabled', false);
-												$('#argon-spam-detection-status').text('<?php _e('扫描出错', 'argon');?>: ' + data.error);
-												$('#argon-spam-detection-progress').hide();
-											} else {
-												setTimeout(pollScanProgress, 1000);
-											}
-										}
 									});
 								}
 								
 								function displayResults(results) {
 									if (!results || results.length === 0) {
-										$('#argon-spam-detection-results-content').html('<p><?php _e('未发现垃圾评论', 'argon');?></p>');
+										$('#argon-spam-detection-results-content').html('<p style="color: #46b450; font-weight: 600;"><span class="dashicons dashicons-yes-alt" style="font-size: 20px; vertical-align: middle;"></span> <?php _e('未发现垃圾评论，所有评论都是正常的！', 'argon');?></p>');
 										$('#argon-spam-detection-results').show();
 										return;
 									}
 									
-									let html = '<table class="wp-list-table widefat fixed striped" style="margin-top: 10px;"><thead><tr><th><?php _e('评论 ID', 'argon');?></th><th><?php _e('作者', 'argon');?></th><th><?php _e('内容', 'argon');?></th><th><?php _e('识别理由', 'argon');?></th><th><?php _e('操作', 'argon');?></th></tr></thead><tbody>';
+									let html = '<p style="color: #dc3232; font-weight: 600; margin-bottom: 15px;"><span class="dashicons dashicons-warning" style="font-size: 20px; vertical-align: middle;"></span> <?php _e('发现', 'argon');?> ' + results.length + ' <?php _e('条疑似垃圾评论', 'argon');?></p>';
+									html += '<table class="wp-list-table widefat fixed striped" style="margin-top: 10px;"><thead><tr><th style="width: 80px;"><?php _e('评论 ID', 'argon');?></th><th style="width: 120px;"><?php _e('作者', 'argon');?></th><th><?php _e('内容', 'argon');?></th><th style="width: 150px;"><?php _e('识别理由', 'argon');?></th><th style="width: 100px;"><?php _e('操作', 'argon');?></th></tr></thead><tbody>';
 									
 									results.forEach(function(item) {
 										html += '<tr data-comment-id="' + item.comment_id + '">';
 										html += '<td>' + item.comment_id + '</td>';
 										html += '<td>' + $('<div>').text(item.author).html() + '</td>';
-										html += '<td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + $('<div>').text(item.content).html() + '</td>';
+										html += '<td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="' + $('<div>').text(item.content).html() + '">' + $('<div>').text(item.content).html() + '</td>';
 										html += '<td>' + $('<div>').text(item.reason).html() + '</td>';
 										html += '<td><button type="button" class="button button-small argon-spam-trash-btn" data-comment-id="' + item.comment_id + '"><?php _e('移入回收站', 'argon');?></button></td>';
 										html += '</tr>';
@@ -4063,7 +4034,7 @@ window.pjaxLoaded = function(){
 											btn.closest('tr').fadeOut(300, function() {
 												$(this).remove();
 												if ($('#argon-spam-detection-results-content tbody tr').length === 0) {
-													$('#argon-spam-detection-results-content').html('<p><?php _e('所有标记的垃圾评论已处理', 'argon');?></p>');
+													$('#argon-spam-detection-results-content').html('<p style="color: #46b450; font-weight: 600;"><span class="dashicons dashicons-yes-alt" style="font-size: 20px; vertical-align: middle;"></span> <?php _e('所有标记的垃圾评论已处理', 'argon');?></p>');
 												}
 											});
 										} else {
