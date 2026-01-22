@@ -45,6 +45,21 @@ function argon_send_comment_notify_email($comment) {
         'comment_date' => get_comment_date(get_option('date_format') . ' ' . get_option('time_format'), $comment),
     );
     
+    // 检查是否有 AI 审核信息
+    $spam_detection_result = get_comment_meta($comment->comment_ID, '_argon_spam_detection_result', true);
+    if (!empty($spam_detection_result) && is_array($spam_detection_result)) {
+        $vars['ai_spam_check'] = true;
+        $vars['ai_is_spam'] = $spam_detection_result['is_spam'];
+        $vars['ai_spam_reason'] = isset($spam_detection_result['reason']) ? $spam_detection_result['reason'] : '';
+        $vars['ai_spam_action'] = isset($spam_detection_result['action']) ? $spam_detection_result['action'] : '';
+        
+        // 生成内容识别码（评论 ID + 时间戳的 MD5）
+        $detection_time = get_comment_meta($comment->comment_ID, '_argon_spam_detection_time', true);
+        $vars['ai_detection_code'] = strtoupper(substr(md5($comment->comment_ID . '-' . $detection_time), 0, 8));
+    } else {
+        $vars['ai_spam_check'] = false;
+    }
+    
     // 发送邮件
     return argon_send_email($admin_email, 'comment_notify', $vars);
 }

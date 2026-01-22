@@ -2934,6 +2934,36 @@ function post_comment_updatemetas($id){
 add_action('comment_post' , 'post_comment_updatemetas');
 add_action('comment_unapproved_to_approved', 'comment_mail_notify');
 add_rewrite_rule('^unsubscribe-comment-mailnotice/?(.*)$', '/wp-content/themes/argon/unsubscribe-comment-mailnotice.php$1', 'top');
+
+/**
+ * 发送新评论通知给站长（异步）
+ */
+function argon_notify_admin_new_comment($comment_id) {
+	$comment = get_comment($comment_id);
+	if (!$comment) {
+		return;
+	}
+	
+	// 使用邮件模板系统发送通知
+	argon_send_comment_notify_email($comment);
+}
+add_action('argon_async_admin_comment_notify', 'argon_notify_admin_new_comment');
+
+/**
+ * 评论发布后异步通知站长
+ */
+function argon_schedule_admin_comment_notify($comment_id, $comment_approved) {
+	// 延迟 1 秒发送，让评论元数据先保存
+	wp_schedule_single_event(time() + 1, 'argon_async_admin_comment_notify', [$comment_id]);
+}
+add_action('comment_post', 'argon_schedule_admin_comment_notify', 20, 2);
+
+/**
+ * 禁用 WordPress 默认的评论通知邮件
+ */
+add_filter('notify_post_author', '__return_false');
+add_filter('notify_moderator', '__return_false');
+
 //编辑评论
 function user_edit_comment(){
 	header('Content-Type:application/json; charset=utf-8');
@@ -7493,8 +7523,8 @@ function argon_auto_detect_spam_on_comment($comment_id, $comment_approved) {
 	}
 	
 	if ($should_check) {
-		// 异步检测
-		wp_schedule_single_event(time(), 'argon_async_spam_detection', [$comment_id]);
+		// 异步检测（延迟 2 秒执行，避免阻塞评论发送）
+		wp_schedule_single_event(time() + 2, 'argon_async_spam_detection', [$comment_id]);
 	}
 }
 add_action('comment_post', 'argon_auto_detect_spam_on_comment', 10, 2);

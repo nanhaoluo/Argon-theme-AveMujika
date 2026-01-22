@@ -23,6 +23,14 @@ function argon_get_email_types() {
 <div style="background: #f6f9fc; border-left: 4px solid {{theme_color}}; padding: 16px; border-radius: 4px; margin: 0 0 20px 0;">
     <p style="margin: 0; color: #525f7f; line-height: 1.6;">{{comment_content}}</p>
 </div>
+{{#ai_spam_check}}
+<div style="background: {{#ai_is_spam}}#fff5f5{{/ai_is_spam}}{{^ai_is_spam}}#f0fdf4{{/ai_is_spam}}; border-left: 4px solid {{#ai_is_spam}}#f56565{{/ai_is_spam}}{{^ai_is_spam}}#48bb78{{/ai_is_spam}}; padding: 12px 16px; border-radius: 4px; margin: 0 0 20px 0;">
+    <p style="margin: 0 0 8px 0; color: #2d3748; font-size: 14px; font-weight: 600;">🤖 AI 内容审核</p>
+    <p style="margin: 0 0 4px 0; color: #4a5568; font-size: 13px;">识别结果：{{#ai_is_spam}}<span style="color: #e53e3e; font-weight: 600;">疑似垃圾评论</span>{{/ai_is_spam}}{{^ai_is_spam}}<span style="color: #38a169; font-weight: 600;">正常评论</span>{{/ai_is_spam}}</p>
+    {{#ai_spam_reason}}<p style="margin: 0 0 4px 0; color: #4a5568; font-size: 13px;">识别理由：{{ai_spam_reason}}</p>{{/ai_spam_reason}}
+    {{#ai_detection_code}}<p style="margin: 0; color: #718096; font-size: 12px;">识别码：{{ai_detection_code}}</p>{{/ai_detection_code}}
+</div>
+{{/ai_spam_check}}
 <p style="margin: 0;">
     <a href="{{comment_url}}" style="display: inline-block; background: {{theme_color}}; color: #ffffff; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-size: 14px;">查看评论</a>
 </p>',
@@ -35,6 +43,10 @@ function argon_get_email_types() {
                 'comment_content' => __('评论内容', 'argon'),
                 'comment_url' => __('评论链接', 'argon'),
                 'comment_date' => __('评论时间', 'argon'),
+                'ai_spam_check' => __('是否进行了 AI 审核', 'argon'),
+                'ai_is_spam' => __('AI 判断是否为垃圾评论', 'argon'),
+                'ai_spam_reason' => __('AI 识别理由', 'argon'),
+                'ai_detection_code' => __('AI 识别码', 'argon'),
                 'theme_color' => __('主题色', 'argon'),
             ),
         ),
@@ -314,7 +326,29 @@ function argon_replace_placeholders($template, $vars, $escape = false) {
     
     $vars = array_merge($global_vars, $vars);
     
-    // 处理条件语句 {{#if variable}}...{{/if}}
+    // 处理 Mustache 风格的条件语句 {{#variable}}...{{/variable}}
+    $template = preg_replace_callback('/\{\{#(\w+)\}\}(.*?)\{\{\/\1\}\}/s', function($matches) use ($vars) {
+        $var_name = $matches[1];
+        $content = $matches[2];
+        // 如果变量存在且为真值，返回内容
+        if (isset($vars[$var_name]) && $vars[$var_name]) {
+            return $content;
+        }
+        return '';
+    }, $template);
+    
+    // 处理 Mustache 风格的反向条件语句 {{^variable}}...{{/variable}}
+    $template = preg_replace_callback('/\{\{\^(\w+)\}\}(.*?)\{\{\/\1\}\}/s', function($matches) use ($vars) {
+        $var_name = $matches[1];
+        $content = $matches[2];
+        // 如果变量不存在或为假值，返回内容
+        if (!isset($vars[$var_name]) || !$vars[$var_name]) {
+            return $content;
+        }
+        return '';
+    }, $template);
+    
+    // 处理旧版条件语句 {{#if variable}}...{{/if}}（向后兼容）
     $template = preg_replace_callback('/\{\{#if\s+(\w+)\}\}(.*?)\{\{\/if\}\}/s', function($matches) use ($vars) {
         $var_name = $matches[1];
         $content = $matches[2];
