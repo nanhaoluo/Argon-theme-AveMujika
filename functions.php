@@ -8090,3 +8090,50 @@ function argon_spam_detection_trash_comment() {
 	}
 }
 add_action('wp_ajax_argon_spam_detection_trash_comment', 'argon_spam_detection_trash_comment');
+
+// ==========================================================================
+// 邮件社交链接自动补全
+// ==========================================================================
+
+/**
+ * 标准化社交链接 URL
+ * 支持输入完整 URL 或仅用户名/UID，自动补全为完整链接
+ * 
+ * @param string $platform 平台名称 (twitter, github, weibo, bilibili)
+ * @param string $input 用户输入（完整 URL 或用户名/UID）
+ * @return string 标准化后的完整 URL，如果输入为空则返回空字符串
+ */
+function argon_normalize_social_url($platform, $input) {
+	$input = trim($input);
+	
+	// 如果输入为空，直接返回
+	if (empty($input)) {
+		return '';
+	}
+	
+	// 如果已经是完整 URL，直接返回
+	if (preg_match('/^https?:\/\//i', $input)) {
+		return esc_url($input);
+	}
+	
+	// 根据平台补全 URL
+	$base_urls = [
+		'twitter' => 'https://twitter.com/',
+		'github' => 'https://github.com/',
+		'weibo' => 'https://weibo.com/',
+		'bilibili' => 'https://space.bilibili.com/',
+		'facebook' => 'https://facebook.com/',
+		'instagram' => 'https://instagram.com/'
+	];
+	
+	if (!isset($base_urls[$platform])) {
+		// 未知平台，返回原始输入
+		return esc_url($input);
+	}
+	
+	// 移除可能的 @ 符号前缀
+	$username = ltrim($input, '@');
+	
+	// 构建完整 URL
+	return esc_url($base_urls[$platform] . $username);
+}

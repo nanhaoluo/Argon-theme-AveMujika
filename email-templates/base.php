@@ -65,8 +65,6 @@ function argon_get_email_types() {
     <p style="margin: 0 0 8px 0; color: #2d3748; font-size: 14px; font-weight: 600;">审核信息</p>
     <p style="margin: 0 0 4px 0; color: #4a5568; font-size: 13px;">识别结果：<span style="color: #e53e3e; font-weight: 600;">疑似不当内容</span></p>
     <p style="margin: 0 0 4px 0; color: #4a5568; font-size: 13px;">识别理由：{{ai_spam_reason}}</p>
-    <p style="margin: 0 0 4px 0; color: #718096; font-size: 12px;">AI 模型：{{ai_model}}</p>
-    <p style="margin: 0 0 4px 0; color: #718096; font-size: 12px;">服务提供商：{{ai_provider}}</p>
     <p style="margin: 0; color: #718096; font-size: 12px;">识别码：{{ai_detection_code}}</p>
 </div>
 <p style="margin: 0 0 20px 0; color: #525f7f; line-height: 1.6;">如果您认为这是误判，请通过识别码查询详细信息或联系网站管理员申诉。</p>
@@ -80,8 +78,6 @@ function argon_get_email_types() {
                 'commenter_name' => __('评论者名称', 'argon'),
                 'comment_content' => __('评论内容', 'argon'),
                 'ai_spam_reason' => __('AI 识别理由', 'argon'),
-                'ai_model' => __('AI 模型', 'argon'),
-                'ai_provider' => __('AI 服务提供商', 'argon'),
                 'ai_detection_code' => __('AI 识别码', 'argon'),
                 'query_url' => __('查询链接', 'argon'),
                 'unsubscribe_url' => __('退订链接', 'argon'),
@@ -276,6 +272,7 @@ function argon_get_email_base_template($include_unsubscribe = false) {
             'twitter' => 'Twitter',
             'github' => 'GitHub',
             'weibo' => '微博',
+            'bilibili' => 'Bilibili',
             'facebook' => 'Facebook',
             'instagram' => 'Instagram'
         );

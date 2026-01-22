@@ -4621,17 +4621,21 @@ window.pjaxLoaded = function(){
 							<?php $social_links = get_option('argon_email_social_links', array()); ?>
 							<div style="margin-bottom: 8px;">
 								<label style="display: inline-block; width: 80px;">Twitter:</label>
-								<input type="text" name="argon_email_social_twitter" value="<?php echo esc_attr(isset($social_links['twitter']) ? $social_links['twitter'] : ''); ?>" placeholder="https://twitter.com/username" style="width: 300px;" />
+								<input type="text" name="argon_email_social_twitter" value="<?php echo esc_attr(isset($social_links['twitter']) ? $social_links['twitter'] : ''); ?>" placeholder="username" style="width: 300px;" />
 							</div>
 							<div style="margin-bottom: 8px;">
 								<label style="display: inline-block; width: 80px;">GitHub:</label>
-								<input type="text" name="argon_email_social_github" value="<?php echo esc_attr(isset($social_links['github']) ? $social_links['github'] : ''); ?>" placeholder="https://github.com/username" style="width: 300px;" />
+								<input type="text" name="argon_email_social_github" value="<?php echo esc_attr(isset($social_links['github']) ? $social_links['github'] : ''); ?>" placeholder="username" style="width: 300px;" />
 							</div>
 							<div style="margin-bottom: 8px;">
 								<label style="display: inline-block; width: 80px;"><?php _e('微博', 'argon');?>:</label>
-								<input type="text" name="argon_email_social_weibo" value="<?php echo esc_attr(isset($social_links['weibo']) ? $social_links['weibo'] : ''); ?>" placeholder="https://weibo.com/username" style="width: 300px;" />
+								<input type="text" name="argon_email_social_weibo" value="<?php echo esc_attr(isset($social_links['weibo']) ? $social_links['weibo'] : ''); ?>" placeholder="username" style="width: 300px;" />
 							</div>
-							<p class="description"><?php _e('邮件页脚显示的社交链接，留空则不显示', 'argon');?></p>
+							<div style="margin-bottom: 8px;">
+								<label style="display: inline-block; width: 80px;">Bilibili:</label>
+								<input type="text" name="argon_email_social_bilibili" value="<?php echo esc_attr(isset($social_links['bilibili']) ? $social_links['bilibili'] : ''); ?>" placeholder="UID" style="width: 300px;" />
+							</div>
+							<p class="description"><?php _e('邮件页脚显示的社交链接，留空则不显示。支持填写完整 URL 或仅填写用户名/UID（将自动补全为完整链接）', 'argon');?></p>
 						</td>
 					</tr>
 
@@ -4669,7 +4673,7 @@ window.pjaxLoaded = function(){
 									<div style="margin-bottom: 16px;">
 										<label style="display: block; margin-bottom: 4px; font-weight: 500;"><?php _e('邮件主题', 'argon');?>：</label>
 										<input type="text" name="argon_email_template_<?php echo esc_attr($type_key); ?>_subject" 
-											value="<?php echo esc_attr($config['subject']); ?>" 
+											value="<?php echo esc_attr(get_option('argon_email_template_' . $type_key . '_subject', $config['default_subject'])); ?>" 
 											placeholder="<?php echo esc_attr($config['default_subject']); ?>"
 											style="width: 100%;" />
 									</div>
@@ -4678,7 +4682,7 @@ window.pjaxLoaded = function(){
 										<label style="display: block; margin-bottom: 4px; font-weight: 500;"><?php _e('邮件内容', 'argon');?>：</label>
 										<textarea name="argon_email_template_<?php echo esc_attr($type_key); ?>_content" 
 											rows="12" style="width: 100%; font-family: monospace; font-size: 13px;"
-											placeholder="<?php echo esc_attr($config['default_content']); ?>"><?php echo esc_textarea(get_option('argon_email_template_' . $type_key . '_content', '')); ?></textarea>
+											placeholder="<?php echo esc_attr($config['default_content']); ?>"><?php echo esc_textarea(get_option('argon_email_template_' . $type_key . '_content', $config['default_content'])); ?></textarea>
 									</div>
 
 									<div style="margin-bottom: 16px;">
@@ -6379,11 +6383,12 @@ function argon_update_themeoptions(){
 		argon_update_option('argon_email_blog_name');
 		argon_update_option('argon_email_footer_text');
 		
-		// 保存社交链接为数组
+		// 保存社交链接为数组（自动补全完整 URL）
 		$social_links = array(
-			'twitter' => isset($_POST['argon_email_social_twitter']) ? sanitize_url($_POST['argon_email_social_twitter']) : '',
-			'github' => isset($_POST['argon_email_social_github']) ? sanitize_url($_POST['argon_email_social_github']) : '',
-			'weibo' => isset($_POST['argon_email_social_weibo']) ? sanitize_url($_POST['argon_email_social_weibo']) : ''
+			'twitter' => argon_normalize_social_url('twitter', isset($_POST['argon_email_social_twitter']) ? sanitize_text_field($_POST['argon_email_social_twitter']) : ''),
+			'github' => argon_normalize_social_url('github', isset($_POST['argon_email_social_github']) ? sanitize_text_field($_POST['argon_email_social_github']) : ''),
+			'weibo' => argon_normalize_social_url('weibo', isset($_POST['argon_email_social_weibo']) ? sanitize_text_field($_POST['argon_email_social_weibo']) : ''),
+			'bilibili' => argon_normalize_social_url('bilibili', isset($_POST['argon_email_social_bilibili']) ? sanitize_text_field($_POST['argon_email_social_bilibili']) : '')
 		);
 		update_option('argon_email_social_links', $social_links);
 
