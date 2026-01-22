@@ -1679,11 +1679,12 @@ if (argonConfig.waterflow_columns != "1") {
 				//复位评论表单
 				cancelReply();
 				$("#post_comment_content").val("");
+				// 重置数学验证码
 				$("#post_comment_captcha_seed").val(result.newCaptchaSeed);
 				$("#post_comment_captcha + style").html(".post-comment-captcha-container:before{content: '" + result.newCaptcha + "';}");
-				$("#post_comment_captcha").val(result.newCaptchaAnswer);
+				$("#post_comment_captcha").val(""); // 清空验证码输入框
 				
-				// 清空Geetest验证码隐藏字段
+				// 清空Geetest验证码隐藏字段并重置验证码实例
 				if ($("#geetest-captcha").length > 0) {
 					$("#geetest_lot_number").val("");
 					$("#geetest_captcha_output").val("");
@@ -1693,6 +1694,14 @@ if (argonConfig.waterflow_columns != "1") {
 					window.geetestVerified = false;
 					// 重置自动提交标记
 					window.geetestAutoSubmitting = false;
+					// 重置 Geetest 实例，确保下一次可以重新验证
+					if (window.geetestCaptcha) {
+						try {
+							window.geetestCaptcha.reset();
+						} catch (e) {
+							ArgonDebug.warn('Geetest reset error:', e);
+						}
+					}
 				}
 				$("body,html").animate({
 					scrollTop: $("#comment-" + result.id).offset().top - 100
