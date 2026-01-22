@@ -524,6 +524,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 										// 检查 jQuery 和 headIndex 是否都已加载
 										if (typeof jQuery !== 'undefined' && typeof jQuery.fn.headIndex === 'function') {
 											jQuery(document).ready(function($) {
+												// 初始化 headIndex
 												$(document).headIndex({
 													articleWrapSelector: '#post_content',
 													indexBoxSelector: '#leftbar_catalog',
@@ -535,6 +536,31 @@ $author_desc = get_option('argon_sidebar_author_description');
 													linkClass: "index-link",
 													offset: 80,
 													defaultExpanded: true
+												});
+												
+												// 获取 headIndex 实例
+												var headIndexInstance = $(document).data('headIndex');
+												
+												// 添加额外的滚动监听，确保目录跟随
+												var scrollTimer = null;
+												$(window).on('scroll.desktopCatalog', function() {
+													if (scrollTimer) {
+														clearTimeout(scrollTimer);
+													}
+													scrollTimer = setTimeout(function() {
+														if (headIndexInstance && typeof headIndexInstance.updateCurrent === 'function') {
+															headIndexInstance.updateCurrent();
+														}
+													}, 100);
+												});
+												
+												// PJAX 后重新绑定
+												$(document).on('pjax:complete', function() {
+													if (headIndexInstance && typeof headIndexInstance.updateCurrent === 'function') {
+														setTimeout(function() {
+															headIndexInstance.updateCurrent();
+														}, 300);
+													}
 												});
 											});
 										} else {
