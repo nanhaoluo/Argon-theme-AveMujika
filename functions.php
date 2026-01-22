@@ -284,6 +284,7 @@ require_once(get_template_directory() . '/email-templates/comment-notify.php');
 require_once(get_template_directory() . '/email-templates/reply-notify.php');
 require_once(get_template_directory() . '/email-templates/feedback-notify.php');
 require_once(get_template_directory() . '/email-templates/spam-notify.php');
+require_once(get_template_directory() . '/email-templates/username-change-notify.php');
 
 //检测更新
 require_once(get_template_directory() . '/theme-update-checker/plugin-update-checker.php');
@@ -7313,9 +7314,9 @@ function argon_get_siliconflow_models($api_key, $custom_endpoint = '') {
 // ==========================================================================
 
 /**
- * 检测评论是否为垃圾评论
+ * 检测评论是否为垃圾评论（用户名-评论联合检测）
  * @param int $comment_id 评论 ID
- * @return array|false ['is_spam' => bool, 'reason' => string] 或 false
+ * @return array|false ['is_spam' => bool, 'reason' => string, 'username_invalid' => bool, 'username_reason' => string] 或 false
  */
 function argon_detect_spam_comment($comment_id) {
 	$comment = get_comment($comment_id);
@@ -7334,16 +7335,25 @@ function argon_detect_spam_comment($comment_id) {
 	}
 	
 	if (empty($prompt)) {
-		$prompt = '你是一个专业的内容审核助手。请判断以下评论是否为垃圾评论。垃圾评论包括但不限于：广告推广、反动言论、错误政治观点、时政敏感内容、违法信息、色情暴力、恶意攻击等。
+		$prompt = '你是一个专业的内容审核助手。请分别判断以下评论的用户名和内容是否合规。
 
-请仅返回 JSON 格式：{"is_spam": true/false, "reason": "理由(25字以内)"}
+不合规内容包括但不限于：广告推广、反动言论、错误政治观点、时政敏感内容、违法信息、色情暴力、恶意攻击等。
+不合规用户名包括但不限于：广告推广、色情暴力、政治敏感、恶意攻击、侮辱性词汇等。
 
-如果是正常评论，reason 填写 "正常"。如果是垃圾评论，简要说明原因。';
+请仅返回 JSON 格式：
+{
+  "content_spam": true/false,
+  "content_reason": "内容判断理由(25字以内)",
+  "username_invalid": true/false,
+  "username_reason": "用户名判断理由(25字以内)"
+}
+
+如果内容正常，content_reason 填写 "正常"。如果用户名正常，username_reason 填写 "正常"。';
 	}
 	
 	// 构建评论内容
 	$comment_text = sprintf(
-		"作者：%s\n邮箱：%s\n网站：%s\n内容：%s",
+		"用户名：%s\n邮箱：%s\n网站：%s\n评论内容：%s",
 		$comment->comment_author,
 		$comment->comment_author_email,
 		$comment->comment_author_url,
@@ -7353,12 +7363,20 @@ function argon_detect_spam_comment($comment_id) {
 	// 调用 AI API
 	$result = argon_call_ai_api_for_spam_detection($provider, $api_key, $model, $prompt, $comment_text);
 	
-	if ($result && isset($result['is_spam'])) {
+	if ($result && isset($result['content_spam'])) {
+		// 转换为统一格式
+		$unified_result = [
+			'is_spam' => $result['content_spam'],
+			'reason' => isset($result['content_reason']) ? $result['content_reason'] : '未知',
+			'username_invalid' => isset($result['username_invalid']) ? $result['username_invalid'] : false,
+			'username_reason' => isset($result['username_reason']) ? $result['username_reason'] : '正常'
+		];
+		
 		// 保存检测结果
-		update_comment_meta($comment_id, '_argon_spam_detection_result', $result);
+		update_comment_meta($comment_id, '_argon_spam_detection_result', $unified_result);
 		update_comment_meta($comment_id, '_argon_spam_detection_time', time());
 		
-		return $result;
+		return $unified_result;
 	}
 	
 	return false;
@@ -7397,7 +7415,7 @@ function argon_call_ai_api_for_spam_detection($provider, $api_key, $model, $prom
 		'model' => $model,
 		'messages' => $messages,
 		'temperature' => 0.3,
-		'max_tokens' => 100
+		'max_tokens' => 150
 	];
 	
 	// 根据服务商设置端点
@@ -7421,7 +7439,7 @@ function argon_call_ai_api_for_spam_detection($provider, $api_key, $model, $prom
 		$body = [
 			'model' => $model,
 			'messages' => [['role' => 'user', 'content' => $prompt . "\n\n" . $content]],
-			'max_tokens' => 100
+			'max_tokens' => 150
 		];
 		$headers = [
 			'x-api-key' => $api_key,
@@ -7448,6 +7466,49 @@ function argon_call_ai_api_for_spam_detection($provider, $api_key, $model, $prom
 	$response_body = json_decode(wp_remote_retrieve_body($response), true);
 	
 	// 解析响应
+	$ai_content = '';
+	if ($provider === 'anthropic') {
+		if (isset($response_body['content'][0]['text'])) {
+			$ai_content = $response_body['content'][0]['text'];
+		}
+	} else {
+		if (isset($response_body['choices'][0]['message']['content'])) {
+			$ai_content = $response_body['choices'][0]['message']['content'];
+		}
+	}
+	
+	if (empty($ai_content)) {
+		return false;
+	}
+	
+	// 提取 JSON（支持 Markdown 代码块包裹）
+	$ai_content = trim($ai_content);
+	if (preg_match('/```(?:json)?\s*(\{.*?\})\s*```/s', $ai_content, $matches)) {
+		$json_str = $matches[1];
+	} elseif (preg_match('/(\{.*?\})/s', $ai_content, $matches)) {
+		$json_str = $matches[1];
+	} else {
+		return false;
+	}
+	
+	$result = json_decode($json_str, true);
+	if (!is_array($result)) {
+		return false;
+	}
+	
+	// 兼容旧格式和新格式
+	if (isset($result['is_spam'])) {
+		// 旧格式，转换为新格式
+		return [
+			'content_spam' => $result['is_spam'],
+			'content_reason' => isset($result['reason']) ? $result['reason'] : '未知',
+			'username_invalid' => false,
+			'username_reason' => '正常'
+		];
+	}
+	
+	return $result;
+}
 	$ai_response = '';
 	if ($provider === 'anthropic') {
 		if (isset($response_body['content'][0]['text'])) {
@@ -7662,7 +7723,46 @@ function argon_update_user_spam_stats($comment, $is_spam) {
 }
 
 /**
- * 异步执行垃圾评论检测
+ * 生成唯一的随机用户名
+ * @param string $original_username 原始用户名
+ * @param string $email 邮箱
+ * @param string $ip IP地址
+ * @param string $user_agent User Agent
+ * @return string 格式为 "用户-XXXXXXXX" 的用户名
+ */
+function argon_generate_unique_username($original_username, $email, $ip, $user_agent) {
+	// 生成基于用户信息的唯一标识
+	$seed = $original_username . $email . $ip . $user_agent . time();
+	$hash = md5($seed);
+	
+	// 取前8位转为大写字母和数字（排除易混淆的字符）
+	$chars = '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+	$unique_code = '';
+	
+	for ($i = 0; $i < 8; $i++) {
+		$index = hexdec(substr($hash, $i * 2, 2)) % strlen($chars);
+		$unique_code .= $chars[$index];
+	}
+	
+	$new_username = '用户-' . $unique_code;
+	
+	// 检查是否已存在（理论上不会重复，但保险起见）
+	global $wpdb;
+	$exists = $wpdb->get_var($wpdb->prepare(
+		"SELECT comment_ID FROM {$wpdb->comments} WHERE comment_author = %s LIMIT 1",
+		$new_username
+	));
+	
+	if ($exists) {
+		// 如果重复，添加时间戳后缀
+		$new_username .= substr(time(), -4);
+	}
+	
+	return $new_username;
+}
+
+/**
+ * 异步执行垃圾评论检测（用户名-评论联合检测）
  */
 function argon_async_spam_detection_handler($comment_id) {
 	// 检查是否已经检测过
@@ -7686,10 +7786,14 @@ function argon_async_spam_detection_handler($comment_id) {
 	update_comment_meta($comment_id, '_argon_spam_detection_code', $detection_code);
 	
 	if ($result && isset($result['is_spam'])) {
-		// 更新用户统计
-		argon_update_user_spam_stats($comment, $result['is_spam']);
+		$content_spam = $result['is_spam'];
+		$username_invalid = isset($result['username_invalid']) ? $result['username_invalid'] : false;
 		
-		if ($result['is_spam']) {
+		// 更新用户统计
+		argon_update_user_spam_stats($comment, $content_spam);
+		
+		// 情况1：评论内容是垃圾评论
+		if ($content_spam) {
 			// 获取自动处理方式
 			$auto_action = get_option('argon_comment_spam_detection_auto_action', 'trash');
 			
@@ -7710,18 +7814,69 @@ function argon_async_spam_detection_handler($comment_id) {
 			update_comment_meta($comment_id, '_argon_spam_detection_result', [
 				'is_spam' => true,
 				'reason' => $result['reason'],
-				'action' => $auto_action
+				'action' => $auto_action,
+				'username_invalid' => $username_invalid,
+				'username_reason' => isset($result['username_reason']) ? $result['username_reason'] : ''
 			]);
 			
 			// 发送垃圾评论通知邮件给评论者
 			if (!empty($comment->comment_author_email)) {
 				argon_send_spam_notify_email($comment, $result, $detection_code);
 			}
-		} else {
+		}
+		// 情况2：评论内容正常，但用户名不合规
+		elseif ($username_invalid) {
+			$original_username = $comment->comment_author;
+			
+			// 生成新用户名
+			$new_username = argon_generate_unique_username(
+				$original_username,
+				$comment->comment_author_email,
+				$comment->comment_author_IP,
+				isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : ''
+			);
+			
+			// 更新评论的用户名
+			global $wpdb;
+			$wpdb->update(
+				$wpdb->comments,
+				['comment_author' => $new_username],
+				['comment_ID' => $comment_id],
+				['%s'],
+				['%d']
+			);
+			
+			// 记录原始用户名和检测信息
+			update_comment_meta($comment_id, '_argon_original_username', $original_username);
+			update_comment_meta($comment_id, '_argon_username_changed', true);
+			update_comment_meta($comment_id, '_argon_spam_detection_result', [
+				'is_spam' => false,
+				'reason' => $result['reason'],
+				'username_invalid' => true,
+				'username_reason' => $result['username_reason'],
+				'original_username' => $original_username,
+				'new_username' => $new_username
+			]);
+			
+			// 如果留了邮箱，发送用户名变更通知
+			if (!empty($comment->comment_author_email)) {
+				argon_send_username_change_notify_email(
+					$comment,
+					$original_username,
+					$new_username,
+					$result['username_reason'],
+					$detection_code
+				);
+			}
+		}
+		// 情况3：评论和用户名都正常
+		else {
 			// 记录正常评论的检测结果
 			update_comment_meta($comment_id, '_argon_spam_detection_result', [
 				'is_spam' => false,
-				'reason' => $result['reason']
+				'reason' => $result['reason'],
+				'username_invalid' => false,
+				'username_reason' => isset($result['username_reason']) ? $result['username_reason'] : '正常'
 			]);
 		}
 	}
