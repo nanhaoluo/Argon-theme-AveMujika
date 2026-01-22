@@ -3865,6 +3865,226 @@ window.pjaxLoaded = function(){
 
 					</tr>
 
+					<tr><th class="subtitle"><h3 id="subsection-comment-spam-detection"><?php _e('AI 垃圾评论识别', 'argon');?></h3></th></tr>
+
+					<tr>
+						<th><label><?php _e('启用 AI 垃圾评论识别', 'argon');?></label></th>
+						<td>
+							<?php $argon_comment_spam_detection_enable = get_option('argon_comment_spam_detection_enable', 'false'); ?>
+							<label>
+								<input type="checkbox" name="argon_comment_spam_detection_enable" value="true" <?php if ($argon_comment_spam_detection_enable=='true'){echo 'checked';}?>/> 
+								<?php _e('启用 AI 自动识别垃圾评论', 'argon');?>
+							</label>
+							<p class="description"><?php _e('开启后，将使用 AI 自动识别广告、反动、违法等垃圾评论，并自动移入回收站。', 'argon');?><br/><?php _e('注意：需要先在 "文章功能 - AI 文章摘要" 中配置 AI 服务商和 API 密钥。', 'argon');?></p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('检测提示词', 'argon');?></label></th>
+						<td>
+							<textarea rows="6" cols="70" name="argon_comment_spam_detection_prompt"><?php echo get_option('argon_comment_spam_detection_prompt', '你是一个专业的内容审核助手。请判断以下评论是否为垃圾评论。垃圾评论包括但不限于：广告推广、反动言论、错误政治观点、时政敏感内容、违法信息、色情暴力、恶意攻击等。
+
+请仅返回 JSON 格式：{"is_spam": true/false, "reason": "理由(25字以内)"}
+
+如果是正常评论，reason 填写 "正常"。如果是垃圾评论，简要说明原因。'); ?></textarea>
+							<p class="description"><?php _e('自定义 AI 识别垃圾评论时使用的提示词。建议保持简洁以降低 token 消耗。', 'argon');?></p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('检测模式', 'argon');?></label></th>
+						<td>
+							<select name="argon_comment_spam_detection_mode">
+								<?php $argon_comment_spam_detection_mode = get_option('argon_comment_spam_detection_mode', 'manual'); ?>
+								<option value="manual" <?php if ($argon_comment_spam_detection_mode=='manual'){echo 'selected';} ?>><?php _e('仅手动检测', 'argon');?></option>
+								<option value="sample" <?php if ($argon_comment_spam_detection_mode=='sample'){echo 'selected';} ?>><?php _e('抽查模式 (随机检测 20%)', 'argon');?></option>
+								<option value="all" <?php if ($argon_comment_spam_detection_mode=='all'){echo 'selected';} ?>><?php _e('全量检测 (每条评论都检测)', 'argon');?></option>
+							</select>
+							<p class="description">
+								<?php _e('仅手动检测：只在管理员手动触发时检测', 'argon');?><br/>
+								<?php _e('抽查模式：新评论有 20% 概率被检测，节省 API 调用', 'argon');?><br/>
+								<?php _e('全量检测：所有新评论都会被检测（推荐，但会增加 API 消耗）', 'argon');?>
+							</p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('检测范围', 'argon');?></label></th>
+						<td>
+							<?php $argon_comment_spam_detection_exclude_logged_in = get_option('argon_comment_spam_detection_exclude_logged_in', 'true'); ?>
+							<label>
+								<input type="checkbox" name="argon_comment_spam_detection_exclude_logged_in" value="true" <?php if ($argon_comment_spam_detection_exclude_logged_in=='true'){echo 'checked';}?>/> 
+								<?php _e('跳过已登录用户的评论', 'argon');?>
+							</label>
+							<p class="description"><?php _e('开启后，已登录用户（包括管理员）的评论不会被检测。', 'argon');?></p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('手动批量检测', 'argon');?></label></th>
+						<td>
+							<div style="margin-bottom: 15px;">
+								<button type="button" class="button button-primary" id="argon-spam-detection-scan-all"><?php _e('全站评论扫描', 'argon');?></button>
+								<button type="button" class="button" id="argon-spam-detection-scan-pending" style="margin-left: 10px;"><?php _e('仅扫描待审核评论', 'argon');?></button>
+								<span id="argon-spam-detection-status" style="margin-left: 15px; color: #666;"></span>
+							</div>
+							<div id="argon-spam-detection-progress" style="display: none; margin-bottom: 15px;">
+								<div style="background: #f0f0f1; border-radius: 4px; height: 24px; position: relative; overflow: hidden;">
+									<div id="argon-spam-detection-progress-bar" style="background: var(--themecolor, #5e72e4); height: 100%; width: 0%; transition: width 0.3s;"></div>
+									<span id="argon-spam-detection-progress-text" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 12px; font-weight: 600; color: #333;"></span>
+								</div>
+							</div>
+							<div id="argon-spam-detection-results" style="display: none; margin-top: 15px; padding: 15px; background: #fff; border: 1px solid #ddd; border-radius: 4px; max-height: 400px; overflow-y: auto;">
+								<h4 style="margin-top: 0;"><?php _e('检测结果', 'argon');?></h4>
+								<div id="argon-spam-detection-results-content"></div>
+							</div>
+							<p class="description">
+								<?php _e('手动扫描现有评论，识别垃圾评论。扫描不包括已在回收站的评论。', 'argon');?><br/>
+								<?php _e('检测到的垃圾评论会被标记，您可以选择性地移入回收站。', 'argon');?>
+							</p>
+							<script>
+							jQuery(document).ready(function($) {
+								let isScanning = false;
+								let scanAborted = false;
+								
+								function startScan(scanType) {
+									if (isScanning) {
+										alert('<?php _e('正在扫描中，请稍候', 'argon');?>');
+										return;
+									}
+									
+									if (!confirm('<?php _e('确定要开始扫描吗？这可能需要一些时间。', 'argon');?>')) {
+										return;
+									}
+									
+									isScanning = true;
+									scanAborted = false;
+									$('#argon-spam-detection-scan-all, #argon-spam-detection-scan-pending').prop('disabled', true);
+									$('#argon-spam-detection-status').text('<?php _e('正在扫描...', 'argon');?>');
+									$('#argon-spam-detection-progress').show();
+									$('#argon-spam-detection-results').hide();
+									$('#argon-spam-detection-progress-bar').css('width', '0%');
+									$('#argon-spam-detection-progress-text').text('0%');
+									
+									$.post(ajaxurl, {
+										action: 'argon_spam_detection_scan',
+										nonce: '<?php echo wp_create_nonce('argon_spam_detection_scan'); ?>',
+										scan_type: scanType
+									}, function(response) {
+										if (response.success) {
+											pollScanProgress();
+										} else {
+											isScanning = false;
+											$('#argon-spam-detection-scan-all, #argon-spam-detection-scan-pending').prop('disabled', false);
+											$('#argon-spam-detection-status').text('<?php _e('扫描失败', 'argon');?>: ' + (response.data || ''));
+											$('#argon-spam-detection-progress').hide();
+										}
+									}).fail(function() {
+										isScanning = false;
+										$('#argon-spam-detection-scan-all, #argon-spam-detection-scan-pending').prop('disabled', false);
+										$('#argon-spam-detection-status').text('<?php _e('请求失败', 'argon');?>');
+										$('#argon-spam-detection-progress').hide();
+									});
+								}
+								
+								function pollScanProgress() {
+									if (scanAborted) {
+										return;
+									}
+									
+									$.post(ajaxurl, {
+										action: 'argon_spam_detection_get_progress',
+										nonce: '<?php echo wp_create_nonce('argon_spam_detection_get_progress'); ?>'
+									}, function(response) {
+										if (response.success) {
+											const data = response.data;
+											const percent = Math.round((data.processed / data.total) * 100);
+											$('#argon-spam-detection-progress-bar').css('width', percent + '%');
+											$('#argon-spam-detection-progress-text').text(percent + '% (' + data.processed + '/' + data.total + ')');
+											$('#argon-spam-detection-status').text('<?php _e('已处理', 'argon');?> ' + data.processed + ' / ' + data.total);
+											
+											if (data.status === 'completed') {
+												isScanning = false;
+												$('#argon-spam-detection-scan-all, #argon-spam-detection-scan-pending').prop('disabled', false);
+												$('#argon-spam-detection-status').text('<?php _e('扫描完成', 'argon');?>');
+												displayResults(data.results);
+											} else if (data.status === 'error') {
+												isScanning = false;
+												$('#argon-spam-detection-scan-all, #argon-spam-detection-scan-pending').prop('disabled', false);
+												$('#argon-spam-detection-status').text('<?php _e('扫描出错', 'argon');?>: ' + data.error);
+												$('#argon-spam-detection-progress').hide();
+											} else {
+												setTimeout(pollScanProgress, 1000);
+											}
+										}
+									});
+								}
+								
+								function displayResults(results) {
+									if (!results || results.length === 0) {
+										$('#argon-spam-detection-results-content').html('<p><?php _e('未发现垃圾评论', 'argon');?></p>');
+										$('#argon-spam-detection-results').show();
+										return;
+									}
+									
+									let html = '<table class="wp-list-table widefat fixed striped" style="margin-top: 10px;"><thead><tr><th><?php _e('评论 ID', 'argon');?></th><th><?php _e('作者', 'argon');?></th><th><?php _e('内容', 'argon');?></th><th><?php _e('识别理由', 'argon');?></th><th><?php _e('操作', 'argon');?></th></tr></thead><tbody>';
+									
+									results.forEach(function(item) {
+										html += '<tr data-comment-id="' + item.comment_id + '">';
+										html += '<td>' + item.comment_id + '</td>';
+										html += '<td>' + $('<div>').text(item.author).html() + '</td>';
+										html += '<td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + $('<div>').text(item.content).html() + '</td>';
+										html += '<td>' + $('<div>').text(item.reason).html() + '</td>';
+										html += '<td><button type="button" class="button button-small argon-spam-trash-btn" data-comment-id="' + item.comment_id + '"><?php _e('移入回收站', 'argon');?></button></td>';
+										html += '</tr>';
+									});
+									
+									html += '</tbody></table>';
+									$('#argon-spam-detection-results-content').html(html);
+									$('#argon-spam-detection-results').show();
+								}
+								
+								$(document).on('click', '.argon-spam-trash-btn', function() {
+									const btn = $(this);
+									const commentId = btn.data('comment-id');
+									
+									if (!confirm('<?php _e('确定要将此评论移入回收站吗？', 'argon');?>')) {
+										return;
+									}
+									
+									btn.prop('disabled', true).text('<?php _e('处理中...', 'argon');?>');
+									
+									$.post(ajaxurl, {
+										action: 'argon_spam_detection_trash_comment',
+										nonce: '<?php echo wp_create_nonce('argon_spam_detection_trash_comment'); ?>',
+										comment_id: commentId
+									}, function(response) {
+										if (response.success) {
+											btn.closest('tr').fadeOut(300, function() {
+												$(this).remove();
+												if ($('#argon-spam-detection-results-content tbody tr').length === 0) {
+													$('#argon-spam-detection-results-content').html('<p><?php _e('所有标记的垃圾评论已处理', 'argon');?></p>');
+												}
+											});
+										} else {
+											alert('<?php _e('操作失败', 'argon');?>: ' + (response.data || ''));
+											btn.prop('disabled', false).text('<?php _e('移入回收站', 'argon');?>');
+										}
+									});
+								});
+								
+								$('#argon-spam-detection-scan-all').on('click', function() {
+									startScan('all');
+								});
+								
+								$('#argon-spam-detection-scan-pending').on('click', function() {
+									startScan('pending');
+								});
+							});
+							</script>
+						</td>
+					</tr>
+
 					<tr><th class="subtitle"><h3 id="subsection-comment-appearance"><?php _e('评论区外观', 'argon');?></h3></th></tr>
 
 					<tr>
@@ -6359,6 +6579,12 @@ function argon_update_themeoptions(){
 	argon_update_option('argon_ai_summary_model');
 	argon_update_option('argon_ai_summary_prompt');
 	argon_update_option('argon_ai_summary_exclude_ids');
+
+	//AI 垃圾评论识别
+	argon_update_option_checkbox('argon_comment_spam_detection_enable');
+	argon_update_option('argon_comment_spam_detection_prompt');
+	argon_update_option('argon_comment_spam_detection_mode');
+	argon_update_option_checkbox('argon_comment_spam_detection_exclude_logged_in');
 
 	}
 

@@ -7276,3 +7276,365 @@ function argon_get_siliconflow_models($api_key, $custom_endpoint = '') {
 	
 	return $models;
 }
+
+// ==========================================================================
+// AI 垃圾评论识别
+// ==========================================================================
+
+/**
+ * 检测评论是否为垃圾评论
+ * @param int $comment_id 评论 ID
+ * @return array|false ['is_spam' => bool, 'reason' => string] 或 false
+ */
+function argon_detect_spam_comment($comment_id) {
+	$comment = get_comment($comment_id);
+	if (!$comment) {
+		return false;
+	}
+	
+	// 获取 AI 配置
+	$provider = get_option('argon_ai_summary_provider', 'openai');
+	$api_key = get_option('argon_ai_summary_api_key', '');
+	$model = get_option('argon_ai_summary_model', '');
+	$prompt = get_option('argon_comment_spam_detection_prompt', '');
+	
+	if (empty($api_key)) {
+		return false;
+	}
+	
+	if (empty($prompt)) {
+		$prompt = '你是一个专业的内容审核助手。请判断以下评论是否为垃圾评论。垃圾评论包括但不限于：广告推广、反动言论、错误政治观点、时政敏感内容、违法信息、色情暴力、恶意攻击等。
+
+请仅返回 JSON 格式：{"is_spam": true/false, "reason": "理由(25字以内)"}
+
+如果是正常评论，reason 填写 "正常"。如果是垃圾评论，简要说明原因。';
+	}
+	
+	// 构建评论内容
+	$comment_text = sprintf(
+		"作者：%s\n邮箱：%s\n网站：%s\n内容：%s",
+		$comment->comment_author,
+		$comment->comment_author_email,
+		$comment->comment_author_url,
+		$comment->comment_content
+	);
+	
+	// 调用 AI API
+	$result = argon_call_ai_api_for_spam_detection($provider, $api_key, $model, $prompt, $comment_text);
+	
+	if ($result && isset($result['is_spam'])) {
+		// 保存检测结果
+		update_comment_meta($comment_id, '_argon_spam_detection_result', $result);
+		update_comment_meta($comment_id, '_argon_spam_detection_time', time());
+		
+		return $result;
+	}
+	
+	return false;
+}
+
+/**
+ * 调用 AI API 进行垃圾评论检测
+ */
+function argon_call_ai_api_for_spam_detection($provider, $api_key, $model, $prompt, $content) {
+	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
+	
+	// 根据不同服务商设置默认端点和模型
+	$default_models = [
+		'openai' => 'gpt-4o-mini',
+		'anthropic' => 'claude-3-5-haiku-20241022',
+		'deepseek' => 'deepseek-chat',
+		'qianwen' => 'qwen-turbo',
+		'wenxin' => 'ernie-4.0-turbo-8k',
+		'doubao' => 'doubao-pro-32k',
+		'kimi' => 'moonshot-v1-8k',
+		'zhipu' => 'glm-4-flash',
+		'siliconflow' => 'Qwen/Qwen2.5-7B-Instruct'
+	];
+	
+	if (empty($model) && isset($default_models[$provider])) {
+		$model = $default_models[$provider];
+	}
+	
+	// 构建请求
+	$messages = [
+		['role' => 'system', 'content' => $prompt],
+		['role' => 'user', 'content' => $content]
+	];
+	
+	$body = [
+		'model' => $model,
+		'messages' => $messages,
+		'temperature' => 0.3,
+		'max_tokens' => 100
+	];
+	
+	// 根据服务商设置端点
+	if (empty($endpoint)) {
+		$endpoints = [
+			'openai' => 'https://api.openai.com/v1/chat/completions',
+			'anthropic' => 'https://api.anthropic.com/v1/messages',
+			'deepseek' => 'https://api.deepseek.com/v1/chat/completions',
+			'qianwen' => 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+			'wenxin' => 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions',
+			'doubao' => 'https://ark.cn-beijing.volces.com/api/v3/chat/completions',
+			'kimi' => 'https://api.moonshot.cn/v1/chat/completions',
+			'zhipu' => 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+			'siliconflow' => 'https://api.siliconflow.cn/v1/chat/completions'
+		];
+		$endpoint = isset($endpoints[$provider]) ? $endpoints[$provider] : $endpoints['openai'];
+	}
+	
+	// Anthropic 特殊处理
+	if ($provider === 'anthropic') {
+		$body = [
+			'model' => $model,
+			'messages' => [['role' => 'user', 'content' => $prompt . "\n\n" . $content]],
+			'max_tokens' => 100
+		];
+		$headers = [
+			'x-api-key' => $api_key,
+			'anthropic-version' => '2023-06-01',
+			'Content-Type' => 'application/json'
+		];
+	} else {
+		$headers = [
+			'Authorization' => 'Bearer ' . $api_key,
+			'Content-Type' => 'application/json'
+		];
+	}
+	
+	$response = wp_remote_post($endpoint, [
+		'headers' => $headers,
+		'body' => json_encode($body),
+		'timeout' => 30
+	]);
+	
+	if (is_wp_error($response)) {
+		return false;
+	}
+	
+	$response_body = json_decode(wp_remote_retrieve_body($response), true);
+	
+	// 解析响应
+	$ai_response = '';
+	if ($provider === 'anthropic') {
+		if (isset($response_body['content'][0]['text'])) {
+			$ai_response = $response_body['content'][0]['text'];
+		}
+	} else {
+		if (isset($response_body['choices'][0]['message']['content'])) {
+			$ai_response = $response_body['choices'][0]['message']['content'];
+		}
+	}
+	
+	if (empty($ai_response)) {
+		return false;
+	}
+	
+	// 解析 JSON 响应
+	$result = json_decode($ai_response, true);
+	if (!$result || !isset($result['is_spam'])) {
+		// 尝试从文本中提取 JSON
+		if (preg_match('/\{[^}]*"is_spam"[^}]*\}/s', $ai_response, $matches)) {
+			$result = json_decode($matches[0], true);
+		}
+	}
+	
+	if ($result && isset($result['is_spam'])) {
+		return [
+			'is_spam' => (bool)$result['is_spam'],
+			'reason' => isset($result['reason']) ? mb_substr($result['reason'], 0, 25) : '未知原因'
+		];
+	}
+	
+	return false;
+}
+
+/**
+ * 新评论发布时自动检测
+ */
+function argon_auto_detect_spam_on_comment($comment_id, $comment_approved) {
+	// 检查是否启用
+	if (get_option('argon_comment_spam_detection_enable', 'false') !== 'true') {
+		return;
+	}
+	
+	$mode = get_option('argon_comment_spam_detection_mode', 'manual');
+	if ($mode === 'manual') {
+		return;
+	}
+	
+	// 抽查模式：20% 概率检测
+	if ($mode === 'sample' && rand(1, 100) > 20) {
+		return;
+	}
+	
+	$comment = get_comment($comment_id);
+	if (!$comment) {
+		return;
+	}
+	
+	// 跳过已登录用户
+	if (get_option('argon_comment_spam_detection_exclude_logged_in', 'true') === 'true' && $comment->user_id > 0) {
+		return;
+	}
+	
+	// 异步检测
+	wp_schedule_single_event(time(), 'argon_async_spam_detection', [$comment_id]);
+}
+add_action('comment_post', 'argon_auto_detect_spam_on_comment', 10, 2);
+
+/**
+ * 异步执行垃圾评论检测
+ */
+function argon_async_spam_detection_handler($comment_id) {
+	$result = argon_detect_spam_comment($comment_id);
+	
+	if ($result && $result['is_spam']) {
+		// 移入回收站
+		wp_trash_comment($comment_id);
+		
+		// 记录日志
+		update_comment_meta($comment_id, '_argon_spam_auto_trashed', true);
+		update_comment_meta($comment_id, '_argon_spam_trash_reason', $result['reason']);
+		update_comment_meta($comment_id, '_argon_spam_trash_time', time());
+	}
+}
+add_action('argon_async_spam_detection', 'argon_async_spam_detection_handler');
+
+/**
+ * AJAX: 开始批量扫描
+ */
+function argon_spam_detection_scan() {
+	check_ajax_referer('argon_spam_detection_scan', 'nonce');
+	
+	if (!current_user_can('moderate_comments')) {
+		wp_send_json_error(__('权限不足', 'argon'));
+	}
+	
+	$scan_type = isset($_POST['scan_type']) ? sanitize_text_field($_POST['scan_type']) : 'all';
+	
+	// 获取评论列表
+	$args = [
+		'status' => $scan_type === 'pending' ? 'hold' : 'approve',
+		'number' => 0,
+		'orderby' => 'comment_ID',
+		'order' => 'DESC'
+	];
+	
+	$comments = get_comments($args);
+	$comment_ids = array_map(function($comment) {
+		return $comment->comment_ID;
+	}, $comments);
+	
+	// 保存扫描任务
+	set_transient('argon_spam_scan_task', [
+		'status' => 'running',
+		'total' => count($comment_ids),
+		'processed' => 0,
+		'comment_ids' => $comment_ids,
+		'results' => [],
+		'current_index' => 0
+	], 3600);
+	
+	// 启动后台处理
+	wp_schedule_single_event(time(), 'argon_spam_scan_process');
+	
+	wp_send_json_success(['message' => __('扫描已开始', 'argon')]);
+}
+add_action('wp_ajax_argon_spam_detection_scan', 'argon_spam_detection_scan');
+
+/**
+ * 后台处理扫描任务
+ */
+function argon_spam_scan_process_handler() {
+	$task = get_transient('argon_spam_scan_task');
+	if (!$task || $task['status'] !== 'running') {
+		return;
+	}
+	
+	$batch_size = 5; // 每批处理 5 条
+	$end_index = min($task['current_index'] + $batch_size, $task['total']);
+	
+	for ($i = $task['current_index']; $i < $end_index; $i++) {
+		$comment_id = $task['comment_ids'][$i];
+		$result = argon_detect_spam_comment($comment_id);
+		
+		if ($result && $result['is_spam']) {
+			$comment = get_comment($comment_id);
+			$task['results'][] = [
+				'comment_id' => $comment_id,
+				'author' => $comment->comment_author,
+				'content' => mb_substr(strip_tags($comment->comment_content), 0, 100),
+				'reason' => $result['reason']
+			];
+		}
+		
+		$task['processed']++;
+	}
+	
+	$task['current_index'] = $end_index;
+	
+	if ($task['current_index'] >= $task['total']) {
+		$task['status'] = 'completed';
+	}
+	
+	set_transient('argon_spam_scan_task', $task, 3600);
+	
+	// 继续处理
+	if ($task['status'] === 'running') {
+		wp_schedule_single_event(time() + 2, 'argon_spam_scan_process');
+	}
+}
+add_action('argon_spam_scan_process', 'argon_spam_scan_process_handler');
+
+/**
+ * AJAX: 获取扫描进度
+ */
+function argon_spam_detection_get_progress() {
+	check_ajax_referer('argon_spam_detection_get_progress', 'nonce');
+	
+	if (!current_user_can('moderate_comments')) {
+		wp_send_json_error(__('权限不足', 'argon'));
+	}
+	
+	$task = get_transient('argon_spam_scan_task');
+	if (!$task) {
+		wp_send_json_error(__('未找到扫描任务', 'argon'));
+	}
+	
+	wp_send_json_success([
+		'status' => $task['status'],
+		'total' => $task['total'],
+		'processed' => $task['processed'],
+		'results' => isset($task['results']) ? $task['results'] : []
+	]);
+}
+add_action('wp_ajax_argon_spam_detection_get_progress', 'argon_spam_detection_get_progress');
+
+/**
+ * AJAX: 将评论移入回收站
+ */
+function argon_spam_detection_trash_comment() {
+	check_ajax_referer('argon_spam_detection_trash_comment', 'nonce');
+	
+	if (!current_user_can('moderate_comments')) {
+		wp_send_json_error(__('权限不足', 'argon'));
+	}
+	
+	$comment_id = isset($_POST['comment_id']) ? intval($_POST['comment_id']) : 0;
+	if (!$comment_id) {
+		wp_send_json_error(__('无效的评论 ID', 'argon'));
+	}
+	
+	$result = wp_trash_comment($comment_id);
+	if ($result) {
+		update_comment_meta($comment_id, '_argon_spam_manual_trashed', true);
+		update_comment_meta($comment_id, '_argon_spam_trash_time', time());
+		wp_send_json_success();
+	} else {
+		wp_send_json_error(__('移入回收站失败', 'argon'));
+	}
+}
+add_action('wp_ajax_argon_spam_detection_trash_comment', 'argon_spam_detection_trash_comment');
