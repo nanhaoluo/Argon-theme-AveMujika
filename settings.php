@@ -5635,6 +5635,8 @@ window.pjaxLoaded = function(){
 
 	<div id="headindex_box">
 
+		<button id="headindex_toggler" onclick="$('#headindex_box').toggleClass('folded');"><?php _e('收起', 'argon');?></button>
+
 		<div id="headindex"></div>
 
 	</div>
@@ -5703,7 +5705,7 @@ window.pjaxLoaded = function(){
 
 			box-shadow: 0 1px 1px rgba(0,0,0,.04);
 
-			padding: 6px 20px;
+			padding: 6px 30px 6px 20px;
 
 			overflow-y: auto;
 
@@ -5742,6 +5744,62 @@ window.pjaxLoaded = function(){
 			font-weight: 600;
 
 			box-shadow: none !important;
+
+		}
+
+		#headindex_toggler{
+
+			position: absolute;
+
+			right: 5px;
+
+			top: 5px;
+
+			color: #555;
+
+			background: #f7f7f7;
+
+			box-shadow: 0 1px 0 #ccc;
+
+			outline: none !important;
+
+			border: 1px solid #ccc;
+
+			border-radius: 2px;
+
+			cursor: pointer;
+
+			width: 40px;
+
+			height: 25px;
+
+			font-size: 12px;
+
+		}
+
+		#headindex_box.folded {
+
+			right: -185px;
+
+		}
+
+		#headindex_box.folded #headindex_toggler{
+
+			position: fixed;
+
+			right: 15px;
+
+			top: 55px;
+
+			font-size: 0px;
+
+		}
+
+		#headindex_box.folded #headindex_toggler:before{
+
+			content: '<?php _e('展开', 'argon');?>';
+
+			font-size: 12px;
 
 		}
 
