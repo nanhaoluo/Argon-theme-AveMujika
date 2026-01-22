@@ -7788,15 +7788,16 @@ function argon_async_spam_detection_handler($comment_id) {
 	if ($result && isset($result['is_spam'])) {
 		$content_spam = $result['is_spam'];
 		$username_invalid = isset($result['username_invalid']) ? $result['username_invalid'] : false;
+		$has_email = !empty($comment->comment_author_email);
 		
 		// 更新用户统计
 		argon_update_user_spam_stats($comment, $content_spam);
 		
-		// 情况1：评论内容是垃圾评论
+		// 获取自动处理方式
+		$auto_action = get_option('argon_comment_spam_detection_auto_action', 'trash');
+		
+		// 情况1：评论内容不合规 - 直接按设置处理
 		if ($content_spam) {
-			// 获取自动处理方式
-			$auto_action = get_option('argon_comment_spam_detection_auto_action', 'trash');
-			
 			if ($auto_action === 'trash') {
 				// 移入回收站
 				wp_trash_comment($comment_id);
@@ -7820,46 +7821,63 @@ function argon_async_spam_detection_handler($comment_id) {
 			]);
 			
 			// 发送垃圾评论通知邮件给评论者
-			if (!empty($comment->comment_author_email)) {
+			if ($has_email) {
 				argon_send_spam_notify_email($comment, $result, $detection_code);
 			}
 		}
 		// 情况2：评论内容正常，但用户名不合规
 		elseif ($username_invalid) {
-			$original_username = $comment->comment_author;
-			
-			// 生成新用户名
-			$new_username = argon_generate_unique_username(
-				$original_username,
-				$comment->comment_author_email,
-				$comment->comment_author_IP,
-				isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : ''
-			);
-			
-			// 更新评论的用户名
-			global $wpdb;
-			$wpdb->update(
-				$wpdb->comments,
-				['comment_author' => $new_username],
-				['comment_ID' => $comment_id],
-				['%s'],
-				['%d']
-			);
-			
-			// 记录原始用户名和检测信息
-			update_comment_meta($comment_id, '_argon_original_username', $original_username);
-			update_comment_meta($comment_id, '_argon_username_changed', true);
-			update_comment_meta($comment_id, '_argon_spam_detection_result', [
-				'is_spam' => false,
-				'reason' => $result['reason'],
-				'username_invalid' => true,
-				'username_reason' => $result['username_reason'],
-				'original_username' => $original_username,
-				'new_username' => $new_username
-			]);
-			
-			// 如果留了邮箱，发送用户名变更通知
-			if (!empty($comment->comment_author_email)) {
+			// 情况2.1：用户名不合规且没有留邮箱 - 直接移入回收站
+			if (!$has_email) {
+				wp_trash_comment($comment_id);
+				update_comment_meta($comment_id, '_argon_spam_auto_trashed', true);
+				update_comment_meta($comment_id, '_argon_username_invalid_no_email', true);
+				
+				// 记录检测信息
+				update_comment_meta($comment_id, '_argon_spam_detection_result', [
+					'is_spam' => false,
+					'reason' => $result['reason'],
+					'username_invalid' => true,
+					'username_reason' => $result['username_reason'],
+					'action' => 'trash',
+					'reason_detail' => '用户名不合规且未留邮箱'
+				]);
+			}
+			// 情况2.2：用户名不合规但留了邮箱 - 修改用户名并发送通知
+			else {
+				$original_username = $comment->comment_author;
+				
+				// 生成新用户名
+				$new_username = argon_generate_unique_username(
+					$original_username,
+					$comment->comment_author_email,
+					$comment->comment_author_IP,
+					isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : ''
+				);
+				
+				// 更新评论的用户名
+				global $wpdb;
+				$wpdb->update(
+					$wpdb->comments,
+					['comment_author' => $new_username],
+					['comment_ID' => $comment_id],
+					['%s'],
+					['%d']
+				);
+				
+				// 记录原始用户名和检测信息
+				update_comment_meta($comment_id, '_argon_original_username', $original_username);
+				update_comment_meta($comment_id, '_argon_username_changed', true);
+				update_comment_meta($comment_id, '_argon_spam_detection_result', [
+					'is_spam' => false,
+					'reason' => $result['reason'],
+					'username_invalid' => true,
+					'username_reason' => $result['username_reason'],
+					'original_username' => $original_username,
+					'new_username' => $new_username
+				]);
+				
+				// 发送用户名变更通知
 				argon_send_username_change_notify_email(
 					$comment,
 					$original_username,
