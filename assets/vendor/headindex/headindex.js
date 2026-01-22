@@ -118,7 +118,11 @@
                     otherCurrent.removeClass(currentClass);
                 }
                 
-                this.indexBox.find('ul.open').removeClass('open');
+                // 如果设置了默认展开，则不折叠其他项
+                if (!this.settings.defaultExpanded) {
+                    this.indexBox.find('ul.open').removeClass('open');
+                }
+                
                 subBox = indexItem.children('.' + this.settings.subItemBoxClass);
                 if (subBox.length > 0) {
                     subBox.addClass('open').slideDown();
@@ -129,9 +133,12 @@
                     parentsBox.addClass('open').slideDown();
                 }
                 
-                subBox = this.indexBox.find('ul.' + this.settings.subItemBoxClass).not('.open');
-                if (subBox.length > 0) {
-                    subBox.slideUp();
+                // 如果设置了默认展开，则不折叠其他子项
+                if (!this.settings.defaultExpanded) {
+                    subBox = this.indexBox.find('ul.' + this.settings.subItemBoxClass).not('.open');
+                    if (subBox.length > 0) {
+                        subBox.slideUp();
+                    }
                 }
                 
                 indexItem.addClass(currentClass);
@@ -314,7 +321,8 @@
         subItemBoxClass: "index-subItem-box",
         itemClass: "index-item",
         linkClass: "index-link",
-        offset: 0
+        offset: 0,
+        defaultExpanded: false
     };
     
 })(jQuery, window);

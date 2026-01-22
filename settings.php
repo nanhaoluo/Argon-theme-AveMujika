@@ -6012,10 +6012,15 @@ window.pjaxLoaded = function(){
 
 				offset: 80,
 
+				defaultExpanded: true
+
 			});
 
 			// 确保设置页目录框默认展开
 			$('#headindex_box').removeClass('folded');
+
+			// 展开所有子目录
+			$('#headindex .index-subItem-box').addClass('open').show();
 
 		});
 
