@@ -7509,39 +7509,6 @@ function argon_call_ai_api_for_spam_detection($provider, $api_key, $model, $prom
 	
 	return $result;
 }
-	$ai_response = '';
-	if ($provider === 'anthropic') {
-		if (isset($response_body['content'][0]['text'])) {
-			$ai_response = $response_body['content'][0]['text'];
-		}
-	} else {
-		if (isset($response_body['choices'][0]['message']['content'])) {
-			$ai_response = $response_body['choices'][0]['message']['content'];
-		}
-	}
-	
-	if (empty($ai_response)) {
-		return false;
-	}
-	
-	// 解析 JSON 响应
-	$result = json_decode($ai_response, true);
-	if (!$result || !isset($result['is_spam'])) {
-		// 尝试从文本中提取 JSON
-		if (preg_match('/\{[^}]*"is_spam"[^}]*\}/s', $ai_response, $matches)) {
-			$result = json_decode($matches[0], true);
-		}
-	}
-	
-	if ($result && isset($result['is_spam'])) {
-		return [
-			'is_spam' => (bool)$result['is_spam'],
-			'reason' => isset($result['reason']) ? mb_substr($result['reason'], 0, 25) : '未知原因'
-		];
-	}
-	
-	return false;
-}
 
 /**
  * 新评论发布时自动检测
