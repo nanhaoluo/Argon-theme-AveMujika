@@ -2775,6 +2775,16 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 	// 清理旧页面的资源
 	cleanupPjaxResources();
 	
+	// 清理文章列表的 PJAX 加载状态
+	$(".post-preview.post-pjax-loading").removeClass("post-pjax-loading").css({
+		"transform": "",
+		"transition": "",
+		"left": "",
+		"width": ""
+	});
+	$(".post-preview .loading-css-animation").remove();
+	$("#main").removeClass("post-list-pjax-loading");
+	
 	// 更新 UI 状态
 	if ($("#post_comment", dom[0]).length > 0){
 		$("#fabtn_go_to_comment").removeClass("d-none");

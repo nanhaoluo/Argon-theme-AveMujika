@@ -16308,7 +16308,8 @@ article.post.card .post-thumbnail {
 #primary.pjax-loading { opacity: 0.6; transform: translateY(10px); pointer-events: none; }
 #primary { transition: opacity var(--animation-normal) var(--ease-standard), transform var(--animation-normal) var(--ease-standard); }
 @keyframes modernContentFadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-article.post.post-full { animation: modernContentFadeIn var(--animation-slow) var(--ease-emphasized-decelerate); }
+article.post.post-full:not(.no-animation) { animation: modernContentFadeIn var(--animation-slow) var(--ease-emphasized-decelerate); }
+article.post.post-full { transform-origin: center top; }
 
 #float_action_buttons { transition: transform var(--animation-normal) var(--ease-back), opacity var(--animation-normal) var(--ease-standard); }
 #float_action_buttons .fabtn { transition: background var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), opacity var(--animation-normal) var(--ease-standard); }
