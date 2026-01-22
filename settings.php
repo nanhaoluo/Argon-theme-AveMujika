@@ -5717,6 +5717,8 @@ window.pjaxLoaded = function(){
 
 			margin-top: 10px;
 
+			display: block !important;
+
 		}
 
 		.index-link {
