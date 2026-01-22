@@ -12,31 +12,68 @@
 
 /**
  * 自定义调试控制台
- * 仅在调试模式下输出日志，避免生产环境污染控制台
+ * 输出日志到管理员调试控制台（如果启用）或浏览器控制台
+ * 为不同模块添加标识前缀
  */
 const ArgonDebug = {
 	enabled: false,
+	useAdminConsole: false,
 	
 	init() {
 		if (typeof argonConfig !== 'undefined' && argonConfig.debug_mode) {
 			this.enabled = true;
 		}
+		// 检查是否有管理员调试控制台
+		if (typeof window.argonDebug !== 'undefined' && typeof window.argonDebug.log === 'function') {
+			this.useAdminConsole = true;
+		}
 	},
 	
-	log(...args) {
-		if (this.enabled) console.log('[Argon]', ...args);
+	/**
+	 * 输出日志到管理员控制台或浏览器控制台
+	 * @param {string} level - 日志级别 (log/warn/error/info)
+	 * @param {string} module - 模块名称
+	 * @param {...*} args - 日志内容
+	 */
+	_output(level, module, ...args) {
+		if (!this.enabled) return;
+		
+		const prefix = module ? `[${module}]` : '[Argon]';
+		const message = args.map(arg => {
+			if (typeof arg === 'object') {
+				try {
+					return JSON.stringify(arg, null, 2);
+				} catch (e) {
+					return String(arg);
+				}
+			}
+			return String(arg);
+		}).join(' ');
+		
+		// 如果有管理员控制台，优先使用
+		if (this.useAdminConsole && window.argonDebug) {
+			// 管理员控制台会自动处理日志级别和格式
+			console[level](`${prefix} ${message}`);
+		} else {
+			// 否则输出到浏览器控制台
+			console[level](`${prefix} ${message}`);
+		}
 	},
 	
-	warn(...args) {
-		if (this.enabled) console.warn('[Argon]', ...args);
+	log(module, ...args) {
+		this._output('log', module, ...args);
 	},
 	
-	error(...args) {
-		if (this.enabled) console.error('[Argon]', ...args);
+	warn(module, ...args) {
+		this._output('warn', module, ...args);
 	},
 	
-	info(...args) {
-		if (this.enabled) console.info('[Argon]', ...args);
+	error(module, ...args) {
+		this._output('error', module, ...args);
+	},
+	
+	info(module, ...args) {
+		this._output('info', module, ...args);
 	},
 	
 	group(label) {
@@ -318,7 +355,7 @@ class ArgonDOMCache {
 		
 		// 如果启用了调试模式，输出淘汰信息
 		if (typeof argonConfig !== 'undefined' && argonConfig.debug_mode) {
-			ArgonDebug.log(`DOM缓存 LRU 淘汰: ${lruKey}`);
+			ArgonDebug.log('DOM缓存', `LRU 淘汰: ${lruKey}`);
 		}
 	}
 	
@@ -375,7 +412,7 @@ class ArgonDOMCache {
 	 */
 	setMaxSize(newMaxSize) {
 		if (newMaxSize < 1) {
-			ArgonDebug.warn('DOM缓存最大大小必须大于 0');
+			ArgonDebug.warn('DOM缓存', 'DOM缓存最大大小必须大于 0');
 			return;
 		}
 		
@@ -403,6 +440,7 @@ class ArgonDOMCache {
 		this.accessTimes.delete(key);
 		this._removeFromAccessOrder(key);
 		
+		ArgonDebug.log('DOM缓存', `删除缓存项: ${key}`);
 		return true;
 	}
 }
@@ -845,7 +883,7 @@ class ArgonRenderOptimizer {
 			try {
 				readFn();
 			} catch (error) {
-				ArgonDebug.error('读取操作错误:', error);
+				ArgonDebug.error('渲染优化', '读取操作错误:', error);
 			}
 		}
 		
@@ -855,7 +893,7 @@ class ArgonRenderOptimizer {
 			try {
 				writeFn();
 			} catch (error) {
-				ArgonDebug.error('写入操作错误:', error);
+				ArgonDebug.error('渲染优化', '写入操作错误:', error);
 			}
 		}
 		
@@ -953,7 +991,7 @@ class ArgonRenderOptimizer {
 		try {
 			animationFn(element);
 		} catch (error) {
-			ArgonDebug.error('动画执行错误:', error);
+			ArgonDebug.error('渲染优化', '动画执行错误:', error);
 			// 出错时也要清理
 			this.endAnimation(element);
 		}
@@ -1261,7 +1299,7 @@ class ArgonPerformanceMonitor {
 			this.metrics.timestamp = Date.now();
 			
 		} catch (error) {
-			ArgonDebug.warn('性能指标记录失败:', error);
+			ArgonDebug.warn('性能监控', '性能指标记录失败:', error);
 		}
 	}
 	
@@ -1442,7 +1480,7 @@ class ArgonPerformanceMonitor {
 		// 如果有问题，在控制台输出警告
 		if (issues.length > 0) {
 			ArgonDebug.group('性能问题检测');
-			issues.forEach(issue => ArgonDebug.warn(issue));
+			issues.forEach(issue => ArgonDebug.warn('性能监控', issue));
 			ArgonDebug.groupEnd();
 		}
 		
@@ -1701,9 +1739,9 @@ class ArgonPerformanceMonitor {
 		
 		// 输出建议
 		if (suggestions.length > 0) {
-			suggestions.forEach(suggestion => ArgonDebug.log(suggestion));
+			suggestions.forEach(suggestion => ArgonDebug.log('性能监控', suggestion));
 		} else {
-			ArgonDebug.log('✅ 未检测到明显的性能问题，继续保持！');
+			ArgonDebug.log('性能监控', '✅ 未检测到明显的性能问题，继续保持！');
 		}
 		
 		ArgonDebug.groupEnd();

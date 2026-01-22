@@ -360,6 +360,7 @@ function argon_clear_all_caches() {
 	$wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_site_transient_timeout_puc_%'");
 	
 	// 触发缓存清理钩子，允许其他插件响应
+	// 这也会触发前端 JavaScript 清理性能优化模块的缓存
 	do_action('argon_cache_cleared');
 }
 
@@ -882,11 +883,35 @@ function argon_debug_console_script() {
 		window.argonDebug={toggle:function(){panel.classList.toggle('show');if(panel.classList.contains('show')&&currentFilter==='resources'){collectResources();renderResources();}},clear:function(){logs=[];counts={all:0,log:0,warn:0,error:0,resources:counts.resources};updateCounts();renderLogs();},clearCache:function(){
 			// 清除浏览器缓存
 			var cleared = [];
-			// 1. 清除 localStorage
+			
+			// 1. 清除性能优化模块缓存
+			try {
+				if (typeof argonDOMCache !== 'undefined' && argonDOMCache) {
+					argonDOMCache.clear();
+					cleared.push('DOM缓存');
+				}
+				if (typeof argonEventManager !== 'undefined' && argonEventManager) {
+					argonEventManager.clear();
+					cleared.push('事件监听器');
+				}
+				if (typeof argonMemoryManager !== 'undefined' && argonMemoryManager) {
+					argonMemoryManager.clearAll();
+					cleared.push('内存管理器');
+				}
+				if (typeof argonRenderOptimizer !== 'undefined' && argonRenderOptimizer) {
+					argonRenderOptimizer.clearAllAnimations();
+					cleared.push('渲染优化器');
+				}
+				console.log('<?php _e("已清除性能优化模块缓存", "argon"); ?>');
+			} catch(e) {
+				console.warn('<?php _e("清除性能优化模块缓存时出错", "argon"); ?>:', e);
+			}
+			
+			// 2. 清除 localStorage
 			try { var lsLen = localStorage.length; localStorage.clear(); if(lsLen > 0) cleared.push('localStorage ('+lsLen+' items)'); } catch(e) {}
-			// 2. 清除 sessionStorage
+			// 3. 清除 sessionStorage
 			try { var ssLen = sessionStorage.length; sessionStorage.clear(); if(ssLen > 0) cleared.push('sessionStorage ('+ssLen+' items)'); } catch(e) {}
-			// 3. 清除 Service Worker 缓存
+			// 4. 清除 Service Worker 缓存
 			if ('caches' in window) {
 				caches.keys().then(function(names) {
 					var count = names.length;
@@ -896,7 +921,7 @@ function argon_debug_console_script() {
 					}
 				});
 			}
-			// 4. 注销 Service Worker
+			// 5. 注销 Service Worker
 			if ('serviceWorker' in navigator) {
 				navigator.serviceWorker.getRegistrations().then(function(registrations) {
 					registrations.forEach(function(registration) { registration.unregister(); });
