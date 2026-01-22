@@ -7465,11 +7465,6 @@ function argon_auto_detect_spam_on_comment($comment_id, $comment_approved) {
 		return;
 	}
 	
-	// 抽查模式：20% 概率检测
-	if ($mode === 'sample' && rand(1, 100) > 20) {
-		return;
-	}
-	
 	$comment = get_comment($comment_id);
 	if (!$comment) {
 		return;
@@ -7480,10 +7475,114 @@ function argon_auto_detect_spam_on_comment($comment_id, $comment_approved) {
 		return;
 	}
 	
-	// 异步检测
-	wp_schedule_single_event(time(), 'argon_async_spam_detection', [$comment_id]);
+	// 判断是否需要检测
+	$should_check = false;
+	
+	if ($mode === 'all') {
+		// 全量检测模式：必定检测
+		$should_check = true;
+	} elseif ($mode === 'sample') {
+		// 抽查模式：根据用户历史通过率动态调整概率
+		$check_probability = argon_get_user_spam_check_probability($comment);
+		$should_check = (rand(1, 100) <= $check_probability);
+	}
+	
+	if ($should_check) {
+		// 异步检测
+		wp_schedule_single_event(time(), 'argon_async_spam_detection', [$comment_id]);
+	}
 }
 add_action('comment_post', 'argon_auto_detect_spam_on_comment', 10, 2);
+
+/**
+ * 获取用户的垃圾评论检测概率（动态调整）
+ * @param object $comment 评论对象
+ * @return int 检测概率（1-100）
+ */
+function argon_get_user_spam_check_probability($comment) {
+	// 基础抽查概率
+	$base_probability = 20;
+	
+	// 获取用户标识（邮箱或 IP）
+	$user_identifier = !empty($comment->comment_author_email) 
+		? md5($comment->comment_author_email) 
+		: md5($comment->comment_author_IP);
+	
+	// 获取用户历史记录
+	$user_stats = get_transient('argon_spam_user_stats_' . $user_identifier);
+	
+	if (!$user_stats) {
+		// 新用户，使用基础概率
+		return $base_probability;
+	}
+	
+	$total_checked = isset($user_stats['total_checked']) ? $user_stats['total_checked'] : 0;
+	$spam_count = isset($user_stats['spam_count']) ? $user_stats['spam_count'] : 0;
+	
+	// 至少检测过 5 次才开始调整概率
+	if ($total_checked < 5) {
+		return $base_probability;
+	}
+	
+	// 计算通过率
+	$pass_rate = ($total_checked - $spam_count) / $total_checked;
+	
+	// 根据通过率动态调整概率
+	if ($pass_rate >= 0.95) {
+		// 通过率 >= 95%：降低到 5%
+		return 5;
+	} elseif ($pass_rate >= 0.90) {
+		// 通过率 >= 90%：降低到 10%
+		return 10;
+	} elseif ($pass_rate >= 0.80) {
+		// 通过率 >= 80%：降低到 15%
+		return 15;
+	} elseif ($pass_rate >= 0.50) {
+		// 通过率 >= 50%：保持基础概率 20%
+		return $base_probability;
+	} elseif ($pass_rate >= 0.30) {
+		// 通过率 30-50%：提高到 40%
+		return 40;
+	} elseif ($pass_rate >= 0.10) {
+		// 通过率 10-30%：提高到 60%
+		return 60;
+	} else {
+		// 通过率 < 10%：提高到 80%
+		return 80;
+	}
+}
+
+/**
+ * 更新用户垃圾评论统计
+ * @param object $comment 评论对象
+ * @param bool $is_spam 是否为垃圾评论
+ */
+function argon_update_user_spam_stats($comment, $is_spam) {
+	// 获取用户标识
+	$user_identifier = !empty($comment->comment_author_email) 
+		? md5($comment->comment_author_email) 
+		: md5($comment->comment_author_IP);
+	
+	$transient_key = 'argon_spam_user_stats_' . $user_identifier;
+	$user_stats = get_transient($transient_key);
+	
+	if (!$user_stats) {
+		$user_stats = [
+			'total_checked' => 0,
+			'spam_count' => 0,
+			'last_check_time' => time()
+		];
+	}
+	
+	$user_stats['total_checked']++;
+	if ($is_spam) {
+		$user_stats['spam_count']++;
+	}
+	$user_stats['last_check_time'] = time();
+	
+	// 保存 30 天
+	set_transient($transient_key, $user_stats, 30 * DAY_IN_SECONDS);
+}
 
 /**
  * 异步执行垃圾评论检测
@@ -7491,14 +7590,24 @@ add_action('comment_post', 'argon_auto_detect_spam_on_comment', 10, 2);
 function argon_async_spam_detection_handler($comment_id) {
 	$result = argon_detect_spam_comment($comment_id);
 	
-	if ($result && $result['is_spam']) {
-		// 移入回收站
-		wp_trash_comment($comment_id);
+	$comment = get_comment($comment_id);
+	if (!$comment) {
+		return;
+	}
+	
+	if ($result && isset($result['is_spam'])) {
+		// 更新用户统计
+		argon_update_user_spam_stats($comment, $result['is_spam']);
 		
-		// 记录日志
-		update_comment_meta($comment_id, '_argon_spam_auto_trashed', true);
-		update_comment_meta($comment_id, '_argon_spam_trash_reason', $result['reason']);
-		update_comment_meta($comment_id, '_argon_spam_trash_time', time());
+		if ($result['is_spam']) {
+			// 移入回收站
+			wp_trash_comment($comment_id);
+			
+			// 记录日志
+			update_comment_meta($comment_id, '_argon_spam_auto_trashed', true);
+			update_comment_meta($comment_id, '_argon_spam_trash_reason', $result['reason']);
+			update_comment_meta($comment_id, '_argon_spam_trash_time', time());
+		}
 	}
 }
 add_action('argon_async_spam_detection', 'argon_async_spam_detection_handler');

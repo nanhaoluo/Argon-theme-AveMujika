@@ -3897,13 +3897,22 @@ window.pjaxLoaded = function(){
 							<select name="argon_comment_spam_detection_mode">
 								<?php $argon_comment_spam_detection_mode = get_option('argon_comment_spam_detection_mode', 'manual'); ?>
 								<option value="manual" <?php if ($argon_comment_spam_detection_mode=='manual'){echo 'selected';} ?>><?php _e('仅手动检测', 'argon');?></option>
-								<option value="sample" <?php if ($argon_comment_spam_detection_mode=='sample'){echo 'selected';} ?>><?php _e('抽查模式 (随机检测 20%)', 'argon');?></option>
-								<option value="all" <?php if ($argon_comment_spam_detection_mode=='all'){echo 'selected';} ?>><?php _e('全量检测 (每条评论都检测)', 'argon');?></option>
+								<option value="sample" <?php if ($argon_comment_spam_detection_mode=='sample'){echo 'selected';} ?>><?php _e('智能抽查模式', 'argon');?></option>
+								<option value="all" <?php if ($argon_comment_spam_detection_mode=='all'){echo 'selected';} ?>><?php _e('全量实时检测', 'argon');?></option>
 							</select>
 							<p class="description">
-								<?php _e('仅手动检测：只在管理员手动触发时检测', 'argon');?><br/>
-								<?php _e('抽查模式：新评论有 20% 概率被检测，节省 API 调用', 'argon');?><br/>
-								<?php _e('全量检测：所有新评论都会被检测（推荐，但会增加 API 消耗）', 'argon');?>
+								<strong><?php _e('仅手动检测', 'argon');?>：</strong><?php _e('只在管理员手动触发全站扫描时检测', 'argon');?><br/>
+								<strong><?php _e('智能抽查模式', 'argon');?>：</strong><?php _e('新评论基础抽查概率 20%，根据用户历史通过率动态调整', 'argon');?><br/>
+								<span style="margin-left: 20px; color: #666;">
+									• <?php _e('通过率 ≥95%：降至 5% 抽查', 'argon');?><br/>
+									• <?php _e('通过率 90-95%：降至 10% 抽查', 'argon');?><br/>
+									• <?php _e('通过率 80-90%：降至 15% 抽查', 'argon');?><br/>
+									• <?php _e('通过率 50-80%：保持 20% 抽查', 'argon');?><br/>
+									• <?php _e('通过率 30-50%：提高至 40% 抽查', 'argon');?><br/>
+									• <?php _e('通过率 10-30%：提高至 60% 抽查', 'argon');?><br/>
+									• <?php _e('通过率 <10%：提高至 80% 抽查', 'argon');?>
+								</span><br/>
+								<strong><?php _e('全量实时检测', 'argon');?>：</strong><?php _e('所有新评论都会被检测（推荐，但会增加 API 消耗）', 'argon');?>
 							</p>
 						</td>
 					</tr>
