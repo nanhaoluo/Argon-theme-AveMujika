@@ -380,6 +380,80 @@ function themeoptions_page(){
 
 					</tr>
 
+					<tr><th class="subtitle"><h3 id="subsection-animation"><?php _e('动画效果', 'argon');?></h3></th></tr>
+
+					<tr>
+
+						<th><label><?php _e('平滑滚动', 'argon');?></label></th>
+
+						<td>
+
+							<select name="argon_enable_smoothscroll_type">
+
+								<?php $enable_smoothscroll_type = get_option('argon_enable_smoothscroll_type'); ?>
+
+								<option value="1" <?php if ($enable_smoothscroll_type=='1'){echo 'selected';} ?>><?php _e('使用平滑滚动方案 1 (平滑) (推荐)', 'argon');?></option>
+
+								<option value="1_pulse" <?php if ($enable_smoothscroll_type=='1_pulse'){echo 'selected';} ?>><?php _e('使用平滑滚动方案 1 (脉冲式滚动) (仿 Edge) (推荐)', 'argon');?></option>
+
+								<option value="2" <?php if ($enable_smoothscroll_type=='2'){echo 'selected';} ?>><?php _e('使用平滑滚动方案 2 (较稳)', 'argon');?></option>
+
+								<option value="3" <?php if ($enable_smoothscroll_type=='3'){echo 'selected';} ?>><?php _e('使用平滑滚动方案 3', 'argon');?></option>
+
+								<option value="disabled" <?php if ($enable_smoothscroll_type=='disabled'){echo 'selected';} ?>><?php _e('不使用平滑滚动', 'argon');?></option>
+
+							</select>
+
+							<p class="description"><?php _e('能增强浏览体验，但可能出现一些小问题，如果有问题请切换方案或关闭平滑滚动', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
+					<tr>
+
+						<th><label><?php _e('进入文章动画', 'argon');?></label></th>
+
+						<td>
+
+							<select name="argon_enable_into_article_animation">
+
+								<?php $argon_enable_into_article_animation = get_option('argon_enable_into_article_animation'); ?>
+
+								<option value="false" <?php if ($argon_enable_into_article_animation=='false'){echo 'selected';} ?>><?php _e('不启用', 'argon');?></option>
+
+								<option value="true" <?php if ($argon_enable_into_article_animation=='true'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
+
+							</select>
+
+							<p class="description"><?php _e('从首页或分类目录进入文章时，使用平滑过渡（可能影响加载文章时的性能）', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
+					<tr>
+
+						<th><label><?php _e('Pjax 滚动动画', 'argon');?></label></th>
+
+						<td>
+
+							<select name="argon_disable_pjax_animation">
+
+								<?php $argon_disable_pjax_animation = get_option('argon_disable_pjax_animation'); ?>
+
+								<option value="false" <?php if ($argon_disable_pjax_animation=='false'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
+
+								<option value="true" <?php if ($argon_disable_pjax_animation=='true'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
+
+							</select>
+
+							<p class="description"><?php _e('Pjax 替换页面内容后会平滑滚动到页面顶部，如果你不喜欢，可以禁用这个选项', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
 					<!-- ========== 3. 页面布局 ========== -->
 					<tr><th class="subtitle"><h2 id="section-layout"><?php _e('页面布局', 'argon');?></h2></th></tr>
 
@@ -1524,6 +1598,108 @@ function themeoptions_page(){
 							<input type="text" class="regular-text" name="argon_seo_keywords" value="<?php echo get_option('argon_seo_keywords'); ?>"/>
 
 							<p class="description"><?php _e('设置针对搜索引擎使用的关键词（Keywords Meta 标签内容）。用英文逗号隔开。不设置则不输出该 Meta 标签。', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
+					<tr><th class="subtitle"><h3 id="subsection-cdn"><?php _e('CDN 加速', 'argon');?></h3></th></tr>
+
+					<tr>
+
+						<th><label>CDN</label></th>
+
+						<td>
+
+							<select name="argon_assets_path">
+
+								<?php $argon_assets_path = get_option('argon_assets_path'); ?>
+
+								<option value="default" <?php if ($argon_assets_path=='default'){echo 'selected';} ?>><?php _e('不使用', 'argon');?></option>
+
+								<option value="jsdelivr" <?php if ($argon_assets_path=='jsdelivr'){echo 'selected';} ?>>Jsdelivr</option>
+
+								<option value="fastgit" <?php if ($argon_assets_path=='fastgit'){echo 'selected';} ?>>Fastgit</option>
+
+								<option value="sourcegcdn" <?php if ($argon_assets_path=='sourcegcdn'){echo 'selected';} ?>>Source Global CDN</option>
+
+								<option value="jsdelivr_gcore" <?php if ($argon_assets_path=='jsdelivr_gcore'){echo 'selected';} ?>>Jsdelivr (gcore)</option>
+
+								<option value="jsdelivr_fastly" <?php if ($argon_assets_path=='jsdelivr_fastly'){echo 'selected';} ?>>Jsdelivr (fastly)</option>
+
+								<option value="jsdelivr_cf" <?php if ($argon_assets_path=='jsdelivr_cf'){echo 'selected';} ?>>Jsdelivr (cf)</option>
+
+								<option value="custom" <?php if ($argon_assets_path=='custom'){echo 'selected';} ?>><?php _e('自定义...', 'argon');?></option>
+
+							</select>
+
+							<input type="text" class="regular-text" name="argon_custom_assets_path" placeholder="https://" value="<?php echo get_option('argon_custom_assets_path', ''); ?>" autocomplete="off">
+
+							<p class="description"><?php _e('选择主题资源文件的引用地址。使用 CDN 可以加速资源文件的访问并减少服务器压力。', 'argon');?></p>
+
+							<p class="description custom-assets-path-desctiption"><?php _e('在自定义路径中使用 <code>%theme_version%</code> 来表示主题版本号。', 'argon');?></p>
+
+						</td>
+
+						<script>
+
+							$("select[name='argon_assets_path']").change(function(){
+
+								if ($(this).val() == 'custom') {
+
+									$("input[name='argon_custom_assets_path']").css('display', '');
+
+									$(".custom-assets-path-desctiption").css('display', '');
+
+								} else {
+
+									$("input[name='argon_custom_assets_path']").css('display', 'none');
+
+									$(".custom-assets-path-desctiption").css('display', 'none');
+
+								}
+
+							}).change();
+
+						</script>
+
+					</tr>
+
+					<tr>
+
+						<th><label><?php _e('WordPress 安装目录', 'argon');?></label></th>
+
+						<td>
+
+							<input type="text" class="regular-text" name="argon_wp_path" value="<?php echo get_option('argon_wp_path', '/'); ?>"/>
+
+							<p class="description"><?php _e('如果 WordPress 安装在子目录中，请在此填写子目录地址（例如', 'argon');?> <code>/blog/</code><?php _e('），注意前后各有一个斜杠。默认为', 'argon');?> <code>/</code> <?php _e('。', 'argon');?><br/><?php _e('如果不清楚该选项的用处，请保持默认。', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
+					<tr><th class="subtitle"><h3 id="subsection-date-format"><?php _e('日期格式', 'argon');?></h3></th></tr>
+
+					<tr>
+
+						<th><label><?php _e('日期格式', 'argon');?></label></th>
+
+						<td>
+
+							<select name="argon_dateformat">
+
+								<?php $argon_dateformat = get_option('argon_dateformat'); ?>
+
+								<option value="YMD" <?php if ($argon_dateformat=='YMD'){echo 'selected';} ?>>Y-M-D</option>
+
+								<option value="DMY" <?php if ($argon_dateformat=='DMY'){echo 'selected';} ?>>D-M-Y</option>
+
+								<option value="MDY" <?php if ($argon_dateformat=='MDY'){echo 'selected';} ?>>M-D-Y</option>
+
+							</select>
+
+							<p class="description"></p>
 
 						</td>
 
