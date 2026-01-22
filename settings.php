@@ -291,22 +291,6 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-subdirectory"><?php _e('子目录', 'argon');?></h3></th></tr>
-
-					<tr>
-
-						<th><label><?php _e('Wordpress 安装目录', 'argon');?></label></th>
-
-						<td>
-
-							<input type="text" class="regular-text" name="argon_wp_path" value="<?php echo get_option('argon_wp_path', '/'); ?>"/>
-
-							<p class="description"><?php _e('如果 Wordpress 安装在子目录中，请在此填写子目录地址（例如', 'argon');?> <code>/blog/</code><?php _e('），注意前后各有一个斜杠。默认为', 'argon');?> <code>/</code> <?php _e('。', 'argon');?><br/><?php _e('如果不清楚该选项的用处，请保持默认。', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
 					<!-- ========== 2. 外观样式 ========== -->
 					<tr><th class="subtitle"><h2 id="section-appearance"><?php _e('外观样式', 'argon');?></h2></th></tr>
 
@@ -391,80 +375,6 @@ function themeoptions_page(){
 							</div>
 
 							<p class="description"><?php _e('默认使用无衬线字体/衬线字体。', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
-					<tr><th class="subtitle"><h3 id="subsection-animation"><?php _e('动画效果', 'argon');?></h3></th></tr>
-
-					<tr>
-
-						<th><label><?php _e('是否启用平滑滚动', 'argon');?></label></th>
-
-						<td>
-
-							<select name="argon_enable_smoothscroll_type">
-
-								<?php $enable_smoothscroll_type = get_option('argon_enable_smoothscroll_type'); ?>
-
-								<option value="1" <?php if ($enable_smoothscroll_type=='1'){echo 'selected';} ?>><?php _e('使用平滑滚动方案 1 (平滑) (推荐)', 'argon');?></option>
-
-								<option value="1_pulse" <?php if ($enable_smoothscroll_type=='1_pulse'){echo 'selected';} ?>><?php _e('使用平滑滚动方案 1 (脉冲式滚动) (仿 Edge) (推荐)', 'argon');?></option>
-
-								<option value="2" <?php if ($enable_smoothscroll_type=='2'){echo 'selected';} ?>><?php _e('使用平滑滚动方案 2 (较稳)', 'argon');?></option>
-
-								<option value="3" <?php if ($enable_smoothscroll_type=='3'){echo 'selected';} ?>><?php _e('使用平滑滚动方案 3', 'argon');?></option>
-
-								<option value="disabled" <?php if ($enable_smoothscroll_type=='disabled'){echo 'selected';} ?>><?php _e('不使用平滑滚动', 'argon');?></option>
-
-							</select>
-
-							<p class="description"><?php _e('能增强浏览体验，但可能出现一些小问题，如果有问题请切换方案或关闭平滑滚动', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
-					<tr>
-
-						<th><label><?php _e('是否启用进入文章动画', 'argon');?></label></th>
-
-						<td>
-
-							<select name="argon_enable_into_article_animation">
-
-								<?php $argon_enable_into_article_animation = get_option('argon_enable_into_article_animation'); ?>
-
-								<option value="false" <?php if ($argon_enable_into_article_animation=='false'){echo 'selected';} ?>><?php _e('不启用', 'argon');?></option>
-
-								<option value="true" <?php if ($argon_enable_into_article_animation=='true'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
-
-							</select>
-
-							<p class="description"><?php _e('从首页或分类目录进入文章时，使用平滑过渡（可能影响加载文章时的性能）', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
-					<tr>
-
-						<th><label><?php _e('禁用 Pjax 加载后的页面滚动动画', 'argon');?></label></th>
-
-						<td>
-
-							<select name="argon_disable_pjax_animation">
-
-								<?php $argon_disable_pjax_animation = get_option('argon_disable_pjax_animation'); ?>
-
-								<option value="false" <?php if ($argon_disable_pjax_animation=='false'){echo 'selected';} ?>><?php _e('不禁用', 'argon');?></option>
-
-								<option value="true" <?php if ($argon_disable_pjax_animation=='true'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
-
-							</select>
-
-							<p class="description"><?php _e('Pjax 替换页面内容后会平滑滚动到页面顶部，如果你不喜欢，可以禁用这个选项', 'argon');?></p>
 
 						</td>
 
@@ -1481,8 +1391,8 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 8. 浮动按钮 ========== -->
-					<tr><th class="subtitle"><h2 id="section-fab"><?php _e('浮动按钮', 'argon');?></h2></th></tr>
+					<!-- ========== 8. 浮动按钮与页脚 ========== -->
+					<tr><th class="subtitle"><h2 id="section-fab-footer"><?php _e('浮动按钮与页脚', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-fab"><?php _e('浮动操作按钮', 'argon');?></h3></th></tr>
 
@@ -1554,27 +1464,8 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 9. 页脚设置 ========== -->
-					<tr><th class="subtitle"><h2 id="section-footer"><?php _e('页脚设置', 'argon');?></h2></th></tr>
-
-					<tr><th class="subtitle"><h3 id="subsection-footer"><?php _e('页脚', 'argon');?></h3></th></tr>
-
-					<tr>
-
-						<th><label><?php _e('页脚内容', 'argon');?></label></th>
-
-						<td>
-
-							<textarea type="text" rows="15" cols="100" name="argon_footer_html"><?php echo htmlspecialchars(get_option('argon_footer_html')); ?></textarea>
-
-							<p class="description"><?php _e('HTML , 支持 script 等标签', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
-					<!-- ========== 10. SEO 与性能 ========== -->
-					<tr><th class="subtitle"><h2 id="section-seo-performance"><?php _e('SEO 与性能', 'argon');?></h2></th></tr>
+					<!-- ========== 10. SEO与性能 ========== -->
+					<tr><th class="subtitle"><h2 id="section-seo-performance"><?php _e('SEO与性能', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-seo">SEO</h3></th></tr>
 
@@ -1601,94 +1492,6 @@ function themeoptions_page(){
 							<input type="text" class="regular-text" name="argon_seo_keywords" value="<?php echo get_option('argon_seo_keywords'); ?>"/>
 
 							<p class="description"><?php _e('设置针对搜索引擎使用的关键词（Keywords Meta 标签内容）。用英文逗号隔开。不设置则不输出该 Meta 标签。', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
-					<tr><th class="subtitle"><h3 id="subsection-cdn"><?php _e('CDN 加速', 'argon');?></h3></th></tr>
-
-					<tr>
-
-						<th><label>CDN</label></th>
-
-						<td>
-
-							<select name="argon_assets_path">
-
-								<?php $argon_assets_path = get_option('argon_assets_path'); ?>
-
-								<option value="default" <?php if ($argon_assets_path=='default'){echo 'selected';} ?>><?php _e('不使用', 'argon');?></option>
-
-								<option value="jsdelivr" <?php if ($argon_assets_path=='jsdelivr'){echo 'selected';} ?>>Jsdelivr</option>
-
-								<option value="fastgit" <?php if ($argon_assets_path=='fastgit'){echo 'selected';} ?>>Fastgit</option>
-
-								<option value="sourcegcdn" <?php if ($argon_assets_path=='sourcegcdn'){echo 'selected';} ?>>Source Global CDN</option>
-
-								<option value="jsdelivr_gcore" <?php if ($argon_assets_path=='jsdelivr_gcore'){echo 'selected';} ?>>Jsdelivr (gcore)</option>
-
-								<option value="jsdelivr_fastly" <?php if ($argon_assets_path=='jsdelivr_fastly'){echo 'selected';} ?>>Jsdelivr (fastly)</option>
-
-								<option value="jsdelivr_cf" <?php if ($argon_assets_path=='jsdelivr_cf'){echo 'selected';} ?>>Jsdelivr (cf)</option>
-
-								<option value="custom" <?php if ($argon_assets_path=='custom'){echo 'selected';} ?>><?php _e('自定义...', 'argon');?></option>
-
-							</select>
-
-							<input type="text" class="regular-text" name="argon_custom_assets_path" placeholder="https://" value="<?php echo get_option('argon_custom_assets_path', ''); ?>" autocomplete="off">
-
-							<p class="description"><?php _e('选择主题资源文件的引用地址。使用 CDN 可以加速资源文件的访问并减少服务器压力。', 'argon');?></p>
-
-							<p class="description custom-assets-path-desctiption"><?php _e('在自定义路径中使用 <code>%theme_version%</code> 来表示主题版本号。', 'argon');?></p>
-
-						</td>
-
-						<script>
-
-							$("select[name='argon_assets_path']").change(function(){
-
-								if ($(this).val() == 'custom') {
-
-									$("input[name='argon_custom_assets_path']").css('display', '');
-
-									$(".custom-assets-path-desctiption").css('display', '');
-
-								} else {
-
-									$("input[name='argon_custom_assets_path']").css('display', 'none');
-
-									$(".custom-assets-path-desctiption").css('display', 'none');
-
-								}
-
-							}).change();
-
-						</script>
-
-					</tr>
-
-					<tr><th class="subtitle"><h3 id="subsection-date-format"><?php _e('日期格式', 'argon');?></h3></th></tr>
-
-					<tr>
-
-						<th><label><?php _e('日期格式', 'argon');?></label></th>
-
-						<td>
-
-							<select name="argon_dateformat">
-
-								<?php $argon_dateformat = get_option('argon_dateformat'); ?>
-
-								<option value="YMD" <?php if ($argon_dateformat=='YMD'){echo 'selected';} ?>>Y-M-D</option>
-
-								<option value="DMY" <?php if ($argon_dateformat=='DMY'){echo 'selected';} ?>>D-M-Y</option>
-
-								<option value="MDY" <?php if ($argon_dateformat=='MDY'){echo 'selected';} ?>>M-D-Y</option>
-
-							</select>
-
-							<p class="description"></p>
 
 						</td>
 
@@ -2555,6 +2358,22 @@ function themeoptions_page(){
 
 					</tr>
 
+					<tr><th class="subtitle"><h3 id="subsection-footer"><?php _e('页脚', 'argon');?></h3></th></tr>
+
+					<tr>
+
+						<th><label><?php _e('页脚内容', 'argon');?></label></th>
+
+						<td>
+
+							<textarea type="text" rows="15" cols="100" name="argon_footer_html"><?php echo htmlspecialchars(get_option('argon_footer_html')); ?></textarea>
+
+							<p class="description"><?php _e('HTML , 支持 script 等标签', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
 					<!-- ========== 14. 功能增强 ========== -->
 					<tr><th class="subtitle"><h2 id="section-enhancements"><?php _e('功能增强', 'argon');?></h2></th></tr>
 
@@ -3092,6 +2911,22 @@ function themeoptions_page(){
 					<!-- ========== 15. 高级设置 ========== -->
 				<tr><th class="subtitle"><h2 id="section-advanced"><?php _e('高级设置', 'argon');?></h2></th></tr>
 
+				<tr><th class="subtitle"><h3 id="subsection-date-format"><?php _e('日期格式', 'argon');?></h3></th></tr>
+
+				<tr>
+					<th><label><?php _e('日期格式', 'argon');?></label></th>
+					<td>
+						<select name="argon_dateformat">
+							<?php $argon_dateformat = get_option('argon_dateformat'); ?>
+							<option value="type1" <?php if ($argon_dateformat=='type1'){echo 'selected';} ?>><?php _e('样式 1 (Y-m-d)', 'argon');?></option>
+							<option value="type2" <?php if ($argon_dateformat=='type2'){echo 'selected';} ?>><?php _e('样式 2 (Y/m/d)', 'argon');?></option>
+							<option value="type3" <?php if ($argon_dateformat=='type3'){echo 'selected';} ?>><?php _e('样式 3 (Y.m.d)', 'argon');?></option>
+							<option value="type4" <?php if ($argon_dateformat=='type4'){echo 'selected';} ?>><?php _e('样式 4 (Y年m月d日)', 'argon');?></option>
+						</select>
+						<p class="description"><?php _e('日期显示格式', 'argon');?></p>
+					</td>
+				</tr>
+
 				<tr><th class="subtitle"><h3 id="subsection-scripts"><?php _e('自定义脚本', 'argon');?></h3></th></tr>
 
 					<tr>
@@ -3151,6 +2986,78 @@ window.pjaxLoaded = function(){
 					</tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-misc"><?php _e('杂项', 'argon');?></h3></th></tr>
+
+					<tr>
+
+						<th><label><?php _e('是否启用平滑滚动', 'argon');?></label></th>
+
+						<td>
+
+							<select name="argon_enable_smoothscroll_type">
+
+								<?php $enable_smoothscroll_type = get_option('argon_enable_smoothscroll_type'); ?>
+
+								<option value="1" <?php if ($enable_smoothscroll_type=='1'){echo 'selected';} ?>><?php _e('使用平滑滚动方案 1 (平滑) (推荐)', 'argon');?></option>
+
+								<option value="1_pulse" <?php if ($enable_smoothscroll_type=='1_pulse'){echo 'selected';} ?>><?php _e('使用平滑滚动方案 1 (脉冲式滚动) (仿 Edge) (推荐)', 'argon');?></option>
+
+								<option value="2" <?php if ($enable_smoothscroll_type=='2'){echo 'selected';} ?>><?php _e('使用平滑滚动方案 2 (较稳)', 'argon');?></option>
+
+								<option value="3" <?php if ($enable_smoothscroll_type=='3'){echo 'selected';} ?>><?php _e('使用平滑滚动方案 3', 'argon');?></option>
+
+								<option value="disabled" <?php if ($enable_smoothscroll_type=='disabled'){echo 'selected';} ?>><?php _e('不使用平滑滚动', 'argon');?></option>
+
+							</select>
+
+							<p class="description"><?php _e('能增强浏览体验，但可能出现一些小问题，如果有问题请切换方案或关闭平滑滚动', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
+					<tr>
+
+						<th><label><?php _e('是否启用进入文章动画', 'argon');?></label></th>
+
+						<td>
+
+							<select name="argon_enable_into_article_animation">
+
+								<?php $argon_enable_into_article_animation = get_option('argon_enable_into_article_animation'); ?>
+
+								<option value="false" <?php if ($argon_enable_into_article_animation=='false'){echo 'selected';} ?>><?php _e('不启用', 'argon');?></option>
+
+								<option value="true" <?php if ($argon_enable_into_article_animation=='true'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
+
+							</select>
+
+							<p class="description"><?php _e('从首页或分类目录进入文章时，使用平滑过渡（可能影响加载文章时的性能）', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
+					<tr>
+
+						<th><label><?php _e('禁用 Pjax 加载后的页面滚动动画', 'argon');?></label></th>
+
+						<td>
+
+							<select name="argon_disable_pjax_animation">
+
+								<?php $argon_disable_pjax_animation = get_option('argon_disable_pjax_animation'); ?>
+
+								<option value="false" <?php if ($argon_disable_pjax_animation=='false'){echo 'selected';} ?>><?php _e('不禁用', 'argon');?></option>
+
+								<option value="true" <?php if ($argon_disable_pjax_animation=='true'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
+
+							</select>
+
+							<p class="description"><?php _e('Pjax 替换页面内容后会平滑滚动到页面顶部，如果你不喜欢，可以禁用这个选项', 'argon');?></p>
+
+						</td>
+
+					</tr>
 
 					<!-- ========== 16. 评论设置 ========== -->
 					<tr><th class="subtitle"><h2 id="section-comment"><?php _e('评论设置', 'argon');?></h2></th></tr>
@@ -3279,6 +3186,479 @@ window.pjaxLoaded = function(){
 
 					</tr>
 
+					<!-- ========== 17. 验证码设置 ========== -->
+					<tr><th class="subtitle"><h2 id="section-captcha"><?php _e('验证码设置', 'argon');?></h2></th></tr>
+
+					<tr><th class="subtitle"><h3 id="subsection-captcha"><?php _e('验证码配置', 'argon');?></h3></th></tr>
+
+					<tr>
+
+						<th><label><?php _e('全局验证码开关', 'argon');?></label></th>
+
+						<td>
+
+							<select name="argon_need_captcha">
+
+								<?php $argon_need_captcha = get_option('argon_need_captcha', get_option('argon_comment_need_captcha', 'true')); ?>
+
+								<option value="true" <?php if ($argon_need_captcha=='true'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
+
+								<option value="false" <?php if ($argon_need_captcha=='false'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
+
+							</select>
+
+							<p class="description"><?php _e('全局验证码开关，当各场景设置为"使用全局设置"时生效', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
+					<tr>
+
+						<th><label><?php _e('验证码类型', 'argon');?></label></th>
+
+						<td>
+
+							<select name="argon_captcha_type">
+
+								<?php $argon_captcha_type = get_option('argon_captcha_type', 'math'); ?>
+
+								<option value="math" <?php if ($argon_captcha_type=='math'){echo 'selected';} ?>><?php _e('数学运算', 'argon');?></option>
+
+								<option value="geetest" <?php if ($argon_captcha_type=='geetest'){echo 'selected';} ?>><?php _e('极验验证码', 'argon');?></option>
+
+							</select>
+
+							<p class="description"><?php _e('选择验证码类型。极验验证码需要配置相关参数。', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
+					<tr id="geetest_settings" style="<?php echo ($argon_captcha_type != 'geetest') ? 'display:none;' : ''; ?>">
+
+						<th><label><?php _e('极验验证码 ID', 'argon');?></label></th>
+
+						<td>
+
+							<input type="text" name="argon_geetest_captcha_id" value="<?php echo esc_attr(get_option('argon_geetest_captcha_id', '')); ?>" class="regular-text" required />
+
+							<p class="description"><?php _e('在极验后台获取的验证码 ID，必填项', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
+					<tr id="geetest_key_settings" style="<?php echo ($argon_captcha_type != 'geetest') ? 'display:none;' : ''; ?>">
+
+						<th><label><?php _e('极验验证码 Key', 'argon');?></label></th>
+
+						<td>
+
+							<input type="text" name="argon_geetest_captcha_key" value="<?php echo esc_attr(get_option('argon_geetest_captcha_key', '')); ?>" class="regular-text" required />
+
+							<p class="description"><?php _e('在极验后台获取的验证码私钥，必填项', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
+					<tr id="geetest_server_settings" style="<?php echo ($argon_captcha_type != 'geetest') ? 'display:none;' : ''; ?>">
+
+						<th><label><?php _e('极验 API 服务器', 'argon');?></label></th>
+
+						<td>
+
+							<input type="url" name="argon_geetest_api_server" value="<?php echo esc_attr(get_option('argon_geetest_api_server', 'https://gcaptcha4.geetest.com')); ?>" class="regular-text" />
+
+							<p class="description"><?php _e('极验 API 服务器地址，默认为官方服务器。请确保URL格式正确', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
+					<script>
+
+						jQuery(document).ready(function($) {
+
+							// 验证Geetest配置
+
+							function validateGeetestConfig() {
+
+								var captchaType = $('select[name="argon_captcha_type"]').val();
+
+								if (captchaType === 'geetest') {
+
+									var captchaId = $('input[name="argon_geetest_captcha_id"]').val().trim();
+
+									var captchaKey = $('input[name="argon_geetest_captcha_key"]').val().trim();
+
+									var apiServer = $('input[name="argon_geetest_api_server"]').val().trim();
+
+									
+
+									if (!captchaId || !captchaKey) {
+
+										alert('<?php _e('使用极验验证码时，验证码 ID 和 Key 为必填项', 'argon'); ?>');
+
+										return false;
+
+									}
+
+									
+
+									// 验证API服务器URL格式
+
+									if (apiServer && !apiServer.match(/^https?:\/\/.+/)) {
+
+										alert('<?php _e('API 服务器地址格式不正确，请输入完整的URL', 'argon'); ?>');
+
+										return false;
+
+									}
+
+								}
+
+								return true;
+
+							}
+
+							
+
+							$('select[name="argon_captcha_type"]').change(function() {
+
+								if ($(this).val() === 'geetest') {
+
+									$('#geetest_settings, #geetest_key_settings, #geetest_server_settings').show();
+
+								} else {
+
+									$('#geetest_settings, #geetest_key_settings, #geetest_server_settings').hide();
+
+								}
+
+							});
+
+							
+
+							// 表单提交时验证
+
+							$('form').submit(function(e) {
+
+								if (!validateGeetestConfig()) {
+
+									e.preventDefault();
+
+									return false;
+
+								}
+
+							});
+
+						});
+
+					</script>
+
+					<tr>
+
+						<th><label><?php _e('使用 Ajax 获取验证码', 'argon');?></label></th>
+
+						<td>
+
+							<select name="argon_get_captcha_by_ajax">
+
+							<?php $argon_get_captcha_by_ajax = get_option('argon_get_captcha_by_ajax'); ?>
+
+							<option value="false" <?php if ($argon_get_captcha_by_ajax=='false'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
+
+							<option value="true" <?php if ($argon_get_captcha_by_ajax=='true'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
+
+						</select>
+
+						<p class="description"><?php _e('如果使用了 CDN 缓存，验证码不会刷新，请开启此选项，否则请不要开启。', 'argon');?></p>
+
+					</td>
+
+				</tr>
+
+					<tr><th class="subtitle"><h3 id="subsection-captcha-scenes"><?php _e('场景验证码', 'argon');?></h3></th></tr>
+
+					<tr>
+
+						<th><label><?php _e('评论验证码', 'argon');?></label></th>
+
+						<td>
+
+							<select name="argon_comment_captcha_mode">
+
+								<?php $argon_comment_captcha_mode = get_option('argon_comment_captcha_mode', 'global'); ?>
+
+								<option value="global" <?php if ($argon_comment_captcha_mode=='global'){echo 'selected';} ?>><?php _e('使用全局设置', 'argon');?></option>
+
+								<option value="enabled" <?php if ($argon_comment_captcha_mode=='enabled'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
+
+								<option value="disabled" <?php if ($argon_comment_captcha_mode=='disabled'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
+
+							</select>
+
+							<p class="description"><?php _e('评论是否需要验证码', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
+					<tr>
+
+						<th><label><?php _e('TODO 催促验证码', 'argon');?></label></th>
+
+						<td>
+
+							<select name="argon_todo_captcha_mode">
+
+								<?php $argon_todo_captcha_mode = get_option('argon_todo_captcha_mode', 'global'); ?>
+
+								<option value="global" <?php if ($argon_todo_captcha_mode=='global'){echo 'selected';} ?>><?php _e('使用全局设置', 'argon');?></option>
+
+								<option value="enabled" <?php if ($argon_todo_captcha_mode=='enabled'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
+
+								<option value="disabled" <?php if ($argon_todo_captcha_mode=='disabled'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
+
+							</select>
+
+							<p class="description"><?php _e('访客催促 TODO 时是否需要验证码', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
+					<tr>
+
+						<th><label><?php _e('友链申请验证码', 'argon');?></label></th>
+
+						<td>
+
+							<select name="argon_friend_link_captcha">
+
+								<?php $flink_captcha = get_option('argon_friend_link_captcha', 'global'); ?>
+
+								<option value="global" <?php if ($flink_captcha=='global' || $flink_captcha=='same'){echo 'selected';} ?>><?php _e('使用全局设置', 'argon');?></option>
+
+								<option value="enabled" <?php if ($flink_captcha=='enabled'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
+
+								<option value="disabled" <?php if ($flink_captcha=='disabled'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
+
+							</select>
+
+							<p class="description"><?php _e('友链申请表单是否需要验证码', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
+					<tr>
+
+						<th><label><?php _e('反馈提交验证码', 'argon');?></label></th>
+
+						<td>
+
+							<select name="argon_feedback_captcha_mode">
+
+								<?php $feedback_captcha = get_option('argon_feedback_captcha_mode', 'global'); ?>
+
+								<option value="global" <?php if ($feedback_captcha=='global'){echo 'selected';} ?>><?php _e('使用全局设置', 'argon');?></option>
+
+								<option value="enabled" <?php if ($feedback_captcha=='enabled'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
+
+								<option value="disabled" <?php if ($feedback_captcha=='disabled'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
+
+							</select>
+
+							<p class="description"><?php _e('问题反馈页面提交时是否需要验证码', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
+					<!-- ========== 18. 反馈与安全 ========== -->
+					<tr><th class="subtitle"><h2 id="section-feedback-security"><?php _e('反馈与安全', 'argon');?></h2></th></tr>
+
+					<tr><th class="subtitle"><h3 id="subsection-feedback"><?php _e('反馈设置', 'argon');?></h3></th></tr>
+
+					<tr>
+
+						<th><label><?php _e('新反馈通知管理员', 'argon');?></label></th>
+
+						<td>
+
+							<select name="argon_feedback_notify_admin">
+
+								<?php $feedback_notify_admin = get_option('argon_feedback_notify_admin', 'true'); ?>
+
+								<option value="true" <?php if ($feedback_notify_admin=='true'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
+
+								<option value="false" <?php if ($feedback_notify_admin=='false'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
+
+							</select>
+
+							<p class="description"><?php _e('收到新反馈时是否发送邮件通知管理员', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
+					<tr>
+
+						<th><label><?php _e('反馈回复/完结通知用户', 'argon');?></label></th>
+
+						<td>
+
+							<select name="argon_feedback_notify_user">
+
+								<?php $feedback_notify_user = get_option('argon_feedback_notify_user', 'true'); ?>
+
+								<option value="true" <?php if ($feedback_notify_user=='true'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
+
+								<option value="false" <?php if ($feedback_notify_user=='false'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
+
+							</select>
+
+							<p class="description"><?php _e('反馈收到回复或被标记为已解决时，是否发送邮件通知用户。邮件中包含授权链接，用户可通过链接查看反馈详情（无论反馈是否公开）', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
+					<tr><th class="subtitle"><h3 id="subsection-rate-limit"><?php _e('速率限制', 'argon');?></h3></th></tr>
+
+				<tr>
+
+					<th><label><?php _e('全局 IP 黑名单', 'argon');?></label></th>
+
+					<td>
+
+						<textarea name="argon_global_blocked_ips" rows="8" cols="70" placeholder="<?php _e('每行一个 IP 地址', 'argon');?>"><?php echo get_option('argon_global_blocked_ips', ''); ?></textarea>
+
+						<p class="description">
+							<?php _e('被屏蔽的 IP 地址将无法提交评论、反馈、友链申请等操作。支持以下格式：', 'argon');?><br>
+							• <?php _e('精确匹配：192.168.1.100', 'argon');?><br>
+							• <?php _e('通配符：192.168.1.*', 'argon');?><br>
+							• <?php _e('CIDR 格式：192.168.1.0/24', 'argon');?>
+						</p>
+
+					</td>
+
+				</tr>
+
+				<tr>
+
+					<th><label><?php _e('友链申请频率限制', 'argon');?></label></th>
+
+					<td>
+
+						<input type="number" name="argon_flink_apply_limit" min="1" max="50" value="<?php echo get_option('argon_flink_apply_limit', '3'); ?>" style="width:80px;"/> <?php _e('次', 'argon');?> / 
+						<input type="number" name="argon_flink_apply_period" min="60" max="86400" value="<?php echo get_option('argon_flink_apply_period', '3600'); ?>" style="width:100px;"/> <?php _e('秒', 'argon');?>
+
+						<p class="description"><?php _e('限制单个用户在指定时间内提交友链申请的次数。默认：1小时内最多3次', 'argon');?></p>
+
+					</td>
+
+				</tr>
+
+				<tr>
+
+					<th><label><?php _e('反馈提交频率限制', 'argon');?></label></th>
+
+					<td>
+
+						<input type="number" name="argon_feedback_submit_limit" min="1" max="100" value="<?php echo get_option('argon_feedback_submit_limit', '5'); ?>" style="width:80px;"/> <?php _e('次', 'argon');?> / 
+						<input type="number" name="argon_feedback_submit_period" min="60" max="86400" value="<?php echo get_option('argon_feedback_submit_period', '3600'); ?>" style="width:100px;"/> <?php _e('秒', 'argon');?>
+
+						<p class="description"><?php _e('限制单个用户在指定时间内提交反馈的次数，防止恶意刷屏。默认：1小时内最多5次', 'argon');?></p>
+
+					</td>
+
+				</tr>
+
+				<tr>
+
+					<th><label><?php _e('反馈图片上传频率限制', 'argon');?></label></th>
+
+					<td>
+
+						<input type="number" name="argon_feedback_upload_limit" min="1" max="100" value="<?php echo get_option('argon_feedback_upload_limit', '20'); ?>" style="width:80px;"/> <?php _e('张', 'argon');?> / 
+						<input type="number" name="argon_feedback_upload_period" min="60" max="86400" value="<?php echo get_option('argon_feedback_upload_period', '3600'); ?>" style="width:100px;"/> <?php _e('秒', 'argon');?>
+
+						<p class="description"><?php _e('限制单个用户在指定时间内上传图片的数量。默认：1小时内最多20张', 'argon');?></p>
+
+					</td>
+
+				</tr>
+
+				<tr>
+
+					<th><label><?php _e('评论速率限制', 'argon');?></label></th>
+
+					<td>
+
+						<select name="argon_rate_limit_enable">
+
+							<?php $argon_rate_limit_enable = get_option('argon_rate_limit_enable', 'true'); ?>
+
+							<option value="false" <?php if ($argon_rate_limit_enable=='false'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
+
+							<option value="true" <?php if ($argon_rate_limit_enable=='true'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
+
+						</select>
+
+						<p class="description"><?php _e('按 IP 进行速率限制，防止短时间内频繁评论。', 'argon');?></p>
+
+					</td>
+
+				</tr>
+
+				<tr>
+
+					<th><label><?php _e('速率窗口（秒）', 'argon');?></label></th>
+
+					<td>
+
+						<input type="number" name="argon_rate_limit_window" value="<?php echo esc_attr(get_option('argon_rate_limit_window', 300)); ?>" class="regular-text" min="30" step="1" />
+
+						<p class="description"><?php _e('统计窗口长度，建议不小于 30 秒。', 'argon');?></p>
+
+					</td>
+
+				</tr>
+
+				<tr>
+
+					<th><label><?php _e('窗口内最大次数', 'argon');?></label></th>
+
+					<td>
+
+						<input type="number" name="argon_rate_limit_max_count" value="<?php echo esc_attr(get_option('argon_rate_limit_max_count', 5)); ?>" class="regular-text" min="1" step="1" />
+
+						<p class="description"><?php _e('在一个统计窗口内允许的最大评论次数。', 'argon');?></p>
+
+					</td>
+
+				</tr>
+
+				<tr>
+
+					<th><label><?php _e('两次最小间隔（秒）', 'argon');?></label></th>
+
+					<td>
+
+						<input type="number" name="argon_rate_limit_min_interval" value="<?php echo esc_attr(get_option('argon_rate_limit_min_interval', 10)); ?>" class="regular-text" min="0" step="1" />
+
+						<p class="description"><?php _e('两次评论之间的最短时间间隔。', 'argon');?></p>
+
+					</td>
+
+				</tr>
+
+					<!-- ========== 返回评论系统 ========== -->
 					<tr><th class="subtitle"><h3 id="subsection-comment-features"><?php _e('评论功能', 'argon');?></h3></th></tr>
 
 				<tr>
@@ -5158,478 +5538,6 @@ window.pjaxLoaded = function(){
 			</table>
 
 			<p class="submit">
-
-					<!-- ========== 17. 验证码设置 ========== -->
-					<tr><th class="subtitle"><h2 id="section-captcha"><?php _e('验证码设置', 'argon');?></h2></th></tr>
-
-					<tr><th class="subtitle"><h3 id="subsection-captcha"><?php _e('验证码配置', 'argon');?></h3></th></tr>
-
-					<tr>
-
-						<th><label><?php _e('全局验证码开关', 'argon');?></label></th>
-
-						<td>
-
-							<select name="argon_need_captcha">
-
-								<?php $argon_need_captcha = get_option('argon_need_captcha', get_option('argon_comment_need_captcha', 'true')); ?>
-
-								<option value="true" <?php if ($argon_need_captcha=='true'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
-
-								<option value="false" <?php if ($argon_need_captcha=='false'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
-
-							</select>
-
-							<p class="description"><?php _e('全局验证码开关，当各场景设置为"使用全局设置"时生效', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
-					<tr>
-
-						<th><label><?php _e('验证码类型', 'argon');?></label></th>
-
-						<td>
-
-							<select name="argon_captcha_type">
-
-								<?php $argon_captcha_type = get_option('argon_captcha_type', 'math'); ?>
-
-								<option value="math" <?php if ($argon_captcha_type=='math'){echo 'selected';} ?>><?php _e('数学运算', 'argon');?></option>
-
-								<option value="geetest" <?php if ($argon_captcha_type=='geetest'){echo 'selected';} ?>><?php _e('极验验证码', 'argon');?></option>
-
-							</select>
-
-							<p class="description"><?php _e('选择验证码类型。极验验证码需要配置相关参数。', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
-					<tr id="geetest_settings" style="<?php echo ($argon_captcha_type != 'geetest') ? 'display:none;' : ''; ?>">
-
-						<th><label><?php _e('极验验证码 ID', 'argon');?></label></th>
-
-						<td>
-
-							<input type="text" name="argon_geetest_captcha_id" value="<?php echo esc_attr(get_option('argon_geetest_captcha_id', '')); ?>" class="regular-text" required />
-
-							<p class="description"><?php _e('在极验后台获取的验证码 ID，必填项', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
-					<tr id="geetest_key_settings" style="<?php echo ($argon_captcha_type != 'geetest') ? 'display:none;' : ''; ?>">
-
-						<th><label><?php _e('极验验证码 Key', 'argon');?></label></th>
-
-						<td>
-
-							<input type="text" name="argon_geetest_captcha_key" value="<?php echo esc_attr(get_option('argon_geetest_captcha_key', '')); ?>" class="regular-text" required />
-
-							<p class="description"><?php _e('在极验后台获取的验证码私钥，必填项', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
-					<tr id="geetest_server_settings" style="<?php echo ($argon_captcha_type != 'geetest') ? 'display:none;' : ''; ?>">
-
-						<th><label><?php _e('极验 API 服务器', 'argon');?></label></th>
-
-						<td>
-
-							<input type="url" name="argon_geetest_api_server" value="<?php echo esc_attr(get_option('argon_geetest_api_server', 'https://gcaptcha4.geetest.com')); ?>" class="regular-text" />
-
-							<p class="description"><?php _e('极验 API 服务器地址，默认为官方服务器。请确保URL格式正确', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
-					<script>
-
-						jQuery(document).ready(function($) {
-
-							// 验证Geetest配置
-
-							function validateGeetestConfig() {
-
-								var captchaType = $('select[name="argon_captcha_type"]').val();
-
-								if (captchaType === 'geetest') {
-
-									var captchaId = $('input[name="argon_geetest_captcha_id"]').val().trim();
-
-									var captchaKey = $('input[name="argon_geetest_captcha_key"]').val().trim();
-
-									var apiServer = $('input[name="argon_geetest_api_server"]').val().trim();
-
-									
-
-									if (!captchaId || !captchaKey) {
-
-										alert('<?php _e('使用极验验证码时，验证码 ID 和 Key 为必填项', 'argon'); ?>');
-
-										return false;
-
-									}
-
-									
-
-									// 验证API服务器URL格式
-
-									if (apiServer && !apiServer.match(/^https?:\/\/.+/)) {
-
-										alert('<?php _e('API 服务器地址格式不正确，请输入完整的URL', 'argon'); ?>');
-
-										return false;
-
-									}
-
-								}
-
-								return true;
-
-							}
-
-							
-
-							$('select[name="argon_captcha_type"]').change(function() {
-
-								if ($(this).val() === 'geetest') {
-
-									$('#geetest_settings, #geetest_key_settings, #geetest_server_settings').show();
-
-								} else {
-
-									$('#geetest_settings, #geetest_key_settings, #geetest_server_settings').hide();
-
-								}
-
-							});
-
-							
-
-							// 表单提交时验证
-
-							$('form').submit(function(e) {
-
-								if (!validateGeetestConfig()) {
-
-									e.preventDefault();
-
-									return false;
-
-								}
-
-							});
-
-						});
-
-					</script>
-
-					<tr>
-
-						<th><label><?php _e('使用 Ajax 获取验证码', 'argon');?></label></th>
-
-						<td>
-
-							<select name="argon_get_captcha_by_ajax">
-
-							<?php $argon_get_captcha_by_ajax = get_option('argon_get_captcha_by_ajax'); ?>
-
-							<option value="false" <?php if ($argon_get_captcha_by_ajax=='false'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
-
-							<option value="true" <?php if ($argon_get_captcha_by_ajax=='true'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
-
-						</select>
-
-						<p class="description"><?php _e('如果使用了 CDN 缓存，验证码不会刷新，请开启此选项，否则请不要开启。', 'argon');?></p>
-
-					</td>
-
-				</tr>
-
-					<tr><th class="subtitle"><h3 id="subsection-captcha-scenes"><?php _e('场景验证码', 'argon');?></h3></th></tr>
-
-					<tr>
-
-						<th><label><?php _e('评论验证码', 'argon');?></label></th>
-
-						<td>
-
-							<select name="argon_comment_captcha_mode">
-
-								<?php $argon_comment_captcha_mode = get_option('argon_comment_captcha_mode', 'global'); ?>
-
-								<option value="global" <?php if ($argon_comment_captcha_mode=='global'){echo 'selected';} ?>><?php _e('使用全局设置', 'argon');?></option>
-
-								<option value="enabled" <?php if ($argon_comment_captcha_mode=='enabled'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
-
-								<option value="disabled" <?php if ($argon_comment_captcha_mode=='disabled'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
-
-							</select>
-
-							<p class="description"><?php _e('评论是否需要验证码', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
-					<tr>
-
-						<th><label><?php _e('TODO 催促验证码', 'argon');?></label></th>
-
-						<td>
-
-							<select name="argon_todo_captcha_mode">
-
-								<?php $argon_todo_captcha_mode = get_option('argon_todo_captcha_mode', 'global'); ?>
-
-								<option value="global" <?php if ($argon_todo_captcha_mode=='global'){echo 'selected';} ?>><?php _e('使用全局设置', 'argon');?></option>
-
-								<option value="enabled" <?php if ($argon_todo_captcha_mode=='enabled'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
-
-								<option value="disabled" <?php if ($argon_todo_captcha_mode=='disabled'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
-
-							</select>
-
-							<p class="description"><?php _e('访客催促 TODO 时是否需要验证码', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
-					<tr>
-
-						<th><label><?php _e('友链申请验证码', 'argon');?></label></th>
-
-						<td>
-
-							<select name="argon_friend_link_captcha">
-
-								<?php $flink_captcha = get_option('argon_friend_link_captcha', 'global'); ?>
-
-								<option value="global" <?php if ($flink_captcha=='global' || $flink_captcha=='same'){echo 'selected';} ?>><?php _e('使用全局设置', 'argon');?></option>
-
-								<option value="enabled" <?php if ($flink_captcha=='enabled'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
-
-								<option value="disabled" <?php if ($flink_captcha=='disabled'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
-
-							</select>
-
-							<p class="description"><?php _e('友链申请表单是否需要验证码', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
-					<tr>
-
-						<th><label><?php _e('反馈提交验证码', 'argon');?></label></th>
-
-						<td>
-
-							<select name="argon_feedback_captcha_mode">
-
-								<?php $feedback_captcha = get_option('argon_feedback_captcha_mode', 'global'); ?>
-
-								<option value="global" <?php if ($feedback_captcha=='global'){echo 'selected';} ?>><?php _e('使用全局设置', 'argon');?></option>
-
-								<option value="enabled" <?php if ($feedback_captcha=='enabled'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
-
-								<option value="disabled" <?php if ($feedback_captcha=='disabled'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
-
-							</select>
-
-							<p class="description"><?php _e('问题反馈页面提交时是否需要验证码', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
-					<!-- ========== 18. 反馈与安全 ========== -->
-					<tr><th class="subtitle"><h2 id="section-feedback-security"><?php _e('反馈与安全', 'argon');?></h2></th></tr>
-
-					<tr><th class="subtitle"><h3 id="subsection-feedback"><?php _e('反馈设置', 'argon');?></h3></th></tr>
-
-					<tr>
-
-						<th><label><?php _e('新反馈通知管理员', 'argon');?></label></th>
-
-						<td>
-
-							<select name="argon_feedback_notify_admin">
-
-								<?php $feedback_notify_admin = get_option('argon_feedback_notify_admin', 'true'); ?>
-
-								<option value="true" <?php if ($feedback_notify_admin=='true'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
-
-								<option value="false" <?php if ($feedback_notify_admin=='false'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
-
-							</select>
-
-							<p class="description"><?php _e('收到新反馈时是否发送邮件通知管理员', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
-					<tr>
-
-						<th><label><?php _e('反馈回复/完结通知用户', 'argon');?></label></th>
-
-						<td>
-
-							<select name="argon_feedback_notify_user">
-
-								<?php $feedback_notify_user = get_option('argon_feedback_notify_user', 'true'); ?>
-
-								<option value="true" <?php if ($feedback_notify_user=='true'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
-
-								<option value="false" <?php if ($feedback_notify_user=='false'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
-
-							</select>
-
-							<p class="description"><?php _e('反馈收到回复或被标记为已解决时，是否发送邮件通知用户。邮件中包含授权链接，用户可通过链接查看反馈详情（无论反馈是否公开）', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
-					<tr><th class="subtitle"><h3 id="subsection-rate-limit"><?php _e('速率限制', 'argon');?></h3></th></tr>
-
-				<tr>
-
-					<th><label><?php _e('全局 IP 黑名单', 'argon');?></label></th>
-
-					<td>
-
-						<textarea name="argon_global_blocked_ips" rows="8" cols="70" placeholder="<?php _e('每行一个 IP 地址', 'argon');?>"><?php echo get_option('argon_global_blocked_ips', ''); ?></textarea>
-
-						<p class="description">
-							<?php _e('被屏蔽的 IP 地址将无法提交评论、反馈、友链申请等操作。支持以下格式：', 'argon');?><br>
-							• <?php _e('精确匹配：192.168.1.100', 'argon');?><br>
-							• <?php _e('通配符：192.168.1.*', 'argon');?><br>
-							• <?php _e('CIDR 格式：192.168.1.0/24', 'argon');?>
-						</p>
-
-					</td>
-
-				</tr>
-
-				<tr>
-
-					<th><label><?php _e('友链申请频率限制', 'argon');?></label></th>
-
-					<td>
-
-						<input type="number" name="argon_flink_apply_limit" min="1" max="50" value="<?php echo get_option('argon_flink_apply_limit', '3'); ?>" style="width:80px;"/> <?php _e('次', 'argon');?> / 
-						<input type="number" name="argon_flink_apply_period" min="60" max="86400" value="<?php echo get_option('argon_flink_apply_period', '3600'); ?>" style="width:100px;"/> <?php _e('秒', 'argon');?>
-
-						<p class="description"><?php _e('限制单个用户在指定时间内提交友链申请的次数。默认：1小时内最多3次', 'argon');?></p>
-
-					</td>
-
-				</tr>
-
-				<tr>
-
-					<th><label><?php _e('反馈提交频率限制', 'argon');?></label></th>
-
-					<td>
-
-						<input type="number" name="argon_feedback_submit_limit" min="1" max="100" value="<?php echo get_option('argon_feedback_submit_limit', '5'); ?>" style="width:80px;"/> <?php _e('次', 'argon');?> / 
-						<input type="number" name="argon_feedback_submit_period" min="60" max="86400" value="<?php echo get_option('argon_feedback_submit_period', '3600'); ?>" style="width:100px;"/> <?php _e('秒', 'argon');?>
-
-						<p class="description"><?php _e('限制单个用户在指定时间内提交反馈的次数，防止恶意刷屏。默认：1小时内最多5次', 'argon');?></p>
-
-					</td>
-
-				</tr>
-
-				<tr>
-
-					<th><label><?php _e('反馈图片上传频率限制', 'argon');?></label></th>
-
-					<td>
-
-						<input type="number" name="argon_feedback_upload_limit" min="1" max="100" value="<?php echo get_option('argon_feedback_upload_limit', '20'); ?>" style="width:80px;"/> <?php _e('张', 'argon');?> / 
-						<input type="number" name="argon_feedback_upload_period" min="60" max="86400" value="<?php echo get_option('argon_feedback_upload_period', '3600'); ?>" style="width:100px;"/> <?php _e('秒', 'argon');?>
-
-						<p class="description"><?php _e('限制单个用户在指定时间内上传图片的数量。默认：1小时内最多20张', 'argon');?></p>
-
-					</td>
-
-				</tr>
-
-				<tr>
-
-					<th><label><?php _e('评论速率限制', 'argon');?></label></th>
-
-					<td>
-
-						<select name="argon_rate_limit_enable">
-
-							<?php $argon_rate_limit_enable = get_option('argon_rate_limit_enable', 'true'); ?>
-
-							<option value="false" <?php if ($argon_rate_limit_enable=='false'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
-
-							<option value="true" <?php if ($argon_rate_limit_enable=='true'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
-
-						</select>
-
-						<p class="description"><?php _e('按 IP 进行速率限制，防止短时间内频繁评论。', 'argon');?></p>
-
-					</td>
-
-				</tr>
-
-				<tr>
-
-					<th><label><?php _e('速率窗口（秒）', 'argon');?></label></th>
-
-					<td>
-
-						<input type="number" name="argon_rate_limit_window" value="<?php echo esc_attr(get_option('argon_rate_limit_window', 300)); ?>" class="regular-text" min="30" step="1" />
-
-						<p class="description"><?php _e('统计窗口长度，建议不小于 30 秒。', 'argon');?></p>
-
-					</td>
-
-				</tr>
-
-				<tr>
-
-					<th><label><?php _e('窗口内最大次数', 'argon');?></label></th>
-
-					<td>
-
-						<input type="number" name="argon_rate_limit_max_count" value="<?php echo esc_attr(get_option('argon_rate_limit_max_count', 5)); ?>" class="regular-text" min="1" step="1" />
-
-						<p class="description"><?php _e('在一个统计窗口内允许的最大评论次数。', 'argon');?></p>
-
-					</td>
-
-				</tr>
-
-				<tr>
-
-					<th><label><?php _e('两次最小间隔（秒）', 'argon');?></label></th>
-
-					<td>
-
-						<input type="number" name="argon_rate_limit_min_interval" value="<?php echo esc_attr(get_option('argon_rate_limit_min_interval', 10)); ?>" class="regular-text" min="0" step="1" />
-
-						<p class="description"><?php _e('两次评论之间的最短时间间隔。', 'argon');?></p>
-
-					</td>
-
-				</tr>
 
 				<input type="submit" name="submit" id="submit" class="button button-primary" value="<?php _e('保存更改', 'argon');?>">
 
