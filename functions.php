@@ -7475,6 +7475,11 @@ function argon_auto_detect_spam_on_comment($comment_id, $comment_approved) {
 		return;
 	}
 	
+	// 检查白名单
+	if (argon_is_comment_in_whitelist($comment)) {
+		return;
+	}
+	
 	// 判断是否需要检测
 	$should_check = false;
 	
@@ -7495,13 +7500,48 @@ function argon_auto_detect_spam_on_comment($comment_id, $comment_approved) {
 add_action('comment_post', 'argon_auto_detect_spam_on_comment', 10, 2);
 
 /**
+ * 检查评论是否在白名单中
+ * @param object $comment 评论对象
+ * @return bool 是否在白名单中
+ */
+function argon_is_comment_in_whitelist($comment) {
+	$whitelist = get_option('argon_comment_spam_detection_whitelist', '');
+	if (empty($whitelist)) {
+		return false;
+	}
+	
+	// 按行分割白名单
+	$whitelist_items = array_filter(array_map('trim', explode("\n", $whitelist)));
+	if (empty($whitelist_items)) {
+		return false;
+	}
+	
+	$comment_email = strtolower(trim($comment->comment_author_email));
+	$comment_ip = trim($comment->comment_author_IP);
+	
+	foreach ($whitelist_items as $item) {
+		$item = strtolower(trim($item));
+		if (empty($item)) {
+			continue;
+		}
+		
+		// 检查是否匹配邮箱或 IP
+		if ($item === $comment_email || $item === $comment_ip) {
+			return true;
+		}
+	}
+	
+	return false;
+}
+
+/**
  * 获取用户的垃圾评论检测概率（动态调整）
  * @param object $comment 评论对象
  * @return int 检测概率（1-100）
  */
 function argon_get_user_spam_check_probability($comment) {
-	// 基础抽查概率
-	$base_probability = 20;
+	// 基础抽查概率（从设置中获取）
+	$base_probability = intval(get_option('argon_comment_spam_detection_sample_rate', '20'));
 	
 	// 获取用户标识（邮箱或 IP）
 	$user_identifier = !empty($comment->comment_author_email) 
@@ -7600,13 +7640,29 @@ function argon_async_spam_detection_handler($comment_id) {
 		argon_update_user_spam_stats($comment, $result['is_spam']);
 		
 		if ($result['is_spam']) {
-			// 移入回收站
-			wp_trash_comment($comment_id);
+			// 获取自动处理方式
+			$auto_action = get_option('argon_comment_spam_detection_auto_action', 'trash');
 			
-			// 记录日志
-			update_comment_meta($comment_id, '_argon_spam_auto_trashed', true);
-			update_comment_meta($comment_id, '_argon_spam_trash_reason', $result['reason']);
-			update_comment_meta($comment_id, '_argon_spam_trash_time', time());
+			if ($auto_action === 'trash') {
+				// 移入回收站
+				wp_trash_comment($comment_id);
+				update_comment_meta($comment_id, '_argon_spam_auto_trashed', true);
+			} elseif ($auto_action === 'hold') {
+				// 标记为待审核
+				wp_set_comment_status($comment_id, 'hold');
+				update_comment_meta($comment_id, '_argon_spam_auto_held', true);
+			} else {
+				// 仅标记，不改变状态
+				update_comment_meta($comment_id, '_argon_spam_marked', true);
+			}
+			
+			// 记录检测信息
+			update_comment_meta($comment_id, '_argon_spam_detection_result', [
+				'is_spam' => true,
+				'reason' => $result['reason'],
+				'action' => $auto_action
+			]);
+			update_comment_meta($comment_id, '_argon_spam_detection_time', time());
 		}
 	}
 }

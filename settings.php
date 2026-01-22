@@ -3875,44 +3875,52 @@ window.pjaxLoaded = function(){
 								<input type="checkbox" name="argon_comment_spam_detection_enable" value="true" <?php if ($argon_comment_spam_detection_enable=='true'){echo 'checked';}?>/> 
 								<?php _e('启用 AI 自动识别垃圾评论', 'argon');?>
 							</label>
-							<p class="description"><?php _e('开启后，将使用 AI 自动识别广告、反动、违法等垃圾评论，并自动移入回收站。', 'argon');?><br/><?php _e('注意：需要先在 "文章功能 - AI 文章摘要" 中配置 AI 服务商和 API 密钥。', 'argon');?></p>
+							<p class="description"><?php _e('开启后，将使用 AI 自动识别广告、反动、违法等垃圾评论。', 'argon');?><br/><?php _e('注意：需要先在 "文章功能 - AI 文章摘要" 中配置 AI 服务商和 API 密钥。', 'argon');?></p>
 						</td>
 					</tr>
 
 					<tr>
-						<th><label><?php _e('检测提示词', 'argon');?></label></th>
-						<td>
-							<textarea rows="6" cols="70" name="argon_comment_spam_detection_prompt"><?php echo get_option('argon_comment_spam_detection_prompt', '你是一个专业的内容审核助手。请判断以下评论是否为垃圾评论。垃圾评论包括但不限于：广告推广、反动言论、错误政治观点、时政敏感内容、违法信息、色情暴力、恶意攻击等。
-
-请仅返回 JSON 格式：{"is_spam": true/false, "reason": "理由(25字以内)"}
-
-如果是正常评论，reason 填写 "正常"。如果是垃圾评论，简要说明原因。'); ?></textarea>
-							<p class="description"><?php _e('自定义 AI 识别垃圾评论时使用的提示词。建议保持简洁以降低 token 消耗。', 'argon');?></p>
-						</td>
-					</tr>
-
-					<tr>
-						<th><label><?php _e('检测模式', 'argon');?></label></th>
+						<th><label><?php _e('实时检测模式', 'argon');?></label></th>
 						<td>
 							<select name="argon_comment_spam_detection_mode">
 								<?php $argon_comment_spam_detection_mode = get_option('argon_comment_spam_detection_mode', 'manual'); ?>
-								<option value="manual" <?php if ($argon_comment_spam_detection_mode=='manual'){echo 'selected';} ?>><?php _e('仅手动检测', 'argon');?></option>
-								<option value="sample" <?php if ($argon_comment_spam_detection_mode=='sample'){echo 'selected';} ?>><?php _e('智能抽查模式', 'argon');?></option>
-								<option value="all" <?php if ($argon_comment_spam_detection_mode=='all'){echo 'selected';} ?>><?php _e('全量实时检测', 'argon');?></option>
+								<option value="manual" <?php if ($argon_comment_spam_detection_mode=='manual'){echo 'selected';} ?>><?php _e('关闭实时检测', 'argon');?></option>
+								<option value="sample" <?php if ($argon_comment_spam_detection_mode=='sample'){echo 'selected';} ?>><?php _e('智能抽查（推荐）', 'argon');?></option>
+								<option value="all" <?php if ($argon_comment_spam_detection_mode=='all'){echo 'selected';} ?>><?php _e('全量检测', 'argon');?></option>
 							</select>
 							<p class="description">
-								<strong><?php _e('仅手动检测', 'argon');?>：</strong><?php _e('只在管理员手动触发全站扫描时检测', 'argon');?><br/>
-								<strong><?php _e('智能抽查模式', 'argon');?>：</strong><?php _e('新评论基础抽查概率 20%，根据用户历史通过率动态调整', 'argon');?><br/>
-								<span style="margin-left: 20px; color: #666;">
-									• <?php _e('通过率 ≥95%：降至 5% 抽查', 'argon');?><br/>
-									• <?php _e('通过率 90-95%：降至 10% 抽查', 'argon');?><br/>
-									• <?php _e('通过率 80-90%：降至 15% 抽查', 'argon');?><br/>
-									• <?php _e('通过率 50-80%：保持 20% 抽查', 'argon');?><br/>
-									• <?php _e('通过率 30-50%：提高至 40% 抽查', 'argon');?><br/>
-									• <?php _e('通过率 10-30%：提高至 60% 抽查', 'argon');?><br/>
-									• <?php _e('通过率 <10%：提高至 80% 抽查', 'argon');?>
-								</span><br/>
-								<strong><?php _e('全量实时检测', 'argon');?>：</strong><?php _e('所有新评论都会被检测（推荐，但会增加 API 消耗）', 'argon');?>
+								<strong><?php _e('关闭实时检测', 'argon');?>：</strong><?php _e('只能使用下方的手动批量扫描', 'argon');?><br/>
+								<strong><?php _e('智能抽查', 'argon');?>：</strong><?php _e('根据用户信誉动态调整检测概率，平衡成本与效果', 'argon');?><br/>
+								<strong><?php _e('全量检测', 'argon');?>：</strong><?php _e('每条新评论都检测，防护最严密但 API 消耗最高', 'argon');?>
+							</p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('抽查基础概率', 'argon');?></label></th>
+						<td>
+							<input type="number" name="argon_comment_spam_detection_sample_rate" min="1" max="100" value="<?php echo get_option('argon_comment_spam_detection_sample_rate', '20'); ?>" style="width: 80px;"/> %
+							<p class="description">
+								<?php _e('智能抽查模式的基础概率，默认 20%。系统会根据用户历史通过率自动调整：', 'argon');?><br/>
+								<?php _e('• 信誉好的用户降低检测（最低 5%）', 'argon');?><br/>
+								<?php _e('• 信誉差的用户提高检测（最高 80%）', 'argon');?>
+							</p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('自动处理方式', 'argon');?></label></th>
+						<td>
+							<select name="argon_comment_spam_detection_auto_action">
+								<?php $argon_comment_spam_detection_auto_action = get_option('argon_comment_spam_detection_auto_action', 'trash'); ?>
+								<option value="trash" <?php if ($argon_comment_spam_detection_auto_action=='trash'){echo 'selected';} ?>><?php _e('自动移入回收站', 'argon');?></option>
+								<option value="hold" <?php if ($argon_comment_spam_detection_auto_action=='hold'){echo 'selected';} ?>><?php _e('标记为待审核', 'argon');?></option>
+								<option value="mark" <?php if ($argon_comment_spam_detection_auto_action=='mark'){echo 'selected';} ?>><?php _e('仅标记不处理', 'argon');?></option>
+							</select>
+							<p class="description">
+								<strong><?php _e('自动移入回收站', 'argon');?>：</strong><?php _e('检测到垃圾评论立即移入回收站（推荐）', 'argon');?><br/>
+								<strong><?php _e('标记为待审核', 'argon');?>：</strong><?php _e('将垃圾评论状态改为待审核，需要管理员手动审核', 'argon');?><br/>
+								<strong><?php _e('仅标记不处理', 'argon');?>：</strong><?php _e('只在评论元数据中标记，不改变评论状态', 'argon');?>
 							</p>
 						</td>
 					</tr>
@@ -3921,11 +3929,58 @@ window.pjaxLoaded = function(){
 						<th><label><?php _e('检测范围', 'argon');?></label></th>
 						<td>
 							<?php $argon_comment_spam_detection_exclude_logged_in = get_option('argon_comment_spam_detection_exclude_logged_in', 'true'); ?>
-							<label>
+							<label style="display: block; margin-bottom: 8px;">
 								<input type="checkbox" name="argon_comment_spam_detection_exclude_logged_in" value="true" <?php if ($argon_comment_spam_detection_exclude_logged_in=='true'){echo 'checked';}?>/> 
 								<?php _e('跳过已登录用户的评论', 'argon');?>
 							</label>
-							<p class="description"><?php _e('开启后，已登录用户（包括管理员）的评论不会被检测。', 'argon');?></p>
+							<p class="description"><?php _e('开启后，已登录用户（包括管理员、编辑等）的评论不会被检测。', 'argon');?></p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('白名单', 'argon');?></label></th>
+						<td>
+							<textarea rows="4" cols="70" name="argon_comment_spam_detection_whitelist" placeholder="<?php _e('每行一个邮箱或 IP 地址', 'argon');?>"><?php echo get_option('argon_comment_spam_detection_whitelist', ''); ?></textarea>
+							<p class="description">
+								<?php _e('白名单中的邮箱或 IP 地址的评论不会被检测，每行一个。', 'argon');?><br/>
+								<?php _e('示例：user@example.com 或 192.168.1.1', 'argon');?>
+							</p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('检测提示词', 'argon');?></label></th>
+						<td>
+							<select id="argon-spam-prompt-template" style="margin-bottom: 10px;">
+								<option value=""><?php _e('选择预设模板...', 'argon');?></option>
+								<option value="default"><?php _e('默认模板（平衡）', 'argon');?></option>
+								<option value="strict"><?php _e('严格模式', 'argon');?></option>
+								<option value="loose"><?php _e('宽松模式', 'argon');?></option>
+								<option value="minimal"><?php _e('极简模式（省 token）', 'argon');?></option>
+							</select>
+							<textarea rows="6" cols="70" id="argon-spam-prompt-textarea" name="argon_comment_spam_detection_prompt"><?php echo get_option('argon_comment_spam_detection_prompt', '你是一个专业的内容审核助手。请判断以下评论是否为垃圾评论。垃圾评论包括但不限于：广告推广、反动言论、错误政治观点、时政敏感内容、违法信息、色情暴力、恶意攻击等。
+
+请仅返回 JSON 格式：{"is_spam": true/false, "reason": "理由(25字以内)"}
+
+如果是正常评论，reason 填写 "正常"。如果是垃圾评论，简要说明原因。'); ?></textarea>
+							<p class="description"><?php _e('自定义 AI 识别垃圾评论时使用的提示词。建议保持简洁以降低 token 消耗。', 'argon');?></p>
+							<script>
+							jQuery(document).ready(function($) {
+								const templates = {
+									'default': '你是一个专业的内容审核助手。请判断以下评论是否为垃圾评论。垃圾评论包括但不限于：广告推广、反动言论、错误政治观点、时政敏感内容、违法信息、色情暴力、恶意攻击等。\n\n请仅返回 JSON 格式：{"is_spam": true/false, "reason": "理由(25字以内)"}\n\n如果是正常评论，reason 填写 "正常"。如果是垃圾评论，简要说明原因。',
+									'strict': '你是严格的内容审核助手。判断评论是否为垃圾评论，包括：广告、推广、营销、反动、政治敏感、违法、色情、暴力、恶意攻击、无意义灌水、重复内容等。\n\n返回 JSON：{"is_spam": true/false, "reason": "理由(25字内)"}\n\n有任何可疑迹象都标记为垃圾。',
+									'loose': '判断评论是否为明显的垃圾评论：广告推广、违法内容、色情暴力。\n\n返回 JSON：{"is_spam": true/false, "reason": "理由(25字内)"}\n\n只标记明显的垃圾评论，对正常讨论保持宽容。',
+									'minimal': '判断是否垃圾评论（广告/违法/色情/暴力）。返回：{"is_spam": true/false, "reason": "理由(20字内)"}'
+								};
+								
+								$('#argon-spam-prompt-template').on('change', function() {
+									const template = $(this).val();
+									if (template && templates[template]) {
+										$('#argon-spam-prompt-textarea').val(templates[template]);
+									}
+								});
+							});
+							</script>
 						</td>
 					</tr>
 
@@ -6564,6 +6619,9 @@ function argon_update_themeoptions(){
 	argon_update_option_checkbox('argon_comment_spam_detection_enable');
 	argon_update_option('argon_comment_spam_detection_prompt');
 	argon_update_option('argon_comment_spam_detection_mode');
+	argon_update_option('argon_comment_spam_detection_sample_rate');
+	argon_update_option('argon_comment_spam_detection_auto_action');
+	argon_update_option('argon_comment_spam_detection_whitelist');
 	argon_update_option_checkbox('argon_comment_spam_detection_exclude_logged_in');
 
 	}
