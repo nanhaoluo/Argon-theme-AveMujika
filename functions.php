@@ -283,6 +283,7 @@ require_once(get_template_directory() . '/email-templates/base.php');
 require_once(get_template_directory() . '/email-templates/comment-notify.php');
 require_once(get_template_directory() . '/email-templates/reply-notify.php');
 require_once(get_template_directory() . '/email-templates/feedback-notify.php');
+require_once(get_template_directory() . '/email-templates/spam-notify.php');
 
 //检测更新
 require_once(get_template_directory() . '/theme-update-checker/plugin-update-checker.php');
@@ -7711,6 +7712,11 @@ function argon_async_spam_detection_handler($comment_id) {
 				'reason' => $result['reason'],
 				'action' => $auto_action
 			]);
+			
+			// 发送垃圾评论通知邮件给评论者
+			if (!empty($comment->comment_author_email)) {
+				argon_send_spam_notify_email($comment, $result, $detection_code);
+			}
 		} else {
 			// 记录正常评论的检测结果
 			update_comment_meta($comment_id, '_argon_spam_detection_result', [

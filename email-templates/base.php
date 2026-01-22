@@ -19,13 +19,13 @@ function argon_get_email_types() {
             'description' => __('当博客收到新评论时发送给管理员', 'argon'),
             'default_subject' => '[{{blog_name}}] 文章收到新评论',
             'default_content' => '<h2 style="margin: 0 0 20px 0; font-size: 18px; font-weight: 600; color: {{theme_color}};">文章收到新评论</h2>
-<p style="margin: 0 0 20px 0; color: #525f7f; line-height: 1.6;"><strong>{{commenter_name}}</strong> 在文章《<a href="{{post_url}}" style="color: {{theme_color}}; text-decoration: none;">{{post_title}}</a>》中发表了评论：</p>
+<p style="margin: 0 0 20px 0; color: #525f7f; line-height: 1.6;">用户 <strong>{{commenter_name}}</strong> 在文章《<a href="{{post_url}}" style="color: {{theme_color}}; text-decoration: none;">{{post_title}}</a>》中发表了评论：</p>
 <div style="background: #f6f9fc; border-left: 4px solid {{theme_color}}; padding: 16px; border-radius: 4px; margin: 0 0 20px 0;">
     <p style="margin: 0; color: #525f7f; line-height: 1.6;">{{comment_content}}</p>
 </div>
 {{#ai_spam_check}}
 <div style="background: {{#ai_is_spam}}#fff5f5{{/ai_is_spam}}{{^ai_is_spam}}#f0fdf4{{/ai_is_spam}}; border-left: 4px solid {{#ai_is_spam}}#f56565{{/ai_is_spam}}{{^ai_is_spam}}#48bb78{{/ai_is_spam}}; padding: 12px 16px; border-radius: 4px; margin: 0 0 20px 0;">
-    <p style="margin: 0 0 8px 0; color: #2d3748; font-size: 14px; font-weight: 600;">🤖 AI 内容审核</p>
+    <p style="margin: 0 0 8px 0; color: #2d3748; font-size: 14px; font-weight: 600;">AI 内容审核</p>
     <p style="margin: 0 0 4px 0; color: #4a5568; font-size: 13px;">识别结果：{{#ai_is_spam}}<span style="color: #e53e3e; font-weight: 600;">疑似垃圾评论</span>{{/ai_is_spam}}{{^ai_is_spam}}<span style="color: #38a169; font-weight: 600;">正常评论</span>{{/ai_is_spam}}</p>
     {{#ai_spam_reason}}<p style="margin: 0 0 4px 0; color: #4a5568; font-size: 13px;">识别理由：{{ai_spam_reason}}</p>{{/ai_spam_reason}}
     {{#ai_detection_code}}<p style="margin: 0; color: #718096; font-size: 12px;">识别码：{{ai_detection_code}}</p>{{/ai_detection_code}}
@@ -47,6 +47,44 @@ function argon_get_email_types() {
                 'ai_is_spam' => __('AI 判断是否为垃圾评论', 'argon'),
                 'ai_spam_reason' => __('AI 识别理由', 'argon'),
                 'ai_detection_code' => __('AI 识别码', 'argon'),
+                'theme_color' => __('主题色', 'argon'),
+            ),
+        ),
+        'spam_notify' => array(
+            'name' => __('垃圾评论通知', 'argon'),
+            'description' => __('当评论被 AI 识别为垃圾评论时发送给评论者', 'argon'),
+            'default_subject' => '[{{blog_name}}] 您的评论未通过审核',
+            'default_content' => '<h2 style="margin: 0 0 20px 0; font-size: 18px; font-weight: 600; color: {{theme_color}};">评论审核通知</h2>
+<p style="margin: 0 0 16px 0; color: #525f7f; line-height: 1.6;">尊敬的用户 <strong>{{commenter_name}}</strong>：</p>
+<p style="margin: 0 0 20px 0; color: #525f7f; line-height: 1.6;">您在文章《<a href="{{post_url}}" style="color: {{theme_color}}; text-decoration: none;">{{post_title}}</a>》中发表的评论未通过系统审核。</p>
+<div style="background: #fff5f5; border-left: 4px solid #f56565; padding: 16px; border-radius: 4px; margin: 0 0 20px 0;">
+    <p style="margin: 0 0 8px 0; color: #2d3748; font-size: 14px; font-weight: 600;">您的评论内容</p>
+    <p style="margin: 0; color: #4a5568; line-height: 1.6;">{{comment_content}}</p>
+</div>
+<div style="background: #f6f9fc; padding: 16px; border-radius: 4px; margin: 0 0 20px 0;">
+    <p style="margin: 0 0 8px 0; color: #2d3748; font-size: 14px; font-weight: 600;">审核信息</p>
+    <p style="margin: 0 0 4px 0; color: #4a5568; font-size: 13px;">识别结果：<span style="color: #e53e3e; font-weight: 600;">疑似不当内容</span></p>
+    <p style="margin: 0 0 4px 0; color: #4a5568; font-size: 13px;">识别理由：{{ai_spam_reason}}</p>
+    <p style="margin: 0 0 4px 0; color: #718096; font-size: 12px;">AI 模型：{{ai_model}}</p>
+    <p style="margin: 0 0 4px 0; color: #718096; font-size: 12px;">服务提供商：{{ai_provider}}</p>
+    <p style="margin: 0; color: #718096; font-size: 12px;">识别码：{{ai_detection_code}}</p>
+</div>
+<p style="margin: 0 0 20px 0; color: #525f7f; line-height: 1.6;">如果您认为这是误判，请通过识别码查询详细信息或联系网站管理员申诉。</p>
+<p style="margin: 0;">
+    <a href="{{query_url}}" style="display: inline-block; background: {{theme_color}}; color: #ffffff; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-size: 14px;">查询识别详情</a>
+</p>',
+            'placeholders' => array(
+                'blog_name' => __('博客名称', 'argon'),
+                'post_title' => __('文章标题', 'argon'),
+                'post_url' => __('文章链接', 'argon'),
+                'commenter_name' => __('评论者名称', 'argon'),
+                'comment_content' => __('评论内容', 'argon'),
+                'ai_spam_reason' => __('AI 识别理由', 'argon'),
+                'ai_model' => __('AI 模型', 'argon'),
+                'ai_provider' => __('AI 服务提供商', 'argon'),
+                'ai_detection_code' => __('AI 识别码', 'argon'),
+                'query_url' => __('查询链接', 'argon'),
+                'unsubscribe_url' => __('退订链接', 'argon'),
                 'theme_color' => __('主题色', 'argon'),
             ),
         ),
@@ -219,7 +257,7 @@ function argon_get_email_template_config($type) {
 /**
  * 获取邮件基础模板 HTML
  */
-function argon_get_email_base_template() {
+function argon_get_email_base_template($include_unsubscribe = false) {
     $settings = argon_get_email_settings();
     
     // 页眉部分
@@ -250,6 +288,14 @@ function argon_get_email_base_template() {
         if (!empty($social_items)) {
             $social_html = '<p style="margin: 0 0 12px 0;">' . implode('', $social_items) . '</p>';
         }
+    }
+    
+    // 退订链接部分
+    $unsubscribe_html = '';
+    if ($include_unsubscribe) {
+        $unsubscribe_html = '<p style="margin: 12px 0 0 0; font-size: 12px; color: #8898aa;">
+            <a href="{{unsubscribe_url}}" style="color: #8898aa; text-decoration: none;">退订邮件通知</a>
+        </p>';
     }
     
     $template = '<!DOCTYPE html>
@@ -291,6 +337,7 @@ function argon_get_email_base_template() {
                             <p style="margin: 0; font-size: 12px; color: #8898aa;">
                                 ' . esc_html($settings['footer_text']) . '
                             </p>
+                            ' . $unsubscribe_html . '
                         </td>
                     </tr>
                 </table>
@@ -428,7 +475,8 @@ function argon_send_email($to, $type, $vars = array()) {
  * 兼容旧版 API - 渲染邮件（已废弃，保留向后兼容）
  */
 function argon_render_email($content, $vars = array()) {
-    $base_template = argon_get_email_base_template();
+    $include_unsubscribe = isset($vars['unsubscribe_url']) && !empty($vars['unsubscribe_url']);
+    $base_template = argon_get_email_base_template($include_unsubscribe);
     $html = str_replace('{{email_content}}', $content, $base_template);
     $html = str_replace('{{email_subject}}', isset($vars['subject']) ? esc_html($vars['subject']) : '', $html);
     $html = argon_replace_placeholders($html, $vars, false);
