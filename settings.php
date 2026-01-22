@@ -307,22 +307,6 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-subdirectory"><?php _e('子目录', 'argon');?></h3></th></tr>
-
-					<tr>
-
-						<th><label><?php _e('Wordpress 安装目录', 'argon');?></label></th>
-
-						<td>
-
-							<input type="text" class="regular-text" name="argon_wp_path" value="<?php echo get_option('argon_wp_path', '/'); ?>"/>
-
-							<p class="description"><?php _e('如果 Wordpress 安装在子目录中，请在此填写子目录地址（例如', 'argon');?> <code>/blog/</code><?php _e('），注意前后各有一个斜杠。默认为', 'argon');?> <code>/</code> <?php _e('。', 'argon');?><br/><?php _e('如果不清楚该选项的用处，请保持默认。', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
 					<!-- ========== 2. 外观样式 ========== -->
 					<tr><th class="subtitle"><h2 id="section-appearance"><?php _e('外观样式', 'argon');?></h2></th></tr>
 
@@ -2547,22 +2531,6 @@ function themeoptions_page(){
 							<input type="text" class="regular-text" name="argon_archives_timeline_url" value="<?php echo get_option('argon_archives_timeline_url'); ?>"/>
 
 							<p class="description"><?php _e('归档页面的 URL。点击左侧栏 "博客概览" 中的 "博文总数" 一栏时可跳转到该地址。', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
-					<tr><th class="subtitle"><h3 id="subsection-footer"><?php _e('页脚', 'argon');?></h3></th></tr>
-
-					<tr>
-
-						<th><label><?php _e('页脚内容', 'argon');?></label></th>
-
-						<td>
-
-							<textarea type="text" rows="15" cols="100" name="argon_footer_html"><?php echo htmlspecialchars(get_option('argon_footer_html')); ?></textarea>
-
-							<p class="description"><?php _e('HTML , 支持 script 等标签', 'argon');?></p>
 
 						</td>
 
