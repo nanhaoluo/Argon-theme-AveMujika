@@ -2,8 +2,8 @@
  * Argon 主题核心 JavaScript
  */
 
-// ========== 兼容性修�?==========
-// 确保 Prism �?autoloader 存在
+// ========== 兼容性修复 ==========
+// 确保 Prism 和 autoloader 存在
 if (typeof window.Prism === 'undefined') {
     window.Prism = { 
         highlightAll: function() {},
@@ -30,7 +30,7 @@ if (typeof window.Zoomify === 'undefined') {
 // 确保 jQuery 插件存在
 if (typeof jQuery !== 'undefined') {
     (function($) {
-        // 确保 easing 函数存在（防止其他插件覆�?jQuery 后丢失）
+        // 确保 easing 函数存在（防止其他插件覆盖 jQuery 后丢失）
         if (typeof $.easing === 'undefined') {
             $.easing = {};
         }
@@ -94,16 +94,16 @@ if (typeof jQuery !== 'undefined') {
 // ==========================================================================
 // 性能优化模块引入
 // ==========================================================================
-// 注意：argon-performance.js 需要在此文件之前加�?
-// �?functions.php 中通过 wp_enqueue_script 确保加载顺序
+// 注意：argon-performance.js 需要在此文件之前加载
+// 在 functions.php 中通过 wp_enqueue_script 确保加载顺序
 // 
 // 提供的优化功能：
 // - ArgonDOMCache: DOM 元素缓存系统
-// - ArgonEventManager: 事件节流和防�?
+// - ArgonEventManager: 事件节流和防抖
 // - ArgonResourceLoader: 资源按需加载
-// - ArgonRenderOptimizer: 渲染优化�?GPU 加�?
-// - ArgonMemoryManager: 内存管理和清�?
-// - ArgonPerformanceMonitor: 性能监控和分�?
+// - ArgonRenderOptimizer: 渲染优化和 GPU 加速
+// - ArgonMemoryManager: 内存管理和清理
+// - ArgonPerformanceMonitor: 性能监控和分析
 // ==========================================================================
 
 // ========== 原有代码 ==========
@@ -115,7 +115,7 @@ if (typeof(argonConfig.wp_path) == "undefined"){
 }
 
 // ==========================================================================
-// 性能优化模块实例（全局变量�?
+// 性能优化模块实例（全局变量）
 // ==========================================================================
 var argonDOMCache = null;           // DOM 缓存实例
 var argonEventManager = null;       // 事件管理实例
@@ -125,7 +125,7 @@ var argonMemoryManager = null;      // 内存管理实例
 var argonPerformanceMonitor = null; // 性能监控实例
 
 // ==========================================================================
-// 调试控制台（�?argon-performance.js 引入�?
+// 调试控制台（由 argon-performance.js 引入）
 // ==========================================================================
 // 如果 ArgonDebug 未定义，创建一个简单的替代实现
 if (typeof ArgonDebug === 'undefined') {
@@ -174,62 +174,62 @@ translation['en_US'] = {
 	"恢复博客默认": "Set To Default",
 	"评论内容不能为空": "Comment content cannot be empty",
 	"昵称不能为空": "Name cannot be empty",
-	"邮箱�?QQ 号格式错�?: "Incorrect email or QQ format",
+	"邮箱或QQ号格式错误": "Incorrect email or QQ format",
 	"邮箱格式错误": "Incorrect email format",
-	"网站格式错误 (不是 http(s):// 开�?": "Website URL format error",
+	"网站格式错误 (不是 http(s):// 开头)": "Website URL format error",
 	"验证码未输入": "CAPTCHA cannot be empty",
-	"验证码格式错�?: "Incorrect CAPTCHA format",
+	"验证码格式错误": "Incorrect CAPTCHA format",
 	"请完成验证码验证": "Please complete CAPTCHA verification",
 	"评论格式错误": "Comment format error",
 	"发送中": "Sending",
-	"正在发�?: "Sending",
+	"正在发送": "Sending",
 	"评论正在发送中...": "Comment is sending...",
-	"发�?: "Send",
-	"评论发送失�?: "Comment failed",
-	"发送成�?: "Success",
-	"您的评论已发�?: "Your comment has been sent",
+	"发送": "Send",
+	"评论发送失败": "Comment failed",
+	"发送成功": "Success",
+	"您的评论已发送": "Your comment has been sent",
 	"评论": "Comments",
 	"未知原因": "Unknown Error",
-	"编辑�?: "Editing",
+	"编辑中": "Editing",
 	"正在编辑": "Editing",
-	"评论正在编辑�?..": "Comment is being edited...",
+	"评论正在编辑中...": "Comment is being edited...",
 	"编辑": "Edit",
 	"评论编辑失败": "Comment editing failed",
-	"已编�?: "Edited",
+	"已编辑": "Edited",
 	"编辑成功": "Success",
-	"您的评论已编�?: "Your comment has been edited",
+	"您的评论已编辑": "Your comment has been edited",
 	"评论 #": "Comment #",
-	"的编辑记�?: "- Edit History",
+	"的编辑记录": "- Edit History",
 	"加载失败": "Failed to load",
 	"展开": "Show",
-	"没有更多�?: "No more comments",
+	"没有更多了": "No more comments",
 	"找不到该 Repo": "Can't find the repository",
 	"获取 Repo 信息失败": "Failed to get repository information",
 	"点赞失败": "Vote failed",
 	"Hitokoto 获取失败": "Failed to get Hitokoto",
 	"复制成功": "Copied",
-	"代码已复制到剪贴�?: "Code has been copied to the clipboard",
+	"代码已复制到剪贴板": "Code has been copied to the clipboard",
 	"复制失败": "Failed",
-	"请手动复制代�?: "Please copy the code manually",
+	"请手动复制代码": "Please copy the code manually",
 	"刚刚": "Now",
-	"分钟�?: "minutes ago",
-	"小时�?: "hours ago",
+	"分钟前": "minutes ago",
+	"小时前": "hours ago",
 	"昨天": "Yesterday",
 	"前天": "The day before yesterday",
 	"天前": "days ago",
 	"隐藏行号": "Hide Line Numbers",
 	"显示行号": "Show Line Numbers",
-	"开启折�?: "Enable Break Line",
+	"开启折行": "Enable Break Line",
 	"关闭折行": "Disable Break Line",
 	"复制": "Copy",
 	"全屏": "Fullscreen",
-	"退出全�?: "Exit Fullscreen",
+	"退出全屏": "Exit Fullscreen",
 	"置顶评论": "Pin Comment",
 	"取消置顶评论": "Unpin Comment",
-	"是否要取消置顶评�?#": "Do you want to unpin the comment #",
-	"是否要置顶评�?#": "Do you want to pin the comment #",
+	"是否要取消置顶评论 #": "Do you want to unpin the comment #",
+	"是否要置顶评论 #": "Do you want to pin the comment #",
 	"确认": "Confirm",
-	"取消": "取消",
+	"取消": "Cancel",
 	"置顶": "Pin",
 	"取消置顶": "Unpin",
 	"置顶成功": "Pinned",
@@ -245,55 +245,55 @@ translation['ru_RU'] = {
 	"恢复博客默认": "Восстановить по умолчанию",
 	"评论内容不能为空": "Содержимое комментария не может быть пустым",
 	"昵称不能为空": "Имя не может быть пустым",
-	"邮箱�?QQ 号格式错�?: "Неверный формат электронной почты или QQ",
+	"邮箱或QQ号格式错误": "Неверный формат электронной почты или QQ",
 	"邮箱格式错误": "Неправильный формат электронной почты",
-	"网站格式错误 (不是 http(s):// 开�?": "Сайт ошибка формата URL-адреса ",
+	"网站格式错误 (不是 http(s):// 开头)": "Сайт ошибка формата URL-адреса ",
 	"验证码未输入": "Вы не решили капчу",
-	"验证码格式错�?: "Ошибка проверки капчи",
+	"验证码格式错误": "Ошибка проверки капчи",
 	"评论格式错误": "Неправильный формат комментария",
 	"发送中": "Отправка",
-	"正在发�?: "Отправка",
+	"正在发送": "Отправка",
 	"评论正在发送中...": "Комментарий отправляется...",
-	"发�?: "Отправить",
-	"评论发送失�?: "Не удалось отправить комментарий",
-	"发送成�?: "Комментарий отправлен",
-	"您的评论已发�?: "Ваш комментарий был отправлен",
+	"发送": "Отправить",
+	"评论发送失败": "Не удалось отправить комментарий",
+	"发送成功": "Комментарий отправлен",
+	"您的评论已发送": "Ваш комментарий был отправлен",
 	"评论": "Комментарии",
 	"未知原因": "Неизвестная ошибка",
-	"编辑�?: "Редактируется",
+	"编辑中": "Редактируется",
 	"正在编辑": "Редактируется",
-	"评论正在编辑�?..": "Комментарий редактируется",
+	"评论正在编辑中...": "Комментарий редактируется",
 	"编辑": "Редактировать",
 	"评论编辑失败": "Не удалось отредактировать комментарий",
-	"已编�?: "Изменено",
+	"已编辑": "Изменено",
 	"编辑成功": "Успешно",
-	"您的评论已编�?: "Ваш комментарий был изменен",
+	"您的评论已编辑": "Ваш комментарий был изменен",
 	"评论 #": "Комментарий #",
-	"的编辑记�?: "- История изменений",
+	"的编辑记录": "- История изменений",
 	"加载失败": "Ошибка загрузки",
 	"展开": "Показать",
-	"没有更多�?: "Комментариев больше нет",
+	"没有更多了": "Комментариев больше нет",
 	"找不到该 Repo": "Невозможно найти репозиторий",
 	"获取 Repo 信息失败": "Неудалось получить информацию репозитория",
 	"点赞失败": "Ошибка голосования",
 	"Hitokoto 获取失败": "Проблемы с вызовом Hitokoto",
 	"复制成功": "Скопировано",
-	"代码已复制到剪贴�?: "Код скопирован в буфер обмена",
+	"代码已复制到剪贴板": "Код скопирован в буфер обмена",
 	"复制失败": "Неудалось",
-	"请手动复制代�?: "Скопируйте код вручную",
+	"请手动复制代码": "Скопируйте код вручную",
 	"刚刚": "Сейчас",
-	"分钟�?: "минут назад",
-	"小时�?: "часов назад",
+	"分钟前": "минут назад",
+	"小时前": "часов назад",
 	"昨天": "Вчера",
 	"前天": "Позавчера",
 	"天前": "дней назад",
 	"隐藏行号": "Скрыть номера строк",
 	"显示行号": "Показать номера строк",
-	"开启折�?: "Включить перенос строк",
+	"开启折行": "Включить перенос строк",
 	"关闭折行": "Выключить перенос строк",
 	"复制": "Скопировать",
 	"全屏": "Полноэкранный режим",
-	"退出全�?: "Выход из полноэкранного режима",
+	"退出全屏": "Выход из полноэкранного режима",
 };
 translation['zh_TW'] = {
 	"确定": "確定",
@@ -301,55 +301,55 @@ translation['zh_TW'] = {
 	"恢复博客默认": "恢復博客默認",
 	"评论内容不能为空": "評論內容不能為空",
 	"昵称不能为空": "昵稱不能為空",
-	"邮箱�?QQ 号格式错�?: "郵箱�?QQ 號格式錯�?,
+	"邮箱或QQ号格式错误": "郵箱或QQ號格式錯誤",
 	"邮箱格式错误": "郵箱格式錯誤",
-	"网站格式错误 (不是 http(s):// 开�?": "網站格式錯誤 (不是 http(s):// 開頭)",
+	"网站格式错误 (不是 http(s):// 开头)": "網站格式錯誤 (不是 http(s):// 開頭)",
 	"验证码未输入": "驗證碼未輸入",
-	"验证码格式错�?: "驗證碼格式錯�?,
+	"验证码格式错误": "驗證碼格式錯誤",
 	"评论格式错误": "評論格式錯誤",
 	"发送中": "發送中",
-	"正在发�?: "正在發�?,
+	"正在发送": "正在發送",
 	"评论正在发送中...": "評論正在發送中...",
-	"发�?: "發�?,
-	"评论发送失�?: "評論發送失�?,
-	"发送成�?: "發送成�?,
-	"您的评论已发�?: "您的評論已發�?,
+	"发送": "發送",
+	"评论发送失败": "評論發送失敗",
+	"发送成功": "發送成功",
+	"您的评论已发送": "您的評論已發送",
 	"评论": "評論",
 	"未知原因": "未知原因",
-	"编辑�?: "編輯�?,
+	"编辑中": "編輯中",
 	"正在编辑": "正在編輯",
-	"评论正在编辑�?..": "評論正在編輯�?..",
+	"评论正在编辑中...": "評論正在編輯中...",
 	"编辑": "編輯",
 	"评论编辑失败": "評論編輯失敗",
-	"已编�?: "已編�?,
+	"已编辑": "已編輯",
 	"编辑成功": "編輯成功",
-	"您的评论已编�?: "您的評論已編�?,
+	"您的评论已编辑": "您的評論已編輯",
 	"评论 #": "評論 #",
-	"的编辑记�?: "的編輯記�?,
+	"的编辑记录": "的編輯記錄",
 	"加载失败": "加載失敗",
 	"展开": "展開",
-	"没有更多�?: "沒有更多�?,
+	"没有更多了": "沒有更多了",
 	"找不到该 Repo": "找不到該 Repo",
 	"获取 Repo 信息失败": "獲取 Repo 信息失敗",
 	"点赞失败": "點贊失敗",
 	"Hitokoto 获取失败": "Hitokoto 獲取失敗",
 	"复制成功": "復制成功",
-	"代码已复制到剪贴�?: "代碼已復制到剪貼�?,
+	"代码已复制到剪贴板": "代碼已復制到剪貼板",
 	"复制失败": "復制失敗",
-	"请手动复制代�?: "請手動復制代�?,
+	"请手动复制代码": "請手動復制代碼",
 	"刚刚": "剛剛",
-	"分钟�?: "分鐘�?,
-	"小时�?: "小時�?,
+	"分钟前": "分鐘前",
+	"小时前": "小時前",
 	"昨天": "昨天",
 	"前天": "前天",
 	"天前": "天前",
 	"隐藏行号": "隱藏行號",
 	"显示行号": "顯示行號",
-	"开启折�?: "開啟折行",
+	"开启折行": "開啟折行",
 	"关闭折行": "關閉折行",
 	"复制": "復制",
 	"全屏": "全屏",
-	"退出全�?: "退出全�?
+	"退出全屏": "退出全屏",
 };
 function __(text){
 	let lang = argonConfig.language;
@@ -362,7 +362,7 @@ function __(text){
 	return translation[lang][text];
 }
 
-/*根据滚动高度改变顶栏透明�?/
+/*根据滚动高度改变顶栏透明度 */
 !function(){
 	let toolbar = document.getElementById("navbar-main");
 	let $bannerContainer = $("#banner_container");
@@ -467,7 +467,7 @@ $(document).on("click" , "#navbar_search_input_container" , function(){
 	$("#navbar_search_input").focus();
 });
 $(document).on("blur" , "#navbar_search_input_container" , function(){
-	// 如果有文字则保持has-text�?
+	// 如果有文字则保持has-text类
 	if ($("#navbar_search_input").val().trim() !== "") {
 		$(this).addClass("has-text");
 	} else {
@@ -475,7 +475,7 @@ $(document).on("blur" , "#navbar_search_input_container" , function(){
 	}
 	$(this).removeClass("open");
 });
-// 监听输入变化来切换has-text�?
+// 监听输入变化来切换has-text类
 $(document).on("input" , "#navbar_search_input" , function(){
 	var container = $("#navbar_search_input_container");
 	if ($(this).val().trim() !== "") {
@@ -533,7 +533,7 @@ $(document).on("keydown" , "#leftbar_search_input" , function(e){
 	$("html").removeClass("leftbar-opened");
 	searchPosts(word);
 });
-/*搜索过滤�?/
+/*搜索过滤器*/
 $(document).on("change" , ".search-filter" , function(e){
 	if (pjaxLoading){
 		$(this).prop("checked", !$(this).prop("checked"));
@@ -592,21 +592,21 @@ $(document).on("change" , ".search-filter" , function(e){
 	function changeLeftbarStickyStatus(){
 		let scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
 		if( part1OffsetTop + part1OuterHeight + 10 - scrollTop <= (argonConfig.headroom != "absolute" ? 90 : 18) ){
-			//滚动条在页面中间浮动状�?
+			//滚动条在页面中间浮动状态
 			leftbarPart2.classList.add('sticky');
 			if (leftbarPart3) {
 				leftbarPart3.classList.add('sticky');
-				// 计算可用空间并分配给 part2 �?part3
+				// 计算可用空间并分配给 part2 和 part3
 				let viewportHeight = window.innerHeight;
 				let topOffset = argonConfig.headroom !== 'absolute' ? 90 : 20;
 				let availableHeight = viewportHeight - topOffset - 20; // 20px 底部边距
 				
-				// 获取 part3 的自然高度（不受限制时的高度�?
+				// 获取 part3 的自然高度（不受限制时的高度）
 				leftbarPart3.style.maxHeight = 'none';
 				let part3NaturalHeight = leftbarPart3.scrollHeight;
 				leftbarPart3.style.maxHeight = '';
 				
-				// 最小高度限�?
+				// 最小高度限制
 				let minPart2Height = 150;
 				let minPart3Height = 100;
 				
@@ -617,7 +617,7 @@ $(document).on("change" , ".search-filter" , function(e){
 					part3MaxHeight = part3NaturalHeight;
 					part2Height = availableHeight - part3NaturalHeight - 10;
 				} else {
-					// 需要按比例分配，part2 �?60%，part3 �?40%
+					// 需要按比例分配，part2 占 60%，part3 占 40%
 					part2Height = Math.max(minPart2Height, availableHeight * 0.6);
 					part3MaxHeight = Math.max(minPart3Height, availableHeight - part2Height - 10);
 				}
@@ -627,11 +627,11 @@ $(document).on("change" , ".search-filter" , function(e){
 				document.documentElement.style.setProperty('--leftbar-part3-max-height', part3MaxHeight + 'px');
 			}
 		}else{
-			//滚动条在顶部 不浮动状�?
+			//滚动条在顶部 不浮动状态
 			leftbarPart2.classList.remove('sticky');
 			if (leftbarPart3) leftbarPart3.classList.remove('sticky');
 		}
-		if( part1OffsetTop + part1OuterHeight + 10 - scrollTop <= 20 ){//侧栏下部分是否可以随 Headroom 一起向上移�?
+		if( part1OffsetTop + part1OuterHeight + 10 - scrollTop <= 20 ){//侧栏下部分是否可以随 Headroom 一起向上移动
 			document.body.classList.add('leftbar-can-headroom');
 		}else{
 			document.body.classList.remove('leftbar-can-headroom');
@@ -784,9 +784,9 @@ if (argonConfig.waterflow_columns != "1") {
 	});
 }();
 
-/*浮动按钮栏相�?(回顶�?*/
+/*浮动按钮栏相关(回顶部)*/
 !function(){
-	// 确保 DOM �?jQuery 已加�?
+	// 确保 DOM 和 jQuery 已加载
 	if (typeof jQuery === 'undefined') {
 		setTimeout(arguments.callee, 50);
 		return;
@@ -848,7 +848,7 @@ if (argonConfig.waterflow_columns != "1") {
 				$("#post_comment_content").focus();
 			}, 150);
 		} else {
-			// 已展开或无切换按钮：直接滚动到评论�?
+			// 已展开或无切换按钮：直接滚动到评论区
 			$("body,html").stop().animate({
 				scrollTop: postCommentArea.offset().top - 80
 			}, 600);
@@ -917,14 +917,14 @@ if (argonConfig.waterflow_columns != "1") {
 		$("#blog_setting_filters .blog-setting-filter-btn[filter-name='" + name + "']").addClass("active");
 		localStorage['Argon_Filter'] = name;
 	}
-	// 滤镜设置已在 header.php 中预加载，此处只需设置按钮状�?
+	// 滤镜设置已在 header.php 中预加载，此处只需设置按钮状态
 	let currentFilter = localStorage['Argon_Filter'] || 'off';
 	$("#blog_setting_filters .blog-setting-filter-btn[filter-name='" + currentFilter + "']").addClass("active");
 	$(".blog-setting-filter-btn").on("click" , function(){
 		setBlogFilter(this.getAttribute("filter-name"));
 	});
 
-	//UI 样式切换 (玻璃拟�?新拟�?
+	//UI 样式切换 (玻璃拟态/新拟态)
 	function setUIStyle(style){
 		if (style == undefined || style == ""){
 			style = "default";
@@ -937,7 +937,7 @@ if (argonConfig.waterflow_columns != "1") {
 		$(".blog-setting-style-btn[style-name='" + style + "']").addClass("active");
 		localStorage['Argon_UI_Style'] = style;
 	}
-	// UI 样式设置已在 header.php 中预加载，此处只需设置按钮状�?
+	// UI 样式设置已在 header.php 中预加载，此处只需设置按钮状态
 	let currentUIStyle = localStorage['Argon_UI_Style'] || 'default';
 	$(".blog-setting-style-btn[style-name='" + currentUIStyle + "']").addClass("active");
 	$(".blog-setting-style-btn").on("click" , function(){
@@ -1022,13 +1022,13 @@ if (argonConfig.waterflow_columns != "1") {
 	});
 }();
 
-/*评论�?& 发送评�?/
+/*评论区 & 发送评论*/
 !function(){
 	//回复评论
 	let replying = false , replyID = 0;
 	
 	/**
-	 * 显示回复�?
+	 * 显示回复框
 	 * @param {number} commentID - 评论ID
 	 */
 	function reply(commentID){
@@ -1052,7 +1052,7 @@ if (argonConfig.waterflow_columns != "1") {
 			$("#post_comment").addClass("post-comment-force-privatemode-off");
 		}
 		
-		// 滚动到评论框（使用原�?scrollTo 避免 jQuery easing 依赖问题�?
+		// 滚动到评论框（使用原生 scrollTo 避免 jQuery easing 依赖问题）
 		let postComment = $('#post_comment');
 		if (postComment.length > 0 && postComment.offset()) {
 			let targetTop = postComment.offset().top - 100;
@@ -1062,11 +1062,11 @@ if (argonConfig.waterflow_columns != "1") {
 			});
 		}
 		
-		// 使用 CSS 动画显示回复�?
+		// 使用 CSS 动画显示回复框
 		let replyInfo = $('#post_comment_reply_info');
 		if (replyInfo.length > 0) {
 			replyInfo.removeClass('reply-leaving').css('display', 'block');
-			// 触发重排以确保动画生�?
+			// 触发重排以确保动画生效
 			replyInfo[0].offsetHeight;
 			replyInfo.addClass('reply-entering');
 		}
@@ -1165,10 +1165,10 @@ if (argonConfig.waterflow_columns != "1") {
 	$(document).on("mouseleave", ".comment-parent-info", function(){
 		$("#comment-" + this.getAttribute("data-parent-id")).removeClass("highlight");
 	});
-	//切换评论置顶状�?
+	//切换评论置顶状态
 	function toogleCommentPin(commentID, pinned){
 		$("#comment_pin_comfirm_dialog .modal-title").html(pinned ? __("取消置顶评论") : __("置顶评论"));
-		$("#comment_pin_comfirm_dialog .modal-body").html(pinned ? __("是否要取消置顶评�?#") + commentID + "?" : __("是否要置顶评�?#") + commentID + "?");
+		$("#comment_pin_comfirm_dialog .modal-body").html(pinned ? __("是否要取消置顶评论 #") + commentID + "?" : __("是否要置顶评论 #") + commentID + "?");
 		$("#comment_pin_comfirm_dialog .btn-comfirm").html(__("确认")).attr("disabled", false);
 		$("#comment_pin_comfirm_dialog .btn-dismiss").html(__("取消")).attr("disabled", false);
 		$("#comment_pin_comfirm_dialog .btn-comfirm").off("click").on("click", function(){
@@ -1244,7 +1244,7 @@ if (argonConfig.waterflow_columns != "1") {
 	}
 		
 
-	//显示/隐藏额外输入�?(评论者网�?
+	//显示/隐藏额外输入框(评论者网址)
 	$(document).on("click" , "#post_comment_toggle_extra_input" , function(){
 		$("#post_comment").toggleClass("show-extra-input");
 		if ($("#post_comment").hasClass("show-extra-input")){
@@ -1254,7 +1254,7 @@ if (argonConfig.waterflow_columns != "1") {
 		}
 	});
 
-	//输入框细�?
+	//输入框细节
 	$(document).on("change input keydown keyup propertychange" , "#post_comment_content" , function(){
 		$("#post_comment_content_hidden")[0].innerText = $("#post_comment_content").val() + "\n";
 		$("#post_comment_content").css("height" , $("#post_comment_content_hidden").outerHeight());
@@ -1272,7 +1272,7 @@ if (argonConfig.waterflow_columns != "1") {
 		$(".post-comment-captcha-container").removeClass("active");
 	});
 
-	//发送评�?
+	//发送评论
 	window.postComment = function postComment(){
 		let commentContent = $("#post_comment_content").val();
 		let commentName = $("#post_comment_name").val();
@@ -1298,7 +1298,7 @@ if (argonConfig.waterflow_columns != "1") {
 		let isError = false;
 		let errorMsg = "";
 
-		//检查表单合法�?
+		//检查表单合法性
 		if (commentContent.match(/^\s*$/)){
 			isError = true;
 			errorMsg += __("评论内容不能为空") + "</br>";
@@ -1311,7 +1311,7 @@ if (argonConfig.waterflow_columns != "1") {
 			if ($("#post_comment").hasClass("enable-qq-avatar")){
 				if (!(/^\w+((-\w+)|(\.\w+))*\@[A-Za-z0-9]+((\.|-)[A-Za-z0-9]+)*\.[A-Za-z0-9]+$/).test(commentEmail) && !(/^[1-9][0-9]{4,10}$/).test(commentEmail)){
 					isError = true;
-					errorMsg += __("邮箱�?QQ 号格式错�?) + "</br>";
+					errorMsg += __("邮箱或QQ 号格式错误") + "</br>";
 				}
 			}else{
 				if (!(/^\w+((-\w+)|(\.\w+))*\@[A-Za-z0-9]+((\.|-)[A-Za-z0-9]+)*\.[A-Za-z0-9]+$/).test(commentEmail)){
@@ -1324,7 +1324,7 @@ if (argonConfig.waterflow_columns != "1") {
 				if ($("#post_comment").hasClass("enable-qq-avatar")){
 					if (!(/^\w+((-\w+)|(\.\w+))*\@[A-Za-z0-9]+((\.|-)[A-Za-z0-9]+)*\.[A-Za-z0-9]+$/).test(commentEmail) && !(/^[1-9][0-9]{4,10}$/).test(commentEmail)){
 						isError = true;
-						errorMsg += __("邮箱�?QQ 号格式错�?) + "</br>";
+						errorMsg += __("邮箱或QQ 号格式错误") + "</br>";
 					}
 				}else{
 					if (!(/^\w+((-\w+)|(\.\w+))*\@[A-Za-z0-9]+((\.|-)[A-Za-z0-9]+)*\.[A-Za-z0-9]+$/).test(commentEmail)){
@@ -1336,20 +1336,20 @@ if (argonConfig.waterflow_columns != "1") {
 		}
 		if (commentLink != "" && !(/https?:\/\//).test(commentLink)){
 			isError = true;
-			errorMsg += __("网站格式错误 (不是 http(s):// 开�?") + "</br>";
+			errorMsg += __("网站格式错误 (不是 http(s):// 开头)") + "</br>";
 		}
 		if (!$("#post_comment").hasClass("no-need-captcha")){
-			// 检查是否使用Geetest验证�?
+			// 检查是否使用Geetest验证码
 		if ($("#geetest-captcha").length > 0) {
-			// 检查Geetest库是否加载成�?
+			// 检查Geetest库是否加载成功
 			if (typeof window.geetestLoadFailed !== 'undefined' && window.geetestLoadFailed) {
 				isError = true;
 				errorMsg += __("验证码服务不可用，请刷新页面重试");
 			} else if (typeof window.geetestCaptcha === 'undefined' || !window.geetestCaptcha) {
 				isError = true;
-				errorMsg += __("验证码未初始化，请稍后重�?);
+				errorMsg += __("验证码未初始化，请稍后重试");;
 			} else {
-				// Geetest验证码检�?
+				// Geetest验证码检查
 				let lotNumber = $("#geetest_lot_number").val();
 				let captchaOutput = $("#geetest_captcha_output").val();
 				let passToken = $("#geetest_pass_token").val();
@@ -1361,19 +1361,19 @@ if (argonConfig.waterflow_columns != "1") {
 				}
 			}
 		} else {
-				// 原有的数学验证码检�?
+				// 原有的数学验证码验证
 				if (commentCaptcha == ""){
 					isError = true;
 					errorMsg += __("验证码未输入");
 				}
 				if (commentCaptcha != "" && !(/^[0-9]+$/).test(commentCaptcha)){
 					isError = true;
-					errorMsg += __("验证码格式错�?);
+					errorMsg += __("验证码格式错误");
 				}
 			}
 		}
 		if (isError){
-			// 确保按钮和表单元素处于可用状�?
+			// 确保按钮和表单元素处于可用状态
 			$("#post_comment_send").removeAttr("disabled");
 			$("#post_comment_content").removeAttr("disabled");
 			$("#post_comment_name").removeAttr("disabled");
@@ -1383,7 +1383,7 @@ if (argonConfig.waterflow_columns != "1") {
 			$("#post_comment_reply_cancel").removeAttr("disabled");
 			$("#post_comment").removeClass("sending");
 			$("#post_comment_send .btn-inner--icon.hide-on-comment-editing").html("<i class='fa fa-send'></i>");
-			$("#post_comment_send .btn-inner--text.hide-on-comment-editing").html(__("发�?));
+			$("#post_comment_send .btn-inner--text.hide-on-comment-editing").html(__("发送"));
 			
 			iziToast.show({
 				title: __("评论格式错误"),
@@ -1401,7 +1401,7 @@ if (argonConfig.waterflow_columns != "1") {
 			return;
 		}
 
-		//增加 disabled 属性和其他的表单提�?
+		//增加 disabled 属性和其他的表单提示
 		$("#post_comment").addClass("sending");
 		$("#post_comment_content").attr("disabled","disabled");
 		$("#post_comment_name").attr("disabled","disabled");
@@ -1414,7 +1414,7 @@ if (argonConfig.waterflow_columns != "1") {
 		$("#post_comment_send .btn-inner--text.hide-on-comment-editing").html(__("发送中"));
 
 		iziToast.show({
-			title: __("正在发�?),
+			title: __("正在发送"),
 			message: __("评论正在发送中..."),
 			class: 'shadow-sm iziToast-noprogressbar',
 			position: 'topRight',
@@ -1444,11 +1444,11 @@ if (argonConfig.waterflow_columns != "1") {
 			argon_nonce: $("#argon_comment_nonce").val()
 		};
 
-		// 根据验证码类型添加相应参�?
+		// 根据验证码类型添加相应参数
 		if ($("#geetest-captcha").length > 0) {
-			// 检查Geetest库加载状�?
+			// 检查Geetest库加载状态
 			if (typeof window.geetestLoadFailed !== 'undefined' && window.geetestLoadFailed) {
-				// 重新启用按钮和表单元�?
+				// 重新启用按钮和表单元素
 				$("#post_comment").removeClass("sending");
 				$("#post_comment_content").removeAttr("disabled");
 				$("#post_comment_name").removeAttr("disabled");
@@ -1458,13 +1458,13 @@ if (argonConfig.waterflow_columns != "1") {
 				$("#post_comment_send").removeAttr("disabled");
 				$("#post_comment_reply_cancel").removeAttr("disabled");
 				$("#post_comment_send .btn-inner--icon.hide-on-comment-editing").html("<i class='fa fa-send'></i>");
-				$("#post_comment_send .btn-inner--text.hide-on-comment-editing").html(__("发�?));
+				$("#post_comment_send .btn-inner--text.hide-on-comment-editing").html(__("发送"));
 				
 				setTimeout(function() {
 					try {
 						iziToast.destroy();
 						iziToast.error({
-							title: __('评论发送失�?),
+							title: __('评论发送失败'),
 							message: __('验证码服务不可用，请刷新页面重试'),
 							position: 'topRight'
 						});
@@ -1475,7 +1475,7 @@ if (argonConfig.waterflow_columns != "1") {
 				return false;
 			}
 			
-			// Geetest验证码参�?- 使用后端期望的参数名
+			// Geetest验证码参数 - 使用后端期望的参数名
 			ajaxData.lot_number = $("#geetest_lot_number").val();
 			ajaxData.captcha_output = $("#geetest_captcha_output").val();
 			ajaxData.pass_token = $("#geetest_pass_token").val();
@@ -1483,7 +1483,7 @@ if (argonConfig.waterflow_columns != "1") {
 			
 			// 验证Geetest参数是否完整
 			if (!ajaxData.lot_number || !ajaxData.captcha_output || !ajaxData.pass_token || !ajaxData.gen_time) {
-				// 重新启用按钮和表单元�?
+				// 重新启用按钮和表单元素
 				$("#post_comment").removeClass("sending");
 				$("#post_comment_content").removeAttr("disabled");
 				$("#post_comment_name").removeAttr("disabled");
@@ -1493,14 +1493,14 @@ if (argonConfig.waterflow_columns != "1") {
 				$("#post_comment_send").removeAttr("disabled");
 				$("#post_comment_reply_cancel").removeAttr("disabled");
 				$("#post_comment_send .btn-inner--icon.hide-on-comment-editing").html("<i class='fa fa-send'></i>");
-				$("#post_comment_send .btn-inner--text.hide-on-comment-editing").html(__("发�?));
+				$("#post_comment_send .btn-inner--text.hide-on-comment-editing").html(__("发送"));
 				
 				// 使用 setTimeout 确保 iziToast 操作在下一个事件循环中执行
 				setTimeout(function() {
 					try {
 						iziToast.destroy();
 						iziToast.error({
-							title: __('评论发送失�?),
+							title: __('评论发送失败'),
 							message: __('请完成验证码验证'),
 							position: 'topRight'
 						});
@@ -1511,7 +1511,7 @@ if (argonConfig.waterflow_columns != "1") {
 				return false;
 			}
 		} else {
-			// 原有数学验证码参�?
+			// 原有数学验证码参数
 			ajaxData.comment_captcha_seed = commentCaptchaSeed;
 			ajaxData.comment_captcha = commentCaptcha;
 		}
@@ -1530,20 +1530,20 @@ if (argonConfig.waterflow_columns != "1") {
 				$("#post_comment_send").removeAttr("disabled");
 				$("#post_comment_reply_cancel").removeAttr("disabled");
 				$("#post_comment_send .btn-inner--icon.hide-on-comment-editing").html("<i class='fa fa-send'></i>");
-				$("#post_comment_send .btn-inner--text.hide-on-comment-editing").html(__("发�?));
+				$("#post_comment_send .btn-inner--text.hide-on-comment-editing").html(__("发送"));
 				$("#post_comment").removeClass("show-extra-input post-comment-force-privatemode-on post-comment-force-privatemode-off");
 				if (!result.isAdmin){
 					$("#post_comment_captcha").removeAttr("disabled");
 				}
 
-				//判断是否有错�?
+				//判断是否有错误
 				if (result.status == "failed"){
 					// 使用 setTimeout 确保 iziToast 操作在下一个事件循环中执行
 					setTimeout(function() {
 						try {
 							iziToast.destroy();
 							iziToast.show({
-								title: __("评论发送失�?),
+								title: __("评论发送失败"),
 								message: result.msg,
 								class: 'shadow-sm',
 								position: 'topRight',
@@ -1562,14 +1562,14 @@ if (argonConfig.waterflow_columns != "1") {
 					return;
 				}
 
-				//发送成�?
+				//发送成功
 				// 使用 setTimeout 确保 iziToast 操作在下一个事件循环中执行
 				setTimeout(function() {
 					try {
 						iziToast.destroy();
 						iziToast.show({
-							title: __("发送成�?),
-							message: __("您的评论已发�?),
+							title: __("发送成功"),
+							message: __("您的评论已发送"),
 							class: 'shadow-sm',
 							position: 'topRight',
 							backgroundColor: '#2dce89',
@@ -1580,7 +1580,7 @@ if (argonConfig.waterflow_columns != "1") {
 					icon: 'fa fa-check',
 					timeout: 5000
 				});
-				//插入新评�?
+				//插入新评论
 				result.html = result.html.replace(/<(\/).noscript>/g, "");
 				let parentID = result.parentID;
 				if (parentID == "" || parentID == null){
@@ -1611,7 +1611,7 @@ if (argonConfig.waterflow_columns != "1") {
 				$("#post_comment_captcha + style").html(".post-comment-captcha-container:before{content: '" + result.newCaptcha + "';}");
 				$("#post_comment_captcha").val(result.newCaptchaAnswer);
 				
-				// 清空Geetest验证码隐藏字�?
+				// 清空Geetest验证码隐藏字段
 				if ($("#geetest-captcha").length > 0) {
 					$("#geetest_lot_number").val("");
 					$("#geetest_captcha_output").val("");
@@ -1639,13 +1639,13 @@ if (argonConfig.waterflow_columns != "1") {
 				$("#post_comment_send").removeAttr("disabled");
 				$("#post_comment_reply_cancel").removeAttr("disabled");
 				$("#post_comment_send .btn-inner--icon.hide-on-comment-editing").html("<i class='fa fa-send'></i>");
-				$("#post_comment_send .btn-inner--text.hide-on-comment-editing").html(__("发�?));
+				$("#post_comment_send .btn-inner--text.hide-on-comment-editing").html(__("发送"));
 				$("#post_comment").removeClass("show-extra-input post-comment-force-privatemode-on post-comment-force-privatemode-off");
 				if (!result.isAdmin){
 					$("#post_comment_captcha").removeAttr("disabled");
 				}
 
-				// 重置Geetest验证状�?
+				// 重置Geetest验证状态
 				window.geetestVerified = false;
 				// 重置自动提交标记
 				window.geetestAutoSubmitting = false;
@@ -1653,17 +1653,17 @@ if (argonConfig.waterflow_columns != "1") {
 				$("#geetest_captcha_output").val("");
 				$("#geetest_pass_token").val("");
 				$("#geetest_gen_time").val("");
-				// 重置 Geetest 实例，确保下一次生成新�?pass_token
+				// 重置 Geetest 实例，确保下一次生成新的pass_token
 				if (window.geetestCaptcha) {
 					try { window.geetestCaptcha.reset(); } catch (e) {}
 				}
 
-				// 安全地处�?iziToast 操作，防�?time 属性错�?
+				// 安全地处理iziToast 操作，防止time 属性错误
 				setTimeout(function() {
 					try {
 						iziToast.destroy();
 						iziToast.show({
-							title: __("评论发送失�?),
+							title: __("评论发送失败"),
 							message: __("未知原因"),
 							class: 'shadow-sm',
 							position: 'topRight',
@@ -1709,16 +1709,16 @@ if (argonConfig.waterflow_columns != "1") {
 			return;
 		}
 
-		//增加 disabled 属性和其他的表单提�?
+		//增加 disabled 属性和其他的表单提交
 		$("#post_comment_content").attr("disabled","disabled");
 		$("#post_comment_send").attr("disabled","disabled");
 		$("#post_comment_edit_cancel").attr("disabled","disabled");
 		$("#post_comment_send .btn-inner--icon.hide-on-comment-not-editing").html("<i class='fa fa-spinner fa-spin'></i>");
-		$("#post_comment_send .btn-inner--text.hide-on-comment-not-editing").html(__("编辑�?));
+		$("#post_comment_send .btn-inner--text.hide-on-comment-not-editing").html(__("编辑中"));
 
 		iziToast.show({
 			title: __("正在编辑"),
-			message: __("评论正在编辑�?.."),
+			message: __("评论正在编辑中.."),
 			class: 'shadow-sm iziToast-noprogressbar',
 			position: 'topRight',
 			backgroundColor: 'var(--themecolor)',
@@ -1747,7 +1747,7 @@ if (argonConfig.waterflow_columns != "1") {
 				$("#post_comment_send .btn-inner--icon.hide-on-comment-not-editing").html("<i class='fa fa-pencil'></i>");
 				$("#post_comment_send .btn-inner--text.hide-on-comment-not-editing").html(__("编辑"));
 
-				//判断是否有错�?
+				//判断是否有错误
 				if (result.status == "failed"){
 					iziToast.destroy();
 					iziToast.show({
@@ -1766,12 +1766,12 @@ if (argonConfig.waterflow_columns != "1") {
 					return;
 				}
 
-				//发送成功，替换原评�?
+				//发送成功，替换原评论
 				result.new_comment = result.new_comment.replace(/<(\/).noscript>/g, "");		
 				$("#comment-" + editID + " .comment-item-text").html(result.new_comment);
 				$("#comment-" + editID + " .comment-item-source").html(result.new_comment_source);
 				if ($("#comment-" + editID + " .comment-info .comment-edited").length == 0){
-					$("#comment-" + editID + " .comment-info").prepend("<div class='comment-edited'><i class='fa fa-pencil' aria-hidden='true'></i>" + __("已编�?) + "</div>")
+					$("#comment-" + editID + " .comment-info").prepend("<div class='comment-edited'><i class='fa fa-pencil' aria-hidden='true'></i>" + __("已编辑") + "</div>")
 				}
 				if (result.can_visit_edit_history){
 					$("#comment-" + editID + " .comment-info .comment-edited").addClass("comment-edithistory-accessible");
@@ -1780,7 +1780,7 @@ if (argonConfig.waterflow_columns != "1") {
 				iziToast.destroy();
 				iziToast.show({
 					title: __("编辑成功"),
-					message: __("您的评论已编�?),
+					message: __("您的评论已编辑"),
 					class: 'shadow-sm',
 					position: 'topRight',
 					backgroundColor: '#2dce89',
@@ -1830,7 +1830,7 @@ if (argonConfig.waterflow_columns != "1") {
 		if ($("#post_comment").hasClass("editing")){
 			editComment();
 		}else{
-			// 首先进行基本的表单验�?
+			// 首先进行基本的表单验证
 			let commentContent = $("#post_comment_content").val();
 			let commentName = $("#post_comment_name").val();
 			let commentEmail = $("#post_comment_email").val();
@@ -1839,7 +1839,7 @@ if (argonConfig.waterflow_columns != "1") {
 			let isError = false;
 			let errorMsg = "";
 
-			// 检查表单合法�?
+			// 检查表单合法性
 			if (commentContent.match(/^\s*$/)){
 				isError = true;
 				errorMsg += __("评论内容不能为空") + "</br>";
@@ -1852,7 +1852,7 @@ if (argonConfig.waterflow_columns != "1") {
 				if ($("#post_comment").hasClass("enable-qq-avatar")){
 					if (!(/^\w+((-\w+)|(\.\w+))*\@[A-Za-z0-9]+((\.|-)[A-Za-z0-9]+)*\.[A-Za-z0-9]+$/).test(commentEmail) && !(/^[1-9][0-9]{4,10}$/).test(commentEmail)){
 						isError = true;
-						errorMsg += __("邮箱�?QQ 号格式错�?) + "</br>";
+						errorMsg += __("邮箱或QQ 号格式错误") + "</br>";
 					}
 				}else{
 					if (!(/^\w+((-\w+)|(\.\w+))*\@[A-Za-z0-9]+((\.|-)[A-Za-z0-9]+)*\.[A-Za-z0-9]+$/).test(commentEmail)){
@@ -1865,7 +1865,7 @@ if (argonConfig.waterflow_columns != "1") {
 					if ($("#post_comment").hasClass("enable-qq-avatar")){
 						if (!(/^\w+((-\w+)|(\.\w+))*\@[A-Za-z0-9]+((\.|-)[A-Za-z0-9]+)*\.[A-Za-z0-9]+$/).test(commentEmail) && !(/^[1-9][0-9]{4,10}$/).test(commentEmail)){
 							isError = true;
-							errorMsg += __("邮箱�?QQ 号格式错�?) + "</br>";
+							errorMsg += __("邮箱或QQ 号格式错误") + "</br>";
 						}
 					}else{
 						if (!(/^\w+((-\w+)|(\.\w+))*\@[A-Za-z0-9]+((\.|-)[A-Za-z0-9]+)*\.[A-Za-z0-9]+$/).test(commentEmail)){
@@ -1877,12 +1877,12 @@ if (argonConfig.waterflow_columns != "1") {
 			}
 			if (commentLink != "" && !(/https?:\/\//).test(commentLink)){
 				isError = true;
-				errorMsg += __("网站格式错误 (不是 http(s):// 开�?") + "</br>";
+				errorMsg += __("网站格式错误 (不是 http(s):// 开头") + "</br>";
 			}
 			
 			// 如果基本表单验证失败，显示错误信息并返回
 			if (isError){
-				// 确保按钮和表单元素处于可用状�?
+				// 确保按钮和表单元素处于可用状态
 				$("#post_comment_send").removeAttr("disabled");
 				$("#post_comment_content").removeAttr("disabled");
 				$("#post_comment_name").removeAttr("disabled");
@@ -1892,7 +1892,7 @@ if (argonConfig.waterflow_columns != "1") {
 				$("#post_comment_reply_cancel").removeAttr("disabled");
 				$("#post_comment").removeClass("sending");
 				$("#post_comment_send .btn-inner--icon.hide-on-comment-editing").html("<i class='fa fa-send'></i>");
-				$("#post_comment_send .btn-inner--text.hide-on-comment-editing").html(__("发�?));
+				$("#post_comment_send .btn-inner--text.hide-on-comment-editing").html(__("发送"));
 				
 				iziToast.show({
 					title: __("评论格式错误"),
@@ -1912,7 +1912,7 @@ if (argonConfig.waterflow_columns != "1") {
 			
 			// 基本验证通过后，检查验证码
 			if ($("#geetest-captcha").length > 0) {
-				// 检�?Geetest 库是否加载失�?
+				// 检查Geetest 库是否加载失败
 				if (window.geetestLoadFailed) {
 					if (typeof loadGeetestScript === 'function' && typeof initGeetestCaptchaCore === 'function') {
 						try {
@@ -1932,13 +1932,13 @@ if (argonConfig.waterflow_columns != "1") {
 					return;
 				}
 				
-				// 如果使用Geetest，检查验证码是否已完�?
+				// 如果使用Geetest，检查验证码是否已完成
 				if (!window.geetestVerified) {
 					// 验证码未完成，触发验证码显示
 					if (window.geetestCaptcha) {
-						// 重置验证码状�?
+						// 重置验证码状态
 						window.geetestCaptcha.reset();
-						// 然后显示验证�?
+						// 然后显示验证码
 						window.geetestCaptcha.showBox();
 					} else {
 						if (typeof loadGeetestScript === 'function' && typeof initGeetestCaptchaCore === 'function') {
@@ -1955,7 +1955,7 @@ if (argonConfig.waterflow_columns != "1") {
 					return;
 				}
 			}
-			// 验证码已完成或不需要验证码，直接提交评�?
+			// 验证码已完成或不需要验证码，直接提交评论
 			postComment();
 		}
 	});
@@ -2078,8 +2078,8 @@ document.addEventListener('click', (e) => {
 function showCommentEditHistory(id){
 	let requestID = parseInt(new Date().getTime());
 	$("#comment_edit_history").data("request-id", requestID);
-	$("#comment_edit_history .modal-title").html(__("评论 #") + id + " " + __("的编辑记�?));
-	$("#comment_edit_history .modal-body").html("<div class='comment-history-loading'><span class='spinner-border text-primary'></span><span style='display: inline-block;transform: translateY(-4px);margin-left: 15px;font-size: 18px;'>加载�?/span></div>");
+	$("#comment_edit_history .modal-title").html(__("评论 #") + id + " " + __("的编辑记录"));
+	$("#comment_edit_history .modal-body").html("<div class='comment-history-loading'><span class='spinner-border text-primary'></span><span style='display: inline-block;transform: translateY(-4px);margin-left: 15px;font-size: 18px;'>加载中/span></div>");
 	$("#comment_edit_history").modal(null);
 	$.ajax({
 		type: 'POST',
@@ -2228,7 +2228,7 @@ $(document).on("submit" , ".post-password-form" , function(){
 				$("#comments > .card-body > ol.comment-list").append($("#comments > .card-body > ol.comment-list", $vdom).html());
 				if ($("#comments_more", $vdom).length == 0){
 					$("#comments_more").remove();
-					$(".comments-navigation-more").html("<div class='comments-navigation-nomore'>" + __("没有更多�?) + "</div>");
+					$(".comments-navigation-more").html("<div class='comments-navigation-nomore'>" + __("没有更多了") + "</div>");
 				}else{
 					$("#comments_more").attr("href", $("#comments_more", $vdom).attr("href"));
 					$("#comments_more").removeAttr("disabled");
@@ -2244,7 +2244,7 @@ $(document).on("submit" , ".post-password-form" , function(){
 	});
 }();
 
-/*URL �?# 根据 ID 定位*/
+/*URL 和# 根据 ID 定位*/
 function gotoHash(hash, durtion, easing = 'easeOutExpo'){
 	if (hash.length == 0){
 		return;
@@ -2292,7 +2292,7 @@ function showPostOutdateToast(){
 showPostOutdateToast();
 
 /*Zoomify*/
-// 全局 Zoomify 实例数组，用于清�?
+// 全局 Zoomify 实例数组，用于清理
 var zoomifyInstances = [];
 
 function zoomifyInit(){
@@ -2346,33 +2346,33 @@ $.fancybox.defaults.i18n = {
 	},
 	zh_CN: {
 		CLOSE: "关闭",
-		NEXT: "下一�?,
-		PREV: "上一�?,
+		NEXT: "下一个",
+		PREV: "上一个",
 		ERROR: "图片加载失败",
 		PLAY_START: "开始幻灯片展示",
-		PLAY_STOP: "暂停幻灯片展�?,
+		PLAY_STOP: "暂停幻灯片展示",
 		FULL_SCREEN: "全屏",
-		THUMBS: "缩略�?,
+		THUMBS: "缩略图",
 		DOWNLOAD: "下载",
 		SHARE: "分享",
 		ZOOM: "缩放"
 	}
 };
 
-/*Lazyload - 使用 IntersectionObserver 实现懒加�?/
+/*Lazyload - 使用 IntersectionObserver 实现懒加载
 /*
- * 优化说明�?
- * 1. 使用全局 lazyloadObserver 变量，便于在 PJAX 切换时清�?
- * 2. 添加 Observer 存在性检查，防止重复初始�?
+ * 优化说明：
+ * 1. 使用全局 lazyloadObserver 变量，便于在 PJAX 切换时清理
+ * 2. 添加 Observer 存在性检查，防止重复初始化
  * 3. 使用 requestAnimationFrame 替代 setTimeout 实现加载效果
  * 4. 实现滚动监听降级方案，支持不兼容 IntersectionObserver 的浏览器
- * 5. 使用 transitionend 事件清理样式，避免固定延�?
+ * 5. 使用 transitionend 事件清理样式，避免固定延迟
  */
-// 全局 Observer 实例，用于清�?
+// 全局 Observer 实例，用于清理
 var lazyloadObserver = null;
 
 function lazyloadInit() {
-	// 清理旧的 Observer（防御性编程）
+	// 清理旧的 Observer
 	if (lazyloadObserver) {
 		lazyloadObserver.disconnect();
 		lazyloadObserver = null;
@@ -2380,7 +2380,7 @@ function lazyloadInit() {
 	
 	// 检查是否启用懒加载
 	if (argonConfig.lazyload === false || argonConfig.lazyload === 'false') {
-		// 未启用懒加载时，直接加载所有图�?
+		// 未启用懒加载时，直接加载所有图片
 		loadAllImagesImmediately();
 		return;
 	}
@@ -2393,7 +2393,7 @@ function lazyloadInit() {
 	let effect = argonConfig.lazyload_effect || 'fadeIn';
 	let threshold = parseInt(argonConfig.lazyload_threshold) || 800;
 	
-	// 使用 IntersectionObserver 实现懒加�?
+	// 使用 IntersectionObserver 实现懒加载
 	if ('IntersectionObserver' in window) {
 		lazyloadObserver = new IntersectionObserver(function(entries) {
 			entries.forEach(function(entry) {
@@ -2408,43 +2408,43 @@ function lazyloadInit() {
 		});
 		
 		images.forEach(function(img) {
-			// 重置图片状�?
+			// 重置图片状态
 			img.style.opacity = '';
 			img.style.transform = '';
 			img.style.transition = '';
 			lazyloadObserver.observe(img);
 		});
 	} else {
-		// 降级方案：使用滚动监�?
+		// 降级方案：使用滚动监听
 		lazyloadFallback(images, effect, threshold);
 	}
 }
 
 /**
- * 优化的图片加载函�?
+ * 优化的图片加载函数
  * 使用 requestAnimationFrame 替代 setTimeout
  * @param {HTMLImageElement} img - 图片元素
- * @param {string} effect - 加载效果类型 ('fadeIn' �?'slideDown')
+ * @param {string} effect - 加载效果类型 ('fadeIn' 或'slideDown')
  */
 function loadImageOptimized(img, effect) {
 	let src = img.getAttribute('data-src');
 	if (!src) return;
 	
-	// 预加载图�?
+	// 预加载图片
 	let tempImg = new Image();
 	tempImg.onload = function() {
 		img.src = src;
 		img.removeAttribute('data-src');
 		img.classList.remove('lazyload');
 		
-		// 移除所�?lazyload-style-* �?
+		// 移除所有lazyload-style-* 类
 		img.className = img.className.replace(/\blazyload-style-\d+\b/g, '').trim();
 		
 		// 使用 requestAnimationFrame 应用加载效果
 		applyLoadEffectOptimized(img, effect);
 	};
 	tempImg.onerror = function() {
-		// 加载失败时使用原�?src
+		// 加载失败时使用原有src
 		img.src = src;
 		img.removeAttribute('data-src');
 		img.classList.remove('lazyload');
@@ -2456,7 +2456,7 @@ function loadImageOptimized(img, effect) {
 /**
  * 使用 requestAnimationFrame 应用加载效果
  * @param {HTMLImageElement} img - 图片元素
- * @param {string} effect - 加载效果类型 ('fadeIn' �?'slideDown')
+ * @param {string} effect - 加载效果类型 ('fadeIn' 或'slideDown')
  */
 function applyLoadEffectOptimized(img, effect) {
 	if (effect === 'fadeIn') {
@@ -2493,10 +2493,10 @@ function applyLoadEffectOptimized(img, effect) {
 
 /**
  * 降级方案：使用滚动监听实现懒加载
- * 当浏览器不支�?IntersectionObserver 时使�?
- * @param {NodeList|Array} images - 需要懒加载的图片元素列�?
+ * 当浏览器不支持IntersectionObserver 时使用
+ * @param {NodeList|Array} images - 需要懒加载的图片元素列表
  * @param {string} effect - 加载效果类型
- * @param {number} threshold - 提前加载的阈值（像素�?
+ * @param {number} threshold - 提前加载的阈值（像素）
  */
 function lazyloadFallback(images, effect, threshold) {
 	let loadedImages = new Set();
@@ -2521,16 +2521,16 @@ function lazyloadFallback(images, effect, threshold) {
 		argonEventManager.throttle(checkImagesInView, 100) : 
 		checkImagesInView;
 	
-	// 绑定事件监听�?
+	// 绑定事件监听器
 	window.addEventListener('scroll', throttledCheck, {passive: true});
 	window.addEventListener('resize', throttledCheck, {passive: true});
 	
-	// 立即检查一�?
+	// 立即检查一次
 	checkImagesInView();
 }
 
 /**
- * 立即加载所有图片（懒加载禁用时�?
+ * 立即加载所有图片（懒加载禁用时）
  * 不应用任何加载效果，直接替换 src
  */
 function loadAllImagesImmediately() {
@@ -2643,9 +2643,9 @@ if ($("html").hasClass("banner-as-cover")){
 var pjaxScrollTop = 0, pjaxLoading = false;
 
 /**
- * 清理 PJAX 页面切换前的所有资�?
+ * 清理 PJAX 页面切换前的所有资源
  * 包括 LazyLoad Observer、Zoomify 实例、Tippy 实例
- * �?pjax:beforeReplace 事件中调�?
+ * 在 pjax:beforeReplace 事件中调用
  */
 function cleanupPjaxResources() {
 	// 清理 LazyLoad Observer
@@ -2685,9 +2685,9 @@ function cleanupPjaxResources() {
 }
 
 /**
- * 重置 GT4 验证�?
+ * 重置 GT4 验证码
  * 清理状态变量、隐藏字段和容器，然后重新初始化
- * �?pjax:end 事件中调�?
+ * 在 pjax:end 事件中调用
  */
 function resetGT4Captcha() {
 	try {
@@ -2696,16 +2696,16 @@ function resetGT4Captcha() {
 			window.geetestVerified = false;
 			window.geetestAutoSubmitting = false;
 			
-			// 清空隐藏字段，防止残留导�?pass_token 复用
+			// 清空隐藏字段，防止残留导致pass_token 复用
 			$('#geetest_lot_number').val('');
 			$('#geetest_captcha_output').val('');
 			$('#geetest_pass_token').val('');
 			$('#geetest_gen_time').val('');
 			
-			// 清空容器，防止重�?appendTo 导致多个实例
+			// 清空容器，防止重复appendTo 导致多个实例
 			$('#geetest-captcha').empty();
 			
-			// 若页面脚本已提供初始化方法，则调用以加载验证�?
+			// 若页面脚本已提供初始化方法，则调用以加载验证码
 			if (typeof initGeetestCaptcha === 'function') {
 				initGeetestCaptcha();
 			} else if (typeof loadGeetestScript === 'function' && typeof initGeetestCaptchaCore === 'function') {
@@ -2724,8 +2724,8 @@ $.pjax.defaults.container = ['#primary', '#leftbar_part1_menu', '#leftbar_part2_
 $.pjax.defaults.fragment = ['#primary', '#leftbar_part1_menu', '#leftbar_part2_inner', '.page-information-card-container', '#rightbar', '#wpadminbar'];
 
 /*
- * PJAX 事件处理优化说明�?
- * 1. pjax:beforeReplace - 统一清理资源（LazyLoad Observer、Zoomify、Tippy�?
+ * PJAX 事件处理优化说明：
+ * 1. pjax:beforeReplace - 统一清理资源（LazyLoad Observer、Zoomify、Tippy）
  * 2. pjax:complete - 单次初始化所有功能模块，添加错误处理
  * 3. pjax:end - 只处理特定任务（移动端目录重置、GT4 验证码重置）
  * 4. 移除了重复的初始化调用，避免资源泄漏和性能问题
@@ -2775,7 +2775,7 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 	// 清理旧页面的资源
 	cleanupPjaxResources();
 	
-	// 更新 UI 状�?
+	// 更新 UI 状态
 	if ($("#post_comment", dom[0]).length > 0){
 		$("#fabtn_go_to_comment").removeClass("d-none");
 	}else{
@@ -2843,7 +2843,7 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 
 	NProgress.done();
 }).on('pjax:end', function() {
-	// 重置移动端目录状�?
+	// 重置移动端目录状态
 	if (typeof window.resetMobileCatalog === 'function') {
 		try {
 			window.resetMobileCatalog();
@@ -2852,7 +2852,7 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 		}
 	}
 	
-	// GT4: PJAX 后确保评论页验证码已初始�?
+	// GT4: PJAX 后确保评论页验证码已初始化
 	resetGT4Captcha();
 });
 
@@ -2872,7 +2872,7 @@ $(document).on("click", ".reference-link , .reference-list-backlink" , function(
 	}, 1);
 });
 
-/*Tags Dialog pjax 加载后自动关�?/
+/*Tags Dialog pjax 加载后自动关闭/
 $(document).on("click" , "#blog_tags .tag" , function(){
 	$("#blog_tags button.close").trigger("click");
 });
@@ -2884,7 +2884,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 !function(){
 	$(document).on("click" , "#fabtn_open_sidebar, #open_sidebar" , function(){
 		$("html").addClass("leftbar-opened");
-		// 侧边栏打开时初始化移动端文章目�?
+		// 侧边栏打开时初始化移动端文章目录
 		initMobileCatalog();
 		// 如果有文章目录，默认展开
 		setTimeout(function() {
@@ -2926,13 +2926,13 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		$("#navbar_global .navbar-toggler").click();
 	});
 	
-	// ========== 移动端折叠面板交�?==========
+	// ========== 移动端折叠面板交互==========
 	$(document).on("click", ".leftbar-mobile-collapse-header", function(e) {
 		var section = $(this).closest(".leftbar-mobile-collapse-section");
 		var header = $(this);
 		var isExpanded = section.hasClass("expanded");
 		
-		// 切换展开状�?
+		// 切换展开状态
 		section.toggleClass("expanded");
 		
 		// 如果是文章目录面板展开，初始化目录并滚动到当前位置
@@ -2959,7 +2959,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 			return;
 		}
 		
-		// 构建目录�?
+		// 构建目录树
 		var toc = [];
 		var stack = [{ level: 0, children: toc }];
 		
@@ -2969,7 +2969,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 			var text = $h.text().trim();
 			var id = $h.attr('id');
 			
-			// 确保标题�?ID
+			// 确保标题有ID
 			if (!id) {
 				id = 'mobile-heading-' + index;
 				$h.attr('id', id);
@@ -3030,7 +3030,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		setTimeout(scrollMobileCatalogToActive, 150);
 	}
 	
-	// 更新移动端目录高�?
+	// 更新移动端目录高亮
 	function updateMobileCatalogHighlight() {
 		var $mobileContainer = $("#leftbar_mobile_catalog");
 		var $postContent = $("#post_content");
@@ -3054,7 +3054,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		}
 	}
 	
-	// 重置移动端目录状态（�?PJAX 调用�?
+	// 重置移动端目录状态（由PJAX 调用）
 	window.resetMobileCatalog = function() {
 		window.mobileCatalogInitialized = false;
 		$("#leftbar_mobile_catalog").empty();
@@ -3076,7 +3076,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		}
 	}
 	
-	// 监听页面滚动，实时更新移动端目录高亮并自动滚�?
+	// 监听页面滚动，实时更新移动端目录高亮并自动滚动
 	var mobileCatalogScrollTimer = null;
 	$(window).on("scroll.mobileCatalog", function() {
 		if (!window.mobileCatalogInitialized) return;
@@ -3084,9 +3084,9 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		if (mobileCatalogScrollTimer) return;
 		mobileCatalogScrollTimer = setTimeout(function() {
 			mobileCatalogScrollTimer = null;
-			// 更新高亮状�?
+			// 更新高亮状态
 			updateMobileCatalogHighlight();
-			// 只在侧边栏打开且目录展开时滚�?
+			// 只在侧边栏打开且目录展开时滚动
 			if ($("html").hasClass("leftbar-opened") && 
 				$("#mobile_catalog_toggle").closest(".leftbar-mobile-collapse-section").hasClass("expanded")) {
 				scrollMobileCatalogToActive();
@@ -3100,7 +3100,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 	function updateMobileTodoCount() {
 		var count = $("#mobile-todo-list .mobile-todo-item:not(.todo-completed)").length;
 		$("#mobile_todo_count").text(count);
-		// 同步更新桌面端计�?
+		// 同步更新桌面端计数
 		$(".todo-count").text(count);
 	}
 	
@@ -3158,7 +3158,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		});
 	}
 	
-	// 移动�?TODO 验证码相关变�?
+	// 移动端TODO 验证码相关变量
 	var mobilePendingUrgeBtn = null;
 	var mobileGeetestCaptchaObj = null;
 	
@@ -3224,7 +3224,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 					mobilePendingUrgeBtn = btn;
 					
 					if (window.mobileTodoConfig.captchaType === 'geetest') {
-						// 极验验证�?
+						// 极验验证码
 						if (!mobileGeetestCaptchaObj && typeof initGeetest4 === 'function') {
 							initGeetest4({
 								captchaId: window.mobileTodoConfig.geetestId,
@@ -3248,14 +3248,14 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 							mobileGeetestCaptchaObj.showCaptcha();
 						}
 					} else {
-						// 数学验证�?
+						// 数学验证码
 						$("#mobile-todo-captcha-input").val("").focus();
 					}
 					return;
 				}
 			}
 			
-			// 不需要验证码，直接催�?
+			// 不需要验证码，直接催促
 			doMobileUrge(btn, id, "");
 		}
 	});
@@ -3283,7 +3283,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		}
 	});
 	
-	// 执行移动端催�?
+	// 执行移动端催促
 	function doMobileUrge(btn, id, captcha) {
 		btn.prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i>');
 		
@@ -3305,7 +3305,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		});
 	}
 	
-	// 极验验证码催�?
+	// 极验验证码催促
 	function doMobileUrgeGeetest(btn, id, geetestResult) {
 		btn.prop("disabled", true).html('<i class="fa fa-spinner fa-spin"></i>');
 		
@@ -3331,7 +3331,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		});
 	}
 	
-	// 处理移动端催促响�?
+	// 处理移动端催促响应
 	function handleMobileUrgeResponse(btn, res) {
 		var captchaContainer = $(".mobile-todo-captcha-container");
 		
@@ -3340,7 +3340,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 			captchaContainer.slideUp(200);
 			mobilePendingUrgeBtn = null;
 			
-			// 更新验证码文�?
+			// 更新验证码文本
 			if (res.data && res.data.captcha) {
 				$(".mobile-todo-captcha-text").text(res.data.captcha);
 			}
@@ -3353,7 +3353,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 			if (typeof iziToast !== 'undefined') {
 				iziToast.success({
 					title: '',
-					message: res.data && res.data.message ? res.data.message : '已提�?,
+					message: res.data && res.data.message ? res.data.message : '已提交',
 					position: 'topRight',
 					timeout: 3000
 				});
@@ -3371,7 +3371,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 				});
 			}
 			
-			// 刷新验证�?
+			// 刷新验证码
 			if (res.data && res.data.captcha) {
 				$(".mobile-todo-captcha-text").text(res.data.captcha);
 			}
@@ -3404,7 +3404,7 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 	}
 }();
 
-/*折叠区块小工�?/
+/*折叠区块小工具*/
 $(document).on("click" , ".collapse-block .collapse-block-title" , function(){
 	let block = $(this).parent();
 	$(block).toggleClass("collapsed");
@@ -3417,7 +3417,7 @@ $(document).on("click" , ".collapse-block .collapse-block-title" , function(){
 	$("html").trigger("scroll");
 });
 
-/*获得 Github Repo Shortcode 信息卡内�?/
+/*获得 Github Repo Shortcode 信息卡内容*/
 function getGithubInfoCardContent(){
 	$(".github-info-card").each(function(){
 		(function($this){
@@ -3523,7 +3523,7 @@ $(document).on("click" , ".shuoshuo-upvote" , function(){
 		}
 	});
 });
-//折叠长说�?
+//折叠长说说
 function foldLongShuoshuo(){
 	if (argonConfig.fold_long_shuoshuo == false){
 		return;
@@ -3671,7 +3671,7 @@ function rgb2str(rgb){
 function hex2str(hex){
 	return rgb2str(hex2rgb(hex));
 }
-//颜色选择�?& 切换主题�?
+//颜色选择器& 切换主题色
 if ($("meta[name='argon-enable-custom-theme-color']").attr("content") == 'true'){
 	let themeColorPicker = new Pickr({
 		el: '#theme-color-picker',
@@ -3873,13 +3873,13 @@ function highlightJsRender(){
 				<div class="hljs-control-btn hljs-control-toggle-linenumber" tooltip-hide-linenumber="` + __("隐藏行号") + `" tooltip-show-linenumber="` + __("显示行号") + `">
 					<i class="fa fa-list"></i>
 				</div>
-				<div class="hljs-control-btn hljs-control-toggle-break-line" tooltip-enable-breakline="` + __("开启折�?) + `" tooltip-disable-breakline="` + __("关闭折行") + `">
+				<div class="hljs-control-btn hljs-control-toggle-break-line" tooltip-enable-breakline="` + __("开启折行") + `" tooltip-disable-breakline="` + __("关闭折行") + `">
 					<i class="fa fa-align-left"></i>
 				</div>
 				<div class="hljs-control-btn hljs-control-copy" id=` + copyBtnID + ` tooltip="` + __("复制") + `">
 					<i class="fa fa-clipboard"></i>
 				</div>
-				<div class="hljs-control-btn hljs-control-fullscreen" tooltip-fullscreen="` + __("全屏") + `" tooltip-exit-fullscreen="` + __("退出全�?) + `">
+				<div class="hljs-control-btn hljs-control-fullscreen" tooltip-fullscreen="` + __("全屏") + `" tooltip-exit-fullscreen="` + __("退出全屏") + `">
 					<i class="fa fa-arrows-alt"></i>
 				</div>
 			</div>`);
@@ -3891,7 +3891,7 @@ function highlightJsRender(){
 		clipboard.on('success', function(e) {
 			iziToast.show({
 				title: __("复制成功"),
-				message: __("代码已复制到剪贴�?),
+				message: __("代码已复制到剪贴板),
 				class: 'shadow',
 				position: 'topRight',
 				backgroundColor: '#2dce89',
@@ -3906,7 +3906,7 @@ function highlightJsRender(){
 		clipboard.on('error', function(e) {
 			iziToast.show({
 				title: __("复制失败"),
-				message: __("请手动复制代�?),
+				message: __("请手动复制代码),
 				class: 'shadow',
 				position: 'topRight',
 				backgroundColor: '#f5365c',
@@ -3928,7 +3928,7 @@ $(document).ready(function(){
 		// 调用性能优化模块的初始化函数
 		initArgonPerformance();
 		
-		// 创建各个优化模块的实�?
+		// 创建各个优化模块的实例
 		try {
 			// 1. 性能监控模块（最先初始化，用于监控其他模块）
 			if (typeof ArgonPerformanceMonitor !== 'undefined') {
@@ -3981,7 +3981,7 @@ $(document).ready(function(){
 	}
 	
 	// ==========================================================================
-	// 原有初始化代�?
+	// 原有初始化代码
 	// ==========================================================================
 	highlightJsRender();
 	waterflowInit();
@@ -4004,7 +4004,7 @@ $(document).on("click" , ".hljs-control-toggle-linenumber" , function(){
 	block.toggleClass("hljs-hide-linenumber");
 });
 
-/*时间差计�?/
+/*时间差计算/
 function addPreZero(num, n) {
 	var len = num.toString().length;
 	while(len < n) {
@@ -4024,10 +4024,10 @@ function humanTimeDiff(time){
 		return __("刚刚");
 	}
 	if (delta < 1000 * 60 * 60){
-		return parseInt(delta / (1000 * 60)) + " " + __("分钟�?);
+		return parseInt(delta / (1000 * 60)) + " " + __("分钟前);
 	}
 	if (delta < 1000 * 60 * 60 * 24){
-		return parseInt(delta / (1000 * 60 * 60)) + " " + __("小时�?);
+		return parseInt(delta / (1000 * 60 * 60)) + " " + __("小时前);
 	}
 	let yesterday = new Date(now - 1000 * 60 * 60 * 24);
 	yesterday.setHours(0);
@@ -4086,7 +4086,7 @@ setInterval(function(){
 void 0;
 }();
 
-/* ========== Modern UI Enhancements - 现代化交互动画增�?========== */
+/* ========== Modern UI Enhancements - 现代化交互动画增强========== */
 (function() {
     'use strict';
 
@@ -4127,7 +4127,7 @@ void 0;
         });
     }
 
-    // 5. 页面加载进度�?
+    // 5. 页面加载进度条
     function initLoadingBar() {
         if (document.getElementById('page-loading-bar')) return;
         var bar = document.createElement('div');
@@ -4165,20 +4165,20 @@ void 0;
         });
     }
 
-    // 7. 主题切换动画 - 已在 header.php 中通过 setDarkmode 函数处理，此处不再重�?
+    // 7. 主题切换动画 - 已在 header.php 中通过 setDarkmode 函数处理，此处不再重复
     function initThemeTransition() {
         // 移除 MutationObserver 避免无限循环导致内存泄漏
-        // 主题切换过渡效果已在 setDarkmode() 函数中实�?
+        // 主题切换过渡效果已在 setDarkmode() 函数中实现
     }
 
-    // 8. 减少动画偏好检�?
+    // 8. 减少动画偏好检查
     function checkReducedMotion() {
         if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
             document.documentElement.classList.add('reduced-motion');
         }
     }
 
-    // 初始�?
+    // 初始化
     function init() {
         checkReducedMotion();
         initImageLoadAnimation();
