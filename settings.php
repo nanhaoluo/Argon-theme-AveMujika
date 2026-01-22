@@ -1481,8 +1481,8 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 8. 浮动按钮与页脚 ========== -->
-					<tr><th class="subtitle"><h2 id="section-fab-footer"><?php _e('浮动按钮与页脚', 'argon');?></h2></th></tr>
+					<!-- ========== 8. 浮动按钮 ========== -->
+					<tr><th class="subtitle"><h2 id="section-fab"><?php _e('浮动按钮', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-fab"><?php _e('浮动操作按钮', 'argon');?></h3></th></tr>
 
@@ -1554,7 +1554,26 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 9. SEO 与性能 ========== -->
+					<!-- ========== 9. 页脚设置 ========== -->
+					<tr><th class="subtitle"><h2 id="section-footer"><?php _e('页脚设置', 'argon');?></h2></th></tr>
+
+					<tr><th class="subtitle"><h3 id="subsection-footer"><?php _e('页脚', 'argon');?></h3></th></tr>
+
+					<tr>
+
+						<th><label><?php _e('页脚内容', 'argon');?></label></th>
+
+						<td>
+
+							<textarea type="text" rows="15" cols="100" name="argon_footer_html"><?php echo htmlspecialchars(get_option('argon_footer_html')); ?></textarea>
+
+							<p class="description"><?php _e('HTML , 支持 script 等标签', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
+					<!-- ========== 10. SEO 与性能 ========== -->
 					<tr><th class="subtitle"><h2 id="section-seo-performance"><?php _e('SEO 与性能', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-seo">SEO</h3></th></tr>
@@ -1675,7 +1694,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 10. 文章显示 ========== -->
+					<!-- ========== 11. 文章显示 ========== -->
 					<tr><th class="subtitle"><h2 id="section-post-display"><?php _e('文章显示', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-post-meta"><?php _e('Meta 信息', 'argon');?></h3></th></tr>
@@ -1952,7 +1971,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 11. 文章功能 ========== -->
+					<!-- ========== 12. 文章功能 ========== -->
 					<tr><th class="subtitle"><h2 id="section-post-features"><?php _e('文章功能', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-ai-summary"><?php _e('AI 文章摘要', 'argon');?></h3></th></tr>
@@ -2479,7 +2498,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 12. 特殊页面 ========== -->
+					<!-- ========== 13. 特殊页面 ========== -->
 					<tr><th class="subtitle"><h2 id="section-special-pages"><?php _e('特殊页面', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-archive"><?php _e('归档页面', 'argon');?></h3></th></tr>
@@ -2536,7 +2555,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 13. 功能增强 ========== -->
+					<!-- ========== 14. 功能增强 ========== -->
 					<tr><th class="subtitle"><h2 id="section-enhancements"><?php _e('功能增强', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-code-highlight"><?php _e('代码高亮', 'argon');?></h3></th></tr>
@@ -3070,7 +3089,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 14. 高级设置 ========== -->
+					<!-- ========== 15. 高级设置 ========== -->
 				<tr><th class="subtitle"><h2 id="section-advanced"><?php _e('高级设置', 'argon');?></h2></th></tr>
 
 				<tr><th class="subtitle"><h3 id="subsection-scripts"><?php _e('自定义脚本', 'argon');?></h3></th></tr>
@@ -3133,7 +3152,7 @@ window.pjaxLoaded = function(){
 
 					<tr><th class="subtitle"><h3 id="subsection-misc"><?php _e('杂项', 'argon');?></h3></th></tr>
 
-					<!-- ========== 15. 评论设置 ========== -->
+					<!-- ========== 16. 评论设置 ========== -->
 					<tr><th class="subtitle"><h2 id="section-comment"><?php _e('评论设置', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-comment-pagination"><?php _e('评论分页', 'argon');?></h3></th></tr>
