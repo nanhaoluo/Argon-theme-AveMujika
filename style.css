@@ -2537,41 +2537,35 @@ html.navbar-absolute #leftbar_part2.sticky {
 
 #leftbar_part2.sticky #leftbar_part2_inner {
 	max-height: calc(100vh - 110px - var(--leftbar-part3-height, 0px));
+}
+
+/* 只有文章目录标签需要滚动 */
+#leftbar_part2.sticky #leftbar_tab_catalog {
+	max-height: calc(100vh - 200px - var(--leftbar-part3-height, 0px));
 	overflow-y: auto;
 }
 
-#leftbar_part2_inner::-webkit-scrollbar {
+#leftbar_tab_catalog::-webkit-scrollbar {
 	width: 6px;
 }
 
-#leftbar_part2_inner::-webkit-scrollbar-track {
-
+#leftbar_tab_catalog::-webkit-scrollbar-track {
 	background: transparent;
-
 }
 
-#leftbar_part2_inner::-webkit-scrollbar-thumb {
-
+#leftbar_tab_catalog::-webkit-scrollbar-thumb {
 	border-width: 1px;
-
 	background-color: rgba(0, 0, 0, 0.2);
-
 }
 
-html.darkmode #leftbar_part2_inner::-webkit-scrollbar-thumb {
-
+html.darkmode #leftbar_tab_catalog::-webkit-scrollbar-thumb {
 	border-width: 1px;
-
 	background-color: rgba(255, 255, 255, 0.2);
-
 }
 
-#leftbar_part2_inner::-webkit-scrollbar-button {
-
+#leftbar_tab_catalog::-webkit-scrollbar-button {
 	height: 5px;
-
 	pointer-events: none;
-
 }
 
 .sidebar-tab-switcher {
@@ -12487,24 +12481,18 @@ article .post-content .huhua a:before {
 #leftbar_part3 {
 	margin-top: 10px;
 	transition: top 0.3s ease, transform 0.3s ease;
-	max-height: 50vh;
-	overflow: hidden;
-	display: flex;
-	flex-direction: column;
 }
 
 #leftbar_part3.sticky {
 	position: fixed;
 	top: calc(80px + var(--leftbar-part2-height, 300px));
 	width: 240px;
-	max-height: var(--leftbar-part3-max-height, 50vh);
 }
 
 #leftbar_part3 .card-body {
-	overflow-y: auto;
-	flex: 1;
-	min-height: 0;
 	padding: 12px 16px;
+	max-height: 50vh;
+	overflow-y: auto;
 }
 
 #leftbar_part3 .card-body::-webkit-scrollbar {
