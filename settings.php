@@ -3380,7 +3380,7 @@ window.pjaxLoaded = function(){
 
 					</tr>
 
-					<!-- ========== 15. 验证码与安全 ========== -->
+					<!-- ========== 16. 验证码与安全 ========== -->
 					<tr><th class="subtitle"><h2 id="section-security"><?php _e('验证码与安全', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-captcha"><?php _e('验证码设置', 'argon');?></h3></th></tr>
