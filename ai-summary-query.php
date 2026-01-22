@@ -698,10 +698,7 @@ if (current_user_can('manage_options')):
 
 <article class="post card shadow-sm bg-white border-0 ai-verify-card" style="margin-top: 16px;">
 	<h3 class="ai-verify-section-title">
-		<i class="fa fa-database"></i><?php _e('AI 请求历史记录', 'argon'); ?>
-		<span style="font-size: 13px; font-weight: 400; color: var(--color-text-muted); margin-left: 8px;">
-			(<?php _e('仅管理员可见', 'argon'); ?>)
-		</span>
+		<i class="fa fa-database"></i><?php _e('请求记录', 'argon'); ?>
 	</h3>
 	
 	<div class="ai-alert ai-alert-info" style="margin-bottom: 20px;">

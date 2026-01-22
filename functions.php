@@ -2087,6 +2087,9 @@ function argon_comment_format($comment, $args, $depth){
 						<button class="comment-pin btn btn-sm btn-outline-primary" data-id="<?php comment_ID(); ?>" type="button" style="margin-right: 2px;"><?php _ex('置顶', 'to pin', 'argon')?></button>
 				<?php }
 					} ?>
+				<?php if ($GLOBALS['argon_comment_options']['current_user_can_moderate_comments']) { ?>
+					<button class="comment-delete btn btn-sm btn-outline-danger" data-id="<?php comment_ID(); ?>" type="button" style="margin-right: 2px;"><?php _e('删除', 'argon')?></button>
+				<?php } ?>
 				<?php if ((check_comment_token(get_comment_ID()) || check_login_user_same($comment -> user_id)) && (get_option("argon_comment_allow_editing") != "false")) { ?>
 					<button class="comment-edit btn btn-sm btn-outline-primary" data-id="<?php comment_ID(); ?>" type="button" style="margin-right: 2px;"><?php _e('编辑', 'argon')?></button>
 				<?php } ?>
@@ -2123,6 +2126,25 @@ function comment_author_link_filter($html){
 	return str_replace('href=', 'target="_blank" href=', $html);
 }
 add_filter('get_comment_author_link', 'comment_author_link_filter');
+
+/**
+ * 为管理员显示原用户名
+ */
+function argon_display_original_username($author, $comment_id) {
+	// 只对管理员显示
+	if (!current_user_can('moderate_comments')) {
+		return $author;
+	}
+	
+	// 检查是否有原始用户名
+	$original_username = get_comment_meta($comment_id, '_argon_original_username', true);
+	if (!empty($original_username)) {
+		return $author . ' <span style="color: #8898aa; font-size: 0.9em;">(原用户名: ' . esc_html($original_username) . ')</span>';
+	}
+	
+	return $author;
+}
+add_filter('get_comment_author', 'argon_display_original_username', 10, 2);
 //评论验证码生成 & 验证
 function get_comment_captcha_seed($refresh = false){
 	if (isset($_SESSION['captchaSeed']) && !$refresh){
@@ -3072,6 +3094,53 @@ function pin_comment(){
 }
 add_action('wp_ajax_pin_comment', 'pin_comment');
 add_action('wp_ajax_nopriv_pin_comment', 'pin_comment');
+
+//前台删除评论
+function frontend_delete_comment() {
+	header('Content-Type:application/json; charset=utf-8');
+	
+	// 检查权限
+	if (!current_user_can('moderate_comments')) {
+		exit(json_encode([
+			'status' => 'failed',
+			'msg' => __('您没有权限进行此操作', 'argon')
+		]));
+	}
+	
+	$comment_id = intval($_POST['id']);
+	if (empty($comment_id)) {
+		exit(json_encode([
+			'status' => 'failed',
+			'msg' => __('评论 ID 无效', 'argon')
+		]));
+	}
+	
+	$comment = get_comment($comment_id);
+	if (!$comment) {
+		exit(json_encode([
+			'status' => 'failed',
+			'msg' => __('评论不存在', 'argon')
+		]));
+	}
+	
+	// 删除评论（移入回收站）
+	$result = wp_trash_comment($comment_id);
+	
+	if ($result) {
+		exit(json_encode([
+			'status' => 'success',
+			'msg' => __('评论已删除', 'argon')
+		]));
+	} else {
+		exit(json_encode([
+			'status' => 'failed',
+			'msg' => __('删除评论失败', 'argon')
+		]));
+	}
+}
+add_action('wp_ajax_frontend_delete_comment', 'frontend_delete_comment');
+add_action('wp_ajax_nopriv_frontend_delete_comment', 'frontend_delete_comment');
+
 //输出评论分页页码
 function get_argon_formatted_comment_paginate_links($maxPageNumbers, $extraClasses = ''){
 	$args = array(
@@ -7558,8 +7627,8 @@ function argon_auto_detect_spam_on_comment($comment_id, $comment_approved) {
 	}
 	
 	if ($should_check) {
-		// 异步检测（延迟 2 秒执行，避免阻塞评论发送）
-		wp_schedule_single_event(time() + 2, 'argon_async_spam_detection', [$comment_id]);
+		// 立即同步执行检测
+		argon_async_spam_detection_handler($comment_id);
 	}
 }
 add_action('comment_post', 'argon_auto_detect_spam_on_comment', 10, 2);

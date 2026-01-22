@@ -1159,6 +1159,9 @@ if (argonConfig.waterflow_columns != "1") {
 	$(document).on("click", ".comment-pin, .comment-unpin", function(){
 		toogleCommentPin(this.getAttribute("data-id"), !this.classList.contains("comment-pin"));
 	});
+	$(document).on("click", ".comment-delete", function(){
+		deleteComment(this.getAttribute("data-id"));
+	});
 	$(document).on("mouseenter", ".comment-parent-info", function(){
 		$("#comment-" + this.getAttribute("data-parent-id")).addClass("highlight");
 	});
@@ -1241,6 +1244,75 @@ if (argonConfig.waterflow_columns != "1") {
 			});
 		});
 		$("#comment_pin_comfirm_dialog").modal(null);
+	}
+	
+	//删除评论
+	function deleteComment(commentID) {
+		if (!confirm(__('确定要删除评论 #') + commentID + '?')) {
+			return;
+		}
+		
+		$.ajax({
+			type: 'POST',
+			url: argonConfig.wp_path + 'wp-admin/admin-ajax.php',
+			dataType: 'json',
+			data: {
+				action: 'frontend_delete_comment',
+				id: commentID
+			},
+			success: function(result) {
+				if (result.status === 'success') {
+					// 移除评论元素
+					$('#comment-' + commentID).fadeOut(300, function() {
+						$(this).next('.comment-divider').remove();
+						$(this).remove();
+					});
+					
+					iziToast.show({
+						title: __('删除成功'),
+						message: result.msg,
+						class: 'shadow-sm',
+						position: 'topRight',
+						backgroundColor: '#2dce89',
+						titleColor: '#ffffff',
+						messageColor: '#ffffff',
+						iconColor: '#ffffff',
+						progressBarColor: '#ffffff',
+						icon: 'fa fa-check',
+						timeout: 5000
+					});
+				} else {
+					iziToast.show({
+						title: __('删除失败'),
+						message: result.msg,
+						class: 'shadow-sm',
+						position: 'topRight',
+						backgroundColor: '#f5365c',
+						titleColor: '#ffffff',
+						messageColor: '#ffffff',
+						iconColor: '#ffffff',
+						progressBarColor: '#ffffff',
+						icon: 'fa fa-close',
+						timeout: 5000
+					});
+				}
+			},
+			error: function() {
+				iziToast.show({
+					title: __('删除失败'),
+					message: __('未知错误'),
+					class: 'shadow-sm',
+					position: 'topRight',
+					backgroundColor: '#f5365c',
+					titleColor: '#ffffff',
+					messageColor: '#ffffff',
+					iconColor: '#ffffff',
+					progressBarColor: '#ffffff',
+					icon: 'fa fa-close',
+					timeout: 5000
+				});
+			}
+		});
 	}
 		
 
