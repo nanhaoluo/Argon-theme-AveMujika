@@ -6014,6 +6014,9 @@ window.pjaxLoaded = function(){
 
 			});
 
+			// 确保设置页目录框默认展开
+			$('#headindex_box').removeClass('folded');
+
 		});
 
 		function setInputValue(name, value){
