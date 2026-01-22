@@ -7627,8 +7627,8 @@ function argon_auto_detect_spam_on_comment($comment_id, $comment_approved) {
 	}
 	
 	if ($should_check) {
-		// 立即同步执行检测
-		argon_async_spam_detection_handler($comment_id);
+		// 异步检测（延迟 1 秒执行，让评论元数据先保存）
+		wp_schedule_single_event(time() + 1, 'argon_async_spam_detection', [$comment_id]);
 	}
 }
 add_action('comment_post', 'argon_auto_detect_spam_on_comment', 10, 2);
