@@ -1391,8 +1391,8 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 8. 浮动按钮与页脚 ========== -->
-					<tr><th class="subtitle"><h2 id="section-fab-footer"><?php _e('浮动按钮与页脚', 'argon');?></h2></th></tr>
+					<!-- ========== 8. 浮动按钮 ========== -->
+					<tr><th class="subtitle"><h2 id="section-fab"><?php _e('浮动按钮', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-fab"><?php _e('浮动操作按钮', 'argon');?></h3></th></tr>
 
@@ -1459,6 +1459,42 @@ function themeoptions_page(){
 							</select>
 
 							<p class="description"><?php _e('仅在允许评论的文章中显示', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
+
+					<!-- ========== 9. 页脚设置 ========== -->
+					<tr><th class="subtitle"><h2 id="section-footer"><?php _e('页脚设置', 'argon');?></h2></th></tr>
+
+					<tr><th class="subtitle"><h3 id="subsection-footer"><?php _e('页脚', 'argon');?></h3></th></tr>
+
+					<tr>
+
+						<th><label><?php _e('归档页面链接', 'argon');?></label></th>
+
+						<td>
+
+							<input type="text" class="regular-text" name="argon_archives_timeline_url" value="<?php echo get_option('argon_archives_timeline_url'); ?>"/>
+
+							<p class="description"><?php _e('归档页面的 URL。点击左侧栏 "博客概览" 中的 "博文总数" 一栏时可跳转到该地址。', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
+					<tr><th class="subtitle"><h3 id="subsection-footer"><?php _e('页脚', 'argon');?></h3></th></tr>
+
+					<tr>
+
+						<th><label><?php _e('页脚内容', 'argon');?></label></th>
+
+						<td>
+
+							<textarea type="text" rows="15" cols="100" name="argon_footer_html"><?php echo htmlspecialchars(get_option('argon_footer_html')); ?></textarea>
+
+							<p class="description"><?php _e('HTML , 支持 script 等标签', 'argon');?></p>
 
 						</td>
 
@@ -2342,38 +2378,6 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-footer"><?php _e('页脚', 'argon');?></h3></th></tr>
-
-					<tr>
-
-						<th><label><?php _e('归档页面链接', 'argon');?></label></th>
-
-						<td>
-
-							<input type="text" class="regular-text" name="argon_archives_timeline_url" value="<?php echo get_option('argon_archives_timeline_url'); ?>"/>
-
-							<p class="description"><?php _e('归档页面的 URL。点击左侧栏 "博客概览" 中的 "博文总数" 一栏时可跳转到该地址。', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
-					<tr><th class="subtitle"><h3 id="subsection-footer"><?php _e('页脚', 'argon');?></h3></th></tr>
-
-					<tr>
-
-						<th><label><?php _e('页脚内容', 'argon');?></label></th>
-
-						<td>
-
-							<textarea type="text" rows="15" cols="100" name="argon_footer_html"><?php echo htmlspecialchars(get_option('argon_footer_html')); ?></textarea>
-
-							<p class="description"><?php _e('HTML , 支持 script 等标签', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
 					<!-- ========== 14. 功能增强 ========== -->
 					<tr><th class="subtitle"><h2 id="section-enhancements"><?php _e('功能增强', 'argon');?></h2></th></tr>
 
@@ -2911,22 +2915,6 @@ function themeoptions_page(){
 					<!-- ========== 15. 高级设置 ========== -->
 				<tr><th class="subtitle"><h2 id="section-advanced"><?php _e('高级设置', 'argon');?></h2></th></tr>
 
-				<tr><th class="subtitle"><h3 id="subsection-date-format"><?php _e('日期格式', 'argon');?></h3></th></tr>
-
-				<tr>
-					<th><label><?php _e('日期格式', 'argon');?></label></th>
-					<td>
-						<select name="argon_dateformat">
-							<?php $argon_dateformat = get_option('argon_dateformat'); ?>
-							<option value="type1" <?php if ($argon_dateformat=='type1'){echo 'selected';} ?>><?php _e('样式 1 (Y-m-d)', 'argon');?></option>
-							<option value="type2" <?php if ($argon_dateformat=='type2'){echo 'selected';} ?>><?php _e('样式 2 (Y/m/d)', 'argon');?></option>
-							<option value="type3" <?php if ($argon_dateformat=='type3'){echo 'selected';} ?>><?php _e('样式 3 (Y.m.d)', 'argon');?></option>
-							<option value="type4" <?php if ($argon_dateformat=='type4'){echo 'selected';} ?>><?php _e('样式 4 (Y年m月d日)', 'argon');?></option>
-						</select>
-						<p class="description"><?php _e('日期显示格式', 'argon');?></p>
-					</td>
-				</tr>
-
 				<tr><th class="subtitle"><h3 id="subsection-scripts"><?php _e('自定义脚本', 'argon');?></h3></th></tr>
 
 					<tr>
@@ -2980,80 +2968,6 @@ window.pjaxLoaded = function(){
 							<textarea type="text" rows="15" cols="100" name="argon_custom_html_foot"><?php echo htmlspecialchars(get_option('argon_custom_html_foot')); ?></textarea>
 
 							<p class="description"><?php _e('HTML , 支持 script 等标签', 'argon');?><br/><?php _e('插入到 body 之后', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
-					<tr><th class="subtitle"><h3 id="subsection-misc"><?php _e('杂项', 'argon');?></h3></th></tr>
-
-					<tr>
-
-						<th><label><?php _e('是否启用平滑滚动', 'argon');?></label></th>
-
-						<td>
-
-							<select name="argon_enable_smoothscroll_type">
-
-								<?php $enable_smoothscroll_type = get_option('argon_enable_smoothscroll_type'); ?>
-
-								<option value="1" <?php if ($enable_smoothscroll_type=='1'){echo 'selected';} ?>><?php _e('使用平滑滚动方案 1 (平滑) (推荐)', 'argon');?></option>
-
-								<option value="1_pulse" <?php if ($enable_smoothscroll_type=='1_pulse'){echo 'selected';} ?>><?php _e('使用平滑滚动方案 1 (脉冲式滚动) (仿 Edge) (推荐)', 'argon');?></option>
-
-								<option value="2" <?php if ($enable_smoothscroll_type=='2'){echo 'selected';} ?>><?php _e('使用平滑滚动方案 2 (较稳)', 'argon');?></option>
-
-								<option value="3" <?php if ($enable_smoothscroll_type=='3'){echo 'selected';} ?>><?php _e('使用平滑滚动方案 3', 'argon');?></option>
-
-								<option value="disabled" <?php if ($enable_smoothscroll_type=='disabled'){echo 'selected';} ?>><?php _e('不使用平滑滚动', 'argon');?></option>
-
-							</select>
-
-							<p class="description"><?php _e('能增强浏览体验，但可能出现一些小问题，如果有问题请切换方案或关闭平滑滚动', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
-					<tr>
-
-						<th><label><?php _e('是否启用进入文章动画', 'argon');?></label></th>
-
-						<td>
-
-							<select name="argon_enable_into_article_animation">
-
-								<?php $argon_enable_into_article_animation = get_option('argon_enable_into_article_animation'); ?>
-
-								<option value="false" <?php if ($argon_enable_into_article_animation=='false'){echo 'selected';} ?>><?php _e('不启用', 'argon');?></option>
-
-								<option value="true" <?php if ($argon_enable_into_article_animation=='true'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
-
-							</select>
-
-							<p class="description"><?php _e('从首页或分类目录进入文章时，使用平滑过渡（可能影响加载文章时的性能）', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
-					<tr>
-
-						<th><label><?php _e('禁用 Pjax 加载后的页面滚动动画', 'argon');?></label></th>
-
-						<td>
-
-							<select name="argon_disable_pjax_animation">
-
-								<?php $argon_disable_pjax_animation = get_option('argon_disable_pjax_animation'); ?>
-
-								<option value="false" <?php if ($argon_disable_pjax_animation=='false'){echo 'selected';} ?>><?php _e('不禁用', 'argon');?></option>
-
-								<option value="true" <?php if ($argon_disable_pjax_animation=='true'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
-
-							</select>
-
-							<p class="description"><?php _e('Pjax 替换页面内容后会平滑滚动到页面顶部，如果你不喜欢，可以禁用这个选项', 'argon');?></p>
 
 						</td>
 
