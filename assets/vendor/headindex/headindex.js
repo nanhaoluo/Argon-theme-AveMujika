@@ -143,6 +143,8 @@
                 
                 indexItem.addClass(currentClass);
                 
+                // 自动滚动目录容器，让当前项保持在可视区域
+                
                 if (this.mouseHovered) {
                     return;
                 }
