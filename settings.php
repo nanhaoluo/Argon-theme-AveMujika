@@ -3018,22 +3018,6 @@ function themeoptions_page(){
 					<!-- ========== 14. 高级设置 ========== -->
 				<tr><th class="subtitle"><h2 id="section-advanced"><?php _e('高级设置', 'argon');?></h2></th></tr>
 
-				<tr><th class="subtitle"><h3 id="subsection-date-format"><?php _e('日期格式', 'argon');?></h3></th></tr>
-
-				<tr>
-					<th><label><?php _e('日期格式', 'argon');?></label></th>
-					<td>
-						<select name="argon_dateformat">
-							<?php $argon_dateformat = get_option('argon_dateformat'); ?>
-							<option value="type1" <?php if ($argon_dateformat=='type1'){echo 'selected';} ?>><?php _e('样式 1 (Y-m-d)', 'argon');?></option>
-							<option value="type2" <?php if ($argon_dateformat=='type2'){echo 'selected';} ?>><?php _e('样式 2 (Y/m/d)', 'argon');?></option>
-							<option value="type3" <?php if ($argon_dateformat=='type3'){echo 'selected';} ?>><?php _e('样式 3 (Y.m.d)', 'argon');?></option>
-							<option value="type4" <?php if ($argon_dateformat=='type4'){echo 'selected';} ?>><?php _e('样式 4 (Y年m月d日)', 'argon');?></option>
-						</select>
-						<p class="description"><?php _e('日期显示格式', 'argon');?></p>
-					</td>
-				</tr>
-
 				<tr><th class="subtitle"><h3 id="subsection-scripts"><?php _e('自定义脚本', 'argon');?></h3></th></tr>
 
 					<tr>
