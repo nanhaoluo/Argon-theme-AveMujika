@@ -606,5 +606,364 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 </article>
 
 <?php
+// ==========================================================================
+// 管理员查看全部 AI 请求记录
+// ==========================================================================
+if (current_user_can('manage_options')): 
+	global $wpdb;
+	
+	// 获取所有 AI 摘要记录
+	$summaries = $wpdb->get_results("
+		SELECT pm.post_id, pm.meta_value as code, pm2.meta_value as time
+		FROM {$wpdb->postmeta} pm
+		LEFT JOIN {$wpdb->postmeta} pm2 ON pm.post_id = pm2.post_id AND pm2.meta_key = '_argon_ai_summary_time'
+		WHERE pm.meta_key = '_argon_ai_summary_code'
+		ORDER BY pm2.meta_value DESC
+		LIMIT 50
+	");
+	
+	// 获取所有垃圾评论检测记录
+	$spam_detections = $wpdb->get_results("
+		SELECT cm.comment_id, cm.meta_value as code, cm2.meta_value as time
+		FROM {$wpdb->commentmeta} cm
+		LEFT JOIN {$wpdb->commentmeta} cm2 ON cm.comment_id = cm2.comment_id AND cm2.meta_key = '_argon_spam_detection_time'
+		WHERE cm.meta_key = '_argon_spam_detection_code'
+		ORDER BY cm2.meta_value DESC
+		LIMIT 50
+	");
+	
+	// 合并并按时间排序
+	$all_records = [];
+	
+	foreach ($summaries as $summary) {
+		$post = get_post($summary->post_id);
+		if ($post) {
+			$all_records[] = [
+				'type' => 'summary',
+				'code' => $summary->code,
+				'time' => $summary->time ? intval($summary->time) : 0,
+				'title' => get_the_title($summary->post_id),
+				'url' => get_permalink($summary->post_id),
+				'id' => $summary->post_id,
+				'data' => [
+					'post_id' => $summary->post_id,
+					'post_title' => get_the_title($summary->post_id),
+					'post_url' => get_permalink($summary->post_id),
+					'summary' => get_post_meta($summary->post_id, '_argon_ai_summary', true),
+					'model' => get_post_meta($summary->post_id, '_argon_ai_summary_model', true),
+					'provider' => get_post_meta($summary->post_id, '_argon_ai_summary_provider', true),
+					'generated_time' => $summary->time
+				]
+			];
+		}
+	}
+	
+	foreach ($spam_detections as $detection) {
+		$comment = get_comment($detection->comment_id);
+		if ($comment) {
+			$detection_result = get_comment_meta($detection->comment_id, '_argon_spam_detection_result', true);
+			$all_records[] = [
+				'type' => 'spam_detection',
+				'code' => $detection->code,
+				'time' => $detection->time ? intval($detection->time) : 0,
+				'title' => sprintf(__('评论 #%d - %s', 'argon'), $detection->comment_id, $comment->comment_author),
+				'url' => get_comment_link($comment),
+				'id' => $detection->comment_id,
+				'data' => [
+					'comment_id' => $detection->comment_id,
+					'comment_author' => $comment->comment_author,
+					'comment_content' => $comment->comment_content,
+					'comment_date' => $comment->comment_date,
+					'post_title' => get_the_title($comment->comment_post_ID),
+					'post_url' => get_permalink($comment->comment_post_ID),
+					'is_spam' => isset($detection_result['is_spam']) ? $detection_result['is_spam'] : false,
+					'reason' => isset($detection_result['reason']) ? $detection_result['reason'] : '',
+					'action' => isset($detection_result['action']) ? $detection_result['action'] : '',
+					'detection_time' => $detection->time
+				]
+			];
+		}
+	}
+	
+	// 按时间倒序排序
+	usort($all_records, function($a, $b) {
+		return $b['time'] - $a['time'];
+	});
+	
+	// 只保留前50条
+	$all_records = array_slice($all_records, 0, 50);
+	
+	if (!empty($all_records)):
+?>
+
+<article class="post card shadow-sm bg-white border-0 ai-verify-card" style="margin-top: 16px;">
+	<h3 class="ai-verify-section-title">
+		<i class="fa fa-database"></i><?php _e('AI 请求历史记录', 'argon'); ?>
+		<span style="font-size: 13px; font-weight: 400; color: var(--color-text-muted); margin-left: 8px;">
+			(<?php _e('仅管理员可见', 'argon'); ?>)
+		</span>
+	</h3>
+	
+	<div class="ai-alert ai-alert-info" style="margin-bottom: 20px;">
+		<span class="ai-alert-icon">ℹ</span>
+		<span><?php _e('显示最近 50 条 AI 请求记录，点击查看详情', 'argon'); ?></span>
+	</div>
+	
+	<style>
+	.ai-records-table { width: 100%; border-collapse: collapse; }
+	.ai-records-table th { background: rgba(var(--themecolor-rgbstr), 0.05); padding: 12px; text-align: left; font-size: 13px; font-weight: 600; color: var(--color-text-deeper); border-bottom: 2px solid var(--color-border-on-foreground); }
+	.ai-records-table td { padding: 12px; border-bottom: 1px solid var(--color-border-on-foreground); font-size: 14px; color: var(--color-text); }
+	.ai-records-table tbody tr { cursor: pointer; transition: background var(--animation-fast) var(--ease-standard); }
+	.ai-records-table tbody tr:hover { background: rgba(var(--themecolor-rgbstr), 0.03); }
+	.ai-record-type-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }
+	.ai-record-type-summary { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+	.ai-record-type-spam { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+	.ai-record-code { font-family: 'Consolas', 'Monaco', monospace; font-size: 13px; color: var(--themecolor); font-weight: 600; }
+	.ai-record-time { color: var(--color-text-muted); font-size: 13px; }
+	
+	.ai-modal { display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); overflow: auto; }
+	.ai-modal.active { display: flex; align-items: center; justify-content: center; }
+	.ai-modal-content { background: var(--color-foreground); border-radius: var(--card-radius); max-width: 800px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); }
+	.ai-modal-header { padding: 20px 24px; border-bottom: 1px solid var(--color-border-on-foreground); display: flex; align-items: center; justify-content: space-between; }
+	.ai-modal-title { font-size: 18px; font-weight: 600; color: var(--color-text-deeper); margin: 0; }
+	.ai-modal-close { background: none; border: none; font-size: 24px; color: var(--color-text-muted); cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: all var(--animation-fast) var(--ease-standard); }
+	.ai-modal-close:hover { background: rgba(var(--themecolor-rgbstr), 0.1); color: var(--themecolor); }
+	.ai-modal-body { padding: 24px; }
+	
+	@media (max-width: 768px) {
+		.ai-records-table { display: block; overflow-x: auto; }
+		.ai-records-table th, .ai-records-table td { white-space: nowrap; }
+		.ai-modal-content { width: 95%; max-height: 95vh; }
+		.ai-modal-header { padding: 16px; }
+		.ai-modal-body { padding: 16px; }
+	}
+	</style>
+	
+	<div style="overflow-x: auto;">
+		<table class="ai-records-table">
+			<thead>
+				<tr>
+					<th style="width: 100px;"><?php _e('类型', 'argon'); ?></th>
+					<th style="width: 120px;"><?php _e('识别码', 'argon'); ?></th>
+					<th><?php _e('标题', 'argon'); ?></th>
+					<th style="width: 160px;"><?php _e('时间', 'argon'); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php foreach ($all_records as $record): ?>
+				<tr class="ai-record-row" data-record='<?php echo esc_attr(json_encode($record)); ?>'>
+					<td>
+						<span class="ai-record-type-badge ai-record-type-<?php echo esc_attr($record['type']); ?>">
+							<?php echo $record['type'] === 'summary' ? __('文章摘要', 'argon') : __('垃圾评论', 'argon'); ?>
+						</span>
+					</td>
+					<td><span class="ai-record-code"><?php echo esc_html($record['code']); ?></span></td>
+					<td><?php echo esc_html($record['title']); ?></td>
+					<td class="ai-record-time">
+						<?php echo $record['time'] ? date('Y-m-d H:i:s', $record['time']) : __('未知', 'argon'); ?>
+					</td>
+				</tr>
+				<?php endforeach; ?>
+			</tbody>
+		</table>
+	</div>
+</article>
+
+<!-- 详情弹窗 -->
+<div id="aiRecordModal" class="ai-modal">
+	<div class="ai-modal-content">
+		<div class="ai-modal-header">
+			<h4 class="ai-modal-title"><?php _e('AI 请求详情', 'argon'); ?></h4>
+			<button class="ai-modal-close" onclick="closeAIModal()">&times;</button>
+		</div>
+		<div class="ai-modal-body" id="aiModalBody">
+			<!-- 动态内容 -->
+		</div>
+	</div>
+</div>
+
+<script data-pjax>
+(function() {
+	const modal = document.getElementById('aiRecordModal');
+	const modalBody = document.getElementById('aiModalBody');
+	
+	window.closeAIModal = function() {
+		modal.classList.remove('active');
+	};
+	
+	// 点击背景关闭
+	modal.addEventListener('click', function(e) {
+		if (e.target === modal) {
+			closeAIModal();
+		}
+	});
+	
+	// ESC 键关闭
+	document.addEventListener('keydown', function(e) {
+		if (e.key === 'Escape' && modal.classList.contains('active')) {
+			closeAIModal();
+		}
+	});
+	
+	// 行点击事件
+	document.querySelectorAll('.ai-record-row').forEach(function(row) {
+		row.addEventListener('click', function() {
+			const record = JSON.parse(this.getAttribute('data-record'));
+			showRecordDetail(record);
+		});
+	});
+	
+	function showRecordDetail(record) {
+		let html = '';
+		
+		if (record.type === 'summary') {
+			html = `
+				<div class="ai-code-display">${escapeHtml(record.code)}</div>
+				
+				<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('关联文章', 'argon'); ?></h4>
+				<div class="ai-info-grid" style="margin-bottom: 24px;">
+					<div class="ai-info-item">
+						<span class="ai-info-label"><?php _e('文章标题', 'argon'); ?></span>
+						<a href="${escapeHtml(record.data.post_url)}" class="ai-info-value ai-info-value-link" target="_blank">
+							${escapeHtml(record.data.post_title)}
+						</a>
+					</div>
+					<div class="ai-info-item">
+						<span class="ai-info-label"><?php _e('文章 ID', 'argon'); ?></span>
+						<span class="ai-info-value ai-info-value-mono">${escapeHtml(record.data.post_id)}</span>
+					</div>
+					<div class="ai-info-item">
+						<span class="ai-info-label"><?php _e('生成时间', 'argon'); ?></span>
+						<span class="ai-info-value">${record.data.generated_time ? new Date(record.data.generated_time * 1000).toLocaleString('zh-CN') : '<?php _e('未知', 'argon'); ?>'}</span>
+					</div>
+				</div>
+				
+				<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('AI 生成内容', 'argon'); ?></h4>
+				<div class="ai-content-box">
+					${escapeHtml(record.data.summary)}
+				</div>
+				
+				<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('生成信息', 'argon'); ?></h4>
+				<div class="ai-info-grid">
+					<div class="ai-info-item">
+						<span class="ai-info-label"><?php _e('AI 提供商', 'argon'); ?></span>
+						<span class="ai-info-value">${escapeHtml(record.data.provider)}</span>
+					</div>
+					<div class="ai-info-item">
+						<span class="ai-info-label"><?php _e('使用模型', 'argon'); ?></span>
+						<span class="ai-info-value ai-info-value-mono">${escapeHtml(record.data.model)}</span>
+					</div>
+				</div>
+				
+				<div class="ai-actions">
+					<a href="${escapeHtml(record.data.post_url)}" class="btn btn-primary" target="_blank">
+						<?php _e('查看原文', 'argon'); ?>
+					</a>
+					<a href="<?php echo home_url('/ai-query'); ?>?code=${escapeHtml(record.code)}" class="btn btn-outline-primary">
+						<?php _e('公开查询页面', 'argon'); ?>
+					</a>
+				</div>
+			`;
+		} else {
+			const isSpam = record.data.is_spam;
+			html = `
+				<div class="ai-code-display">${escapeHtml(record.code)}</div>
+				
+				<div class="ai-alert ${isSpam ? 'ai-alert-warning' : 'ai-alert-info'}" style="margin-bottom: 20px;">
+					<span class="ai-alert-icon">${isSpam ? '⚠' : '✓'}</span>
+					<span>
+						<strong><?php _e('AI 识别结果', 'argon'); ?>：</strong>
+						${isSpam ? '<?php _e('疑似垃圾评论', 'argon'); ?>' : '<?php _e('正常评论', 'argon'); ?>'}
+					</span>
+				</div>
+				
+				<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('评论信息', 'argon'); ?></h4>
+				<div class="ai-info-grid" style="margin-bottom: 24px;">
+					<div class="ai-info-item">
+						<span class="ai-info-label"><?php _e('评论 ID', 'argon'); ?></span>
+						<span class="ai-info-value ai-info-value-mono">${escapeHtml(record.data.comment_id)}</span>
+					</div>
+					<div class="ai-info-item">
+						<span class="ai-info-label"><?php _e('评论者', 'argon'); ?></span>
+						<span class="ai-info-value">${escapeHtml(record.data.comment_author)}</span>
+					</div>
+					<div class="ai-info-item">
+						<span class="ai-info-label"><?php _e('评论时间', 'argon'); ?></span>
+						<span class="ai-info-value">${escapeHtml(record.data.comment_date)}</span>
+					</div>
+					<div class="ai-info-item">
+						<span class="ai-info-label"><?php _e('所属文章', 'argon'); ?></span>
+						<a href="${escapeHtml(record.data.post_url)}" class="ai-info-value ai-info-value-link" target="_blank">
+							${escapeHtml(record.data.post_title)}
+						</a>
+					</div>
+				</div>
+				
+				<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('评论内容', 'argon'); ?></h4>
+				<div class="ai-content-box">
+					${escapeHtml(record.data.comment_content)}
+				</div>
+				
+				<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('AI 检测结果', 'argon'); ?></h4>
+				<div class="ai-info-grid" style="margin-bottom: 24px;">
+					<div class="ai-info-item">
+						<span class="ai-info-label"><?php _e('识别结果', 'argon'); ?></span>
+						<span class="ai-info-value">
+							<span class="ai-status-badge ${isSpam ? 'ai-status-modified' : 'ai-status-valid'}">
+								${isSpam ? '<?php _e('疑似垃圾评论', 'argon'); ?>' : '<?php _e('正常评论', 'argon'); ?>'}
+							</span>
+						</span>
+					</div>
+					<div class="ai-info-item">
+						<span class="ai-info-label"><?php _e('识别理由', 'argon'); ?></span>
+						<span class="ai-info-value">${escapeHtml(record.data.reason)}</span>
+					</div>
+					${record.data.action ? `
+					<div class="ai-info-item">
+						<span class="ai-info-label"><?php _e('自动处理', 'argon'); ?></span>
+						<span class="ai-info-value">${escapeHtml(record.data.action)}</span>
+					</div>
+					` : ''}
+					<div class="ai-info-item">
+						<span class="ai-info-label"><?php _e('检测时间', 'argon'); ?></span>
+						<span class="ai-info-value">${record.data.detection_time ? new Date(record.data.detection_time * 1000).toLocaleString('zh-CN') : '<?php _e('未知', 'argon'); ?>'}</span>
+					</div>
+				</div>
+				
+				<div class="ai-actions">
+					<a href="${escapeHtml(record.url)}" class="btn btn-primary" target="_blank">
+						<?php _e('查看评论', 'argon'); ?>
+					</a>
+					<a href="${escapeHtml(record.data.post_url)}" class="btn btn-outline-primary" target="_blank">
+						<?php _e('查看文章', 'argon'); ?>
+					</a>
+					<a href="<?php echo home_url('/ai-query'); ?>?code=${escapeHtml(record.code)}" class="btn btn-outline-secondary">
+						<?php _e('公开查询页面', 'argon'); ?>
+					</a>
+				</div>
+			`;
+		}
+		
+		modalBody.innerHTML = html;
+		modal.classList.add('active');
+	}
+	
+	function escapeHtml(text) {
+		if (!text) return '';
+		const div = document.createElement('div');
+		div.textContent = text;
+		return div.innerHTML;
+	}
+})();
+</script>
+
+<?php
+	endif; // !empty($all_records)
+endif; // current_user_can('manage_options')
+?>
+
+</main>
+
+<?php
 get_footer();
 ?>
