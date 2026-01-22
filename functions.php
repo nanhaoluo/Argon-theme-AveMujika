@@ -7500,6 +7500,12 @@ function argon_auto_detect_spam_on_comment($comment_id, $comment_approved) {
 		return;
 	}
 	
+	// 检查是否已经检测过
+	$detection_time = get_comment_meta($comment_id, '_argon_spam_detection_time', true);
+	if (!empty($detection_time)) {
+		return; // 已检测过，跳过
+	}
+	
 	// 跳过已登录用户
 	if (get_option('argon_comment_spam_detection_exclude_logged_in', 'true') === 'true' && $comment->user_id > 0) {
 		return;
@@ -7658,12 +7664,21 @@ function argon_update_user_spam_stats($comment, $is_spam) {
  * 异步执行垃圾评论检测
  */
 function argon_async_spam_detection_handler($comment_id) {
+	// 检查是否已经检测过
+	$detection_time = get_comment_meta($comment_id, '_argon_spam_detection_time', true);
+	if (!empty($detection_time)) {
+		return; // 已检测过，跳过
+	}
+	
 	$result = argon_detect_spam_comment($comment_id);
 	
 	$comment = get_comment($comment_id);
 	if (!$comment) {
 		return;
 	}
+	
+	// 记录检测时间（无论成功失败都记录，避免重复检测）
+	update_comment_meta($comment_id, '_argon_spam_detection_time', time());
 	
 	if ($result && isset($result['is_spam'])) {
 		// 更新用户统计
@@ -7692,7 +7707,12 @@ function argon_async_spam_detection_handler($comment_id) {
 				'reason' => $result['reason'],
 				'action' => $auto_action
 			]);
-			update_comment_meta($comment_id, '_argon_spam_detection_time', time());
+		} else {
+			// 记录正常评论的检测结果
+			update_comment_meta($comment_id, '_argon_spam_detection_result', [
+				'is_spam' => false,
+				'reason' => $result['reason']
+			]);
 		}
 	}
 }
@@ -7718,13 +7738,23 @@ function argon_spam_detection_scan() {
 		'order' => 'DESC'
 	];
 	
-	$comments = get_comments($args);
+	$all_comments = get_comments($args);
+	
+	// 过滤掉已检测过的评论
+	$comments = [];
+	foreach ($all_comments as $comment) {
+		$detection_time = get_comment_meta($comment->comment_ID, '_argon_spam_detection_time', true);
+		if (empty($detection_time)) {
+			$comments[] = $comment;
+		}
+	}
 	
 	if (empty($comments)) {
 		wp_send_json_success([
 			'status' => 'completed',
 			'total' => 0,
-			'results' => []
+			'results' => [],
+			'message' => __('所有评论都已检测过，无需重复检测', 'argon')
 		]);
 		return;
 	}
@@ -7751,24 +7781,44 @@ function argon_spam_detection_scan() {
 	
 	// 处理结果
 	$spam_results = [];
+	$checked_ids = [];
+	
 	foreach ($result as $item) {
+		$comment_id = $item['id'];
+		$checked_ids[] = $comment_id;
+		
+		// 记录检测时间
+		update_comment_meta($comment_id, '_argon_spam_detection_time', time());
+		
 		if (isset($item['is_spam']) && $item['is_spam']) {
-			$comment = get_comment($item['id']);
+			$comment = get_comment($comment_id);
 			if ($comment) {
 				$spam_results[] = [
-					'comment_id' => $item['id'],
+					'comment_id' => $comment_id,
 					'author' => $comment->comment_author,
 					'content' => mb_substr(strip_tags($comment->comment_content), 0, 100),
 					'reason' => isset($item['reason']) ? $item['reason'] : __('未知原因', 'argon')
 				];
 				
 				// 保存检测结果
-				update_comment_meta($item['id'], '_argon_spam_detection_result', [
+				update_comment_meta($comment_id, '_argon_spam_detection_result', [
 					'is_spam' => true,
 					'reason' => $item['reason']
 				]);
-				update_comment_meta($item['id'], '_argon_spam_detection_time', time());
 			}
+		} else {
+			// 保存正常评论的检测结果
+			update_comment_meta($comment_id, '_argon_spam_detection_result', [
+				'is_spam' => false,
+				'reason' => isset($item['reason']) ? $item['reason'] : '正常'
+			]);
+		}
+	}
+	
+	// 对于没有返回结果的评论，也标记为已检测（避免重复检测）
+	foreach ($comments_data as $comment_data) {
+		if (!in_array($comment_data['id'], $checked_ids)) {
+			update_comment_meta($comment_data['id'], '_argon_spam_detection_time', time());
 		}
 	}
 	
