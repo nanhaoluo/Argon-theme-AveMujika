@@ -1468,8 +1468,6 @@ function themeoptions_page(){
 					<!-- ========== 9. 页脚设置 ========== -->
 					<tr><th class="subtitle"><h2 id="section-footer"><?php _e('页脚设置', 'argon');?></h2></th></tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-footer"><?php _e('页脚', 'argon');?></h3></th></tr>
-
 					<tr>
 
 						<th><label><?php _e('归档页面链接', 'argon');?></label></th>
@@ -1483,8 +1481,6 @@ function themeoptions_page(){
 						</td>
 
 					</tr>
-
-					<tr><th class="subtitle"><h3 id="subsection-footer"><?php _e('页脚', 'argon');?></h3></th></tr>
 
 					<tr>
 
@@ -3831,7 +3827,6 @@ window.pjaxLoaded = function(){
 								</div>
 							</div>
 							<div id="argon-spam-detection-results" style="display: none; margin-top: 15px; padding: 15px; background: #fff; border: 1px solid #ddd; border-radius: 4px; max-height: 400px; overflow-y: auto;">
-								<h4 style="margin-top: 0;"><?php _e('检测结果', 'argon');?></h4>
 								<div id="argon-spam-detection-results-content"></div>
 							</div>
 							<p class="description">
