@@ -1,6 +1,6 @@
 <?php
 /**
- * AI 内容验证与查询页面
+ * AI 内容查询页面
  * @package Argon
  */
 $wp_load_path = dirname(dirname(dirname(dirname(__FILE__)))) . '/wp-load.php';
@@ -137,6 +137,7 @@ if (empty($query_code)) {
 $result = null;
 $error = '';
 $from_cache = false;
+$query_type = ''; // 'summary' 或 'spam_detection'
 
 if (!empty($query_code)) {
 	if (strlen($query_code) !== 8) {
@@ -148,9 +149,10 @@ if (!empty($query_code)) {
 		
 		if ($cached_result !== false) {
 			$result = $cached_result;
+			$query_type = $result['type'];
 			$from_cache = true;
 		} else {
-			// 从数据库查询
+			// 先查询 AI 摘要
 			global $wpdb;
 			$post_id = $wpdb->get_var($wpdb->prepare(
 				"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_argon_ai_summary_code' AND meta_value = %s",
@@ -160,7 +162,9 @@ if (!empty($query_code)) {
 			if ($post_id) {
 				$post = get_post($post_id);
 				if ($post && $post->post_status === 'publish') {
+					$query_type = 'summary';
 					$result = [
+						'type' => 'summary',
 						'post_id' => $post_id,
 						'post_title' => get_the_title($post_id),
 						'post_url' => get_permalink($post_id),
@@ -194,7 +198,65 @@ if (!empty($query_code)) {
 					$error = __('文章不存在或未发布', 'argon');
 				}
 			} else {
-				$error = __('未找到对应的 AI 生成内容记录', 'argon');
+				// 查询垃圾评论检测记录
+				$comment_id = $wpdb->get_var($wpdb->prepare(
+					"SELECT comment_id FROM {$wpdb->commentmeta} 
+					WHERE meta_key = '_argon_spam_detection_code' AND meta_value = %s",
+					$query_code
+				));
+				
+				if ($comment_id) {
+					$comment = get_comment($comment_id);
+					if ($comment) {
+						$query_type = 'spam_detection';
+						$detection_result = get_comment_meta($comment_id, '_argon_spam_detection_result', true);
+						$detection_time = get_comment_meta($comment_id, '_argon_spam_detection_time', true);
+						
+						$result = [
+							'type' => 'spam_detection',
+							'comment_id' => $comment_id,
+							'comment_author' => $comment->comment_author,
+							'comment_email' => $comment->comment_author_email,
+							'comment_content' => $comment->comment_content,
+							'comment_date' => $comment->comment_date,
+							'comment_status' => wp_get_comment_status($comment_id),
+							'post_id' => $comment->comment_post_ID,
+							'post_title' => get_the_title($comment->comment_post_ID),
+							'post_url' => get_permalink($comment->comment_post_ID),
+							'comment_url' => get_comment_link($comment),
+							'is_spam' => isset($detection_result['is_spam']) ? $detection_result['is_spam'] : false,
+							'reason' => isset($detection_result['reason']) ? $detection_result['reason'] : '',
+							'action' => isset($detection_result['action']) ? $detection_result['action'] : '',
+							'detection_time' => $detection_time,
+							'code' => $query_code
+						];
+						
+						// 获取 AI 配置信息
+						$result['provider'] = get_option('argon_ai_summary_provider', 'openai');
+						$result['model'] = get_option('argon_ai_summary_model', '');
+						
+						$provider_names = [
+							'openai' => 'OpenAI',
+							'anthropic' => 'Anthropic',
+							'deepseek' => 'DeepSeek',
+							'qianwen' => '通义千问',
+							'wenxin' => '文心一言',
+							'doubao' => '豆包',
+							'kimi' => 'Kimi',
+							'zhipu' => '智谱',
+							'siliconflow' => 'SiliconFlow'
+						];
+						
+						$result['provider_display'] = isset($provider_names[$result['provider']]) ? $provider_names[$result['provider']] : $result['provider'];
+						
+						// 缓存结果（1小时）
+						set_transient($cache_key, $result, 3600);
+					} else {
+						$error = __('评论不存在', 'argon');
+					}
+				} else {
+					$error = __('未找到对应的 AI 生成内容记录', 'argon');
+				}
 			}
 		}
 	}
@@ -368,7 +430,7 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 			<span class="ai-alert-icon">⚠</span>
 			<span><?php echo esc_html($error); ?></span>
 		</div>
-	<?php elseif ($result): ?>
+	<?php elseif ($result && $query_type === 'summary'): ?>
 		<div class="ai-code-display"><?php echo esc_html($result['code']); ?></div>
 		
 		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('关联文章', 'argon'); ?></h4>
@@ -426,11 +488,118 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 				<?php _e('查询其他识别码', 'argon'); ?>
 			</a>
 		</div>
+	<?php elseif ($result && $query_type === 'spam_detection'): ?>
+		<div class="ai-code-display"><?php echo esc_html($result['code']); ?></div>
+		
+		<div class="ai-alert <?php echo $result['is_spam'] ? 'ai-alert-warning' : 'ai-alert-info'; ?>" style="margin-bottom: 20px;">
+			<span class="ai-alert-icon"><?php echo $result['is_spam'] ? '⚠' : '✓'; ?></span>
+			<span>
+				<strong><?php _e('AI 识别结果', 'argon'); ?>：</strong>
+				<?php echo $result['is_spam'] ? __('疑似垃圾评论', 'argon') : __('正常评论', 'argon'); ?>
+			</span>
+		</div>
+		
+		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('评论信息', 'argon'); ?></h4>
+		<div class="ai-info-grid" style="margin-bottom: 24px;">
+			<div class="ai-info-item">
+				<span class="ai-info-label"><?php _e('评论 ID', 'argon'); ?></span>
+				<span class="ai-info-value ai-info-value-mono"><?php echo esc_html($result['comment_id']); ?></span>
+			</div>
+			<div class="ai-info-item">
+				<span class="ai-info-label"><?php _e('评论者', 'argon'); ?></span>
+				<span class="ai-info-value"><?php echo esc_html($result['comment_author']); ?></span>
+			</div>
+			<div class="ai-info-item">
+				<span class="ai-info-label"><?php _e('评论时间', 'argon'); ?></span>
+				<span class="ai-info-value"><?php echo esc_html($result['comment_date']); ?></span>
+			</div>
+			<div class="ai-info-item">
+				<span class="ai-info-label"><?php _e('评论状态', 'argon'); ?></span>
+				<span class="ai-info-value">
+					<?php 
+					$status_labels = [
+						'approved' => __('已通过', 'argon'),
+						'hold' => __('待审核', 'argon'),
+						'trash' => __('回收站', 'argon'),
+						'spam' => __('垃圾评论', 'argon')
+					];
+					echo isset($status_labels[$result['comment_status']]) ? esc_html($status_labels[$result['comment_status']]) : esc_html($result['comment_status']);
+					?>
+				</span>
+			</div>
+			<div class="ai-info-item">
+				<span class="ai-info-label"><?php _e('所属文章', 'argon'); ?></span>
+				<a href="<?php echo esc_url($result['post_url']); ?>" class="ai-info-value ai-info-value-link">
+					<?php echo esc_html($result['post_title']); ?>
+				</a>
+			</div>
+		</div>
+		
+		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('评论内容', 'argon'); ?></h4>
+		<div class="ai-content-box">
+			<?php echo esc_html($result['comment_content']); ?>
+		</div>
+		
+		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('AI 检测结果', 'argon'); ?></h4>
+		<div class="ai-info-grid" style="margin-bottom: 24px;">
+			<div class="ai-info-item">
+				<span class="ai-info-label"><?php _e('识别结果', 'argon'); ?></span>
+				<span class="ai-info-value">
+					<span class="ai-status-badge <?php echo $result['is_spam'] ? 'ai-status-modified' : 'ai-status-valid'; ?>">
+						<?php echo $result['is_spam'] ? __('疑似垃圾评论', 'argon') : __('正常评论', 'argon'); ?>
+					</span>
+				</span>
+			</div>
+			<div class="ai-info-item">
+				<span class="ai-info-label"><?php _e('识别理由', 'argon'); ?></span>
+				<span class="ai-info-value"><?php echo esc_html($result['reason']); ?></span>
+			</div>
+			<?php if (!empty($result['action'])): ?>
+			<div class="ai-info-item">
+				<span class="ai-info-label"><?php _e('自动处理', 'argon'); ?></span>
+				<span class="ai-info-value">
+					<?php 
+					$action_labels = [
+						'trash' => __('已移入回收站', 'argon'),
+						'hold' => __('已标记为待审核', 'argon'),
+						'mark' => __('仅标记', 'argon')
+					];
+					echo isset($action_labels[$result['action']]) ? esc_html($action_labels[$result['action']]) : esc_html($result['action']);
+					?>
+				</span>
+			</div>
+			<?php endif; ?>
+			<div class="ai-info-item">
+				<span class="ai-info-label"><?php _e('AI 提供商', 'argon'); ?></span>
+				<span class="ai-info-value"><?php echo esc_html($result['provider_display']); ?></span>
+			</div>
+			<div class="ai-info-item">
+				<span class="ai-info-label"><?php _e('使用模型', 'argon'); ?></span>
+				<span class="ai-info-value ai-info-value-mono"><?php echo esc_html($result['model']); ?></span>
+			</div>
+			<div class="ai-info-item">
+				<span class="ai-info-label"><?php _e('检测时间', 'argon'); ?></span>
+				<span class="ai-info-value"><?php echo esc_html(date('Y-m-d H:i:s', $result['detection_time'])); ?></span>
+			</div>
+		</div>
+		
+		<div class="ai-actions">
+			<a href="<?php echo esc_url($result['comment_url']); ?>" class="btn btn-primary">
+				<?php _e('查看评论', 'argon'); ?>
+			</a>
+			<a href="<?php echo esc_url($result['post_url']); ?>" class="btn btn-outline-primary">
+				<?php _e('查看文章', 'argon'); ?>
+			</a>
+			<a href="<?php echo home_url('/ai-query'); ?>" class="btn btn-outline-secondary">
+				<?php _e('查询其他识别码', 'argon'); ?>
+			</a>
+		</div>
 	<?php elseif (empty($query_code)): ?>
 		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('功能说明', 'argon'); ?></h4>
 		<ul class="ai-help-list">
 			<li><?php _e('每个 AI 生成内容都有唯一的 8 位识别码，用于内容溯源', 'argon'); ?></li>
-			<li><?php _e('通过识别码可以查询 AI 内容的生成信息和关联文章', 'argon'); ?></li>
+			<li><?php _e('支持查询 AI 文章摘要和 AI 垃圾评论检测记录', 'argon'); ?></li>
+			<li><?php _e('通过识别码可以查询 AI 内容的生成信息和关联内容', 'argon'); ?></li>
 			<li><?php _e('识别码由数字和大写字母组成，不包含易混淆字符（I、O）', 'argon'); ?></li>
 		</ul>
 	<?php endif; ?>

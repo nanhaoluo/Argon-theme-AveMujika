@@ -7680,6 +7680,10 @@ function argon_async_spam_detection_handler($comment_id) {
 	// 记录检测时间（无论成功失败都记录，避免重复检测）
 	update_comment_meta($comment_id, '_argon_spam_detection_time', time());
 	
+	// 生成识别码
+	$detection_code = argon_generate_detection_code($comment_id);
+	update_comment_meta($comment_id, '_argon_spam_detection_code', $detection_code);
+	
 	if ($result && isset($result['is_spam'])) {
 		// 更新用户统计
 		argon_update_user_spam_stats($comment, $result['is_spam']);
@@ -7717,6 +7721,36 @@ function argon_async_spam_detection_handler($comment_id) {
 	}
 }
 add_action('argon_async_spam_detection', 'argon_async_spam_detection_handler');
+
+/**
+ * 生成检测识别码（8位大写字母数字，不含 I、O）
+ * @param int $comment_id 评论 ID
+ * @return string 识别码
+ */
+function argon_generate_detection_code($comment_id) {
+	$chars = '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ'; // 排除 I 和 O
+	$code = '';
+	$seed = $comment_id . time() . wp_rand();
+	
+	for ($i = 0; $i < 8; $i++) {
+		$index = abs(crc32($seed . $i)) % strlen($chars);
+		$code .= $chars[$index];
+	}
+	
+	// 确保唯一性
+	global $wpdb;
+	$exists = $wpdb->get_var($wpdb->prepare(
+		"SELECT comment_id FROM {$wpdb->commentmeta} WHERE meta_key = '_argon_spam_detection_code' AND meta_value = %s",
+		$code
+	));
+	
+	if ($exists) {
+		// 如果重复，递归生成新的
+		return argon_generate_detection_code($comment_id + 1);
+	}
+	
+	return $code;
+}
 
 /**
  * AJAX: 开始批量扫描（一次性发送所有评论）
@@ -7790,6 +7824,10 @@ function argon_spam_detection_scan() {
 		// 记录检测时间
 		update_comment_meta($comment_id, '_argon_spam_detection_time', time());
 		
+		// 生成识别码
+		$detection_code = argon_generate_detection_code($comment_id);
+		update_comment_meta($comment_id, '_argon_spam_detection_code', $detection_code);
+		
 		if (isset($item['is_spam']) && $item['is_spam']) {
 			$comment = get_comment($comment_id);
 			if ($comment) {
@@ -7797,7 +7835,8 @@ function argon_spam_detection_scan() {
 					'comment_id' => $comment_id,
 					'author' => $comment->comment_author,
 					'content' => mb_substr(strip_tags($comment->comment_content), 0, 100),
-					'reason' => isset($item['reason']) ? $item['reason'] : __('未知原因', 'argon')
+					'reason' => isset($item['reason']) ? $item['reason'] : __('未知原因', 'argon'),
+					'detection_code' => $detection_code
 				];
 				
 				// 保存检测结果
@@ -7819,6 +7858,8 @@ function argon_spam_detection_scan() {
 	foreach ($comments_data as $comment_data) {
 		if (!in_array($comment_data['id'], $checked_ids)) {
 			update_comment_meta($comment_data['id'], '_argon_spam_detection_time', time());
+			$detection_code = argon_generate_detection_code($comment_data['id']);
+			update_comment_meta($comment_data['id'], '_argon_spam_detection_code', $detection_code);
 		}
 	}
 	
