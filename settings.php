@@ -3869,37 +3869,73 @@ window.pjaxLoaded = function(){
 
 					<tr><th class="subtitle"><h3 id="subsection-comment-spam-detection"><?php _e('AI 垃圾评论识别', 'argon');?></h3></th></tr>
 
+					<!-- 基础设置 -->
 					<tr>
-						<th><label><?php _e('启用 AI 垃圾评论识别', 'argon');?></label></th>
+						<th><label><?php _e('启用 AI 识别', 'argon');?></label></th>
 						<td>
 							<?php $argon_comment_spam_detection_enable = get_option('argon_comment_spam_detection_enable', 'false'); ?>
 							<label>
 								<input type="checkbox" name="argon_comment_spam_detection_enable" value="true" <?php if ($argon_comment_spam_detection_enable=='true'){echo 'checked';}?>/> 
 								<?php _e('启用 AI 自动识别垃圾评论', 'argon');?>
 							</label>
-							<p class="description"><?php _e('开启后，将使用 AI 自动识别广告、反动、违法等垃圾评论。', 'argon');?><br/><?php _e('注意：需要先在 "文章功能 - AI 文章摘要" 中配置 AI 服务商和 API 密钥。', 'argon');?></p>
-						</td>
-					</tr>
-
-					<tr>
-						<th><label><?php _e('实时检测模式', 'argon');?></label></th>
-						<td>
-							<select name="argon_comment_spam_detection_mode">
-								<?php $argon_comment_spam_detection_mode = get_option('argon_comment_spam_detection_mode', 'manual'); ?>
-								<option value="manual" <?php if ($argon_comment_spam_detection_mode=='manual'){echo 'selected';} ?>><?php _e('关闭实时检测', 'argon');?></option>
-								<option value="keyword" <?php if ($argon_comment_spam_detection_mode=='keyword'){echo 'selected';} ?>><?php _e('关键字必查', 'argon');?></option>
-								<option value="sample" <?php if ($argon_comment_spam_detection_mode=='sample'){echo 'selected';} ?>><?php _e('智能抽查（推荐）', 'argon');?></option>
-								<option value="all" <?php if ($argon_comment_spam_detection_mode=='all'){echo 'selected';} ?>><?php _e('全量检测', 'argon');?></option>
-							</select>
 							<p class="description">
-								<strong><?php _e('关闭实时检测', 'argon');?>：</strong><?php _e('只能使用下方的手动批量扫描', 'argon');?><br/>
-								<strong><?php _e('关键字必查', 'argon');?>：</strong><?php _e('只检测触发关键字的评论，精准防护，成本最低', 'argon');?><br/>
-								<strong><?php _e('智能抽查', 'argon');?>：</strong><?php _e('根据用户信誉动态调整检测概率，平衡成本与效果', 'argon');?><br/>
-								<strong><?php _e('全量检测', 'argon');?>：</strong><?php _e('每条新评论都检测，防护最严密但 API 消耗最高', 'argon');?>
+								<?php _e('开启后，将使用 AI 自动识别广告、反动、违法等垃圾评论。', 'argon');?><br/>
+								<?php _e('注意：需要先在 "文章功能 - AI 文章摘要" 中配置 AI 服务商和 API 密钥。', 'argon');?>
 							</p>
 						</td>
 					</tr>
 
+					<!-- 检测策略 -->
+					<tr>
+						<th><label><?php _e('检测策略', 'argon');?></label></th>
+						<td>
+							<div style="margin-bottom: 15px;">
+								<label style="display: block; margin-bottom: 10px; font-weight: 600;">
+									<?php _e('实时检测模式', 'argon');?>
+								</label>
+								<select name="argon_comment_spam_detection_mode" style="width: 100%; max-width: 400px;">
+									<?php $argon_comment_spam_detection_mode = get_option('argon_comment_spam_detection_mode', 'manual'); ?>
+									<option value="manual" <?php if ($argon_comment_spam_detection_mode=='manual'){echo 'selected';} ?>><?php _e('关闭实时检测', 'argon');?></option>
+									<option value="keyword" <?php if ($argon_comment_spam_detection_mode=='keyword'){echo 'selected';} ?>><?php _e('关键字必查', 'argon');?></option>
+									<option value="sample" <?php if ($argon_comment_spam_detection_mode=='sample'){echo 'selected';} ?>><?php _e('智能抽查（推荐）', 'argon');?></option>
+									<option value="all" <?php if ($argon_comment_spam_detection_mode=='all'){echo 'selected';} ?>><?php _e('全量检测', 'argon');?></option>
+								</select>
+								<p class="description" style="margin-top: 8px;">
+									<strong><?php _e('关闭实时检测', 'argon');?>：</strong><?php _e('只能使用手动批量扫描', 'argon');?><br/>
+									<strong><?php _e('关键字必查', 'argon');?>：</strong><?php _e('只检测触发关键字的评论，精准防护，成本最低', 'argon');?><br/>
+									<strong><?php _e('智能抽查', 'argon');?>：</strong><?php _e('根据用户信誉动态调整检测概率，平衡成本与效果', 'argon');?><br/>
+									<strong><?php _e('全量检测', 'argon');?>：</strong><?php _e('每条新评论都检测，防护最严密但 API 消耗最高', 'argon');?>
+								</p>
+							</div>
+
+							<div style="margin-bottom: 15px;">
+								<label style="display: block; margin-bottom: 10px; font-weight: 600;">
+									<?php _e('智能抽查概率', 'argon');?>
+								</label>
+								<input type="number" name="argon_comment_spam_detection_sample_rate" min="1" max="100" value="<?php echo get_option('argon_comment_spam_detection_sample_rate', '20'); ?>" style="width: 80px;"/> %
+								<p class="description" style="margin-top: 8px;">
+									<?php _e('智能抽查模式的基础概率，默认 20%。系统会根据用户历史通过率自动调整：', 'argon');?><br/>
+									<?php _e('• 信誉好的用户降低检测（最低 5%）', 'argon');?><br/>
+									<?php _e('• 信誉差的用户提高检测（最高 80%）', 'argon');?><br/>
+									<?php _e('• 关键字必查模式下此设置无效', 'argon');?>
+								</p>
+							</div>
+
+							<div>
+								<?php $argon_comment_spam_detection_pre_check = get_option('argon_comment_spam_detection_pre_check', 'true'); ?>
+								<label style="display: block; margin-bottom: 8px;">
+									<input type="checkbox" name="argon_comment_spam_detection_pre_check" value="true" <?php if ($argon_comment_spam_detection_pre_check=='true'){echo 'checked';}?>/> 
+									<strong><?php _e('启用智能预审查（推荐）', 'argon');?></strong>
+								</label>
+								<p class="description" style="margin-left: 24px;">
+									<?php _e('在评论保存前进行 AI 审查，高置信度垃圾评论直接拒绝，用户名违规自动修改。', 'argon');?><br/>
+									<?php _e('关闭后，评论会先保存，然后异步检测（可能已发送邮件通知）。', 'argon');?>
+								</p>
+							</div>
+						</td>
+					</tr>
+
+					<!-- 关键字管理 -->
 					<tr>
 						<th><label><?php _e('关键字管理', 'argon');?></label></th>
 						<td>
@@ -3917,9 +3953,11 @@ window.pjaxLoaded = function(){
 								</p>
 							</div>
 							
-							<textarea rows="8" cols="70" name="argon_comment_spam_detection_keywords" placeholder="<?php _e('每行一个关键字或短语', 'argon');?>"><?php echo get_option('argon_comment_spam_detection_keywords', ''); ?></textarea>
+							<label style="display: block; margin-bottom: 8px; font-weight: 600;">
+								<?php _e('手动添加关键字', 'argon');?>
+							</label>
+							<textarea rows="8" cols="70" name="argon_comment_spam_detection_keywords" placeholder="<?php _e('每行一个关键字或短语', 'argon');?>" style="width: 100%; max-width: 800px;"><?php echo get_option('argon_comment_spam_detection_keywords', ''); ?></textarea>
 							<p class="description">
-								<strong><?php _e('手动添加关键字', 'argon');?></strong><br/>
 								<?php _e('每行一个关键字或短语，支持中英文。当评论的用户名或内容包含这些关键字时：', 'argon');?><br/>
 								<?php _e('• 关键字必查模式：立即进行 AI 检测', 'argon');?><br/>
 								<?php _e('• 智能抽查/全量检测模式：提高检测优先级', 'argon');?><br/>
