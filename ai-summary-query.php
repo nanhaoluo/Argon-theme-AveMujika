@@ -346,11 +346,11 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 .ai-section-subtitle::before { content: ''; width: 4px; height: 16px; background: var(--themecolor); border-radius: 2px; }
 
 .ai-info-grid { display: grid; gap: 0; border: 1px solid var(--color-border-on-foreground); border-radius: var(--card-radius); overflow: hidden; }
-.ai-info-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--color-border-on-foreground); background: var(--color-foreground); transition: background var(--animation-fast) var(--ease-standard); }
+.ai-info-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--color-border-on-foreground); transition: background var(--animation-fast) var(--ease-standard); }
 .ai-info-item:last-child { border-bottom: none; }
-.ai-info-item:hover { background: rgba(var(--themecolor-rgbstr), 0.03); }
+.ai-info-item:hover { background: rgba(var(--themecolor-rgbstr), 0.05); }
 .ai-info-label { color: var(--color-text-muted); font-size: 14px; min-width: 110px; flex-shrink: 0; font-weight: 500; }
-.ai-info-value { color: var(--color-text); flex: 1; word-break: break-word; font-size: 14px; }
+.ai-info-value { color: var(--color-text); flex: 1; word-break: break-word; font-size: 14px; line-height: 1.6; }
 .ai-info-value-mono { font-family: 'Consolas', 'Monaco', monospace; background: rgba(var(--themecolor-rgbstr), 0.05); padding: 2px 8px; border-radius: 4px; }
 .ai-info-value-link { color: var(--themecolor); text-decoration: none; font-weight: 500; transition: opacity var(--animation-fast) var(--ease-standard); }
 .ai-info-value-link:hover { opacity: 0.75; text-decoration: underline; }
@@ -778,16 +778,19 @@ if (current_user_can('manage_options')):
 	</div>
 	
 	<style>
-	.ai-records-table { width: 100%; border-collapse: collapse; }
-	.ai-records-table th { background: rgba(var(--themecolor-rgbstr), 0.05); padding: 12px; text-align: left; font-size: 13px; font-weight: 600; color: var(--color-text-deeper); border-bottom: 2px solid var(--color-border-on-foreground); }
-	.ai-records-table td { padding: 12px; border-bottom: 1px solid var(--color-border-on-foreground); font-size: 14px; color: var(--color-text); }
-	.ai-records-table tbody tr { cursor: pointer; transition: background var(--animation-fast) var(--ease-standard); }
-	.ai-records-table tbody tr:hover { background: rgba(var(--themecolor-rgbstr), 0.03); }
-	.ai-record-type-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }
-	.ai-record-type-summary { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
-	.ai-record-type-spam { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
-	.ai-record-code { font-family: 'Consolas', 'Monaco', monospace; font-size: 13px; color: var(--themecolor); font-weight: 600; }
+	.ai-records-table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid var(--color-border-on-foreground); border-radius: var(--card-radius); overflow: hidden; }
+	.ai-records-table th { background: linear-gradient(135deg, rgba(var(--themecolor-rgbstr), 0.08) 0%, rgba(var(--themecolor-rgbstr), 0.04) 100%); padding: 14px 16px; text-align: left; font-size: 13px; font-weight: 600; color: var(--color-text-deeper); border-bottom: 2px solid rgba(var(--themecolor-rgbstr), 0.15); }
+	.ai-records-table td { padding: 14px 16px; border-bottom: 1px solid var(--color-border-on-foreground); font-size: 14px; color: var(--color-text); vertical-align: middle; }
+	.ai-records-table tbody tr { cursor: pointer; transition: all var(--animation-fast) var(--ease-standard); }
+	.ai-records-table tbody tr:hover { background: rgba(var(--themecolor-rgbstr), 0.05); transform: translateX(2px); }
+	.ai-records-table tbody tr:last-child td { border-bottom: none; }
+	.ai-record-type-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+	.ai-record-type-summary { background: rgba(59, 130, 246, 0.12); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.25); }
+	.ai-record-type-spam { background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.25); }
+	.ai-record-code { font-family: 'Consolas', 'Monaco', monospace; font-size: 13px; color: var(--themecolor); font-weight: 700; letter-spacing: 1px; background: rgba(var(--themecolor-rgbstr), 0.08); padding: 4px 10px; border-radius: 4px; }
 	.ai-record-time { color: var(--color-text-muted); font-size: 13px; }
+	.ai-record-title { color: var(--color-text); font-weight: 500; }
+	.ai-record-title:hover { color: var(--themecolor); }
 	
 	.ai-modal { display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); overflow: auto; }
 	.ai-modal.active { display: flex; align-items: center; justify-content: center; }
@@ -822,13 +825,19 @@ if (current_user_can('manage_options')):
 				<tr class="ai-record-row" data-record='<?php echo esc_attr(json_encode($record)); ?>'>
 					<td>
 						<span class="ai-record-type-badge ai-record-type-<?php echo esc_attr($record['type']); ?>">
-							<?php echo $record['type'] === 'summary' ? __('文章摘要', 'argon') : __('垃圾评论', 'argon'); ?>
+							<?php if ($record['type'] === 'summary'): ?>
+								<i class="fa fa-file-text-o"></i>
+								<?php _e('文章摘要', 'argon'); ?>
+							<?php else: ?>
+								<i class="fa fa-shield"></i>
+								<?php _e('评论检测', 'argon'); ?>
+							<?php endif; ?>
 						</span>
 					</td>
 					<td><span class="ai-record-code"><?php echo esc_html($record['code']); ?></span></td>
-					<td><?php echo esc_html($record['title']); ?></td>
+					<td><span class="ai-record-title"><?php echo esc_html($record['title']); ?></span></td>
 					<td class="ai-record-time">
-						<?php echo $record['time'] ? date('Y-m-d H:i:s', $record['time']) : __('未知', 'argon'); ?>
+						<?php echo $record['time'] ? date('Y-m-d H:i', $record['time']) : __('未知', 'argon'); ?>
 					</td>
 				</tr>
 				<?php endforeach; ?>
