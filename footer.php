@@ -187,7 +187,7 @@
 
 					});
 
-					// 处理 WP-Markdown 生成的特殊格式：<div class="mermaid"><script>document.write("...")</script>...</div>
+					// 处理 WP-Markdown 生成的特殊格式：<div class="mermaid"><scr'+'ipt>document.write("...")</scr'+'ipt>...</div>
 
 					document.querySelectorAll('div.mermaid script[type="text/javascript"]').forEach(function(scriptElement) {
 
