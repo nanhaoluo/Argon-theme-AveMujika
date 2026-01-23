@@ -4007,21 +4007,9 @@ window.pjaxLoaded = function(){
 						</td>
 					</tr>
 
+					<!-- AI 配置 -->
 					<tr>
-						<th><label><?php _e('抽查基础概率', 'argon');?></label></th>
-						<td>
-							<input type="number" name="argon_comment_spam_detection_sample_rate" min="1" max="100" value="<?php echo get_option('argon_comment_spam_detection_sample_rate', '20'); ?>" style="width: 80px;"/> %
-							<p class="description">
-								<?php _e('智能抽查模式的基础概率，默认 20%。系统会根据用户历史通过率自动调整：', 'argon');?><br/>
-								<?php _e('• 信誉好的用户降低检测（最低 5%）', 'argon');?><br/>
-								<?php _e('• 信誉差的用户提高检测（最高 80%）', 'argon');?><br/>
-								<?php _e('注意：关键字必查模式下此设置无效', 'argon');?>
-							</p>
-						</td>
-					</tr>
-
-					<tr>
-						<th><label><?php _e('自动处理方式', 'argon');?></label></th>
+						<th><label><?php _e('AI 配置', 'argon');?></label></th>
 						<td>
 							<select name="argon_comment_spam_detection_auto_action">
 								<?php $argon_comment_spam_detection_auto_action = get_option('argon_comment_spam_detection_auto_action', 'trash'); ?>
