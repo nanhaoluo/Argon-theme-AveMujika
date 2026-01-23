@@ -9173,3 +9173,173 @@ function argon_update_mermaid_settings($settings) {
 		'errors' => []
 	];
 }
+
+// ==========================================================================
+// Mermaid 图表支持 - 库加载器
+// ==========================================================================
+
+/**
+ * 检测页面内容是否包含 Mermaid 代码块
+ * 
+ * 支持多种格式：
+ * - <div class="mermaid">
+ * - <pre><code class="language-mermaid">
+ * - <pre data-lang="mermaid">
+ * - <code class="mermaid">
+ * 
+ * @param string $content 页面内容
+ * @return bool 是否包含 Mermaid 代码块
+ */
+function argon_has_mermaid_content($content) {
+	if (empty($content)) {
+		return false;
+	}
+	
+	// 检测多种 Mermaid 代码块格式
+	$patterns = [
+		'/<div[^>]*class=["\']([^"\']*\s)?mermaid(\s[^"\']*)?["\'][^>]*>/i',  // <div class="mermaid">
+		'/<code[^>]*class=["\']([^"\']*\s)?language-mermaid(\s[^"\']*)?["\'][^>]*>/i',  // <code class="language-mermaid">
+		'/<pre[^>]*data-lang=["\']mermaid["\'][^>]*>/i',  // <pre data-lang="mermaid">
+		'/<code[^>]*class=["\']([^"\']*\s)?mermaid(\s[^"\']*)?["\'][^>]*>/i'  // <code class="mermaid">
+	];
+	
+	foreach ($patterns as $pattern) {
+		if (preg_match($pattern, $content)) {
+			return true;
+		}
+	}
+	
+	return false;
+}
+
+/**
+ * 获取 Mermaid 库的 URL
+ * 根据配置返回对应的 CDN 或本地路径
+ * 
+ * @return string Mermaid 库 URL
+ */
+function argon_get_mermaid_library_url() {
+	$cdn_source = argon_get_mermaid_option('cdn_source', 'jsdelivr');
+	$use_local = argon_get_mermaid_option('use_local', false);
+	
+	// 如果启用本地镜像，直接返回本地路径
+	if ($use_local) {
+		return get_template_directory_uri() . '/assets/vendor/mermaid/mermaid.min.js';
+	}
+	
+	// 根据 CDN 来源返回对应的 URL
+	$cdn_urls = [
+		'jsdelivr' => 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js',
+		'unpkg' => 'https://unpkg.com/mermaid@10/dist/mermaid.min.js',
+		'local' => get_template_directory_uri() . '/assets/vendor/mermaid/mermaid.min.js'
+	];
+	
+	// 如果是自定义 CDN，返回自定义 URL
+	if ($cdn_source === 'custom') {
+		$custom_url = argon_get_mermaid_option('custom_cdn_url', '');
+		if (!empty($custom_url) && argon_validate_mermaid_cdn_url($custom_url)) {
+			return $custom_url;
+		}
+		// 如果自定义 URL 无效，降级到 jsdelivr
+		return $cdn_urls['jsdelivr'];
+	}
+	
+	// 返回对应的 CDN URL，如果不存在则返回 jsdelivr
+	return isset($cdn_urls[$cdn_source]) ? $cdn_urls[$cdn_source] : $cdn_urls['jsdelivr'];
+}
+
+/**
+ * 获取备用 CDN URL 列表
+ * 用于加载失败时的降级处理
+ * 
+ * @return array 备用 CDN URL 数组
+ */
+function argon_get_mermaid_fallback_urls() {
+	return [
+		'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js',
+		'https://unpkg.com/mermaid@10/dist/mermaid.min.js',
+		get_template_directory_uri() . '/assets/vendor/mermaid/mermaid.min.js'
+	];
+}
+
+/**
+ * 加载 Mermaid JavaScript 库
+ * 在 wp_enqueue_scripts 钩子中调用
+ */
+function argon_enqueue_mermaid_scripts() {
+	// 检查是否启用 Mermaid 支持
+	if (!argon_get_mermaid_option('enabled', false)) {
+		return;
+	}
+	
+	// 检查当前页面是否包含 Mermaid 代码块
+	global $post;
+	$has_mermaid = false;
+	
+	// 检查文章内容
+	if (is_singular() && isset($post->post_content)) {
+		$has_mermaid = argon_has_mermaid_content($post->post_content);
+	}
+	
+	// 检查评论内容（如果启用了评论）
+	if (!$has_mermaid && is_singular() && comments_open()) {
+		$comments = get_comments([
+			'post_id' => $post->ID,
+			'status' => 'approve'
+		]);
+		
+		foreach ($comments as $comment) {
+			if (argon_has_mermaid_content($comment->comment_content)) {
+				$has_mermaid = true;
+				break;
+			}
+		}
+	}
+	
+	// 如果页面不包含 Mermaid 代码块，不加载库
+	if (!$has_mermaid) {
+		return;
+	}
+	
+	// 获取 Mermaid 库 URL
+	$mermaid_url = argon_get_mermaid_library_url();
+	
+	// 注册并加载 Mermaid 库
+	wp_enqueue_script(
+		'mermaid',
+		$mermaid_url,
+		[], // 不依赖其他脚本
+		'10.0.0', // Mermaid 版本
+		true // 在页脚加载
+	);
+	
+	// 添加 async 属性实现异步加载
+	add_filter('script_loader_tag', 'argon_add_mermaid_async_attribute', 10, 2);
+	
+	// 传递配置到前端
+	$mermaid_config = [
+		'enabled' => true,
+		'theme' => argon_get_mermaid_option('theme', 'auto'),
+		'debugMode' => argon_get_mermaid_option('debug_mode', false),
+		'fallbackUrls' => argon_get_mermaid_fallback_urls()
+	];
+	
+	wp_localize_script('mermaid', 'argonMermaidConfig', $mermaid_config);
+}
+add_action('wp_enqueue_scripts', 'argon_enqueue_mermaid_scripts');
+
+/**
+ * 为 Mermaid 脚本添加 async 属性
+ * 
+ * @param string $tag 脚本标签
+ * @param string $handle 脚本句柄
+ * @return string 修改后的脚本标签
+ */
+function argon_add_mermaid_async_attribute($tag, $handle) {
+	if ('mermaid' !== $handle) {
+		return $tag;
+	}
+	
+	// 添加 async 属性
+	return str_replace(' src', ' async src', $tag);
+}
