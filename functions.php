@@ -8937,3 +8937,239 @@ function argon_normalize_social_url($platform, $input) {
 	// 构建完整 URL
 	return esc_url($base_urls[$platform] . $username);
 }
+
+// ==========================================================================
+// Mermaid 图表支持 - 配置管理
+// ==========================================================================
+
+/**
+ * 获取 Mermaid 配置选项
+ * 
+ * @param string $option_name 配置选项名称
+ * @param mixed $default 默认值
+ * @return mixed 配置选项值
+ */
+function argon_get_mermaid_option($option_name, $default = null) {
+	// 配置选项映射表
+	$option_map = [
+		'enabled' => 'argon_enable_mermaid',
+		'cdn_source' => 'argon_mermaid_cdn_source',
+		'custom_cdn_url' => 'argon_mermaid_cdn_custom_url',
+		'theme' => 'argon_mermaid_theme',
+		'use_local' => 'argon_mermaid_use_local',
+		'debug_mode' => 'argon_mermaid_debug_mode'
+	];
+	
+	// 如果使用简短名称，转换为完整选项名
+	$full_option_name = isset($option_map[$option_name]) ? $option_map[$option_name] : $option_name;
+	
+	// 获取选项值
+	$value = get_option($full_option_name, $default);
+	
+	// 如果值为 null 且有默认值，返回默认值
+	if ($value === null && $default !== null) {
+		return $default;
+	}
+	
+	return $value;
+}
+
+/**
+ * 保存 Mermaid 配置选项
+ * 
+ * @param string $option_name 配置选项名称
+ * @param mixed $value 配置选项值
+ * @return bool 是否保存成功
+ */
+function argon_update_mermaid_option($option_name, $value) {
+	// 配置选项映射表
+	$option_map = [
+		'enabled' => 'argon_enable_mermaid',
+		'cdn_source' => 'argon_mermaid_cdn_source',
+		'custom_cdn_url' => 'argon_mermaid_cdn_custom_url',
+		'theme' => 'argon_mermaid_theme',
+		'use_local' => 'argon_mermaid_use_local',
+		'debug_mode' => 'argon_mermaid_debug_mode'
+	];
+	
+	// 如果使用简短名称，转换为完整选项名
+	$full_option_name = isset($option_map[$option_name]) ? $option_map[$option_name] : $option_name;
+	
+	// 保存选项值
+	return update_option($full_option_name, $value);
+}
+
+/**
+ * 验证 Mermaid CDN URL 格式
+ * 
+ * @param string $url CDN URL
+ * @return bool 是否为有效的 CDN URL
+ */
+function argon_validate_mermaid_cdn_url($url) {
+	// 空 URL 视为无效
+	if (empty(trim($url))) {
+		return false;
+	}
+	
+	// 验证 URL 格式
+	if (!filter_var($url, FILTER_VALIDATE_URL)) {
+		return false;
+	}
+	
+	// 验证是否以 .js 结尾
+	if (!preg_match('/\.js$/i', $url)) {
+		return false;
+	}
+	
+	// 验证协议（必须是 http 或 https）
+	$parsed_url = parse_url($url);
+	if (!isset($parsed_url['scheme']) || !in_array($parsed_url['scheme'], ['http', 'https'])) {
+		return false;
+	}
+	
+	return true;
+}
+
+/**
+ * 获取当前主题模式对应的 Mermaid 主题
+ * 
+ * @return string Mermaid 主题名称
+ */
+function argon_get_mermaid_theme() {
+	// 获取配置的主题
+	$configured_theme = argon_get_mermaid_option('theme', 'auto');
+	
+	// 如果不是自动模式，直接返回配置的主题
+	if ($configured_theme !== 'auto') {
+		return $configured_theme;
+	}
+	
+	// 自动模式：根据页面主题返回对应的 Mermaid 主题
+	// 注意：这个函数在 PHP 端调用，无法直接检测前端的夜间模式状态
+	// 实际的主题切换逻辑应该在 JavaScript 中实现
+	// 这里返回默认主题，JavaScript 会根据实际情况覆盖
+	return 'default';
+}
+
+/**
+ * 获取 Mermaid 配置的默认值
+ * 
+ * @return array 默认配置数组
+ */
+function argon_get_mermaid_default_config() {
+	return [
+		'enabled' => false,
+		'cdn_source' => 'jsdelivr',
+		'custom_cdn_url' => '',
+		'theme' => 'auto',
+		'use_local' => false,
+		'debug_mode' => false
+	];
+}
+
+/**
+ * 验证 Mermaid 配置选项
+ * 
+ * @param array $settings 配置选项数组
+ * @return array 错误信息数组，如果没有错误则返回空数组
+ */
+function argon_validate_mermaid_settings($settings) {
+	$errors = [];
+	
+	// 验证 CDN 来源
+	if (isset($settings['cdn_source'])) {
+		$valid_sources = ['jsdelivr', 'unpkg', 'custom', 'local'];
+		if (!in_array($settings['cdn_source'], $valid_sources)) {
+			$errors[] = __('无效的 CDN 来源', 'argon');
+		}
+		
+		// 如果选择自定义 CDN，验证 URL
+		if ($settings['cdn_source'] === 'custom') {
+			if (!isset($settings['custom_cdn_url']) || empty($settings['custom_cdn_url'])) {
+				$errors[] = __('自定义 CDN 地址不能为空', 'argon');
+			} elseif (!argon_validate_mermaid_cdn_url($settings['custom_cdn_url'])) {
+				$errors[] = __('CDN 地址格式无效，必须是有效的 URL 且以 .js 结尾', 'argon');
+			}
+		}
+	}
+	
+	// 验证主题名称
+	if (isset($settings['theme'])) {
+		$valid_themes = ['default', 'dark', 'forest', 'neutral', 'auto'];
+		if (!in_array($settings['theme'], $valid_themes)) {
+			$errors[] = __('无效的图表主题', 'argon');
+		}
+	}
+	
+	// 验证布尔值选项
+	$boolean_options = ['enabled', 'use_local', 'debug_mode'];
+	foreach ($boolean_options as $option) {
+		if (isset($settings[$option]) && !is_bool($settings[$option]) && !in_array($settings[$option], ['true', 'false', '1', '0', 1, 0], true)) {
+			$errors[] = sprintf(__('选项 %s 必须是布尔值', 'argon'), $option);
+		}
+	}
+	
+	return $errors;
+}
+
+/**
+ * 初始化 Mermaid 默认配置
+ * 在主题激活时调用
+ */
+function argon_init_mermaid_config() {
+	$defaults = argon_get_mermaid_default_config();
+	
+	foreach ($defaults as $key => $value) {
+		// 只在选项不存在时设置默认值
+		if (argon_get_mermaid_option($key) === false) {
+			argon_update_mermaid_option($key, $value);
+		}
+	}
+}
+
+/**
+ * 获取所有 Mermaid 配置选项
+ * 
+ * @return array 配置选项数组
+ */
+function argon_get_all_mermaid_options() {
+	$defaults = argon_get_mermaid_default_config();
+	$options = [];
+	
+	foreach ($defaults as $key => $default_value) {
+		$options[$key] = argon_get_mermaid_option($key, $default_value);
+	}
+	
+	return $options;
+}
+
+/**
+ * 批量更新 Mermaid 配置选项
+ * 
+ * @param array $settings 配置选项数组
+ * @return array 包含 success 和 errors 的结果数组
+ */
+function argon_update_mermaid_settings($settings) {
+	// 验证配置
+	$errors = argon_validate_mermaid_settings($settings);
+	
+	if (!empty($errors)) {
+		return [
+			'success' => false,
+			'errors' => $errors
+		];
+	}
+	
+	// 保存配置
+	$defaults = argon_get_mermaid_default_config();
+	foreach ($defaults as $key => $default_value) {
+		if (isset($settings[$key])) {
+			argon_update_mermaid_option($key, $settings[$key]);
+		}
+	}
+	
+	return [
+		'success' => true,
+		'errors' => []
+	];
+}
