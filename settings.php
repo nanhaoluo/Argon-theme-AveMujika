@@ -4684,7 +4684,6 @@ window.pjaxLoaded = function(){
 										<label style="display: block; margin-bottom: 4px; font-weight: 500;"><?php _e('邮件内容', 'argon');?>：</label>
 										<textarea name="argon_email_template_<?php echo esc_attr($type_key); ?>_content" 
 									placeholder="<?php _e('留空则使用默认模板。支持 HTML 标签，可使用下方占位符', 'argon'); ?>"><?php echo esc_textarea(get_option('argon_email_template_' . $type_key . '_content', '')); ?></textarea>
-											placeholder="<?php _e('留空则使用默认模板。支持 HTML 标签，可使用下方占位符', 'argon'); ?>"><?php echo esc_textarea(get_option('argon_email_template_' . $type_key . '_content', '')); ?></textarea>
 										<p class="description"><?php _e('支持 HTML 标签，可使用下方占位符自定义邮件内容', 'argon');?></p>
 									</div>
 
