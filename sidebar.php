@@ -165,15 +165,6 @@ $author_desc = get_option('argon_sidebar_author_description');
 						<i class="fa fa-check-square-o collapse-icon"></i>
 						<span class="collapse-title"><?php _e('TODO', 'argon'); ?></span>
 						<span class="collapse-badge" id="mobile_todo_count"><?php echo $mobile_uncompleted_count; ?></span>
-						<?php 
-						$mobile_completed_count = count(array_filter($mobile_todos, function($t) { return !empty($t['completed']); }));
-						if ($mobile_completed_count > 0) : 
-						?>
-						<button class="mobile-todo-collapse-btn" id="mobile-todo-collapse-btn" title="<?php _e('折叠/展开已完成', 'argon'); ?>">
-							<i class="fa fa-chevron-down"></i>
-							<span class="mobile-todo-completed-count"><?php echo $mobile_completed_count; ?></span>
-						</button>
-						<?php endif; ?>
 					</div>
 					<i class="fa fa-chevron-down collapse-arrow"></i>
 				</div>
@@ -191,28 +182,22 @@ $author_desc = get_option('argon_sidebar_author_description');
 							<?php if (empty($mobile_todos)) : ?>
 								<li class="mobile-todo-empty"><?php _e('暂无待办事项', 'argon'); ?></li>
 							<?php else : ?>
-								<?php foreach ($mobile_todos as $todo) : 
-									$is_completed = isset($todo['completed']) && $todo['completed'];
-									$is_urged = !$mobile_is_author && !$is_completed && argon_check_todo_urged($todo['id']);
+								<?php 
+								$mobile_uncompleted_todos = array_filter($mobile_todos, function($t) { return empty($t['completed']); });
+								$mobile_completed_todos = array_filter($mobile_todos, function($t) { return !empty($t['completed']); });
+								
+								// 显示未完成的任务
+								foreach ($mobile_uncompleted_todos as $todo) : 
+									$is_urged = !$mobile_is_author && argon_check_todo_urged($todo['id']);
 								?>
-								<li class="mobile-todo-item <?php echo $is_completed ? 'todo-completed' : ''; ?>" data-id="<?php echo esc_attr($todo['id']); ?>" data-urged="<?php echo $is_urged ? '1' : '0'; ?>">
+								<li class="mobile-todo-item" data-id="<?php echo esc_attr($todo['id']); ?>" data-urged="<?php echo $is_urged ? '1' : '0'; ?>">
 									<span class="mobile-todo-content"><?php echo esc_html($todo['content']); ?></span>
 									<?php if ($mobile_is_author) : ?>
-										<?php if ($is_completed) : ?>
-										<button class="mobile-todo-delete-btn" title="<?php _e('删除', 'argon'); ?>">
-											<i class="fa fa-trash"></i>
-										</button>
-										<?php else : ?>
 										<button class="mobile-todo-complete-btn" title="<?php _e('完成', 'argon'); ?>">
 											<i class="fa fa-check"></i>
 										</button>
-										<?php endif; ?>
 									<?php else : ?>
-										<?php if ($is_completed) : ?>
-										<span class="mobile-todo-done-mark">
-											<i class="fa fa-check"></i>
-										</span>
-										<?php elseif ($is_urged) : ?>
+										<?php if ($is_urged) : ?>
 										<button class="mobile-todo-urge-btn urged" disabled>
 											<i class="fa fa-check"></i>
 										</button>
@@ -224,6 +209,34 @@ $author_desc = get_option('argon_sidebar_author_description');
 									<?php endif; ?>
 								</li>
 								<?php endforeach; ?>
+								
+								<?php if (!empty($mobile_completed_todos)) : ?>
+								<!-- 已完成任务分隔栏 -->
+								<li class="mobile-todo-completed-divider" id="mobile-todo-collapse-btn">
+									<span class="divider-text">
+										<i class="fa fa-check-circle"></i>
+										<?php _e('已完成', 'argon'); ?>
+										<span class="mobile-todo-completed-count"><?php echo count($mobile_completed_todos); ?></span>
+									</span>
+									<i class="fa fa-chevron-down divider-arrow"></i>
+								</li>
+								
+								<!-- 显示已完成的任务 -->
+								<?php foreach ($mobile_completed_todos as $todo) : ?>
+								<li class="mobile-todo-item todo-completed" data-id="<?php echo esc_attr($todo['id']); ?>">
+									<span class="mobile-todo-content"><?php echo esc_html($todo['content']); ?></span>
+									<?php if ($mobile_is_author) : ?>
+										<button class="mobile-todo-delete-btn" title="<?php _e('删除', 'argon'); ?>">
+											<i class="fa fa-trash"></i>
+										</button>
+									<?php else : ?>
+										<span class="mobile-todo-done-mark">
+											<i class="fa fa-check"></i>
+										</span>
+									<?php endif; ?>
+								</li>
+								<?php endforeach; ?>
+								<?php endif; ?>
 							<?php endif; ?>
 						</ul>
 						<?php 
@@ -866,12 +879,6 @@ $author_desc = get_option('argon_sidebar_author_description');
 					$completed_count = count(array_filter($todos, function($t) { return !empty($t['completed']); }));
 					?>
 					<span class="todo-count" title="<?php echo $is_author ? __('未完成', 'argon') : __('待办事项', 'argon'); ?>"><?php echo $uncompleted_count; ?></span>
-					<?php if ($completed_count > 0) : ?>
-					<button class="todo-collapse-btn" id="todo-collapse-btn" title="<?php _e('折叠/展开已完成', 'argon'); ?>">
-						<i class="fa fa-chevron-down"></i>
-						<span class="todo-completed-count"><?php echo $completed_count; ?></span>
-					</button>
-					<?php endif; ?>
 				</h6>
 				
 				<?php if ($is_author) : ?>
@@ -887,28 +894,22 @@ $author_desc = get_option('argon_sidebar_author_description');
 					<?php if (empty($todos)) : ?>
 						<li class="todo-empty"><?php _e('暂无待办事项', 'argon'); ?></li>
 					<?php else : ?>
-						<?php foreach ($todos as $todo) : 
-							$is_completed = isset($todo['completed']) && $todo['completed'];
-							$is_urged = !$is_author && !$is_completed && argon_check_todo_urged($todo['id']);
+						<?php 
+						$uncompleted_todos = array_filter($todos, function($t) { return empty($t['completed']); });
+						$completed_todos = array_filter($todos, function($t) { return !empty($t['completed']); });
+						
+						// 显示未完成的任务
+						foreach ($uncompleted_todos as $todo) : 
+							$is_urged = !$is_author && argon_check_todo_urged($todo['id']);
 						?>
-						<li class="todo-item <?php echo $is_completed ? 'todo-completed' : ''; ?>" data-id="<?php echo esc_attr($todo['id']); ?>" data-urged="<?php echo $is_urged ? '1' : '0'; ?>">
+						<li class="todo-item" data-id="<?php echo esc_attr($todo['id']); ?>" data-urged="<?php echo $is_urged ? '1' : '0'; ?>">
 							<span class="todo-content"><?php echo esc_html($todo['content']); ?></span>
 							<?php if ($is_author) : ?>
-								<?php if ($is_completed) : ?>
-								<button class="todo-delete-btn" title="<?php _e('删除', 'argon'); ?>">
-									<i class="fa fa-trash"></i>
-								</button>
-								<?php else : ?>
 								<button class="todo-complete-btn" title="<?php _e('完成', 'argon'); ?>">
 									<i class="fa fa-check"></i>
 								</button>
-								<?php endif; ?>
 							<?php else : ?>
-								<?php if ($is_completed) : ?>
-								<span class="todo-done-mark" title="<?php _e('已完成', 'argon'); ?>">
-									<i class="fa fa-check"></i>
-								</span>
-								<?php elseif ($is_urged) : ?>
+								<?php if ($is_urged) : ?>
 								<button class="todo-urge-btn urged" disabled title="<?php _e('已提醒', 'argon'); ?>">
 									<i class="fa fa-check"></i>
 								</button>
@@ -920,7 +921,34 @@ $author_desc = get_option('argon_sidebar_author_description');
 							<?php endif; ?>
 						</li>
 						<?php endforeach; ?>
-					<?php endif; ?>
+						
+						<?php if (!empty($completed_todos)) : ?>
+						<!-- 已完成任务分隔栏 -->
+						<li class="todo-completed-divider" id="todo-collapse-btn">
+							<span class="divider-text">
+								<i class="fa fa-check-circle"></i>
+								<?php _e('已完成', 'argon'); ?>
+								<span class="todo-completed-count"><?php echo count($completed_todos); ?></span>
+							</span>
+							<i class="fa fa-chevron-down divider-arrow"></i>
+						</li>
+						
+						<!-- 显示已完成的任务 -->
+						<?php foreach ($completed_todos as $todo) : ?>
+						<li class="todo-item todo-completed" data-id="<?php echo esc_attr($todo['id']); ?>">
+							<span class="todo-content"><?php echo esc_html($todo['content']); ?></span>
+							<?php if ($is_author) : ?>
+								<button class="todo-delete-btn" title="<?php _e('删除', 'argon'); ?>">
+									<i class="fa fa-trash"></i>
+								</button>
+							<?php else : ?>
+								<span class="todo-done-mark" title="<?php _e('已完成', 'argon'); ?>">
+									<i class="fa fa-check"></i>
+								</span>
+							<?php endif; ?>
+						</li>
+						<?php endforeach; ?>
+						<?php endif; ?>
 				</ul>
 				<?php if (!$is_author && argon_is_todo_captcha_enabled()) : 
 					$captcha_type = get_option('argon_captcha_type', 'math');
@@ -970,19 +998,19 @@ $author_desc = get_option('argon_sidebar_author_description');
 				var countEl = document.querySelector('.todo-count');
 				if (countEl) countEl.textContent = count;
 				
-				// 更新折叠按钮
-				var collapseBtn = document.getElementById('todo-collapse-btn');
-				var completedCountEl = collapseBtn ? collapseBtn.querySelector('.todo-completed-count') : null;
-				if (completedCountEl) {
-					completedCountEl.textContent = completedCount;
-				}
-				
-				// 显示/隐藏折叠按钮
-				if (collapseBtn) {
+				// 更新分隔栏的已完成数量
+				var divider = document.getElementById('todo-collapse-btn');
+				if (divider) {
+					var completedCountEl = divider.querySelector('.todo-completed-count');
+					if (completedCountEl) {
+						completedCountEl.textContent = completedCount;
+					}
+					
+					// 显示/隐藏分隔栏
 					if (completedCount > 0) {
-						collapseBtn.style.display = 'flex';
+						divider.style.display = 'flex';
 					} else {
-						collapseBtn.style.display = 'none';
+						divider.style.display = 'none';
 					}
 				}
 				

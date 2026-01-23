@@ -3203,14 +3203,14 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		// 同步更新桌面端计数
 		$(".todo-count").text(count);
 		
-		// 更新折叠按钮
-		var collapseBtn = $("#mobile-todo-collapse-btn");
-		if (collapseBtn.length) {
-			collapseBtn.find(".mobile-todo-completed-count").text(completedCount);
+		// 更新分隔栏的已完成数量
+		var divider = $("#mobile-todo-collapse-btn");
+		if (divider.length) {
+			divider.find(".mobile-todo-completed-count").text(completedCount);
 			if (completedCount > 0) {
-				collapseBtn.show();
+				divider.show();
 			} else {
-				collapseBtn.hide();
+				divider.hide();
 			}
 		}
 	}
