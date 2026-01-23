@@ -2835,6 +2835,142 @@ function post_comment_preprocessing($comment){
 	if ($_POST['use_markdown'] == 'true' && get_option("argon_comment_allow_markdown") != "false"){
 		$comment['comment_content'] = comment_markdown_parse($comment['comment_content']);
 	}
+	
+	// AI 智能审查：在评论保存前进行检测和处理
+	if (get_option('argon_comment_spam_detection_enable', 'false') === 'true') {
+		$mode = get_option('argon_comment_spam_detection_mode', 'manual');
+		
+		// 只有在启用了实时检测模式时才进行预审查
+		if ($mode !== 'manual') {
+			// 检查是否为已登录用户（可跳过）
+			$skip_logged_in = get_option('argon_comment_spam_detection_exclude_logged_in', 'true') === 'true';
+			$is_logged_in = is_user_logged_in();
+			
+			if (!$is_logged_in || !$skip_logged_in) {
+				// 创建临时评论对象用于检测
+				$temp_comment = (object) [
+					'comment_author' => $comment['comment_author'],
+					'comment_author_email' => $comment['comment_author_email'],
+					'comment_author_url' => $comment['comment_author_url'],
+					'comment_author_IP' => $comment['comment_author_IP'],
+					'comment_content' => strip_tags($comment['comment_content']),
+					'comment_post_ID' => $comment['comment_post_ID'],
+					'user_id' => $comment['user_id']
+				];
+				
+				// 检查白名单
+				if (!argon_is_comment_in_whitelist($temp_comment)) {
+					$should_check = false;
+					$check_reason = '';
+					
+					// 优先级1：检查是否触发关键字
+					$keyword_check = argon_check_spam_keywords($temp_comment);
+					if ($keyword_check && $keyword_check['triggered']) {
+						$should_check = true;
+						$check_reason = 'keyword';
+					}
+					// 优先级2：全量检测模式
+					elseif ($mode === 'all') {
+						$should_check = true;
+						$check_reason = 'all';
+					}
+					// 优先级3：抽查模式（根据概率）
+					elseif ($mode === 'sample') {
+						$check_probability = argon_get_user_spam_check_probability($temp_comment);
+						if (rand(1, 100) <= $check_probability) {
+							$should_check = true;
+							$check_reason = 'sample';
+						}
+					}
+					
+					// 如果需要检测，立即进行同步检测
+					if ($should_check) {
+						$result = argon_detect_spam_comment_sync($temp_comment);
+						
+						if ($result && isset($result['is_spam'])) {
+							$content_spam = $result['is_spam'];
+							$username_invalid = isset($result['username_invalid']) ? $result['username_invalid'] : false;
+							$confidence = isset($result['confidence']) ? floatval($result['confidence']) : 0.8;
+							$suggestion = isset($result['suggestion']) ? $result['suggestion'] : 'auto';
+							$confidence_threshold = floatval(get_option('argon_comment_spam_detection_confidence_threshold', 0.85));
+							
+							// 情况1：内容违规且置信度高 - 直接拒绝评论
+							if ($content_spam && $confidence >= $confidence_threshold && $suggestion === 'auto') {
+								wp_die(
+									'<div style="max-width:600px;margin:50px auto;padding:30px;background:#fff;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.1);">
+										<h2 style="color:#f5365c;margin-bottom:20px;">⚠️ ' . __('评论审核未通过', 'argon') . '</h2>
+										<p style="font-size:16px;line-height:1.8;color:#525f7f;">' . __('您的评论因以下原因未能通过审核：', 'argon') . '</p>
+										<div style="background:#f7fafc;padding:15px;border-left:4px solid #f5365c;margin:20px 0;">
+											<strong>' . esc_html($result['reason']) . '</strong>
+										</div>
+										<p style="font-size:14px;color:#8898aa;">' . __('如果您认为这是误判，请联系网站管理员。', 'argon') . '</p>
+										<div style="margin-top:30px;text-align:center;">
+											<a href="javascript:history.back()" style="display:inline-block;padding:12px 30px;background:#5e72e4;color:#fff;text-decoration:none;border-radius:4px;">' . __('返回修改', 'argon') . '</a>
+										</div>
+									</div>',
+									__('评论审核未通过', 'argon'),
+									['response' => 403, 'back_link' => true]
+								);
+							}
+							
+							// 情况2：用户名违规且没有邮箱 - 直接拒绝评论
+							if ($username_invalid && empty($comment['comment_author_email'])) {
+								wp_die(
+									'<div style="max-width:600px;margin:50px auto;padding:30px;background:#fff;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.1);">
+										<h2 style="color:#f5365c;margin-bottom:20px;">⚠️ ' . __('用户名审核未通过', 'argon') . '</h2>
+										<p style="font-size:16px;line-height:1.8;color:#525f7f;">' . __('您的用户名因以下原因未能通过审核：', 'argon') . '</p>
+										<div style="background:#f7fafc;padding:15px;border-left:4px solid #f5365c;margin:20px 0;">
+											<strong>' . esc_html($result['username_reason']) . '</strong>
+										</div>
+										<p style="font-size:14px;color:#8898aa;">' . __('请修改用户名后重试，或填写邮箱以便我们为您自动生成合规的用户名。', 'argon') . '</p>
+										<div style="margin-top:30px;text-align:center;">
+											<a href="javascript:history.back()" style="display:inline-block;padding:12px 30px;background:#5e72e4;color:#fff;text-decoration:none;border-radius:4px;">' . __('返回修改', 'argon') . '</a>
+										</div>
+									</div>',
+									__('用户名审核未通过', 'argon'),
+									['response' => 403, 'back_link' => true]
+								);
+							}
+							
+							// 情况3：用户名违规但有邮箱 - 自动修改用户名
+							if ($username_invalid && !empty($comment['comment_author_email'])) {
+								$original_username = $comment['comment_author'];
+								$new_username = argon_generate_unique_username(
+									$original_username,
+									$comment['comment_author_email'],
+									$comment['comment_author_IP'],
+									isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : ''
+								);
+								
+								// 修改评论数组中的用户名
+								$comment['comment_author'] = $new_username;
+								
+								// 保存原始用户名和检测结果到 $_POST，稍后在 post_comment_updatemetas 中保存
+								$_POST['_argon_original_username'] = $original_username;
+								$_POST['_argon_username_changed'] = 'true';
+								$_POST['_argon_username_change_reason'] = $result['username_reason'];
+								$_POST['_argon_spam_detection_result'] = json_encode($result);
+							}
+							
+							// 情况4：内容违规但置信度不足 - 标记为待审核
+							if ($content_spam && ($confidence < $confidence_threshold || $suggestion !== 'auto')) {
+								// 保存检测结果，稍后标记为待审核
+								$_POST['_argon_spam_low_confidence'] = 'true';
+								$_POST['_argon_spam_detection_result'] = json_encode($result);
+							}
+							
+							// 保存检测原因
+							$_POST['_argon_spam_check_reason'] = $check_reason;
+							if ($keyword_check && $keyword_check['triggered']) {
+								$_POST['_argon_spam_triggered_keywords'] = json_encode($keyword_check['keywords']);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	
 	return $comment;
 }
 add_filter('preprocess_comment' , 'post_comment_preprocessing');
@@ -7583,6 +7719,16 @@ function argon_detect_spam_comment($comment_id) {
 	if (!$comment) {
 		return false;
 	}
+	
+	return argon_detect_spam_comment_sync($comment);
+}
+
+/**
+ * 同步检测评论是否为垃圾评论（支持临时评论对象）
+ * @param object $comment 评论对象
+ * @return array|false ['is_spam' => bool, 'reason' => string, 'username_invalid' => bool, 'username_reason' => string] 或 false
+ */
+function argon_detect_spam_comment_sync($comment) {
 	
 	// 获取 AI 配置
 	$provider = get_option('argon_ai_summary_provider', 'openai');
