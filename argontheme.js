@@ -2832,6 +2832,9 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 		$card.addClass("post-pjax-loading");
 		$("#main").addClass("post-list-pjax-loading");
 		
+		// 强制隐藏其他卡片
+		$(".post-preview").not($card).css("opacity", "0");
+		
 		// 调试信息
 		console.log("=== 文章加载动画调试 ===");
 		console.log("点击的卡片:", $card[0]);
@@ -2841,11 +2844,13 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 		console.log("被点击的卡片是否有 post-pjax-loading 类:", $card.hasClass("post-pjax-loading"));
 		
 		// 检查CSS是否生效
-		$(".post-preview").each(function(index) {
-			let opacity = $(this).css("opacity");
-			let hasLoadingClass = $(this).hasClass("post-pjax-loading");
-			console.log(`卡片 ${index}: opacity=${opacity}, hasLoadingClass=${hasLoadingClass}`);
-		});
+		setTimeout(function() {
+			$(".post-preview").each(function(index) {
+				let opacity = $(this).css("opacity");
+				let hasLoadingClass = $(this).hasClass("post-pjax-loading");
+				console.log(`卡片 ${index}: opacity=${opacity}, hasLoadingClass=${hasLoadingClass}`);
+			});
+		}, 100);
 		
 		let offsetTop = $($card).offset().top - $("#main").offset().top;
 		if ($("html").hasClass("is-home") && $("html").hasClass("banner-as-cover")){
