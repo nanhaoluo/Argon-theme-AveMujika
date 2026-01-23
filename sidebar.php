@@ -239,6 +239,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 								<?php endif; ?>
 							<?php endif; ?>
 						</ul>
+						<?php endif; ?>
 						<?php 
 						// 移动端验证码容器
 						if (!$mobile_is_author && argon_is_todo_captcha_enabled()) :
