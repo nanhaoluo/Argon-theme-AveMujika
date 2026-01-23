@@ -2858,6 +2858,8 @@ function comment_mail_notify($comment){
 	
 	$id = $comment -> comment_ID;
 	$commentPostID = $comment -> comment_post_ID;
+	// 重新获取评论对象，确保使用最新的用户名（可能已被 AI 检测修改）
+	$comment = get_comment($id);
 	$commentAuthor = $comment -> comment_author;
 	$parentID = $comment -> comment_parent;
 	if ($parentID == 0){
@@ -7757,6 +7759,282 @@ function argon_call_ai_api_for_spam_detection($provider, $api_key, $model, $prom
 }
 
 /**
+ * 检查评论是否触发关键字
+ * @param object $comment 评论对象
+ * @return array|false ['triggered' => bool, 'keywords' => array, 'confidence' => float]
+ */
+function argon_check_spam_keywords($comment) {
+	// 获取关键字列表
+	$keywords_text = get_option('argon_comment_spam_detection_keywords', '');
+	if (empty($keywords_text)) {
+		return false;
+	}
+	
+	// 按行分割关键字
+	$keywords = array_filter(array_map('trim', explode("\n", $keywords_text)));
+	if (empty($keywords)) {
+		return false;
+	}
+	
+	// 检查用户名和评论内容
+	$check_text = $comment->comment_author . ' ' . $comment->comment_content;
+	$check_text = strtolower($check_text);
+	
+	$triggered_keywords = [];
+	foreach ($keywords as $keyword) {
+		$keyword = strtolower(trim($keyword));
+		if (empty($keyword)) {
+			continue;
+		}
+		
+		if (strpos($check_text, $keyword) !== false) {
+			$triggered_keywords[] = $keyword;
+		}
+	}
+	
+	if (!empty($triggered_keywords)) {
+		// 根据触发的关键字数量计算初始置信度
+		$confidence = min(0.6 + (count($triggered_keywords) * 0.1), 0.95);
+		
+		return [
+			'triggered' => true,
+			'keywords' => $triggered_keywords,
+			'confidence' => $confidence
+		];
+	}
+	
+	return false;
+}
+
+/**
+ * AI 学习关键字：分析误判和漏判，自动优化关键字列表
+ * @param int $comment_id 评论 ID
+ * @param bool $admin_decision 管理员决策（true=正常，false=垃圾）
+ */
+function argon_ai_learn_keywords($comment_id, $admin_decision) {
+	// 检查是否启用 AI 学习
+	if (get_option('argon_comment_spam_detection_ai_learn', 'false') !== 'true') {
+		return;
+	}
+	
+	$comment = get_comment($comment_id);
+	if (!$comment) {
+		return;
+	}
+	
+	// 获取 AI 检测结果
+	$detection_result = get_comment_meta($comment_id, '_argon_spam_detection_result', true);
+	if (empty($detection_result)) {
+		return;
+	}
+	
+	$ai_decision = isset($detection_result['is_spam']) ? $detection_result['is_spam'] : false;
+	
+	// 如果 AI 和管理员判断一致，不需要学习
+	if ($ai_decision === !$admin_decision) {
+		return;
+	}
+	
+	// 提取评论中的关键词（使用 AI）
+	$keywords = argon_extract_keywords_from_comment($comment, $admin_decision);
+	
+	if (!empty($keywords)) {
+		// 更新关键字列表
+		argon_update_learned_keywords($keywords, $admin_decision);
+	}
+}
+
+/**
+ * 使用 AI 从评论中提取关键词
+ * @param object $comment 评论对象
+ * @param bool $is_spam 是否为垃圾评论
+ * @return array 关键词列表
+ */
+function argon_extract_keywords_from_comment($comment, $is_spam) {
+	// 获取 AI 配置
+	$provider = get_option('argon_ai_summary_provider', 'openai');
+	$api_key = get_option('argon_ai_summary_api_key', '');
+	$model = get_option('argon_ai_summary_model', '');
+	
+	if (empty($api_key)) {
+		return [];
+	}
+	
+	$spam_label = $is_spam ? '垃圾评论' : '正常评论';
+	
+	$prompt = "你是关键词提取专家。从以下{$spam_label}中提取 1-3 个最具代表性的关键词或短语（每个不超过10个字）。
+
+要求：
+1. 提取能够识别此类{$spam_label}的特征词
+2. 关键词应该具有普遍性，能用于识别类似评论
+3. 避免提取过于具体的内容（如具体的人名、地名）
+4. 只输出 JSON 格式：{\"keywords\": [\"关键词1\", \"关键词2\"]}
+
+用户名：{$comment->comment_author}
+评论内容：{$comment->comment_content}";
+	
+	$result = argon_call_ai_for_keyword_extraction($provider, $api_key, $model, $prompt);
+	
+	if ($result && isset($result['keywords']) && is_array($result['keywords'])) {
+		return $result['keywords'];
+	}
+	
+	return [];
+}
+
+/**
+ * 调用 AI 提取关键词
+ */
+function argon_call_ai_for_keyword_extraction($provider, $api_key, $model, $prompt) {
+	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
+	
+	// 使用与垃圾检测相同的 API 调用逻辑
+	$default_models = [
+		'openai' => 'gpt-4o-mini',
+		'anthropic' => 'claude-3-5-haiku-20241022',
+		'deepseek' => 'deepseek-chat',
+		'siliconflow' => 'Qwen/Qwen2.5-7B-Instruct'
+	];
+	
+	if (empty($model) && isset($default_models[$provider])) {
+		$model = $default_models[$provider];
+	}
+	
+	$messages = [
+		['role' => 'user', 'content' => $prompt]
+	];
+	
+	$body = [
+		'model' => $model,
+		'messages' => $messages,
+		'temperature' => 0.3,
+		'max_tokens' => 100
+	];
+	
+	if (empty($endpoint)) {
+		$endpoints = [
+			'openai' => 'https://api.openai.com/v1/chat/completions',
+			'anthropic' => 'https://api.anthropic.com/v1/messages',
+			'deepseek' => 'https://api.deepseek.com/v1/chat/completions',
+			'siliconflow' => 'https://api.siliconflow.cn/v1/chat/completions'
+		];
+		$endpoint = isset($endpoints[$provider]) ? $endpoints[$provider] : $endpoints['openai'];
+	}
+	
+	if ($provider === 'anthropic') {
+		$body = [
+			'model' => $model,
+			'messages' => $messages,
+			'max_tokens' => 100
+		];
+		$headers = [
+			'x-api-key' => $api_key,
+			'anthropic-version' => '2023-06-01',
+			'Content-Type' => 'application/json'
+		];
+	} else {
+		$headers = [
+			'Authorization' => 'Bearer ' . $api_key,
+			'Content-Type' => 'application/json'
+		];
+	}
+	
+	$response = wp_remote_post($endpoint, [
+		'headers' => $headers,
+		'body' => json_encode($body),
+		'timeout' => 15
+	]);
+	
+	if (is_wp_error($response)) {
+		return false;
+	}
+	
+	$response_body = json_decode(wp_remote_retrieve_body($response), true);
+	
+	$ai_content = '';
+	if ($provider === 'anthropic') {
+		if (isset($response_body['content'][0]['text'])) {
+			$ai_content = $response_body['content'][0]['text'];
+		}
+	} else {
+		if (isset($response_body['choices'][0]['message']['content'])) {
+			$ai_content = $response_body['choices'][0]['message']['content'];
+		}
+	}
+	
+	if (empty($ai_content)) {
+		return false;
+	}
+	
+	// 提取 JSON
+	if (preg_match('/```(?:json)?\s*(\{.*?\})\s*```/s', $ai_content, $matches)) {
+		$json_str = $matches[1];
+	} elseif (preg_match('/(\{.*?\})/s', $ai_content, $matches)) {
+		$json_str = $matches[1];
+	} else {
+		return false;
+	}
+	
+	return json_decode($json_str, true);
+}
+
+/**
+ * 更新学习到的关键字
+ * @param array $keywords 关键词列表
+ * @param bool $is_spam 是否为垃圾评论
+ */
+function argon_update_learned_keywords($keywords, $is_spam) {
+	$learned_keywords = get_option('argon_comment_spam_learned_keywords', []);
+	
+	if (!is_array($learned_keywords)) {
+		$learned_keywords = [];
+	}
+	
+	foreach ($keywords as $keyword) {
+		$keyword = trim($keyword);
+		if (empty($keyword)) {
+			continue;
+		}
+		
+		if (!isset($learned_keywords[$keyword])) {
+			$learned_keywords[$keyword] = [
+				'spam_count' => 0,
+				'normal_count' => 0,
+				'confidence' => 0.5,
+				'added_time' => time()
+			];
+		}
+		
+		if ($is_spam) {
+			$learned_keywords[$keyword]['spam_count']++;
+		} else {
+			$learned_keywords[$keyword]['normal_count']++;
+		}
+		
+		// 计算置信度
+		$total = $learned_keywords[$keyword]['spam_count'] + $learned_keywords[$keyword]['normal_count'];
+		$learned_keywords[$keyword]['confidence'] = $learned_keywords[$keyword]['spam_count'] / $total;
+	}
+	
+	// 保存学习结果
+	update_option('argon_comment_spam_learned_keywords', $learned_keywords);
+	
+	// 自动更新关键字列表（置信度 > 0.7 的添加到关键字列表）
+	$current_keywords = get_option('argon_comment_spam_detection_keywords', '');
+	$current_keywords_array = array_filter(array_map('trim', explode("\n", $current_keywords)));
+	
+	foreach ($learned_keywords as $keyword => $stats) {
+		if ($stats['confidence'] > 0.7 && $stats['spam_count'] >= 3) {
+			if (!in_array($keyword, $current_keywords_array)) {
+				$current_keywords_array[] = $keyword;
+			}
+		}
+	}
+	
+	update_option('argon_comment_spam_detection_keywords', implode("\n", $current_keywords_array));
+}
+
+/**
  * 新评论发布时自动检测
  */
 function argon_auto_detect_spam_on_comment($comment_id, $comment_approved) {
@@ -7793,19 +8071,42 @@ function argon_auto_detect_spam_on_comment($comment_id, $comment_approved) {
 	
 	// 判断是否需要检测
 	$should_check = false;
+	$check_reason = '';
 	
-	if ($mode === 'all') {
-		// 全量检测模式：必定检测
+	// 优先级1：检查是否触发关键字（最高优先级）
+	$keyword_check = argon_check_spam_keywords($comment);
+	if ($keyword_check && $keyword_check['triggered']) {
 		$should_check = true;
-	} elseif ($mode === 'sample') {
-		// 抽查模式：根据用户历史通过率动态调整概率
+		$check_reason = 'keyword';
+		// 保存触发的关键字信息
+		update_comment_meta($comment_id, '_argon_spam_triggered_keywords', $keyword_check['keywords']);
+	}
+	// 优先级2：全量检测模式
+	elseif ($mode === 'all') {
+		$should_check = true;
+		$check_reason = 'all';
+	}
+	// 优先级3：抽查模式
+	elseif ($mode === 'sample') {
+		// 根据用户历史通过率动态调整概率
 		$check_probability = argon_get_user_spam_check_probability($comment);
-		$should_check = (rand(1, 100) <= $check_probability);
+		if (rand(1, 100) <= $check_probability) {
+			$should_check = true;
+			$check_reason = 'sample';
+		}
 	}
 	
 	if ($should_check) {
-		// 异步检测（延迟 1 秒执行，让评论元数据先保存）
-		wp_schedule_single_event(time() + 1, 'argon_async_spam_detection', [$comment_id]);
+		// 保存检测原因
+		update_comment_meta($comment_id, '_argon_spam_check_reason', $check_reason);
+		
+		// 如果是关键字触发，立即同步检测（不延迟）
+		if ($check_reason === 'keyword') {
+			argon_async_spam_detection_handler($comment_id);
+		} else {
+			// 其他情况异步检测（延迟 1 秒执行，让评论元数据先保存）
+			wp_schedule_single_event(time() + 1, 'argon_async_spam_detection', [$comment_id]);
+		}
 	}
 }
 add_action('comment_post', 'argon_auto_detect_spam_on_comment', 10, 2);
