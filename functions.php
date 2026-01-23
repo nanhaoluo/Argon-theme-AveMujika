@@ -7382,6 +7382,169 @@ function argon_get_siliconflow_models($api_key, $custom_endpoint = '') {
 // AI 垃圾评论识别
 // ==========================================================================
 
+
+/**
+ * 获取垃圾评论检测 Prompt（根据模式）
+ * @param string $mode Prompt 模式：minimal, standard, enhanced
+ * @return string Prompt 文本
+ */
+function argon_get_spam_detection_prompt($mode) {
+	$prompts = [
+		'minimal' => '你是内容审核助手。判断评论是否合规。
+
+不合规内容：广告、反动言论、政治敏感、违法信息、色情暴力、恶意攻击。
+不合规用户名：广告、色情、政治敏感、恶意攻击、侮辱性词汇。
+
+返回 JSON：
+{
+  "content_spam": true/false,
+  "content_reason": "理由(15字内)",
+  "username_invalid": true/false,
+  "username_reason": "理由(15字内)",
+  "confidence": 0.0-1.0,
+  "suggestion": "auto/review/approve"
+}',
+		
+		'standard' => '你是专业的内容审核助手。请分析以下评论的合规性。
+
+## 审核标准
+
+### 内容审核
+不合规内容包括：
+- 广告推广：产品推销、引流链接、联系方式
+- 政治敏感：反动言论、错误政治观点、时政敏感
+- 违法信息：诈骗、赌博、毒品、枪支等
+- 色情暴力：色情内容、暴力血腥、恐怖信息
+- 恶意攻击：人身攻击、侮辱谩骂、恶意诽谤
+
+### 用户名审核
+不合规用户名包括：
+- 广告推广、色情暴力、政治敏感、恶意攻击、侮辱性词汇
+
+## 返回格式
+请返回 JSON 格式：
+{
+  "content_spam": true/false,
+  "content_reason": "内容判断理由(25字以内)",
+  "username_invalid": true/false,
+  "username_reason": "用户名判断理由(25字以内)",
+  "confidence": 0.0-1.0,
+  "suggestion": "auto/review/approve"
+}
+
+- confidence: 判断置信度（0-1），越高越确定
+- suggestion: 处理建议
+  - auto: 自动处理（高置信度垃圾内容）
+  - review: 建议人工审核（中等置信度或边缘情况）
+  - approve: 建议直接通过（正常内容）
+
+如果内容正常，content_reason 填写 "正常"。如果用户名正常，username_reason 填写 "正常"。',
+		
+		'enhanced' => '你是高级内容审核专家。请对以下评论进行全面分析。
+
+## 审核维度
+
+### 1. 内容合规性
+不合规内容：
+- 广告推广：产品推销、引流链接、联系方式、SEO 垃圾
+- 政治敏感：反动言论、错误政治观点、时政敏感内容
+- 违法信息：诈骗、赌博、毒品、枪支、非法交易
+- 色情暴力：色情内容、暴力血腥、恐怖信息
+- 恶意攻击：人身攻击、侮辱谩骂、恶意诽谤、网络暴力
+
+### 2. 内容质量
+- 是否有实质性内容
+- 是否与文章主题相关
+- 语言表达是否正常
+- 是否为机器生成的无意义内容
+
+### 3. 用户行为模式
+- 用户名是否正常
+- 邮箱和网站是否可疑
+- 评论历史记录（如提供）
+
+### 4. 上下文分析
+- 评论与文章的相关性
+- 评论的语气和意图
+- 是否为建设性讨论
+
+## 返回格式
+请返回 JSON 格式：
+{
+  "content_spam": true/false,
+  "content_reason": "内容判断理由(30字以内)",
+  "username_invalid": true/false,
+  "username_reason": "用户名判断理由(20字以内)",
+  "confidence": 0.0-1.0,
+  "suggestion": "auto/review/approve",
+  "analysis": "综合分析(50字以内，可选)"
+}
+
+- confidence: 判断置信度（0-1）
+  - 0.9-1.0: 非常确定
+  - 0.7-0.9: 比较确定
+  - 0.5-0.7: 中等确定
+  - 0.0-0.5: 不太确定
+
+- suggestion: 处理建议
+  - auto: 自动处理（置信度 > 0.85 的垃圾内容）
+  - review: 建议人工审核（置信度 0.5-0.85 或边缘情况）
+  - approve: 建议直接通过（正常内容，置信度 > 0.8）
+
+- analysis: 综合分析说明（可选，用于边缘情况的详细说明）
+
+如果内容正常，content_reason 填写 "正常"。如果用户名正常，username_reason 填写 "正常"。'
+	];
+	
+	return isset($prompts[$mode]) ? $prompts[$mode] : $prompts['standard'];
+}
+
+/**
+ * 构建评论上下文信息
+ * @param object $comment 评论对象
+ * @return string 上下文信息
+ */
+function argon_build_comment_context($comment) {
+	$context = sprintf(
+		"用户名：%s\n邮箱：%s\n网站：%s\n评论内容：%s",
+		$comment->comment_author,
+		$comment->comment_author_email,
+		$comment->comment_author_url,
+		$comment->comment_content
+	);
+	
+	// 添加文章信息
+	$post = get_post($comment->comment_post_ID);
+	if ($post) {
+		$context .= sprintf(
+			"\n\n文章标题：%s\n文章摘要：%s",
+			$post->post_title,
+			wp_trim_words($post->post_content, 50, '...')
+		);
+	}
+	
+	// 添加用户历史信息（如果有）
+	$user_identifier = !empty($comment->comment_author_email) 
+		? md5($comment->comment_author_email) 
+		: md5($comment->comment_author_IP);
+	
+	$user_stats = get_transient('argon_spam_user_stats_' . $user_identifier);
+	if ($user_stats && isset($user_stats['total_checked'])) {
+		$total = $user_stats['total_checked'];
+		$spam = isset($user_stats['spam_count']) ? $user_stats['spam_count'] : 0;
+		$pass_rate = $total > 0 ? round((($total - $spam) / $total) * 100) : 0;
+		
+		$context .= sprintf(
+			"\n\n用户历史：已检测 %d 次，通过率 %d%%",
+			$total,
+			$pass_rate
+		);
+	}
+	
+	return $context;
+}
+
+
 /**
  * 检测评论是否为垃圾评论（用户名-评论联合检测）
  * @param int $comment_id 评论 ID
@@ -7397,37 +7560,22 @@ function argon_detect_spam_comment($comment_id) {
 	$provider = get_option('argon_ai_summary_provider', 'openai');
 	$api_key = get_option('argon_ai_summary_api_key', '');
 	$model = get_option('argon_ai_summary_model', '');
-	$prompt = get_option('argon_comment_spam_detection_prompt', '');
+	$prompt_mode = get_option('argon_comment_spam_detection_prompt_mode', 'standard');
+	$custom_prompt = get_option('argon_comment_spam_detection_prompt', '');
 	
 	if (empty($api_key)) {
 		return false;
 	}
 	
-	if (empty($prompt)) {
-		$prompt = '你是一个专业的内容审核助手。请分别判断以下评论的用户名和内容是否合规。
-
-不合规内容包括但不限于：广告推广、反动言论、错误政治观点、时政敏感内容、违法信息、色情暴力、恶意攻击等。
-不合规用户名包括但不限于：广告推广、色情暴力、政治敏感、恶意攻击、侮辱性词汇等。
-
-请仅返回 JSON 格式：
-{
-  "content_spam": true/false,
-  "content_reason": "内容判断理由(25字以内)",
-  "username_invalid": true/false,
-  "username_reason": "用户名判断理由(25字以内)"
-}
-
-如果内容正常，content_reason 填写 "正常"。如果用户名正常，username_reason 填写 "正常"。';
+	// 根据模式选择 Prompt
+	if ($prompt_mode === 'custom' && !empty($custom_prompt)) {
+		$prompt = $custom_prompt;
+	} else {
+		$prompt = argon_get_spam_detection_prompt($prompt_mode);
 	}
 	
-	// 构建评论内容
-	$comment_text = sprintf(
-		"用户名：%s\n邮箱：%s\n网站：%s\n评论内容：%s",
-		$comment->comment_author,
-		$comment->comment_author_email,
-		$comment->comment_author_url,
-		$comment->comment_content
-	);
+	// 构建评论上下文信息
+	$comment_text = argon_build_comment_context($comment);
 	
 	// 调用 AI API
 	$result = argon_call_ai_api_for_spam_detection($provider, $api_key, $model, $prompt, $comment_text);
@@ -7438,7 +7586,10 @@ function argon_detect_spam_comment($comment_id) {
 			'is_spam' => $result['content_spam'],
 			'reason' => isset($result['content_reason']) ? $result['content_reason'] : '未知',
 			'username_invalid' => isset($result['username_invalid']) ? $result['username_invalid'] : false,
-			'username_reason' => isset($result['username_reason']) ? $result['username_reason'] : '正常'
+			'username_reason' => isset($result['username_reason']) ? $result['username_reason'] : '正常',
+			'confidence' => isset($result['confidence']) ? floatval($result['confidence']) : 0.8,
+			'suggestion' => isset($result['suggestion']) ? $result['suggestion'] : 'auto',
+			'analysis' => isset($result['analysis']) ? $result['analysis'] : ''
 		];
 		
 		// 保存检测结果
