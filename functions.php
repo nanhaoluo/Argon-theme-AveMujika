@@ -2846,6 +2846,16 @@ function comment_mail_notify($comment){
 	if ($comment == null){
 		return;
 	}
+	
+	// 如果启用了 AI 垃圾评论检测，检查评论是否被标记为垃圾
+	if (get_option('argon_comment_spam_detection_enable', 'false') === 'true') {
+		$spam_detection_result = get_comment_meta($comment->comment_ID, '_argon_spam_detection_result', true);
+		if (!empty($spam_detection_result) && isset($spam_detection_result['is_spam']) && $spam_detection_result['is_spam']) {
+			// 评论被标记为垃圾，不发送邮件
+			return;
+		}
+	}
+	
 	$id = $comment -> comment_ID;
 	$commentPostID = $comment -> comment_post_ID;
 	$commentAuthor = $comment -> comment_author;
@@ -2946,7 +2956,14 @@ function post_comment_updatemetas($id){
 	}
 	//向父级评论发送邮件
 	if ($comment -> comment_approved == 1){
-		wp_schedule_single_event(time() + 1, 'argon_async_comment_mail_notify', array($comment->comment_ID));
+		// 如果启用了 AI 垃圾评论检测，延迟发送邮件，等待 AI 检测完成
+		if (get_option('argon_comment_spam_detection_enable', 'false') === 'true') {
+			// 延迟 5 秒发送，确保 AI 检测先完成
+			wp_schedule_single_event(time() + 5, 'argon_async_comment_mail_notify', array($comment->comment_ID));
+		} else {
+			// 未启用 AI 检测，正常发送
+			wp_schedule_single_event(time() + 1, 'argon_async_comment_mail_notify', array($comment->comment_ID));
+		}
 	}
 	//保存 QQ 号
 	if (get_option('argon_comment_enable_qq_avatar') == 'true'){
@@ -2968,6 +2985,19 @@ function argon_notify_admin_new_comment($comment_id) {
 		return;
 	}
 	
+	// 如果启用了 AI 垃圾评论检测，检查评论是否被标记为垃圾
+	if (get_option('argon_comment_spam_detection_enable', 'false') === 'true') {
+		$spam_detection_result = get_comment_meta($comment_id, '_argon_spam_detection_result', true);
+		if (!empty($spam_detection_result) && isset($spam_detection_result['is_spam']) && $spam_detection_result['is_spam']) {
+			// 评论被标记为垃圾，不发送邮件给管理员
+			// 但可以选择发送垃圾评论通知邮件
+			if (get_option('argon_comment_spam_detection_notify_admin', 'false') === 'true') {
+				argon_send_spam_notify_email($comment);
+			}
+			return;
+		}
+	}
+	
 	// 使用邮件模板系统发送通知
 	argon_send_comment_notify_email($comment);
 }
@@ -2977,8 +3007,14 @@ add_action('argon_async_admin_comment_notify', 'argon_notify_admin_new_comment')
  * 评论发布后异步通知站长
  */
 function argon_schedule_admin_comment_notify($comment_id, $comment_approved) {
-	// 延迟 1 秒发送，让评论元数据先保存
-	wp_schedule_single_event(time() + 1, 'argon_async_admin_comment_notify', [$comment_id]);
+	// 如果启用了 AI 垃圾评论检测，延迟发送邮件，等待 AI 检测完成
+	if (get_option('argon_comment_spam_detection_enable', 'false') === 'true') {
+		// 延迟 5 秒发送，确保 AI 检测先完成
+		wp_schedule_single_event(time() + 5, 'argon_async_admin_comment_notify', [$comment_id]);
+	} else {
+		// 未启用 AI 检测，正常发送
+		wp_schedule_single_event(time() + 1, 'argon_async_admin_comment_notify', [$comment_id]);
+	}
 }
 add_action('comment_post', 'argon_schedule_admin_comment_notify', 20, 2);
 
