@@ -171,7 +171,7 @@
 
 					mermaid.initialize({
 
-						startOnLoad: true,
+						startOnLoad: false,
 
 						theme: '<?php echo get_option('argon_mermaid_theme', 'default'); ?>',
 
@@ -197,11 +197,31 @@
 
 						mermaidDiv.className = 'mermaid';
 
-						mermaidDiv.textContent = element.textContent;
+						// 获取代码内容，保留换行符
+
+						let code = element.innerHTML;
+
+						// 解码 HTML 实体（如 &lt; &gt; &amp;）
+
+						let textarea = document.createElement('textarea');
+
+						textarea.innerHTML = code;
+
+						code = textarea.value;
+
+						// 去除首尾空白，但保留内部换行
+
+						code = code.trim();
+
+						mermaidDiv.textContent = code;
 
 						pre.parentNode.replaceChild(mermaidDiv, pre);
 
 					});
+
+					// 手动触发渲染
+
+					mermaid.run();
 
 				});
 
