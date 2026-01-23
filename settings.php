@@ -4037,7 +4037,7 @@ window.pjaxLoaded = function(){
 					<tr>
 						<th><label><?php _e('Prompt 模式', 'argon');?></label></th>
 						<td>
-							<select name="argon_comment_spam_detection_prompt_mode">
+							<select name="argon_comment_spam_detection_prompt_mode" id="argon-prompt-mode-select">
 								<?php $prompt_mode = get_option('argon_comment_spam_detection_prompt_mode', 'standard'); ?>
 								<option value="minimal" <?php if ($prompt_mode=='minimal'){echo 'selected';} ?>><?php _e('极简模式', 'argon');?></option>
 								<option value="standard" <?php if ($prompt_mode=='standard'){echo 'selected';} ?>><?php _e('标准模式（推荐）', 'argon');?></option>
@@ -4050,42 +4050,39 @@ window.pjaxLoaded = function(){
 								<strong><?php _e('增强模式', 'argon');?></strong>: <?php _e('多维度分析，更准确，包含综合分析（约 300-500 tokens）', 'argon');?><br/>
 								<strong><?php _e('自定义 Prompt', 'argon');?></strong>: <?php _e('使用下方自定义的 Prompt', 'argon');?>
 							</p>
-						</td>
-					</tr>
-
-					<tr>
-						<th><label><?php _e('自动处理阈值', 'argon');?></label></th>
-						<td>
-							<label style="display: block; margin-bottom: 8px;">
-								<?php _e('置信度阈值', 'argon');?>: 
-								<input type="number" name="argon_comment_spam_detection_confidence_threshold" min="0" max="100" step="5" value="<?php echo get_option('argon_comment_spam_detection_confidence_threshold', '85'); ?>" style="width: 80px;"/> %
-							</label>
-							<p class="description">
-								<?php _e('只有 AI 判断的置信度高于此阈值时，才会自动处理垃圾评论。', 'argon');?><br/>
-								<?php _e('建议值：小型博客 90%，中型博客 85%，大型博客 80%', 'argon');?><br/>
-								<?php _e('置信度低于阈值的评论会被标记为待审核，由管理员人工判断', 'argon');?>
-							</p>
-						</td>
-					</tr>
-
-					<tr>
-						<th><label><?php _e('检测提示词', 'argon');?></label></th>
-						<td>
-							<select id="argon-spam-prompt-template" style="margin-bottom: 10px;">
-								<option value=""><?php _e('选择预设模板...', 'argon');?></option>
-								<option value="default"><?php _e('默认模板（平衡）', 'argon');?></option>
-								<option value="strict"><?php _e('严格模式', 'argon');?></option>
-								<option value="loose"><?php _e('宽松模式', 'argon');?></option>
-								<option value="minimal"><?php _e('极简模式（省 token）', 'argon');?></option>
-							</select>
-							<textarea rows="6" cols="70" id="argon-spam-prompt-textarea" name="argon_comment_spam_detection_prompt"><?php echo get_option('argon_comment_spam_detection_prompt', '你是一个专业的内容审核助手。请判断以下评论是否为垃圾评论。垃圾评论包括但不限于：广告推广、反动言论、错误政治观点、时政敏感内容、违法信息、色情暴力、恶意攻击等。
+							
+							<div id="argon-custom-prompt-container" style="margin-top: 15px; <?php echo ($prompt_mode !== 'custom') ? 'display: none;' : ''; ?>">
+								<label style="display: block; margin-bottom: 8px; font-weight: 600;">
+									<?php _e('自定义检测提示词', 'argon');?>
+								</label>
+								<select id="argon-spam-prompt-template" style="margin-bottom: 10px; width: 100%; max-width: 400px;">
+									<option value=""><?php _e('选择预设模板...', 'argon');?></option>
+									<option value="default"><?php _e('默认模板（平衡）', 'argon');?></option>
+									<option value="strict"><?php _e('严格模式', 'argon');?></option>
+									<option value="loose"><?php _e('宽松模式', 'argon');?></option>
+									<option value="minimal"><?php _e('极简模式（省 token）', 'argon');?></option>
+								</select>
+								<textarea rows="6" cols="70" id="argon-spam-prompt-textarea" name="argon_comment_spam_detection_prompt" style="width: 100%; max-width: 800px;"><?php echo get_option('argon_comment_spam_detection_prompt', '你是一个专业的内容审核助手。请判断以下评论是否为垃圾评论。垃圾评论包括但不限于：广告推广、反动言论、错误政治观点、时政敏感内容、违法信息、色情暴力、恶意攻击等。
 
 请仅返回 JSON 格式：{"is_spam": true/false, "reason": "理由(25字以内)"}
 
 如果是正常评论，reason 填写 "正常"。如果是垃圾评论，简要说明原因。'); ?></textarea>
-							<p class="description"><?php _e('自定义 AI 识别垃圾评论时使用的提示词。建议保持简洁以降低 token 消耗。', 'argon');?></p>
+								<p class="description"><?php _e('自定义 AI 识别垃圾评论时使用的提示词。建议保持简洁以降低 token 消耗。', 'argon');?></p>
+							</div>
+							
 							<script>
 							jQuery(document).ready(function($) {
+								// Prompt 模式切换
+								$('#argon-prompt-mode-select').on('change', function() {
+									const mode = $(this).val();
+									if (mode === 'custom') {
+										$('#argon-custom-prompt-container').slideDown(200);
+									} else {
+										$('#argon-custom-prompt-container').slideUp(200);
+									}
+								});
+								
+								// 预设模板
 								const templates = {
 									'default': '你是一个专业的内容审核助手。请判断以下评论是否为垃圾评论。垃圾评论包括但不限于：广告推广、反动言论、错误政治观点、时政敏感内容、违法信息、色情暴力、恶意攻击等。\n\n请仅返回 JSON 格式：{"is_spam": true/false, "reason": "理由(25字以内)"}\n\n如果是正常评论，reason 填写 "正常"。如果是垃圾评论，简要说明原因。',
 									'strict': '你是严格的内容审核助手。判断评论是否为垃圾评论，包括：广告、推广、营销、反动、政治敏感、违法、色情、暴力、恶意攻击、无意义灌水、重复内容等。\n\n返回 JSON：{"is_spam": true/false, "reason": "理由(25字内)"}\n\n有任何可疑迹象都标记为垃圾。',
@@ -4101,6 +4098,21 @@ window.pjaxLoaded = function(){
 								});
 							});
 							</script>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('自动处理阈值', 'argon');?></label></th>
+						<td>
+							<label style="display: block; margin-bottom: 8px;">
+								<?php _e('置信度阈值', 'argon');?>: 
+								<input type="number" name="argon_comment_spam_detection_confidence_threshold" min="0" max="100" step="5" value="<?php echo get_option('argon_comment_spam_detection_confidence_threshold', '85'); ?>" style="width: 80px;"/> %
+							</label>
+							<p class="description">
+								<?php _e('只有 AI 判断的置信度高于此阈值时，才会自动处理垃圾评论。', 'argon');?><br/>
+								<?php _e('建议值：小型博客 90%，中型博客 85%，大型博客 80%', 'argon');?><br/>
+								<?php _e('置信度低于阈值的评论会被标记为待审核，由管理员人工判断', 'argon');?>
+							</p>
 						</td>
 					</tr>
 
