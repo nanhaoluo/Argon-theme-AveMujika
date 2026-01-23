@@ -331,17 +331,31 @@
 
 								// 在 Mermaid 语法关键位置添加换行
 
-								code = code
+								// 1. 在箭头前后添加换行
 
-									.replace(/-->/g, '\n    -->')
+								code = code.replace(/\s*(-->)\s*/g, '\n    $1 ');
 
-									.replace(/\|([^|]+)\|/g, '|$1|\n   ')
+								// 2. 在每个节点定义后添加换行（方括号、圆括号、花括号结束后）
 
-									.replace(/\{([^}]+)\}/g, '{\n        $1\n    }')
+								code = code.replace(/(\]|\)|\})\s*(?=[A-Z])/g, '$1\n');
 
-									.trim();
+								// 3. 在 style 语句前添加换行
 
-								console.log('After adding newlines, first 200 chars:', code.substring(0, 200));
+								code = code.replace(/\s*(style\s+)/g, '\n$1');
+
+								// 4. 清理多余的空格
+
+								code = code.replace(/\s+/g, ' ').trim();
+
+								// 5. 确保第一行后有换行
+
+								code = code.replace(/^(flowchart\s+\w+)\s+/, '$1\n    ');
+
+								
+
+								console.log('After adding newlines, first 300 chars:', code.substring(0, 300));
+
+								console.log('Newline count after fix:', (code.match(/\n/g) || []).length);
 
 							}
 
