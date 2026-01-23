@@ -8231,18 +8231,31 @@ function argon_spam_detection_scan() {
 		if (isset($item['is_spam']) && $item['is_spam']) {
 			$comment = get_comment($comment_id);
 			if ($comment) {
+				// 检查是否有用户名问题
+				$username_invalid = isset($item['username_invalid']) ? $item['username_invalid'] : false;
+				$reason = isset($item['reason']) ? $item['reason'] : __('未知原因', 'argon');
+				
+				// 如果有用户名问题，在理由中标注
+				if ($username_invalid) {
+					$reason = __('用户名审查：', 'argon') . $reason;
+				} else {
+					$reason = __('评论审查：', 'argon') . $reason;
+				}
+				
 				$spam_results[] = [
 					'comment_id' => $comment_id,
 					'author' => $comment->comment_author,
 					'content' => mb_substr(strip_tags($comment->comment_content), 0, 100),
-					'reason' => isset($item['reason']) ? $item['reason'] : __('未知原因', 'argon'),
-					'detection_code' => $detection_code
+					'reason' => $reason,
+					'detection_code' => $detection_code,
+					'username_invalid' => $username_invalid
 				];
 				
 				// 保存检测结果
 				update_comment_meta($comment_id, '_argon_spam_detection_result', [
 					'is_spam' => true,
-					'reason' => $item['reason']
+					'reason' => $item['reason'],
+					'username_invalid' => $username_invalid
 				]);
 			}
 		} else {
