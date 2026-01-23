@@ -778,12 +778,11 @@ if (current_user_can('manage_options')):
 	</div>
 	
 	<style>
-	.ai-records-table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid var(--color-border-on-foreground); border-radius: var(--card-radius); overflow: hidden; }
-	.ai-records-table th { background: linear-gradient(135deg, rgba(var(--themecolor-rgbstr), 0.08) 0%, rgba(var(--themecolor-rgbstr), 0.04) 100%); padding: 14px 16px; text-align: left; font-size: 13px; font-weight: 600; color: var(--color-text-deeper); border-bottom: 2px solid rgba(var(--themecolor-rgbstr), 0.15); }
-	.ai-records-table td { padding: 14px 16px; border-bottom: 1px solid var(--color-border-on-foreground); font-size: 14px; color: var(--color-text); vertical-align: middle; }
-	.ai-records-table tbody tr { cursor: pointer; transition: all var(--animation-fast) var(--ease-standard); }
+	.ai-records-table { width: 100%; border-collapse: separate; border-spacing: 0; overflow: hidden; }
+	.ai-records-table th { background: linear-gradient(135deg, rgba(var(--themecolor-rgbstr), 0.08) 0%, rgba(var(--themecolor-rgbstr), 0.04) 100%); padding: 14px 16px; text-align: left; font-size: 13px; font-weight: 600; color: var(--color-text-deeper); }
+	.ai-records-table td { padding: 14px 16px; font-size: 14px; color: var(--color-text); vertical-align: middle; }
+	.ai-records-table tbody tr { cursor: pointer; transition: all var(--animation-fast) var(--ease-standard); border-radius: var(--card-radius); }
 	.ai-records-table tbody tr:hover { background: rgba(var(--themecolor-rgbstr), 0.05); transform: translateX(2px); }
-	.ai-records-table tbody tr:last-child td { border-bottom: none; }
 	.ai-record-type-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 	.ai-record-type-summary { background: rgba(59, 130, 246, 0.12); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.25); }
 	.ai-record-type-spam { background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.25); }
