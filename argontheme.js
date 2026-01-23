@@ -2831,9 +2831,22 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 		$card.append("<div class='loading-css-animation'><div class='loading-dot loading-dot-1' ></div><div class='loading-dot loading-dot-2' ></div><div class='loading-dot loading-dot-3' ></div><div class='loading-dot loading-dot-4' ></div><div class='loading-dot loading-dot-5' ></div><div class='loading-dot loading-dot-6' ></div><div class='loading-dot loading-dot-7' ></div><div class='loading-dot loading-dot-8' ></div></div></div>");
 		$card.addClass("post-pjax-loading");
 		$("#main").addClass("post-list-pjax-loading");
-		console.log("Added post-list-pjax-loading class to #main");
-		console.log("Total .post-preview elements:", $(".post-preview").length);
-		console.log("Hidden .post-preview elements:", $("#main.post-list-pjax-loading .post-preview").length);
+		
+		// 调试信息
+		console.log("=== 文章加载动画调试 ===");
+		console.log("点击的卡片:", $card[0]);
+		console.log("#main 是否有 post-list-pjax-loading 类:", $("#main").hasClass("post-list-pjax-loading"));
+		console.log("页面中 .post-preview 总数:", $(".post-preview").length);
+		console.log("应该隐藏的 .post-preview 数量:", $("#main.post-list-pjax-loading .post-preview").length);
+		console.log("被点击的卡片是否有 post-pjax-loading 类:", $card.hasClass("post-pjax-loading"));
+		
+		// 检查CSS是否生效
+		$(".post-preview").each(function(index) {
+			let opacity = $(this).css("opacity");
+			let hasLoadingClass = $(this).hasClass("post-pjax-loading");
+			console.log(`卡片 ${index}: opacity=${opacity}, hasLoadingClass=${hasLoadingClass}`);
+		});
+		
 		let offsetTop = $($card).offset().top - $("#main").offset().top;
 		if ($("html").hasClass("is-home") && $("html").hasClass("banner-as-cover")){
 			offsetTop = $($card).offset().top - window.outerHeight * 0.418;

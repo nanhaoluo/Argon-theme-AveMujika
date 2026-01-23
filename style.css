@@ -3873,20 +3873,20 @@ html.filter-grayscale {
 }
 
 .post-preview.post-pjax-loading {
-	opacity: 1 !important;
+	opacity: 1;
 	z-index: 10;
 	position: relative;
 }
 
 #main.post-list-pjax-loading .post-preview {
-	opacity: 0 !important;
-	pointer-events: none !important;
-	transition: opacity 0.3s ease !important;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.3s ease;
 }
 
 #main.post-list-pjax-loading .post-preview.post-pjax-loading {
-	opacity: 1 !important;
-	pointer-events: auto !important;
+	opacity: 1;
+	pointer-events: auto;
 }
 
 .post-title {
