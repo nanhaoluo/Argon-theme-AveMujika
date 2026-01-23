@@ -1635,54 +1635,14 @@ if (argonConfig.waterflow_columns != "1") {
 				}
 
 				//发送成功
-				// 使用 setTimeout 确保 iziToast 操作在下一个事件循环中执行
-				setTimeout(function() {
-					try {
-						iziToast.destroy();
-						iziToast.show({
-							title: __("发送成功"),
-							message: __("您的评论已发送"),
-							class: 'shadow-sm',
-							position: 'topRight',
-							backgroundColor: '#2dce89',
-							titleColor: '#ffffff',
-							messageColor: '#ffffff',
-							iconColor: '#ffffff',
-					progressBarColor: '#ffffff',
-					icon: 'fa fa-check',
-					timeout: 5000
-				});
-				//插入新评论
-				result.html = result.html.replace(/<(\/).noscript>/g, "");
-				let parentID = result.parentID;
-				if (parentID == "" || parentID == null){
-					parentID = 0;
-				}
-				parentID = parseInt(parentID);
-				if (parentID == 0){
-					if ($("#comments > .card-body > ol.comment-list").length == 0){
-						$("#comments > .card-body").html("<h2 class='comments-title'><i class='fa fa-comments'></i> " + __("评论") + "</h2><ol class='comment-list'></ol>");
-					}
-					if (result.commentOrder == "asc"){
-						$("#comments > .card-body > ol.comment-list").append(result.html);
-					}else{
-						$("#comments > .card-body > ol.comment-list").prepend(result.html);
-					}
-				}else{
-					if ($("#comment-" + parentID + " + .comment-divider + li > ul.children").length > 0){
-						$("#comment-" + parentID + " + .comment-divider + li > ul.children").append(result.html);
-					}else{
-						$("#comment-" + parentID + " + .comment-divider").after("<li><ul class='children'>" + result.html + "</ul></li>");
-					}
-				}
-				calcHumanTimesOnPage();
-				//复位评论表单
+				// 先复位评论表单（确保无论后续操作是否成功都能重置表单）
 				cancelReply();
 				$("#post_comment_content").val("");
+				
 				// 重置数学验证码
 				$("#post_comment_captcha_seed").val(result.newCaptchaSeed);
 				$("#post_comment_captcha + style").html(".post-comment-captcha-container:before{content: '" + result.newCaptcha + "';}");
-				$("#post_comment_captcha").val(""); // 清空验证码输入框
+				$("#post_comment_captcha").val("");
 				
 				// 清空Geetest验证码隐藏字段并重置验证码实例
 				if ($("#geetest-captcha").length > 0) {
@@ -1703,13 +1663,62 @@ if (argonConfig.waterflow_columns != "1") {
 						}
 					}
 				}
-				$("body,html").animate({
-					scrollTop: $("#comment-" + result.id).offset().top - 100
-				}, 500, 'easeOutExpo');
+				
+				// 显示成功提示
+				setTimeout(function() {
+					try {
+						iziToast.destroy();
+						iziToast.show({
+							title: __("发送成功"),
+							message: __("您的评论已发送"),
+							class: 'shadow-sm',
+							position: 'topRight',
+							backgroundColor: '#2dce89',
+							titleColor: '#ffffff',
+							messageColor: '#ffffff',
+							iconColor: '#ffffff',
+							progressBarColor: '#ffffff',
+							icon: 'fa fa-check',
+							timeout: 5000
+						});
 					} catch (e) {
-						ArgonDebug.warn('Comment insertion error:', e);
+						ArgonDebug.warn('iziToast error:', e);
 					}
-					}, 0);
+				}, 0);
+				
+				// 插入新评论
+				try {
+					result.html = result.html.replace(/<(\/).noscript>/g, "");
+					let parentID = result.parentID;
+					if (parentID == "" || parentID == null){
+						parentID = 0;
+					}
+					parentID = parseInt(parentID);
+					if (parentID == 0){
+						if ($("#comments > .card-body > ol.comment-list").length == 0){
+							$("#comments > .card-body").html("<h2 class='comments-title'><i class='fa fa-comments'></i> " + __("评论") + "</h2><ol class='comment-list'></ol>");
+						}
+						if (result.commentOrder == "asc"){
+							$("#comments > .card-body > ol.comment-list").append(result.html);
+						}else{
+							$("#comments > .card-body > ol.comment-list").prepend(result.html);
+						}
+					}else{
+						if ($("#comment-" + parentID + " + .comment-divider + li > ul.children").length > 0){
+							$("#comment-" + parentID + " + .comment-divider + li > ul.children").append(result.html);
+						}else{
+							$("#comment-" + parentID + " + .comment-divider").after("<li><ul class='children'>" + result.html + "</ul></li>");
+						}
+					}
+					calcHumanTimesOnPage();
+					
+					// 滚动到新评论
+					$("body,html").animate({
+						scrollTop: $("#comment-" + result.id).offset().top - 100
+					}, 500, 'easeOutExpo');
+				} catch (e) {
+					ArgonDebug.warn('Comment insertion error:', e);
+				}
 				},
 				error: function(result){
 				$("#post_comment").removeClass("sending");
