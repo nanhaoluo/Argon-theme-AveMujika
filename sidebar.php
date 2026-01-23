@@ -212,7 +212,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 								
 								<?php if (!empty($mobile_completed_todos)) : ?>
 								<!-- 已完成任务分隔栏 -->
-								<li class="mobile-todo-completed-divider" id="mobile-todo-collapse-btn">
+								<li class="mobile-todo-completed-divider collapsed" id="mobile-todo-collapse-btn">
 									<span class="divider-text">
 										<i class="fa fa-check-circle"></i>
 										<?php _e('已完成', 'argon'); ?>
@@ -223,7 +223,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 								
 								<!-- 显示已完成的任务 -->
 								<?php foreach ($mobile_completed_todos as $todo) : ?>
-								<li class="mobile-todo-item todo-completed" data-id="<?php echo esc_attr($todo['id']); ?>">
+								<li class="mobile-todo-item todo-completed collapsed" data-id="<?php echo esc_attr($todo['id']); ?>">
 									<span class="mobile-todo-content"><?php echo esc_html($todo['content']); ?></span>
 									<?php if ($mobile_is_author) : ?>
 										<button class="mobile-todo-delete-btn" title="<?php _e('删除', 'argon'); ?>">
@@ -924,7 +924,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 						
 						<?php if (!empty($completed_todos)) : ?>
 						<!-- 已完成任务分隔栏 -->
-						<li class="todo-completed-divider" id="todo-collapse-btn">
+						<li class="todo-completed-divider collapsed" id="todo-collapse-btn">
 							<span class="divider-text">
 								<i class="fa fa-check-circle"></i>
 								<?php _e('已完成', 'argon'); ?>
@@ -935,7 +935,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 						
 						<!-- 显示已完成的任务 -->
 						<?php foreach ($completed_todos as $todo) : ?>
-						<li class="todo-item todo-completed" data-id="<?php echo esc_attr($todo['id']); ?>">
+						<li class="todo-item todo-completed collapsed" data-id="<?php echo esc_attr($todo['id']); ?>">
 							<span class="todo-content"><?php echo esc_html($todo['content']); ?></span>
 							<?php if ($is_author) : ?>
 								<button class="todo-delete-btn" title="<?php _e('删除', 'argon'); ?>">
