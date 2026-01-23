@@ -4350,10 +4350,16 @@ void 0;
 					enabled: true,
 					theme: 'auto',
 					debugMode: false,
-					fallbackUrls: []
+					fallbackUrls: [],
+					libraryLoadedByPlugin: false
 				};
 			} else {
 				this.config = window.argonMermaidConfig;
+			}
+
+			// 如果库由插件加载，记录日志
+			if (this.config.libraryLoadedByPlugin) {
+				this.logDebug('Mermaid 库由插件加载，主题只提供样式增强');
 			}
 
 			// 获取当前主题

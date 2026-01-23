@@ -3164,6 +3164,59 @@ function themeoptions_page(){
 						</td>
 					</tr>
 
+					<tr>
+						<th><label><?php _e('插件兼容性', 'argon');?></label></th>
+						<td>
+							<?php
+							// 获取插件兼容性状态
+							$compat_status = argon_get_mermaid_compatibility_status();
+							$plugins = $compat_status['plugins'];
+							$plugin_count = $compat_status['plugin_count'];
+							$has_conflict = $compat_status['has_conflict'];
+							?>
+							
+							<div style="padding: 10px; background: <?php echo $has_conflict ? '#fff3cd' : '#d1ecf1'; ?>; border: 1px solid <?php echo $has_conflict ? '#ffc107' : '#bee5eb'; ?>; border-radius: 4px; margin-bottom: 10px;">
+								<p style="margin: 0 0 10px 0; font-weight: bold;">
+									<?php echo esc_html($compat_status['message']); ?>
+								</p>
+								
+								<div style="margin-bottom: 10px;">
+									<strong><?php _e('检测到的插件：', 'argon'); ?></strong>
+									<ul style="margin: 5px 0; padding-left: 20px;">
+										<?php if ($plugins['wp-githuber-md']): ?>
+											<li>✓ WP Githuber MD</li>
+										<?php endif; ?>
+										<?php if ($plugins['markdown-block']): ?>
+											<li>✓ Markdown Block</li>
+										<?php endif; ?>
+										<?php if ($plugins['code-syntax-block']): ?>
+											<li>✓ Code Syntax Block</li>
+										<?php endif; ?>
+										<?php if ($plugin_count === 0): ?>
+											<li><?php _e('未检测到 Mermaid 插件', 'argon'); ?></li>
+										<?php endif; ?>
+									</ul>
+								</div>
+								
+								<?php if ($compat_status['library_enqueued']): ?>
+									<p style="margin: 5px 0; color: #0c5460;">
+										<strong><?php _e('状态：', 'argon'); ?></strong>
+										<?php _e('检测到 Mermaid 库已由其他来源加载', 'argon'); ?>
+									</p>
+								<?php endif; ?>
+								
+								<p style="margin: 5px 0 0 0; color: #004085;">
+									<strong><?php _e('建议：', 'argon'); ?></strong>
+									<?php echo esc_html($compat_status['recommendation']); ?>
+								</p>
+							</div>
+							
+							<p class="description">
+								<?php _e('主题会自动检测已安装的 Mermaid 插件，避免重复加载库文件。如果检测到插件，主题将只提供样式增强功能。', 'argon'); ?>
+							</p>
+						</td>
+					</tr>
+
 					<!-- ========== 16. 高级设置 ========== -->
 				<tr><th class="subtitle"><h2 id="section-advanced"><?php _e('高级设置', 'argon');?></h2></th></tr>
 

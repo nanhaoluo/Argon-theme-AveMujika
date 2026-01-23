@@ -9301,30 +9301,45 @@ function argon_enqueue_mermaid_scripts() {
 		return;
 	}
 	
-	// 获取 Mermaid 库 URL
-	$mermaid_url = argon_get_mermaid_library_url();
-	
-	// 注册并加载 Mermaid 库
-	wp_enqueue_script(
-		'mermaid',
-		$mermaid_url,
-		[], // 不依赖其他脚本
-		'10.0.0', // Mermaid 版本
-		true // 在页脚加载
-	);
-	
-	// 添加 async 属性实现异步加载
-	add_filter('script_loader_tag', 'argon_add_mermaid_async_attribute', 10, 2);
+	// 检查是否应该加载 Mermaid 库（避免与插件冲突）
+	$should_load_library = argon_should_load_mermaid_library();
 	
 	// 传递配置到前端
 	$mermaid_config = [
 		'enabled' => true,
 		'theme' => argon_get_mermaid_option('theme', 'auto'),
 		'debugMode' => argon_get_mermaid_option('debug_mode', false),
-		'fallbackUrls' => argon_get_mermaid_fallback_urls()
+		'fallbackUrls' => argon_get_mermaid_fallback_urls(),
+		'libraryLoadedByPlugin' => !$should_load_library // 标记库是否由插件加载
 	];
 	
-	wp_localize_script('mermaid', 'argonMermaidConfig', $mermaid_config);
+	// 只有在没有插件加载 Mermaid 库时才加载
+	if ($should_load_library) {
+		// 获取 Mermaid 库 URL
+		$mermaid_url = argon_get_mermaid_library_url();
+		
+		// 注册并加载 Mermaid 库
+		wp_enqueue_script(
+			'mermaid',
+			$mermaid_url,
+			[], // 不依赖其他脚本
+			'10.0.0', // Mermaid 版本
+			true // 在页脚加载
+		);
+		
+		// 添加 async 属性实现异步加载
+		add_filter('script_loader_tag', 'argon_add_mermaid_async_attribute', 10, 2);
+		
+		wp_localize_script('mermaid', 'argonMermaidConfig', $mermaid_config);
+	} else {
+		// 即使不加载库，也要传递配置（用于样式增强）
+		// 创建一个内联脚本来传递配置
+		wp_add_inline_script(
+			'jquery', // 依赖 jQuery（WordPress 默认加载）
+			'window.argonMermaidConfig = ' . json_encode($mermaid_config) . ';',
+			'after'
+		);
+	}
 }
 add_action('wp_enqueue_scripts', 'argon_enqueue_mermaid_scripts');
 
@@ -9505,3 +9520,152 @@ function argon_add_mermaid_fallback_script() {
 	<?php
 }
 add_action('wp_head', 'argon_add_mermaid_fallback_script');
+
+// ==========================================================================
+// Mermaid 插件兼容层
+// ==========================================================================
+
+/**
+ * 检测已安装的 Mermaid 相关插件
+ * 
+ * @return array 插件检测结果数组
+ */
+function argon_detect_mermaid_plugins() {
+	$result = [
+		'wp-githuber-md' => false,
+		'markdown-block' => false,
+		'code-syntax-block' => false,
+		'mermaid-loaded' => false
+	];
+	
+	// 检测 WP Githuber MD 插件
+	if (is_plugin_active('wp-githuber-md/githuber-md.php') || 
+		class_exists('Githuber_Module_Mermaid')) {
+		$result['wp-githuber-md'] = true;
+	}
+	
+	// 检测 Markdown Block 插件（Gutenberg）
+	if (is_plugin_active('markdown-block/markdown-block.php') || 
+		function_exists('markdown_block_register')) {
+		$result['markdown-block'] = true;
+	}
+	
+	// 检测 Code Syntax Block 插件
+	if (is_plugin_active('code-syntax-block/code-syntax-block.php') || 
+		function_exists('code_syntax_block_register')) {
+		$result['code-syntax-block'] = true;
+	}
+	
+	return $result;
+}
+
+/**
+ * 检查是否有插件已经加载了 Mermaid 库
+ * 
+ * 通过检测已注册的脚本来判断
+ * 
+ * @return bool 是否已加载
+ */
+function argon_is_mermaid_library_enqueued() {
+	// 检查常见的 Mermaid 脚本句柄
+	$common_handles = [
+		'mermaid',
+		'mermaid-js',
+		'githuber-mermaid',
+		'wp-mermaid',
+		'markdown-mermaid'
+	];
+	
+	foreach ($common_handles as $handle) {
+		if (wp_script_is($handle, 'enqueued') || wp_script_is($handle, 'registered')) {
+			return true;
+		}
+	}
+	
+	return false;
+}
+
+/**
+ * 获取插件兼容性状态信息
+ * 
+ * @return array 包含插件检测结果和建议的数组
+ */
+function argon_get_mermaid_compatibility_status() {
+	$plugins = argon_detect_mermaid_plugins();
+	$library_enqueued = argon_is_mermaid_library_enqueued();
+	
+	// 统计检测到的插件数量
+	$active_plugins = array_filter($plugins, function($value, $key) {
+		return $value === true && $key !== 'mermaid-loaded';
+	}, ARRAY_FILTER_USE_BOTH);
+	
+	$plugin_count = count($active_plugins);
+	
+	// 生成状态信息
+	$status = [
+		'plugins' => $plugins,
+		'library_enqueued' => $library_enqueued,
+		'plugin_count' => $plugin_count,
+		'has_conflict' => false,
+		'message' => '',
+		'recommendation' => ''
+	];
+	
+	// 判断是否有冲突
+	if ($plugin_count > 1) {
+		$status['has_conflict'] = true;
+		$status['message'] = '检测到多个 Mermaid 插件，可能导致重复加载';
+		$status['recommendation'] = '建议只保留一个 Mermaid 插件，或禁用主题的 Mermaid 支持';
+	} elseif ($plugin_count === 1) {
+		$status['message'] = '检测到 Mermaid 插件，主题将自动避免重复加载';
+		$status['recommendation'] = '主题将只提供样式增强，不会重复加载 Mermaid 库';
+	} elseif ($library_enqueued) {
+		$status['message'] = '检测到其他来源已加载 Mermaid 库';
+		$status['recommendation'] = '主题将自动避免重复加载';
+	} else {
+		$status['message'] = '未检测到 Mermaid 插件';
+		$status['recommendation'] = '主题将负责加载 Mermaid 库';
+	}
+	
+	return $status;
+}
+
+/**
+ * 修改 Mermaid 脚本加载逻辑，避免重复加载
+ * 
+ * 在原有的 argon_enqueue_mermaid_scripts 函数中调用此函数
+ * 
+ * @return bool 是否应该加载 Mermaid 库
+ */
+function argon_should_load_mermaid_library() {
+	// 检查是否有插件已经加载了 Mermaid
+	if (argon_is_mermaid_library_enqueued()) {
+		// 在调试模式下输出日志
+		if (argon_get_mermaid_option('debug_mode', false)) {
+			error_log('[Argon Mermaid] 检测到 Mermaid 库已由其他插件加载，跳过加载');
+		}
+		return false;
+	}
+	
+	// 检查是否有已知的 Mermaid 插件
+	$plugins = argon_detect_mermaid_plugins();
+	$has_plugin = false;
+	
+	foreach ($plugins as $key => $value) {
+		if ($key !== 'mermaid-loaded' && $value === true) {
+			$has_plugin = true;
+			break;
+		}
+	}
+	
+	if ($has_plugin) {
+		// 在调试模式下输出日志
+		if (argon_get_mermaid_option('debug_mode', false)) {
+			error_log('[Argon Mermaid] 检测到 Mermaid 插件，跳过加载库');
+		}
+		return false;
+	}
+	
+	// 没有检测到插件或已加载的库，主题应该加载
+	return true;
+}
