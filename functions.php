@@ -9340,6 +9340,168 @@ function argon_add_mermaid_async_attribute($tag, $handle) {
 		return $tag;
 	}
 	
-	// 添加 async 属性
-	return str_replace(' src', ' async src', $tag);
+	// 添加 async 属性和 onerror 事件处理
+	$tag = str_replace(' src', ' async onerror="argonMermaidLoadFallback()" src', $tag);
+	
+	return $tag;
 }
+
+/**
+ * 添加 Mermaid 库加载失败的降级处理脚本
+ */
+function argon_add_mermaid_fallback_script() {
+	// 只在启用 Mermaid 且页面包含 Mermaid 代码块时添加
+	if (!argon_get_mermaid_option('enabled', false)) {
+		return;
+	}
+	
+	global $post;
+	$has_mermaid = false;
+	
+	if (is_singular() && isset($post->post_content)) {
+		$has_mermaid = argon_has_mermaid_content($post->post_content);
+	}
+	
+	if (!$has_mermaid) {
+		return;
+	}
+	
+	// 获取备用 CDN URL 列表
+	$fallback_urls = argon_get_mermaid_fallback_urls();
+	$fallback_urls_json = json_encode($fallback_urls);
+	
+	// 输出降级处理脚本
+	?>
+	<script>
+	// Mermaid 库加载失败的降级处理
+	(function() {
+		'use strict';
+		
+		// 备用 CDN URL 列表
+		const fallbackUrls = <?php echo $fallback_urls_json; ?>;
+		let loadAttempted = false;
+		
+		/**
+		 * 尝试从备用 CDN 加载 Mermaid 库
+		 */
+		window.argonMermaidLoadFallback = function() {
+			// 避免重复调用
+			if (loadAttempted) {
+				return;
+			}
+			loadAttempted = true;
+			
+			console.warn('[Argon Mermaid] 主 CDN 加载失败，尝试备用 CDN');
+			
+			// 尝试加载备用 CDN
+			loadMermaidWithFallback(fallbackUrls, 0);
+		};
+		
+		/**
+		 * 递归加载备用 CDN
+		 * @param {Array} urls - CDN URL 列表
+		 * @param {number} index - 当前尝试的索引
+		 */
+		function loadMermaidWithFallback(urls, index) {
+			// 如果所有 CDN 都失败了
+			if (index >= urls.length) {
+				console.error('[Argon Mermaid] 所有 CDN 加载失败');
+				showGlobalError();
+				return;
+			}
+			
+			const url = urls[index];
+			console.log(`[Argon Mermaid] 尝试从备用 CDN 加载: ${url}`);
+			
+			// 创建 script 标签
+			const script = document.createElement('script');
+			script.src = url;
+			script.async = true;
+			
+			// 加载失败，尝试下一个 CDN
+			script.onerror = function() {
+				console.warn(`[Argon Mermaid] CDN ${url} 加载失败`);
+				loadMermaidWithFallback(urls, index + 1);
+			};
+			
+			// 加载成功，初始化 Mermaid
+			script.onload = function() {
+				console.log(`[Argon Mermaid] 成功从备用 CDN 加载: ${url}`);
+				
+				// 等待 MermaidRenderer 可用
+				if (typeof window.MermaidRenderer !== 'undefined') {
+					window.MermaidRenderer.init();
+				} else {
+					// 如果 MermaidRenderer 还未定义，等待一下
+					setTimeout(function() {
+						if (typeof window.MermaidRenderer !== 'undefined') {
+							window.MermaidRenderer.init();
+						}
+					}, 100);
+				}
+			};
+			
+			// 添加到页面
+			document.head.appendChild(script);
+		}
+		
+		/**
+		 * 显示全局错误提示
+		 */
+		function showGlobalError() {
+			// 查找所有 Mermaid 代码块
+			const selectors = [
+				'div.mermaid',
+				'pre code.language-mermaid',
+				'pre[data-lang="mermaid"]',
+				'code.mermaid'
+			];
+			
+			let blocks = [];
+			selectors.forEach(function(selector) {
+				const elements = document.querySelectorAll(selector);
+				elements.forEach(function(element) {
+					if (!blocks.includes(element)) {
+						blocks.push(element);
+					}
+				});
+			});
+			
+			// 在每个代码块位置显示错误提示
+			blocks.forEach(function(block) {
+				const errorContainer = document.createElement('div');
+				errorContainer.className = 'mermaid-error-container';
+				errorContainer.innerHTML = `
+					<div class="mermaid-error-header">
+						<span class="mermaid-error-icon">⚠️</span>
+						<span class="mermaid-error-title">Mermaid 库加载失败</span>
+					</div>
+					<div class="mermaid-error-body">
+						<p class="mermaid-error-type">错误类型: 网络错误</p>
+						<p class="mermaid-error-message">无法从任何 CDN 加载 Mermaid 库，请检查网络连接或联系管理员。</p>
+					</div>
+					<details class="mermaid-error-code">
+						<summary>查看原始代码</summary>
+						<pre><code class="language-mermaid">${escapeHtml(block.textContent)}</code></pre>
+					</details>
+				`;
+				
+				block.parentNode.replaceChild(errorContainer, block);
+			});
+		}
+		
+		/**
+		 * HTML 转义
+		 * @param {string} text - 要转义的文本
+		 * @returns {string} 转义后的文本
+		 */
+		function escapeHtml(text) {
+			const div = document.createElement('div');
+			div.textContent = text;
+			return div.innerHTML;
+		}
+	})();
+	</script>
+	<?php
+}
+add_action('wp_head', 'argon_add_mermaid_fallback_script');

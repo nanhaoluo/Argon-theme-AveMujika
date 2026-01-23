@@ -4840,6 +4840,9 @@ void 0;
 
 	// ---------- 启动渲染引擎 ----------
 
+	// 暴露到全局作用域（用于库加载失败时的降级处理）
+	window.MermaidRenderer = MermaidRenderer;
+
 	// 在 DOM 加载完成后初始化
 	if (document.readyState === 'loading') {
 		document.addEventListener('DOMContentLoaded', () => {
