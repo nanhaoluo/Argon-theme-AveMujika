@@ -437,7 +437,7 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 	<?php elseif ($result && $query_type === 'summary'): ?>
 		<div class="ai-code-display"><?php echo esc_html($result['code']); ?></div>
 		
-		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);">📄 <?php _e('关联文章', 'argon'); ?></h4>
+		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('关联文章', 'argon'); ?></h4>
 		<div class="ai-info-grid" style="margin-bottom: 24px;">
 			<div class="ai-info-item">
 				<span class="ai-info-label"><?php _e('标题', 'argon'); ?></span>
@@ -463,12 +463,12 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 			</div>
 		</div>
 		
-		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);">✨ <?php _e('AI 生成摘要', 'argon'); ?></h4>
+		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('AI 生成摘要', 'argon'); ?></h4>
 		<div class="ai-content-box">
 			<?php echo nl2br(esc_html($result['summary'])); ?>
 		</div>
 		
-		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);">🤖 <?php _e('生成信息', 'argon'); ?></h4>
+		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('生成信息', 'argon'); ?></h4>
 		<div class="ai-info-grid">
 			<div class="ai-info-item">
 				<span class="ai-info-label"><?php _e('AI 提供商', 'argon'); ?></span>
@@ -503,7 +503,7 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 			</span>
 		</div>
 		
-		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);">💬 <?php _e('评论信息', 'argon'); ?></h4>
+		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('评论信息', 'argon'); ?></h4>
 		<div class="ai-info-grid" style="margin-bottom: 24px;">
 			<div class="ai-info-item">
 				<span class="ai-info-label"><?php _e('评论 ID', 'argon'); ?></span>
@@ -522,10 +522,10 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 				<span class="ai-info-value">
 					<?php 
 					$status_labels = [
-						'approved' => __('✓ 已通过', 'argon'),
-						'hold' => __('⏳ 待审核', 'argon'),
-						'trash' => __('🗑️ 回收站', 'argon'),
-						'spam' => __('⚠️ 垃圾评论', 'argon')
+						'approved' => __('已通过', 'argon'),
+						'hold' => __('待审核', 'argon'),
+						'trash' => __('回收站', 'argon'),
+						'spam' => __('垃圾评论', 'argon')
 					];
 					echo isset($status_labels[$result['comment_status']]) ? esc_html($status_labels[$result['comment_status']]) : esc_html($result['comment_status']);
 					?>
@@ -539,18 +539,18 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 			</div>
 		</div>
 		
-		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);">📝 <?php _e('评论内容', 'argon'); ?></h4>
+		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('评论内容', 'argon'); ?></h4>
 		<div class="ai-content-box">
 			<?php echo nl2br(esc_html($result['comment_content'])); ?>
 		</div>
 		
-		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);">🔍 <?php _e('AI 检测结果', 'argon'); ?></h4>
+		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('AI 检测结果', 'argon'); ?></h4>
 		<div class="ai-info-grid" style="margin-bottom: 24px;">
 			<div class="ai-info-item">
 				<span class="ai-info-label"><?php _e('检测结果', 'argon'); ?></span>
 				<span class="ai-info-value">
 					<span class="ai-status-badge <?php echo $result['is_spam'] ? 'ai-status-modified' : 'ai-status-valid'; ?>">
-						<?php echo $result['is_spam'] ? __('⚠️ 疑似垃圾评论', 'argon') : __('✓ 正常评论', 'argon'); ?>
+						<?php echo $result['is_spam'] ? __('疑似垃圾评论', 'argon') : __('正常评论', 'argon'); ?>
 					</span>
 				</span>
 			</div>
@@ -564,9 +564,9 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 				<span class="ai-info-value">
 					<?php 
 					$action_labels = [
-						'trash' => __('🗑️ 已移入回收站', 'argon'),
-						'hold' => __('⏳ 已标记为待审核', 'argon'),
-						'mark' => __('🏷️ 仅标记不处理', 'argon')
+						'trash' => __('已移入回收站', 'argon'),
+						'hold' => __('已标记为待审核', 'argon'),
+						'mark' => __('仅标记不处理', 'argon')
 					];
 					echo isset($action_labels[$result['action']]) ? esc_html($action_labels[$result['action']]) : esc_html($result['action']);
 					?>
@@ -600,7 +600,7 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 		</div>
 	<?php elseif (empty($query_code)): ?>
 		<div class="ai-alert ai-alert-info" style="margin-bottom: 20px;">
-			<span class="ai-alert-icon">💡</span>
+			<span class="ai-alert-icon">ℹ</span>
 			<div>
 				<strong><?php _e('如何使用', 'argon'); ?></strong><br>
 				<?php _e('在文章摘要或评论区找到 8 位识别码，输入后即可查询 AI 生成内容的详细信息', 'argon'); ?>
