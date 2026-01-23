@@ -2824,80 +2824,6 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-mermaid"><?php _e('Mermaid 图表', 'argon');?></h3></th></tr>
-
-					<tr>
-
-						<th><label><?php _e('启用 Mermaid 图表渲染', 'argon');?></label></th>
-
-						<td>
-
-							<select name="argon_enable_mermaid">
-
-								<?php $argon_enable_mermaid = get_option('argon_enable_mermaid', 'false'); ?>
-
-								<option value="false" <?php if ($argon_enable_mermaid=='false'){echo 'selected';} ?>><?php _e('不启用', 'argon');?></option>
-
-								<option value="true" <?php if ($argon_enable_mermaid=='true'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
-
-							</select>
-
-							<p class="description"><?php _e('启用后，文章中的 Mermaid 代码块会被自动渲染为图表。使用方式：在代码块中指定语言为 mermaid', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
-					<tr>
-
-						<th><label><?php _e('Mermaid 配置', 'argon');?></label></th>
-
-						<td>
-
-							<label style="display: block; margin-bottom: 10px;">
-
-								<input type="checkbox" name="argon_mermaid_use_local" value="true" <?php if (get_option('argon_mermaid_use_local')=='true'){echo 'checked';}?>/> 
-
-								<?php _e('使用本地镜像', 'argon');?>
-
-							</label>
-
-							Mermaid CDN <?php _e('地址', 'argon');?>:
-
-							<input type="text" class="regular-text" name="argon_mermaid_cdn_url" value="<?php echo get_option('argon_mermaid_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js' : get_option('argon_mermaid_cdn_url'); ?>"/>
-
-							<p class="description"><?php _e('默认为', 'argon');?> <code>//cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js</code><br/><?php _e('勾选"使用本地镜像"后将优先使用主题内置的完整版本', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
-					<tr>
-
-						<th><label><?php _e('Mermaid 主题', 'argon');?></label></th>
-
-						<td>
-
-							<select name="argon_mermaid_theme">
-
-								<?php $argon_mermaid_theme = get_option('argon_mermaid_theme', 'default'); ?>
-
-								<option value="default" <?php if ($argon_mermaid_theme=='default'){echo 'selected';} ?>><?php _e('默认', 'argon');?></option>
-
-								<option value="forest" <?php if ($argon_mermaid_theme=='forest'){echo 'selected';} ?>><?php _e('森林', 'argon');?></option>
-
-								<option value="dark" <?php if ($argon_mermaid_theme=='dark'){echo 'selected';} ?>><?php _e('暗色', 'argon');?></option>
-
-								<option value="neutral" <?php if ($argon_mermaid_theme=='neutral'){echo 'selected';} ?>><?php _e('中性', 'argon');?></option>
-
-							</select>
-
-							<p class="description"><?php _e('选择 Mermaid 图表的配色主题', 'argon');?></p>
-
-						</td>
-
-					</tr>
-
 					<tr><th class="subtitle"><h3 id="subsection-lazyload">Lazyload</h3></th></tr>
 
 					<tr>
@@ -6806,20 +6732,6 @@ function argon_update_themeoptions(){
 		argon_update_option('argon_lazyload_threshold');
 
 		argon_update_option('argon_lazyload_loading_style');
-
-		//Mermaid 相关
-
-		argon_update_option('argon_enable_mermaid');
-
-		argon_update_option('argon_mermaid_cdn_url');
-
-		argon_update_option('argon_mermaid_theme');
-
-		argon_update_option_checkbox('argon_mermaid_use_local');
-
-		argon_update_option_checkbox('argon_mermaid_use_local');
-
-
 
 		//图片缩放预览相关
 

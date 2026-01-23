@@ -3566,31 +3566,6 @@ function argon_fancybox($content){
 	return $content;
 }
 function the_content_filter($content){
-	// 处理 Mermaid 代码块，确保换行符正确
-	if (get_option('argon_enable_mermaid') == 'true') {
-		// 匹配 <pre><code class="language-mermaid">...</code></pre> 或 <pre><code class="mermaid">...</code></pre>
-		$content = preg_replace_callback(
-			'/<pre><code\s+class=["\'](?:language-)?mermaid["\']>(.*?)<\/code><\/pre>/is',
-			function($matches) {
-				$code = $matches[1];
-				// 解码 HTML 实体
-				$code = html_entity_decode($code, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-				// 去除首尾空白
-				$code = trim($code);
-				// 如果没有换行符，尝试恢复（WordPress 可能把换行符转换成了空格）
-				// 检测常见的 Mermaid 关键字后应该有换行
-				$keywords = ['flowchart', 'graph', 'sequenceDiagram', 'classDiagram', 'stateDiagram', 'erDiagram', 'journey', 'gantt', 'pie'];
-				foreach ($keywords as $keyword) {
-					// 匹配关键字后跟方向（TD/LR等）或其他内容，但没有换行符的情况
-					$code = preg_replace('/(' . preg_quote($keyword, '/') . '\s+(?:TD|LR|RL|BT|TB))\s+(?![\r\n])/', "$1\n", $code);
-				}
-				// 返回带换行符的代码块，使用 data 属性存储原始代码
-				return '<pre><code class="language-mermaid" data-mermaid-code="' . esc_attr($code) . '">' . esc_html($code) . '</code></pre>';
-			},
-			$content
-		);
-	}
-	
 	// 根据设置决定是否启用懒加载
 	if (get_option('argon_enable_lazyload') !== 'false') {
 		$content = argon_lazyload($content);
@@ -3607,51 +3582,6 @@ function the_content_filter($content){
 	return $content;
 }
 add_filter('the_content' , 'the_content_filter',20);
-
-// Mermaid 代码块预处理
-function argon_format_mermaid_code($content) {
-	if (get_option('argon_mermaid_enable', 'false') != 'true') {
-		return $content;
-	}
-	
-	// 匹配 WP-Markdown 生成的 mermaid 代码块格式
-	$pattern = '/<div class="mermaid">(.*?)<\/div>/s';
-	
-	$content = preg_replace_callback($pattern, function($matches) {
-		$div_content = $matches[1];
-		
-		// 检查是否包含 script 标签（WP-Markdown 格式）
-		if (preg_match('/<script[^>]*>document\.write\("(.*)"\)<\/script>/s', $div_content, $script_match)) {
-			$mermaid_code = $script_match[1];
-			
-			// 解码转义字符
-			$mermaid_code = str_replace('\\n', "\n", $mermaid_code);
-			$mermaid_code = str_replace('\\"', '"', $mermaid_code);
-			$mermaid_code = str_replace("\\'", "'", $mermaid_code);
-			$mermaid_code = html_entity_decode($mermaid_code);
-			
-			// 如果代码看起来像一行（前100个字符中换行符很少），添加换行
-			$first_100 = substr($mermaid_code, 0, 100);
-			$newline_count = substr_count($first_100, "\n");
-			
-			if ($newline_count < 2) {
-				// 在箭头前添加换行
-				$mermaid_code = preg_replace('/\s*-->\s*/', "\n    --> ", $mermaid_code);
-				// 在 style 语句前添加换行
-				$mermaid_code = preg_replace('/\s*style\s+/', "\nstyle ", $mermaid_code);
-			}
-			
-			// 返回带 data 属性的 div
-			return '<div class="mermaid" data-mermaid-code="' . esc_attr($mermaid_code) . '">' . $div_content . '</div>';
-		}
-		
-		// 不是 WP-Markdown 格式，保持原样
-		return $matches[0];
-	}, $content);
-	
-	return $content;
-}
-add_filter('the_content', 'argon_format_mermaid_code', 25);
 
 //使用 CDN 加速 gravatar
 function gravatar_cdn($url){
