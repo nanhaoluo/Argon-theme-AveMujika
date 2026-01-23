@@ -307,6 +307,14 @@
 
 							
 
+							// 再次验证代码字符串
+
+							console.log('About to render, code char 12:', code.charCodeAt(12), '(should be 10 for newline)');
+
+							console.log('Code split by newline, first 3 lines:', code.split('\n').slice(0, 3));
+
+							
+
 							// 立即渲染这个图表
 
 							try {
