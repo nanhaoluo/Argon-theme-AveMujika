@@ -219,9 +219,9 @@
 
 					});
 
-					// 手动触发渲染
+					// 手动触发渲染（使用 init 方法）
 
-					mermaid.run();
+					mermaid.init(undefined, document.querySelectorAll('.mermaid'));
 
 				});
 
