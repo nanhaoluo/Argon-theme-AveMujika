@@ -3566,6 +3566,24 @@ function argon_fancybox($content){
 	return $content;
 }
 function the_content_filter($content){
+	// 处理 Mermaid 代码块，确保换行符正确
+	if (get_option('argon_enable_mermaid') == 'true') {
+		// 匹配 <pre><code class="language-mermaid">...</code></pre> 或 <pre><code class="mermaid">...</code></pre>
+		$content = preg_replace_callback(
+			'/<pre><code\s+class=["\'](?:language-)?mermaid["\']>(.*?)<\/code><\/pre>/is',
+			function($matches) {
+				$code = $matches[1];
+				// 解码 HTML 实体
+				$code = html_entity_decode($code, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+				// 去除首尾空白
+				$code = trim($code);
+				// 返回带换行符的代码块
+				return '<pre><code class="language-mermaid">' . htmlspecialchars($code, ENT_QUOTES, 'UTF-8') . '</code></pre>';
+			},
+			$content
+		);
+	}
+	
 	// 根据设置决定是否启用懒加载
 	if (get_option('argon_enable_lazyload') !== 'false') {
 		$content = argon_lazyload($content);
@@ -3574,7 +3592,7 @@ function the_content_filter($content){
 		$content = argon_fancybox($content);
 	}
 	global $post;
-	$custom_css = get_post_meta($post -> ID, 'argon_custom_css', true);
+	$custom_css = get_post_meta($post->ID, 'argon_custom_css', true);
 	if (!empty($custom_css)){
 		$content .= "<style>" . $custom_css . "</style>";
 	}
