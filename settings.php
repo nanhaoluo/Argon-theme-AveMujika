@@ -3908,7 +3908,7 @@ window.pjaxLoaded = function(){
 								</p>
 							</div>
 
-							<div style="margin-bottom: 15px;">
+							<div>
 								<label style="display: block; margin-bottom: 10px; font-weight: 600;">
 									<?php _e('智能抽查概率', 'argon');?>
 								</label>
@@ -3918,18 +3918,6 @@ window.pjaxLoaded = function(){
 									<?php _e('• 信誉好的用户降低检测（最低 5%）', 'argon');?><br/>
 									<?php _e('• 信誉差的用户提高检测（最高 80%）', 'argon');?><br/>
 									<?php _e('• 关键字必查模式下此设置无效', 'argon');?>
-								</p>
-							</div>
-
-							<div>
-								<?php $argon_comment_spam_detection_pre_check = get_option('argon_comment_spam_detection_pre_check', 'true'); ?>
-								<label style="display: block; margin-bottom: 8px;">
-									<input type="checkbox" name="argon_comment_spam_detection_pre_check" value="true" <?php if ($argon_comment_spam_detection_pre_check=='true'){echo 'checked';}?>/> 
-									<strong><?php _e('启用智能预审查（推荐）', 'argon');?></strong>
-								</label>
-								<p class="description" style="margin-left: 24px;">
-									<?php _e('在评论保存前进行 AI 审查，高置信度垃圾评论直接拒绝，用户名违规自动修改。', 'argon');?><br/>
-									<?php _e('关闭后，评论会先保存，然后异步检测（可能已发送邮件通知）。', 'argon');?>
 								</p>
 							</div>
 						</td>
@@ -4150,26 +4138,6 @@ window.pjaxLoaded = function(){
 								<?php _e('只有 AI 判断的置信度高于此阈值时，才会自动处理垃圾评论。', 'argon');?><br/>
 								<?php _e('建议值：小型博客 90%，中型博客 85%，大型博客 80%', 'argon');?><br/>
 								<?php _e('置信度低于阈值的评论会被标记为待审核，由管理员人工判断', 'argon');?>
-							</p>
-						</td>
-					</tr>
-
-					<tr>
-						<th><label><?php _e('智能预审查', 'argon');?></label></th>
-						<td>
-							<?php $argon_comment_spam_detection_pre_check = get_option('argon_comment_spam_detection_pre_check', 'true'); ?>
-							<label style="display: block; margin-bottom: 8px;">
-								<input type="checkbox" name="argon_comment_spam_detection_pre_check" value="true" <?php if ($argon_comment_spam_detection_pre_check=='true'){echo 'checked';}?>/> 
-								<?php _e('在评论保存前进行 AI 审查', 'argon');?>
-							</label>
-							<p class="description">
-								<strong><?php _e('推荐开启', 'argon');?></strong><br/>
-								<?php _e('开启后，评论会在保存到数据库前先进行 AI 审查：', 'argon');?><br/>
-								<?php _e('• 高置信度垃圾评论：直接拒绝，不保存到数据库', 'argon');?><br/>
-								<?php _e('• 用户名违规且无邮箱：直接拒绝', 'argon');?><br/>
-								<?php _e('• 用户名违规但有邮箱：自动修改用户名后保存', 'argon');?><br/>
-								<?php _e('• 低置信度垃圾评论：标记为待审核', 'argon');?><br/>
-								<?php _e('关闭后，评论会先保存，然后异步检测（可能已发送邮件通知）', 'argon');?>
 							</p>
 						</td>
 					</tr>
@@ -6844,7 +6812,6 @@ function argon_update_themeoptions(){
 	argon_update_option_checkbox('argon_comment_spam_detection_exclude_logged_in');
 	argon_update_option('argon_comment_spam_detection_keywords');
 	argon_update_option_checkbox('argon_comment_spam_detection_ai_learn');
-	argon_update_option_checkbox('argon_comment_spam_detection_pre_check');
 
 	}
 
