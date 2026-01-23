@@ -3951,6 +3951,40 @@ window.pjaxLoaded = function(){
 					</tr>
 
 					<tr>
+						<th><label><?php _e('Prompt 模式', 'argon');?></label></th>
+						<td>
+							<select name="argon_comment_spam_detection_prompt_mode">
+								<?php $prompt_mode = get_option('argon_comment_spam_detection_prompt_mode', 'standard'); ?>
+								<option value="minimal" <?php if ($prompt_mode=='minimal'){echo 'selected';} ?>><?php _e('极简模式', 'argon');?></option>
+								<option value="standard" <?php if ($prompt_mode=='standard'){echo 'selected';} ?>><?php _e('标准模式（推荐）', 'argon');?></option>
+								<option value="enhanced" <?php if ($prompt_mode=='enhanced'){echo 'selected';} ?>><?php _e('增强模式', 'argon');?></option>
+								<option value="custom" <?php if ($prompt_mode=='custom'){echo 'selected';} ?>><?php _e('自定义 Prompt', 'argon');?></option>
+							</select>
+							<p class="description">
+								<strong><?php _e('极简模式', 'argon');?></strong>: <?php _e('省 token，快速检测，理由简短（约 100-150 tokens）', 'argon');?><br/>
+								<strong><?php _e('标准模式', 'argon');?></strong>: <?php _e('平衡准确性和成本，包含置信度和处理建议（约 200-300 tokens）', 'argon');?><br/>
+								<strong><?php _e('增强模式', 'argon');?></strong>: <?php _e('多维度分析，更准确，包含综合分析（约 300-500 tokens）', 'argon');?><br/>
+								<strong><?php _e('自定义 Prompt', 'argon');?></strong>: <?php _e('使用下方自定义的 Prompt', 'argon');?>
+							</p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('自动处理阈值', 'argon');?></label></th>
+						<td>
+							<label style="display: block; margin-bottom: 8px;">
+								<?php _e('置信度阈值', 'argon');?>: 
+								<input type="number" name="argon_comment_spam_detection_confidence_threshold" min="0" max="100" step="5" value="<?php echo get_option('argon_comment_spam_detection_confidence_threshold', '85'); ?>" style="width: 80px;"/> %
+							</label>
+							<p class="description">
+								<?php _e('只有 AI 判断的置信度高于此阈值时，才会自动处理垃圾评论。', 'argon');?><br/>
+								<?php _e('建议值：小型博客 90%，中型博客 85%，大型博客 80%', 'argon');?><br/>
+								<?php _e('置信度低于阈值的评论会被标记为待审核，由管理员人工判断', 'argon');?>
+							</p>
+						</td>
+					</tr>
+
+					<tr>
 						<th><label><?php _e('检测提示词', 'argon');?></label></th>
 						<td>
 							<select id="argon-spam-prompt-template" style="margin-bottom: 10px;">
@@ -6646,6 +6680,8 @@ function argon_update_themeoptions(){
 
 	//AI 垃圾评论识别
 	argon_update_option_checkbox('argon_comment_spam_detection_enable');
+	argon_update_option('argon_comment_spam_detection_prompt_mode');
+	argon_update_option('argon_comment_spam_detection_confidence_threshold');
 	argon_update_option('argon_comment_spam_detection_prompt');
 	argon_update_option('argon_comment_spam_detection_mode');
 	argon_update_option('argon_comment_spam_detection_sample_rate');
