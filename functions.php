@@ -3610,7 +3610,7 @@ add_filter('the_content' , 'the_content_filter',20);
 
 // Mermaid 代码块预处理
 function argon_format_mermaid_code($content) {
-	if (!get_option('argon_mermaid_enable', 'false') == 'true') {
+	if (get_option('argon_mermaid_enable', 'false') != 'true') {
 		return $content;
 	}
 	
