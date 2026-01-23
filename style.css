@@ -3875,17 +3875,18 @@ html.filter-grayscale {
 .post-preview.post-pjax-loading {
 	opacity: 1 !important;
 	z-index: 10;
+	position: relative;
 }
 
-#main.post-list-pjax-loading .post {
-	opacity: 0;
-	pointer-events: none;
-	transition: opacity 0.3s ease;
+#main.post-list-pjax-loading .post-preview {
+	opacity: 0 !important;
+	pointer-events: none !important;
+	transition: opacity 0.3s ease !important;
 }
 
-#main.post-list-pjax-loading .post.post-pjax-loading {
+#main.post-list-pjax-loading .post-preview.post-pjax-loading {
 	opacity: 1 !important;
-	pointer-events: auto;
+	pointer-events: auto !important;
 }
 
 .post-title {

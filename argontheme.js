@@ -2821,8 +2821,8 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 	NProgress.start();
 	pjaxLoading = true;
 }).on('pjax:afterGetContainers', function(e, f, g) {
-	if (g.is("#main.article-list article.post a.post-title")){
-		let $card = $(g.parents("article.post")[0]);
+	if (g.is("#main article.post-preview a.post-title")){
+		let $card = $(g.parents("article.post-preview")[0]);
 		let waterflowOn = false;
 		if ($("#main").hasClass("waterflow")){
 			waterflowOn = true;
@@ -2831,6 +2831,9 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 		$card.append("<div class='loading-css-animation'><div class='loading-dot loading-dot-1' ></div><div class='loading-dot loading-dot-2' ></div><div class='loading-dot loading-dot-3' ></div><div class='loading-dot loading-dot-4' ></div><div class='loading-dot loading-dot-5' ></div><div class='loading-dot loading-dot-6' ></div><div class='loading-dot loading-dot-7' ></div><div class='loading-dot loading-dot-8' ></div></div></div>");
 		$card.addClass("post-pjax-loading");
 		$("#main").addClass("post-list-pjax-loading");
+		console.log("Added post-list-pjax-loading class to #main");
+		console.log("Total .post-preview elements:", $(".post-preview").length);
+		console.log("Hidden .post-preview elements:", $("#main.post-list-pjax-loading .post-preview").length);
 		let offsetTop = $($card).offset().top - $("#main").offset().top;
 		if ($("html").hasClass("is-home") && $("html").hasClass("banner-as-cover")){
 			offsetTop = $($card).offset().top - window.outerHeight * 0.418;
@@ -2857,13 +2860,13 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 	cleanupPjaxResources();
 	
 	// 清理文章列表的 PJAX 加载状态
-	$(".post.post-pjax-loading").removeClass("post-pjax-loading").css({
+	$(".post-preview.post-pjax-loading").removeClass("post-pjax-loading").css({
 		"transform": "",
 		"transition": "",
 		"left": "",
 		"width": ""
 	});
-	$(".post .loading-css-animation").remove();
+	$(".post-preview .loading-css-animation").remove();
 	$("#main").removeClass("post-list-pjax-loading");
 	
 	// 更新 UI 状态
