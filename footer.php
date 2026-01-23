@@ -187,252 +187,74 @@
 
 					});
 
-					// 处理 WP-Markdown 生成的特殊格式：<div class="mermaid"><scr'+'ipt>document.write("...")</scr'+'ipt>...</div>
-
-					document.querySelectorAll('div.mermaid script[type="text/javascript"]').forEach(function(scriptElement) {
-
-						let mermaidDiv = scriptElement.parentElement;
-
-						
-
+					// 处理 WP-Markdown 生成的特殊格式
+					document.querySelectorAll('div.mermaid').forEach(function(mermaidDiv) {
 						// 检查是否已经处理过
-
 						if (mermaidDiv.classList.contains('mermaid-processed')) {
-
 							return;
-
 						}
-
 						mermaidDiv.classList.add('mermaid-processed');
-
 						
-
-						// 从 script 标签中提取代码
-
-						let scriptContent = scriptElement.textContent;
-
-						console.log('=== WP-Markdown Debug ===');
-
-						console.log('Script content (first 300 chars):', scriptContent.substring(0, 300));
-
+						// 优先使用 PHP 预处理的 data 属性
+						let code = mermaidDiv.getAttribute('data-mermaid-code');
 						
-
-						let match = scriptContent.match(/document\.write\("(.*)"\)/s);
-
-						
-
-						if (match && match[1]) {
-
-							let rawCode = match[1];
-
-							console.log('Raw code (first 300 chars):', rawCode.substring(0, 300));
-
-							console.log('Contains literal backslash-n:', rawCode.includes('\\n'));
-
-							console.log('Contains actual newline:', rawCode.includes('\n'));
-
-							
-
-							// 解码转义字符
-
-							let code = rawCode
-
-								.replace(/\\n/g, '\n')
-
-								.replace(/\\"/g, '"')
-
-								.replace(/\\'/g, "'")
-
-								.replace(/&lt;/g, '<')
-
-								.replace(/&gt;/g, '>')
-
-								.replace(/&amp;/g, '&');
-
-							
-
-							console.log('After decode (first 300 chars):', code.substring(0, 300));
-
-							console.log('After decode contains newline:', code.includes('\n'));
-
-							
-
-							// 检查前20个字符的详细信息
-
-							console.log('First 20 chars with codes:');
-
-							for (let i = 0; i < Math.min(20, code.length); i++) {
-
-								console.log('  [' + i + '] "' + code[i] + '" (code: ' + code.charCodeAt(i) + ')');
-
-							}
-
-							
-
-							console.log('WP-Markdown Mermaid code found (length: ' + code.length + ')');
-
-							console.log('Contains newlines:', code.indexOf('\n') !== -1);
-
-							console.log('First 100 chars:', code.substring(0, 100));
-
-							
-
-							// 清空 div 内容并设置新内容
-
-							mermaidDiv.innerHTML = '';
-
-							// 使用 pre 标签包裹以保留换行符和空格
-
-							let pre = document.createElement('pre');
-
-							pre.textContent = code;
-
-							pre.style.display = 'none';
-
-							mermaidDiv.appendChild(pre);
-
-							
-
-							// 同时设置为 data 属性
-
-							mermaidDiv.setAttribute('data-mermaid-code', code);
-
-							
-
-							console.log('Code set to div, checking...');
-
-							console.log('div.textContent (first 100):', mermaidDiv.textContent.substring(0, 100));
-
-							console.log('div.textContent contains newline:', mermaidDiv.textContent.includes('\n'));
-
-							
-
-							// 再次验证代码字符串
-
-							console.log('About to render, code char 12:', code.charCodeAt(12), '(should be 10 for newline)');
-
-							console.log('Code split by newline, first 3 lines:', code.split('\n').slice(0, 3));
-
-							
-
-							// 如果代码看起来像是一行（前100个字符中换行符很少），尝试智能添加换行
-
-							let first100 = code.substring(0, 100);
-
-							let newlineCount = (first100.match(/\n/g) || []).length;
-
-							console.log('Newline count in first 100 chars:', newlineCount);
-
-							
-
-							if (newlineCount < 2) {
-
-								console.log('Code appears to be on one line, attempting to add newlines...');
-
-								
-
-								// 简单粗暴的方法：在每个箭头和节点后添加换行
-
-								// 先移除所有现有的换行和多余空格，重新格式化
-
-								let lines = code.split(/\s*\n\s*/);
-
-								let formatted = lines[0]; // flowchart TD
-
-								
-
-								// 处理剩余内容：在箭头前添加换行
-
-								let rest = lines.slice(1).join(' ');
-
-								rest = rest
-
-									.replace(/\s+/g, ' ') // 统一空格
-
-									.replace(/\s*-->\s*/g, '\n    --> ') // 箭头前后换行
-
-									.replace(/\s*style\s+/g, '\nstyle '); // style 前换行
-
-								
-
-								code = formatted + '\n' + rest;
-
-								
-
-								console.log('After adding newlines, first 300 chars:', code.substring(0, 300));
-
-								console.log('Newline count after fix:', (code.match(/\n/g) || []).length);
-
-							}
-
-							
-
-							// 立即渲染这个图表
-
-							try {
-
-								// 直接使用 mermaid.render 而不是 init
-
-								let id = 'mermaid-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-
-								mermaid.render(id, code).then(function(result) {
-
-									mermaidDiv.innerHTML = result.svg;
-
-									console.log('Mermaid diagram rendered successfully');
-
-								}).catch(function(e) {
-
-									console.error('Mermaid rendering error:', e);
-
-									console.error('Code that failed:', code.substring(0, 200));
-
-								});
-
-							} catch (e) {
-
-								console.error('Mermaid rendering error:', e);
-
-								console.error('Code that failed:', code.substring(0, 200));
-
-							}
-
-						}
-
-					});
-
-					// 递归获取所有文本节点，保留换行符
-
-					function getTextWithLineBreaks(element) {
-
-						let text = '';
-
-						for (let node of element.childNodes) {
-
-							if (node.nodeType === Node.TEXT_NODE) {
-
-								text += node.textContent;
-
-							} else if (node.nodeType === Node.ELEMENT_NODE) {
-
-								if (node.tagName === 'BR') {
-
-									text += '\n';
-
-								} else {
-
-									text += getTextWithLineBreaks(node);
-
+						if (!code) {
+							// 如果没有 data 属性，尝试从 script 标签提取
+							let scriptElement = mermaidDiv.querySelector('script[type="text/javascript"]');
+							if (scriptElement) {
+								let scriptContent = scriptElement.textContent;
+								let match = scriptContent.match(/document\.write\("(.*)"\)/s);
+								if (match && match[1]) {
+									code = match[1]
+										.replace(/\\n/g, '\n')
+										.replace(/\\"/g, '"')
+										.replace(/\\'/g, "'")
+										.replace(/&lt;/g, '<')
+										.replace(/&gt;/g, '>')
+										.replace(/&amp;/g, '&');
 								}
-
 							}
-
 						}
-
+						
+						if (!code) {
+							console.warn('No mermaid code found in div');
+							return;
+						}
+						
+						// 清空 div 内容
+						mermaidDiv.innerHTML = '';
+						
+						// 渲染 Mermaid 图表
+						try {
+							let id = 'mermaid-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+							mermaid.render(id, code).then(function(result) {
+								mermaidDiv.innerHTML = result.svg;
+							}).catch(function(e) {
+								console.error('Mermaid rendering error:', e);
+								mermaidDiv.innerHTML = '<pre style="color: red;">Mermaid 渲染失败: ' + e.message + '</pre>';
+							});
+						} catch (e) {
+							console.error('Mermaid rendering error:', e);
+							mermaidDiv.innerHTML = '<pre style="color: red;">Mermaid 渲染失败: ' + e.message + '</pre>';
+						}
+					});
+					
+					// 递归获取所有文本节点，保留换行符
+					function getTextWithLineBreaks(element) {
+						let text = '';
+						for (let node of element.childNodes) {
+							if (node.nodeType === Node.TEXT_NODE) {
+								text += node.textContent;
+							} else if (node.nodeType === Node.ELEMENT_NODE) {
+								if (node.tagName === 'BR') {
+									text += '\n';
+								} else {
+									text += getTextWithLineBreaks(node);
+								}
+							}
+						}
 						return text;
-
 					}
-
 					// 处理标准格式的 mermaid 代码块
 
 					document.querySelectorAll('pre code.language-mermaid, pre code.mermaid').forEach(function(element) {
