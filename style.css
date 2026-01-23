@@ -13691,7 +13691,7 @@ html.darkmode {
 
 /* M3 文章卡片 */
 article.post.card {
-    overflow: hidden;
+    overflow: visible;
     border: none !important;
 }
 
