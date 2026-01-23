@@ -239,17 +239,33 @@
 
 							console.log('Contains newlines:', code.indexOf('\n') !== -1);
 
-							console.log('First 200 chars:', code.substring(0, 200));
+							console.log('First 100 chars:', code.substring(0, 100));
 
 							
 
-							// 清空 div 内容
+							// 清空 div 内容并设置新内容
 
 							mermaidDiv.innerHTML = '';
 
 							mermaidDiv.textContent = code;
 
-							mermaidDiv.classList.add('mermaid-to-render');
+							
+
+							// 立即渲染这个图表
+
+							try {
+
+								mermaid.init(undefined, mermaidDiv);
+
+								console.log('Mermaid diagram rendered successfully');
+
+							} catch (e) {
+
+								console.error('Mermaid rendering error:', e);
+
+								console.error('Code that failed:', code.substring(0, 200));
+
+							}
 
 						}
 
@@ -355,13 +371,13 @@
 
 						console.log('Contains newlines:', code.indexOf('\n') !== -1);
 
-						console.log('First 200 chars:', code.substring(0, 200));
+						console.log('First 100 chars:', code.substring(0, 100));
 
 						// 创建 Mermaid 容器
 
 						let mermaidDiv = document.createElement('div');
 
-						mermaidDiv.className = 'mermaid mermaid-to-render';
+						mermaidDiv.className = 'mermaid';
 
 						mermaidDiv.textContent = code;
 
@@ -369,39 +385,25 @@
 
 						pre.parentNode.replaceChild(mermaidDiv, pre);
 
-					});
+						
 
-					// 延迟渲染，确保 DOM 完全加载
+						// 立即渲染
 
-					setTimeout(function() {
+						try {
 
-						let mermaidElements = document.querySelectorAll('.mermaid-to-render:not(.mermaid-rendered)');
+							mermaid.init(undefined, mermaidDiv);
 
-						if (mermaidElements.length > 0) {
+							console.log('Standard Mermaid diagram rendered successfully');
 
-							console.log('Rendering', mermaidElements.length, 'Mermaid diagrams');
+						} catch (e) {
 
-							mermaidElements.forEach(function(el) {
+							console.error('Mermaid rendering error:', e);
 
-								el.classList.add('mermaid-rendered');
-
-								el.classList.remove('mermaid-to-render');
-
-							});
-
-							try {
-
-								mermaid.init(undefined, mermaidElements);
-
-							} catch (e) {
-
-								console.error('Mermaid rendering error:', e);
-
-							}
+							console.error('Code that failed:', code.substring(0, 200));
 
 						}
 
-					}, 100);
+					});
 
 				});
 
