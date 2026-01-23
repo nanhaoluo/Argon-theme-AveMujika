@@ -187,6 +187,74 @@
 
 					});
 
+					// 处理 WP-Markdown 生成的特殊格式：<div class="mermaid"><script>document.write("...")</script>...</div>
+
+					document.querySelectorAll('div.mermaid script[type="text/javascript"]').forEach(function(scriptElement) {
+
+						let mermaidDiv = scriptElement.parentElement;
+
+						
+
+						// 检查是否已经处理过
+
+						if (mermaidDiv.classList.contains('mermaid-processed')) {
+
+							return;
+
+						}
+
+						mermaidDiv.classList.add('mermaid-processed');
+
+						
+
+						// 从 script 标签中提取代码
+
+						let scriptContent = scriptElement.textContent;
+
+						let match = scriptContent.match(/document\.write\("(.*)"\)/s);
+
+						
+
+						if (match && match[1]) {
+
+							// 解码转义字符
+
+							let code = match[1]
+
+								.replace(/\\n/g, '\n')
+
+								.replace(/\\"/g, '"')
+
+								.replace(/\\'/g, "'")
+
+								.replace(/&lt;/g, '<')
+
+								.replace(/&gt;/g, '>')
+
+								.replace(/&amp;/g, '&');
+
+							
+
+							console.log('WP-Markdown Mermaid code found (length: ' + code.length + ')');
+
+							console.log('Contains newlines:', code.indexOf('\n') !== -1);
+
+							console.log('First 200 chars:', code.substring(0, 200));
+
+							
+
+							// 清空 div 内容
+
+							mermaidDiv.innerHTML = '';
+
+							mermaidDiv.textContent = code;
+
+							mermaidDiv.classList.add('mermaid-to-render');
+
+						}
+
+					});
+
 					// 递归获取所有文本节点，保留换行符
 
 					function getTextWithLineBreaks(element) {
@@ -219,7 +287,7 @@
 
 					}
 
-					// 自动渲染所有 mermaid 代码块
+					// 处理标准格式的 mermaid 代码块
 
 					document.querySelectorAll('pre code.language-mermaid, pre code.mermaid').forEach(function(element) {
 
@@ -283,7 +351,7 @@
 
 						// 调试：输出代码内容和换行符
 
-						console.log('Mermaid code found (length: ' + code.length + '):', code);
+						console.log('Standard Mermaid code found (length: ' + code.length + ')');
 
 						console.log('Contains newlines:', code.indexOf('\n') !== -1);
 
@@ -293,7 +361,7 @@
 
 						let mermaidDiv = document.createElement('div');
 
-						mermaidDiv.className = 'mermaid';
+						mermaidDiv.className = 'mermaid mermaid-to-render';
 
 						mermaidDiv.textContent = code;
 
@@ -307,7 +375,7 @@
 
 					setTimeout(function() {
 
-						let mermaidElements = document.querySelectorAll('.mermaid:not(.mermaid-rendered)');
+						let mermaidElements = document.querySelectorAll('.mermaid-to-render:not(.mermaid-rendered)');
 
 						if (mermaidElements.length > 0) {
 
@@ -316,6 +384,8 @@
 							mermaidElements.forEach(function(el) {
 
 								el.classList.add('mermaid-rendered');
+
+								el.classList.remove('mermaid-to-render');
 
 							});
 
