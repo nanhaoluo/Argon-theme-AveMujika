@@ -3873,17 +3873,19 @@ html.filter-grayscale {
 }
 
 .post-preview.post-pjax-loading {
-
 	opacity: 1 !important;
-
+	z-index: 10;
 }
 
 .post-list-pjax-loading .post-preview {
-
 	opacity: 0;
-
 	pointer-events: none;
+	transition: opacity 0.3s ease;
+}
 
+.post-list-pjax-loading .post-preview.post-pjax-loading {
+	opacity: 1 !important;
+	pointer-events: auto;
 }
 
 .post-title {
@@ -8936,11 +8938,9 @@ html[lang] {
 }
 
 .post-list-pjax-loading .shuoshuo-preview-container {
-
 	opacity: 0;
-
 	pointer-events: none;
-
+	transition: opacity 0.3s ease;
 }
 
 .shuoshuo-content.shuoshuo-folded {
