@@ -147,6 +147,54 @@
 
 		<?php }?>
 
+		<?php if (get_option('argon_enable_mermaid') == 'true') { /*Mermaid*/?>
+
+			<script src="<?php echo get_option('argon_mermaid_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js' : get_option('argon_mermaid_cdn_url'); ?>"></script>
+
+			<script>
+
+				document.addEventListener("DOMContentLoaded", function() {
+
+					mermaid.initialize({
+
+						startOnLoad: true,
+
+						theme: '<?php echo get_option('argon_mermaid_theme', 'default'); ?>',
+
+						securityLevel: 'loose',
+
+						flowchart: {
+
+							useMaxWidth: true,
+
+							htmlLabels: true
+
+						}
+
+					});
+
+					// 自动渲染所有 mermaid 代码块
+
+					document.querySelectorAll('pre code.language-mermaid, pre code.mermaid').forEach(function(element) {
+
+						let pre = element.parentElement;
+
+						let mermaidDiv = document.createElement('div');
+
+						mermaidDiv.className = 'mermaid';
+
+						mermaidDiv.textContent = element.textContent;
+
+						pre.parentNode.replaceChild(mermaidDiv, pre);
+
+					});
+
+				});
+
+			</script>
+
+		<?php }?>
+
 
 
 		<?php if (get_option('argon_enable_code_highlight') == 'true') { /*Highlight.js*/?>

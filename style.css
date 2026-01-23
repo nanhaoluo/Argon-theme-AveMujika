@@ -9585,6 +9585,38 @@ pre.hljs-codeblock.hljs-codeblock-fullscreen .hljs-control-fullscreen > i:before
 
 }
 
+/* ========== Mermaid 图表样式 ========== */
+
+article .mermaid {
+
+	text-align: center;
+
+	margin: 20px 0;
+
+	padding: 20px;
+
+	background: rgba(255, 255, 255, 0.5);
+
+	border-radius: var(--card-radius);
+
+	overflow-x: auto;
+
+}
+
+html.darkmode article .mermaid {
+
+	background: rgba(66, 66, 66, 0.5);
+
+}
+
+article .mermaid svg {
+
+	max-width: 100%;
+
+	height: auto;
+
+}
+
 
 
 /*==========Style-Dark==========*/
