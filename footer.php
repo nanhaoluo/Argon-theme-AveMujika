@@ -213,6 +213,14 @@
 
 						code = code.trim();
 
+						// 过滤掉包含 script 标签的内容（防止误识别）
+
+						if (code.indexOf('<script') !== -1 || code.indexOf('</script') !== -1) {
+
+							return;
+
+						}
+
 						mermaidDiv.textContent = code;
 
 						pre.parentNode.replaceChild(mermaidDiv, pre);
