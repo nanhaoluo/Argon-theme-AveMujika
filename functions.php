@@ -2088,7 +2088,7 @@ function argon_comment_format($comment, $args, $depth){
 				<?php }
 					} ?>
 				<?php if ($GLOBALS['argon_comment_options']['current_user_can_moderate_comments']) { ?>
-					<button class="comment-delete btn btn-sm btn-outline-danger" data-id="<?php comment_ID(); ?>" type="button" style="margin-right: 2px;"><?php _e('删除', 'argon')?></button>
+					<button class="comment-delete btn btn-sm btn-outline-primary" data-id="<?php comment_ID(); ?>" type="button" style="margin-right: 2px;"><?php _e('删除', 'argon')?></button>
 				<?php } ?>
 				<?php if ((check_comment_token(get_comment_ID()) || check_login_user_same($comment -> user_id)) && (get_option("argon_comment_allow_editing") != "false")) { ?>
 					<button class="comment-edit btn btn-sm btn-outline-primary" data-id="<?php comment_ID(); ?>" type="button" style="margin-right: 2px;"><?php _e('编辑', 'argon')?></button>
