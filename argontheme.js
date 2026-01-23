@@ -4470,7 +4470,22 @@ void 0;
 
 			// 根据不同的元素类型提取代码
 			if (element.tagName === 'DIV' && element.classList.contains('mermaid')) {
-				code = element.textContent;
+				// 检查是否包含 WP-Markdown 生成的 script 标签
+				const scriptTag = element.querySelector('script');
+				if (scriptTag) {
+					// 提取 document.write() 中的内容
+					const scriptContent = scriptTag.textContent || scriptTag.innerText;
+					const match = scriptContent.match(/document\.write\s*\(\s*["'](.+?)["']\s*\)/);
+					if (match && match[1]) {
+						code = match[1];
+						this.logDebug('检测到 WP-Markdown 格式，从 script 标签提取代码');
+					} else {
+						// 如果没有匹配到，使用整个元素的文本内容（排除 script 标签）
+						code = element.textContent;
+					}
+				} else {
+					code = element.textContent;
+				}
 			} else if (element.tagName === 'CODE') {
 				code = element.textContent;
 			} else if (element.tagName === 'PRE') {

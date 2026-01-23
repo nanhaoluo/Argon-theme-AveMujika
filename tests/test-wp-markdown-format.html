@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>WP-Markdown 格式测试 - Mermaid 支持</title>
+	<style>
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+			max-width: 1200px;
+			margin: 0 auto;
+			padding: 20px;
+			background: #f5f5f5;
+		}
+		.test-section {
+			background: white;
+			padding: 20px;
+			margin: 20px 0;
+			border-radius: 8px;
+			box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+		}
+		.test-title {
+			font-size: 18px;
+			font-weight: bold;
+			margin-bottom: 10px;
+			color: #333;
+		}
+		.test-description {
+			color: #666;
+			margin-bottom: 15px;
+			font-size: 14px;
+		}
+		.mermaid-container {
+			background: #fafafa;
+			border: 1px solid #e0e0e0;
+			border-radius: 4px;
+			padding: 20px;
+			margin: 10px 0;
+		}
+		.test-result {
+			margin-top: 15px;
+			padding: 10px;
+			border-radius: 4px;
+			font-size: 14px;
+		}
+		.test-result.success {
+			background: #d4edda;
+			color: #155724;
+			border: 1px solid #c3e6cb;
+		}
+		.test-result.error {
+			background: #f8d7da;
+			color: #721c24;
+			border: 1px solid #f5c6cb;
+		}
+		.code-preview {
+			background: #f8f9fa;
+			border: 1px solid #dee2e6;
+			border-radius: 4px;
+			padding: 10px;
+			margin: 10px 0;
+			font-family: 'Courier New', monospace;
+			font-size: 12px;
+			white-space: pre-wrap;
+			word-break: break-all;
+		}
+	</style>
+</head>
+<body>
+	<h1>WP-Markdown 格式测试</h1>
+	<p>测试 Mermaid 对 WP-Markdown 编辑器生成的特殊格式的支持</p>
+
+	<!-- 测试 1: 标准 WP-Markdown 格式 -->
+	<div class="test-section">
+		<div class="test-title">测试 1: 标准 WP-Markdown 格式（带 script 标签）</div>
+		<div class="test-description">
+			WP-Markdown 生成的格式包含 &lt;script&gt;document.write()&lt;/script&gt; 标签
+		</div>
+		<div class="mermaid">
+			<script>document.write("flowchart TD\n    Start([开始]) --> Process[处理]\n    Process --> End([结束])")</script>
+			flowchart TD Start([开始]) --> Process[处理] Process --> End([结束])
+		</div>
+		<div class="test-result" id="result-1">等待渲染...</div>
+	</div>
+
+	<!-- 测试 2: 带转义字符的 WP-Markdown 格式 -->
+	<div class="test-section">
+		<div class="test-title">测试 2: 带转义字符的复杂格式</div>
+		<div class="test-description">
+			测试转义字符的正确解码：\n（换行）、\"（引号）、\'（单引号）
+		</div>
+		<div class="mermaid">
+			<script>document.write("sequenceDiagram\n    participant A as \"用户\"\n    participant B as '服务器'\n    A->>B: 发送请求\n    B->>A: 返回响应")</script>
+			sequenceDiagram participant A as "用户" participant B as '服务器' A->>B: 发送请求 B->>A: 返回响应
+		</div>
+		<div class="test-result" id="result-2">等待渲染...</div>
+	</div>
+
+	<!-- 测试 3: 标准格式（无 script 标签） -->
+	<div class="test-section">
+		<div class="test-title">测试 3: 标准格式（无 script 标签）</div>
+		<div class="test-description">
+			确保标准格式仍然正常工作
+		</div>
+		<div class="mermaid">
+flowchart LR
+    A[开始] --> B{判断}
+    B -->|是| C[处理A]
+    B -->|否| D[处理B]
+    C --> E[结束]
+    D --> E
+		</div>
+		<div class="test-result" id="result-3">等待渲染...</div>
+	</div>
+
+	<!-- 测试 4: 复杂的 WP-Markdown 格式 -->
+	<div class="test-section">
+		<div class="test-title">测试 4: 复杂流程图（WP-Markdown 格式）</div>
+		<div class="test-description">
+			测试包含多种节点类型和连接的复杂流程图
+		</div>
+		<div class="mermaid">
+			<script>document.write("flowchart TD\n    Start([用户提交评论]) --> PreProcess[preprocess_comment 钩子]\n    PreProcess --> CheckEnabled{启用 AI 检测?}\n    CheckEnabled -->|否| SaveComment[保存评论]\n    CheckEnabled -->|是| CheckMode{检测模式}\n    CheckMode -->|实时检测| RealTime[实时 AI 检测]\n    CheckMode -->|批量扫描| BatchScan[批量扫描]\n    RealTime --> IsSpam{是否垃圾?}\n    IsSpam -->|是| MarkSpam[标记为垃圾]\n    IsSpam -->|否| SaveComment\n    BatchScan --> SaveComment")</script>
+			flowchart TD Start([用户提交评论]) --> PreProcess[preprocess_comment 钩子] PreProcess --> CheckEnabled{启用 AI 检测?} CheckEnabled -->|否| SaveComment[保存评论] CheckEnabled -->|是| CheckMode{检测模式} CheckMode -->|实时检测| RealTime[实时 AI 检测] CheckMode -->|批量扫描| BatchScan[批量扫描] RealTime --> IsSpam{是否垃圾?} IsSpam -->|是| MarkSpam[标记为垃圾] IsSpam -->|否| SaveComment BatchScan --> SaveComment
+		</div>
+		<div class="test-result" id="result-4">等待渲染...</div>
+	</div>
+
+	<!-- 测试 5: 注释中的代码块（应该被忽略） -->
+	<div class="test-section">
+		<div class="test-title">测试 5: 注释中的代码块（应该被忽略）</div>
+		<div class="test-description">
+			被 HTML 注释包裹的 Mermaid 代码块应该被忽略
+		</div>
+		<!--
+		<div class="mermaid">
+			<script>document.write("flowchart TD\n    A --> B")</script>
+		</div>
+		-->
+		<div class="test-result" id="result-5">
+			如果没有渲染任何图表，说明注释过滤功能正常工作 ✓
+		</div>
+	</div>
+
+	<!-- 加载 Mermaid 库 -->
+	<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+
+	<!-- 模拟 Argon 主题的 Mermaid 模块 -->
+	<script>
+		// 简化版的 Mermaid 模块（用于测试）
+		const ArgonMermaid = {
+			config: {
+				theme: 'default'
+			},
+			initialized: false,
+
+			init() {
+				if (typeof window.mermaid === 'undefined') {
+					console.error('Mermaid 库未加载');
+					return;
+				}
+
+				// 初始化 Mermaid
+				window.mermaid.initialize({
+					startOnLoad: false,
+					theme: this.getMermaidTheme(),
+					securityLevel: 'loose',
+					logLevel: 'error'
+				});
+
+				this.initialized = true;
+				console.log('Mermaid 初始化完成');
+
+				// 渲染所有图表
+				this.renderAllCharts();
+			},
+
+			getMermaidTheme() {
+				return this.config.theme;
+			},
+
+			detectMermaidBlocks() {
+				const blocks = [];
+				const selectors = [
+					'div.mermaid',
+					'pre code.language-mermaid',
+					'pre[data-lang="mermaid"]',
+					'code.mermaid'
+				];
+
+				selectors.forEach(selector => {
+					const elements = document.querySelectorAll(selector);
+					elements.forEach(element => {
+						if (!blocks.includes(element)) {
+							if (!this.isInComment(element)) {
+								blocks.push(element);
+							}
+						}
+					});
+				});
+
+				console.log(`检测到 ${blocks.length} 个 Mermaid 代码块`);
+				return blocks;
+			},
+
+			isInComment(element) {
+				let node = element.parentNode;
+				while (node) {
+					if (node.nodeType === Node.COMMENT_NODE) {
+						return true;
+					}
+					node = node.parentNode;
+				}
+				return false;
+			},
+
+			extractMermaidCode(element) {
+				let code = '';
+
+				// 根据不同的元素类型提取代码
+				if (element.tagName === 'DIV' && element.classList.contains('mermaid')) {
+					// 检查是否包含 WP-Markdown 生成的 script 标签
+					const scriptTag = element.querySelector('script');
+					if (scriptTag) {
+						// 提取 document.write() 中的内容
+						const scriptContent = scriptTag.textContent || scriptTag.innerText;
+						const match = scriptContent.match(/document\.write\s*\(\s*["'](.+?)["']\s*\)/);
+						if (match && match[1]) {
+							code = match[1];
+							console.log('检测到 WP-Markdown 格式，从 script 标签提取代码');
+						} else {
+							// 如果没有匹配到，使用整个元素的文本内容（排除 script 标签）
+							code = element.textContent;
+						}
+					} else {
+						code = element.textContent;
+					}
+				} else if (element.tagName === 'CODE') {
+					code = element.textContent;
+				} else if (element.tagName === 'PRE') {
+					const codeElement = element.querySelector('code');
+					code = codeElement ? codeElement.textContent : element.textContent;
+				}
+
+				// 解码转义字符
+				code = code
+					.replace(/\\n/g, '\n')
+					.replace(/\\"/g, '"')
+					.replace(/\\'/g, "'")
+					.replace(/\\\\/g, '\\');
+
+				return code.trim();
+			},
+
+			renderAllCharts() {
+				if (!this.initialized) {
+					console.log('Mermaid 未初始化，跳过渲染');
+					return;
+				}
+
+				const blocks = this.detectMermaidBlocks();
+
+				if (blocks.length === 0) {
+					console.log('未找到 Mermaid 代码块');
+					return;
+				}
+
+				blocks.forEach((block, index) => {
+					this.renderChart(block, index);
+				});
+
+				console.log(`完成渲染 ${blocks.length} 个图表`);
+			},
+
+			renderChart(element, index) {
+				const chartId = `mermaid-chart-${Date.now()}-${index}`;
+				const testNumber = index + 1;
+
+				try {
+					const code = this.extractMermaidCode(element);
+
+					if (!code) {
+						console.log(`代码块为空，跳过: ${chartId}`);
+						return;
+					}
+
+					console.log(`提取的代码 (测试 ${testNumber}):`, code);
+
+					const container = document.createElement('div');
+					container.className = 'mermaid-container';
+					container.id = chartId;
+
+					window.mermaid.render(`mermaid-svg-${chartId}`, code).then(result => {
+						container.innerHTML = result.svg;
+						element.parentNode.replaceChild(container, element);
+
+						// 更新测试结果
+						const resultDiv = document.getElementById(`result-${testNumber}`);
+						if (resultDiv) {
+							resultDiv.className = 'test-result success';
+							resultDiv.textContent = '✓ 渲染成功';
+						}
+
+						console.log(`图表渲染成功: ${chartId}`);
+					}).catch(error => {
+						console.error(`图表渲染失败: ${chartId}`, error);
+						
+						const resultDiv = document.getElementById(`result-${testNumber}`);
+						if (resultDiv) {
+							resultDiv.className = 'test-result error';
+							resultDiv.innerHTML = `✗ 渲染失败: ${error.message}<br><div class="code-preview">${code}</div>`;
+						}
+					});
+				} catch (error) {
+					console.error(`处理图表失败: ${chartId}`, error);
+					
+					const resultDiv = document.getElementById(`result-${testNumber}`);
+					if (resultDiv) {
+						resultDiv.className = 'test-result error';
+						resultDiv.textContent = `✗ 处理失败: ${error.message}`;
+					}
+				}
+			}
+		};
+
+		// 页面加载完成后初始化
+		document.addEventListener('DOMContentLoaded', function() {
+			console.log('页面加载完成，初始化 Mermaid');
+			ArgonMermaid.init();
+		});
+	</script>
+</body>
+</html>
