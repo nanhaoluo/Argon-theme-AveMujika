@@ -2850,13 +2850,23 @@ function themeoptions_page(){
 
 					<tr>
 
-						<th><label>Mermaid CDN <?php _e('地址', 'argon');?></label></th>
+						<th><label><?php _e('Mermaid 配置', 'argon');?></label></th>
 
 						<td>
 
+							<label style="display: block; margin-bottom: 10px;">
+
+								<input type="checkbox" name="argon_mermaid_use_local" value="true" <?php if (get_option('argon_mermaid_use_local')=='true'){echo 'checked';}?>/> 
+
+								<?php _e('使用本地镜像', 'argon');?>
+
+							</label>
+
+							Mermaid CDN <?php _e('地址', 'argon');?>:
+
 							<input type="text" class="regular-text" name="argon_mermaid_cdn_url" value="<?php echo get_option('argon_mermaid_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js' : get_option('argon_mermaid_cdn_url'); ?>"/>
 
-							<p class="description"><?php _e('默认为', 'argon');?> <code>//cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js</code></p>
+							<p class="description"><?php _e('默认为', 'argon');?> <code>//cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js</code><br/><?php _e('勾选"使用本地镜像"后将优先使用主题内置的完整版本', 'argon');?></p>
 
 						</td>
 
@@ -6804,6 +6814,10 @@ function argon_update_themeoptions(){
 		argon_update_option('argon_mermaid_cdn_url');
 
 		argon_update_option('argon_mermaid_theme');
+
+		argon_update_option_checkbox('argon_mermaid_use_local');
+
+		argon_update_option_checkbox('argon_mermaid_use_local');
 
 
 

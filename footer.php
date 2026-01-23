@@ -149,7 +149,21 @@
 
 		<?php if (get_option('argon_enable_mermaid') == 'true') { /*Mermaid*/?>
 
-			<script src="<?php echo get_option('argon_mermaid_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js' : get_option('argon_mermaid_cdn_url'); ?>"></script>
+			<?php
+
+				// 判断是否使用本地镜像
+
+				$mermaid_url = get_option('argon_mermaid_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js' : get_option('argon_mermaid_cdn_url');
+
+				if (get_option('argon_mermaid_use_local') == 'true') {
+
+					$mermaid_url = $GLOBALS['assets_path'] . '/assets/vendor/external/mermaid/mermaid.min.js';
+
+				}
+
+			?>
+
+			<script src="<?php echo $mermaid_url; ?>"></script>
 
 			<script>
 
