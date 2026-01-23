@@ -191,45 +191,85 @@
 
 					document.querySelectorAll('pre code.language-mermaid, pre code.mermaid').forEach(function(element) {
 
-						let pre = element.parentElement;
+						// 检查是否已经处理过
 
-						let mermaidDiv = document.createElement('div');
-
-						mermaidDiv.className = 'mermaid';
-
-						// 获取代码内容，保留换行符
-
-						let code = element.innerHTML;
-
-						// 解码 HTML 实体（如 &lt; &gt; &amp;）
-
-						let textarea = document.createElement('textarea');
-
-						textarea.innerHTML = code;
-
-						code = textarea.value;
-
-						// 去除首尾空白，但保留内部换行
-
-						code = code.trim();
-
-						// 过滤掉包含 script 标签的内容（防止误识别）
-
-						if (code.indexOf('<script') !== -1 || code.indexOf('</script') !== -1) {
+						if (element.classList.contains('mermaid-processed')) {
 
 							return;
 
 						}
 
+						element.classList.add('mermaid-processed');
+
+						let pre = element.parentElement;
+
+						// 获取代码内容
+
+						let code = element.textContent || element.innerText;
+
+						// 去除首尾空白
+
+						code = code.trim();
+
+						// 验证是否为有效的 Mermaid 代码（必须以 graph/flowchart/sequenceDiagram 等关键字开头）
+
+						let validKeywords = ['graph', 'flowchart', 'sequenceDiagram', 'classDiagram', 'stateDiagram', 'erDiagram', 'journey', 'gantt', 'pie', 'gitGraph', 'mindmap', 'timeline', 'quadrantChart'];
+
+						let isValid = false;
+
+						for (let keyword of validKeywords) {
+
+							if (code.toLowerCase().startsWith(keyword.toLowerCase())) {
+
+								isValid = true;
+
+								break;
+
+							}
+
+						}
+
+						// 如果不是有效的 Mermaid 代码，跳过
+
+						if (!isValid) {
+
+							return;
+
+						}
+
+						// 创建 Mermaid 容器
+
+						let mermaidDiv = document.createElement('div');
+
+						mermaidDiv.className = 'mermaid';
+
 						mermaidDiv.textContent = code;
+
+						// 替换原来的 pre 元素
 
 						pre.parentNode.replaceChild(mermaidDiv, pre);
 
 					});
 
-					// 手动触发渲染（使用 init 方法）
+					// 延迟渲染，确保 DOM 完全加载
 
-					mermaid.init(undefined, document.querySelectorAll('.mermaid'));
+					setTimeout(function() {
+
+						let mermaidElements = document.querySelectorAll('.mermaid:not(.mermaid-rendered)');
+
+						if (mermaidElements.length > 0) {
+
+							mermaidElements.forEach(function(el) {
+
+								el.classList.add('mermaid-rendered');
+
+							});
+
+							mermaid.init(undefined, mermaidElements);
+
+						}
+
+					}, 100);
 
 				});
 
