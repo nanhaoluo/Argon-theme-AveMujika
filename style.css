@@ -10973,11 +10973,31 @@ html.darkmode.amoled-dark #content:after {
 		opacity: 0.6;
 		order: 1;
 		transform: scale(0.98);
+		max-height: 500px;
+		overflow: hidden;
+		transition: all var(--animation-normal) var(--ease-emphasized),
+					max-height var(--animation-normal) var(--ease-emphasized),
+					margin var(--animation-normal) var(--ease-emphasized),
+					padding var(--animation-normal) var(--ease-emphasized),
+					opacity var(--animation-normal) var(--ease-emphasized);
+	}
+	
+	.mobile-todo-item.todo-completed.collapsed {
+		max-height: 0;
+		margin-bottom: 0;
+		padding-top: 0;
+		padding-bottom: 0;
+		opacity: 0;
+		transform: translateY(-10px) scale(0.9);
 	}
 	
 	.mobile-todo-item.todo-completing {
 		opacity: 0;
 		transform: translateX(40px) scale(0.85);
+		max-height: 0;
+		margin-bottom: 0;
+		padding-top: 0;
+		padding-bottom: 0;
 		transition: all 0.4s var(--ease-emphasized-accelerate);
 	}
 	
@@ -10995,6 +11015,43 @@ html.darkmode.amoled-dark #content:after {
 		font-size: 24px;
 		margin-bottom: 8px;
 		opacity: 0.35;
+	}
+	
+	/* 移动端折叠已完成按钮 */
+	.mobile-todo-collapse-btn {
+		display: flex;
+		align-items: center;
+		gap: 3px;
+		background: rgba(var(--themecolor-rgbstr), 0.12);
+		color: var(--themecolor);
+		border: none;
+		border-radius: 8px;
+		padding: 2px 6px;
+		font-size: 10px;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all var(--animation-fast) var(--ease-standard);
+		margin-left: 6px;
+		flex-shrink: 0;
+	}
+	
+	.mobile-todo-collapse-btn:active {
+		background: rgba(var(--themecolor-rgbstr), 0.25);
+		transform: scale(0.92);
+	}
+	
+	.mobile-todo-collapse-btn i {
+		font-size: 8px;
+		transition: transform var(--animation-fast) var(--ease-standard);
+	}
+	
+	.mobile-todo-collapse-btn.collapsed i {
+		transform: rotate(-90deg);
+	}
+	
+	.mobile-todo-completed-count {
+		min-width: 10px;
+		text-align: center;
 	}
 
 	#navbar_global {
@@ -12559,6 +12616,42 @@ html.navbar-absolute #leftbar_part3.sticky {
 	margin-left: auto;
 }
 
+/* 折叠已完成按钮 */
+.todo-collapse-btn {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	background: rgba(var(--themecolor-rgbstr), 0.1);
+	color: var(--themecolor);
+	border: none;
+	border-radius: 8px;
+	padding: 2px 7px;
+	font-size: 10px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all var(--animation-fast) var(--ease-standard);
+	margin-left: 6px;
+}
+
+.todo-collapse-btn:hover {
+	background: rgba(var(--themecolor-rgbstr), 0.2);
+	transform: scale(1.05);
+}
+
+.todo-collapse-btn i {
+	font-size: 9px;
+	transition: transform var(--animation-fast) var(--ease-standard);
+}
+
+.todo-collapse-btn.collapsed i {
+	transform: rotate(-90deg);
+}
+
+.todo-completed-count {
+	min-width: 12px;
+	text-align: center;
+}
+
 /* 站长端：显示未完成数�?*/
 .todo-count::before {
 	content: '';
@@ -12734,7 +12827,11 @@ html.navbar-absolute #leftbar_part3.sticky {
 
 .todo-item.todo-completing {
 	opacity: 0;
-	transform: translateX(30px);
+	transform: translateX(30px) scale(0.9);
+	max-height: 0;
+	margin-bottom: 0;
+	padding-top: 0;
+	padding-bottom: 0;
 	transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -12746,6 +12843,22 @@ html.navbar-absolute #leftbar_part3.sticky {
 .todo-item.todo-completed {
 	opacity: 0.7;
 	order: 1;
+	max-height: 500px;
+	overflow: hidden;
+	transition: all var(--animation-normal) var(--ease-emphasized),
+				max-height var(--animation-normal) var(--ease-emphasized),
+				margin var(--animation-normal) var(--ease-emphasized),
+				padding var(--animation-normal) var(--ease-emphasized),
+				opacity var(--animation-normal) var(--ease-emphasized);
+}
+
+.todo-item.todo-completed.collapsed {
+	max-height: 0;
+	margin-bottom: 0;
+	padding-top: 0;
+	padding-bottom: 0;
+	opacity: 0;
+	transform: translateY(-10px);
 }
 
 .todo-item.todo-completed:hover {

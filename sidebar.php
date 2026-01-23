@@ -165,6 +165,15 @@ $author_desc = get_option('argon_sidebar_author_description');
 						<i class="fa fa-check-square-o collapse-icon"></i>
 						<span class="collapse-title"><?php _e('TODO', 'argon'); ?></span>
 						<span class="collapse-badge" id="mobile_todo_count"><?php echo $mobile_uncompleted_count; ?></span>
+						<?php 
+						$mobile_completed_count = count(array_filter($mobile_todos, function($t) { return !empty($t['completed']); }));
+						if ($mobile_completed_count > 0) : 
+						?>
+						<button class="mobile-todo-collapse-btn" id="mobile-todo-collapse-btn" title="<?php _e('折叠/展开已完成', 'argon'); ?>">
+							<i class="fa fa-chevron-down"></i>
+							<span class="mobile-todo-completed-count"><?php echo $mobile_completed_count; ?></span>
+						</button>
+						<?php endif; ?>
 					</div>
 					<i class="fa fa-chevron-down collapse-arrow"></i>
 				</div>
@@ -854,8 +863,15 @@ $author_desc = get_option('argon_sidebar_author_description');
 					<i class="fa fa-list-ul"></i> <?php _e('TODO', 'argon'); ?>
 					<?php 
 					$uncompleted_count = count(array_filter($todos, function($t) { return empty($t['completed']); }));
+					$completed_count = count(array_filter($todos, function($t) { return !empty($t['completed']); }));
 					?>
 					<span class="todo-count" title="<?php echo $is_author ? __('未完成', 'argon') : __('待办事项', 'argon'); ?>"><?php echo $uncompleted_count; ?></span>
+					<?php if ($completed_count > 0) : ?>
+					<button class="todo-collapse-btn" id="todo-collapse-btn" title="<?php _e('折叠/展开已完成', 'argon'); ?>">
+						<i class="fa fa-chevron-down"></i>
+						<span class="todo-completed-count"><?php echo $completed_count; ?></span>
+					</button>
+					<?php endif; ?>
 				</h6>
 				
 				<?php if ($is_author) : ?>
@@ -950,8 +966,25 @@ $author_desc = get_option('argon_sidebar_author_description');
 			
 			function updateCount() {
 				var count = document.querySelectorAll('.todo-item:not(.todo-completed)').length;
+				var completedCount = document.querySelectorAll('.todo-item.todo-completed').length;
 				var countEl = document.querySelector('.todo-count');
 				if (countEl) countEl.textContent = count;
+				
+				// 更新折叠按钮
+				var collapseBtn = document.getElementById('todo-collapse-btn');
+				var completedCountEl = collapseBtn ? collapseBtn.querySelector('.todo-completed-count') : null;
+				if (completedCountEl) {
+					completedCountEl.textContent = completedCount;
+				}
+				
+				// 显示/隐藏折叠按钮
+				if (collapseBtn) {
+					if (completedCount > 0) {
+						collapseBtn.style.display = 'flex';
+					} else {
+						collapseBtn.style.display = 'none';
+					}
+				}
 				
 				var totalCount = document.querySelectorAll('.todo-item').length;
 				var list = document.getElementById('todo-list');
@@ -968,6 +1001,30 @@ $author_desc = get_option('argon_sidebar_author_description');
 				} else if (totalCount > 0 && emptyEl) {
 					emptyEl.remove();
 				}
+			}
+			
+			// 折叠/展开已完成任务
+			var collapseBtn = document.getElementById('todo-collapse-btn');
+			if (collapseBtn) {
+				collapseBtn.addEventListener('click', function(e) {
+					e.stopPropagation();
+					var completedItems = document.querySelectorAll('.todo-item.todo-completed');
+					var isCollapsed = collapseBtn.classList.contains('collapsed');
+					
+					if (isCollapsed) {
+						// 展开
+						collapseBtn.classList.remove('collapsed');
+						completedItems.forEach(function(item) {
+							item.classList.remove('collapsed');
+						});
+					} else {
+						// 折叠
+						collapseBtn.classList.add('collapsed');
+						completedItems.forEach(function(item) {
+							item.classList.add('collapsed');
+						});
+					}
+				});
 			}
 			
 			// 添加 TODO

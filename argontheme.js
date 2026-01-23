@@ -3198,10 +3198,40 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 	// ========== 移动端TODO交互 ==========
 	function updateMobileTodoCount() {
 		var count = $("#mobile-todo-list .mobile-todo-item:not(.todo-completed)").length;
+		var completedCount = $("#mobile-todo-list .mobile-todo-item.todo-completed").length;
 		$("#mobile_todo_count").text(count);
 		// 同步更新桌面端计数
 		$(".todo-count").text(count);
+		
+		// 更新折叠按钮
+		var collapseBtn = $("#mobile-todo-collapse-btn");
+		if (collapseBtn.length) {
+			collapseBtn.find(".mobile-todo-completed-count").text(completedCount);
+			if (completedCount > 0) {
+				collapseBtn.show();
+			} else {
+				collapseBtn.hide();
+			}
+		}
 	}
+	
+	// 移动端折叠/展开已完成任务
+	$(document).on("click", "#mobile-todo-collapse-btn", function(e) {
+		e.stopPropagation();
+		var btn = $(this);
+		var completedItems = $("#mobile-todo-list .mobile-todo-item.todo-completed");
+		var isCollapsed = btn.hasClass("collapsed");
+		
+		if (isCollapsed) {
+			// 展开
+			btn.removeClass("collapsed");
+			completedItems.removeClass("collapsed");
+		} else {
+			// 折叠
+			btn.addClass("collapsed");
+			completedItems.addClass("collapsed");
+		}
+	});
 	
 	// 添加TODO
 	$(document).on("click", "#mobile-todo-add-btn", function() {
