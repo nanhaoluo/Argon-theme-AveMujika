@@ -323,50 +323,60 @@ body.ai-verify-page .site-footer { max-width: 1000px !important; margin: 0 auto 
 .ai-verify-subtitle { font-size: 14px; color: var(--color-text-muted); margin: 0; line-height: 1.6; }
 html.darkmode .ai-verify-subtitle { color: #aaa; }
 
-.ai-verify-card { padding: 24px 28px; margin-bottom: 16px; }
-.ai-verify-section-title { font-size: 17px; font-weight: 600; margin: 0 0 16px; color: var(--color-text-deeper); display: flex; align-items: center; gap: 8px; background: none !important; }
+.ai-verify-card { padding: 28px 32px; margin-bottom: 16px; }
+.ai-verify-section-title { font-size: 18px; font-weight: 600; margin: 0 0 20px; color: var(--color-text-deeper); display: flex; align-items: center; gap: 10px; background: none !important; padding-bottom: 12px; border-bottom: 2px solid rgba(var(--themecolor-rgbstr), 0.1); }
 .ai-verify-section-title::before, .ai-verify-section-title::after { display: none !important; }
-.ai-verify-section-title i { color: var(--themecolor); font-size: 16px; }
+.ai-verify-section-title i { color: var(--themecolor); font-size: 18px; }
 
-.ai-query-form { margin-bottom: 20px; }
+.ai-query-form { margin-bottom: 24px; }
 .ai-query-form form { display: flex; gap: 12px; flex-wrap: wrap; }
-.ai-query-input { flex: 1; min-width: 200px; padding: 10px 14px; border: 1px solid var(--color-border); border-radius: var(--card-radius); font-family: 'Consolas', 'Monaco', monospace; font-size: 15px; letter-spacing: 1px; background: var(--color-foreground); color: var(--color-text); transition: all var(--animation-fast) var(--ease-standard); }
-.ai-query-input:focus { outline: none; border-color: var(--themecolor); box-shadow: 0 0 0 3px rgba(var(--themecolor-rgbstr), 0.1); }
+.ai-query-input { flex: 1; min-width: 200px; padding: 12px 16px; border: 2px solid var(--color-border); border-radius: var(--card-radius); font-family: 'Consolas', 'Monaco', monospace; font-size: 16px; letter-spacing: 2px; background: var(--color-foreground); color: var(--color-text); transition: all var(--animation-fast) var(--ease-standard); }
+.ai-query-input:focus { outline: none; border-color: var(--themecolor); box-shadow: 0 0 0 4px rgba(var(--themecolor-rgbstr), 0.1); }
+.ai-query-input::placeholder { letter-spacing: normal; }
 
-.ai-alert { padding: 14px 16px; border-radius: var(--card-radius); margin-bottom: 20px; display: flex; align-items: flex-start; gap: 10px; line-height: 1.6; }
-.ai-alert-warning { background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); color: var(--color-text); }
-.ai-alert-info { background: rgba(var(--themecolor-rgbstr), 0.08); border: 1px solid rgba(var(--themecolor-rgbstr), 0.2); color: var(--color-text); }
-.ai-alert-icon { flex-shrink: 0; font-size: 16px; margin-top: 2px; }
+.ai-alert { padding: 16px 18px; border-radius: var(--card-radius); margin-bottom: 24px; display: flex; align-items: flex-start; gap: 12px; line-height: 1.7; }
+.ai-alert-warning { background: rgba(255, 193, 7, 0.12); border: 1px solid rgba(255, 193, 7, 0.35); color: var(--color-text); }
+.ai-alert-info { background: rgba(var(--themecolor-rgbstr), 0.1); border: 1px solid rgba(var(--themecolor-rgbstr), 0.25); color: var(--color-text); }
+.ai-alert-icon { flex-shrink: 0; font-size: 18px; margin-top: 2px; }
+.ai-alert strong { font-weight: 600; }
 
-.ai-code-display { font-family: 'Consolas', 'Monaco', monospace; font-size: 28px; letter-spacing: 3px; color: var(--themecolor); font-weight: 600; padding: 20px; background: rgba(var(--themecolor-rgbstr), 0.05); border-radius: var(--card-radius); text-align: center; margin-bottom: 20px; }
+.ai-code-display { font-family: 'Consolas', 'Monaco', monospace; font-size: 32px; letter-spacing: 4px; color: var(--themecolor); font-weight: 700; padding: 24px; background: linear-gradient(135deg, rgba(var(--themecolor-rgbstr), 0.08) 0%, rgba(var(--themecolor-rgbstr), 0.03) 100%); border: 2px solid rgba(var(--themecolor-rgbstr), 0.15); border-radius: var(--card-radius); text-align: center; margin-bottom: 28px; box-shadow: 0 2px 8px rgba(var(--themecolor-rgbstr), 0.08); }
 
-.ai-info-grid { display: grid; gap: 12px; }
-.ai-info-item { display: flex; align-items: baseline; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--color-border-on-foreground); }
+.ai-section-subtitle { font-size: 16px; font-weight: 600; margin: 28px 0 16px; color: var(--color-text-deeper); display: flex; align-items: center; gap: 8px; }
+.ai-section-subtitle::before { content: ''; width: 4px; height: 16px; background: var(--themecolor); border-radius: 2px; }
+
+.ai-info-grid { display: grid; gap: 0; border: 1px solid var(--color-border-on-foreground); border-radius: var(--card-radius); overflow: hidden; }
+.ai-info-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--color-border-on-foreground); background: var(--color-foreground); transition: background var(--animation-fast) var(--ease-standard); }
 .ai-info-item:last-child { border-bottom: none; }
-.ai-info-label { color: var(--color-text-muted); font-size: 14px; min-width: 100px; flex-shrink: 0; }
-.ai-info-value { color: var(--color-text); flex: 1; word-break: break-word; }
-.ai-info-value-mono { font-family: 'Consolas', 'Monaco', monospace; }
+.ai-info-item:hover { background: rgba(var(--themecolor-rgbstr), 0.03); }
+.ai-info-label { color: var(--color-text-muted); font-size: 14px; min-width: 110px; flex-shrink: 0; font-weight: 500; }
+.ai-info-value { color: var(--color-text); flex: 1; word-break: break-word; font-size: 14px; }
+.ai-info-value-mono { font-family: 'Consolas', 'Monaco', monospace; background: rgba(var(--themecolor-rgbstr), 0.05); padding: 2px 8px; border-radius: 4px; }
 .ai-info-value-link { color: var(--themecolor); text-decoration: none; font-weight: 500; transition: opacity var(--animation-fast) var(--ease-standard); }
-.ai-info-value-link:hover { opacity: 0.8; }
+.ai-info-value-link:hover { opacity: 0.75; text-decoration: underline; }
 
-.ai-status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 500; }
-.ai-status-valid { background: rgba(40, 167, 69, 0.1); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.2); }
-.ai-status-modified { background: rgba(255, 193, 7, 0.1); color: #ffc107; border: 1px solid rgba(255, 193, 7, 0.3); }
+.ai-status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+.ai-status-valid { background: rgba(40, 167, 69, 0.12); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.25); }
+.ai-status-modified { background: rgba(255, 193, 7, 0.12); color: #f59e0b; border: 1px solid rgba(255, 193, 7, 0.3); }
+.ai-status-badge i { font-size: 12px; }
 
-.ai-content-box { padding: 16px; background: rgba(var(--themecolor-rgbstr), 0.03); border: 1px solid rgba(var(--themecolor-rgbstr), 0.1); border-radius: var(--card-radius); line-height: 1.8; color: var(--color-text); margin-bottom: 20px; }
+.ai-content-box { padding: 20px; background: rgba(var(--themecolor-rgbstr), 0.04); border: 1px solid rgba(var(--themecolor-rgbstr), 0.12); border-left: 4px solid var(--themecolor); border-radius: var(--card-radius); line-height: 1.8; color: var(--color-text); margin-bottom: 24px; font-size: 14px; }
 
-.ai-actions { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--color-border-on-foreground); display: flex; gap: 10px; flex-wrap: wrap; }
+.ai-actions { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--color-border-on-foreground); display: flex; gap: 12px; flex-wrap: wrap; }
 
-.ai-help-list { padding-left: 20px; margin: 0; color: var(--color-text-muted); line-height: 1.8; }
-.ai-help-list li { margin-bottom: 8px; }
+.ai-help-list { padding-left: 24px; margin: 0; color: var(--color-text-muted); line-height: 2; }
+.ai-help-list li { margin-bottom: 10px; position: relative; }
+.ai-help-list li::marker { color: var(--themecolor); }
 
 @media (max-width: 768px) {
-	.ai-verify-card { padding: 20px; }
+	.ai-verify-card { padding: 24px 20px; }
 	.ai-verify-header-card { padding: 30px 20px 24px; }
-	.ai-code-display { font-size: 22px; letter-spacing: 2px; padding: 16px; }
-	.ai-info-label { min-width: 80px; font-size: 13px; }
+	.ai-code-display { font-size: 26px; letter-spacing: 3px; padding: 20px; }
+	.ai-info-label { min-width: 90px; font-size: 13px; }
+	.ai-info-item { flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px 14px; }
 	.ai-query-form form { flex-direction: column; }
 	.ai-query-input { width: 100%; }
+	.ai-section-subtitle { font-size: 15px; }
 }
 </style>
 
@@ -441,8 +451,8 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 	<?php elseif ($result && $query_type === 'summary'): ?>
 		<div class="ai-code-display"><?php echo esc_html($result['code']); ?></div>
 		
-		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('关联文章', 'argon'); ?></h4>
-		<div class="ai-info-grid" style="margin-bottom: 24px;">
+		<h4 class="ai-section-subtitle"><?php _e('关联文章', 'argon'); ?></h4>
+		<div class="ai-info-grid" style="margin-bottom: 28px;">
 			<div class="ai-info-item">
 				<span class="ai-info-label"><?php _e('标题', 'argon'); ?></span>
 				<a href="<?php echo esc_url($result['post_url']); ?>" class="ai-info-value ai-info-value-link">
@@ -467,12 +477,12 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 			</div>
 		</div>
 		
-		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('AI 生成摘要', 'argon'); ?></h4>
+		<h4 class="ai-section-subtitle"><?php _e('AI 生成摘要', 'argon'); ?></h4>
 		<div class="ai-content-box">
 			<?php echo nl2br(esc_html($result['summary'])); ?>
 		</div>
 		
-		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('生成信息', 'argon'); ?></h4>
+		<h4 class="ai-section-subtitle"><?php _e('生成信息', 'argon'); ?></h4>
 		<div class="ai-info-grid">
 			<div class="ai-info-item">
 				<span class="ai-info-label"><?php _e('AI 提供商', 'argon'); ?></span>
@@ -507,8 +517,8 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 			</span>
 		</div>
 		
-		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('评论信息', 'argon'); ?></h4>
-		<div class="ai-info-grid" style="margin-bottom: 24px;">
+		<h4 class="ai-section-subtitle"><?php _e('评论信息', 'argon'); ?></h4>
+		<div class="ai-info-grid" style="margin-bottom: 28px;">
 			<div class="ai-info-item">
 				<span class="ai-info-label"><?php _e('评论 ID', 'argon'); ?></span>
 				<span class="ai-info-value ai-info-value-mono">#<?php echo esc_html($result['comment_id']); ?></span>
@@ -543,13 +553,13 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 			</div>
 		</div>
 		
-		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('评论内容', 'argon'); ?></h4>
+		<h4 class="ai-section-subtitle"><?php _e('评论内容', 'argon'); ?></h4>
 		<div class="ai-content-box">
 			<?php echo nl2br(esc_html($result['comment_content'])); ?>
 		</div>
 		
-		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('AI 检测结果', 'argon'); ?></h4>
-		<div class="ai-info-grid" style="margin-bottom: 24px;">
+		<h4 class="ai-section-subtitle"><?php _e('AI 检测结果', 'argon'); ?></h4>
+		<div class="ai-info-grid" style="margin-bottom: 28px;">
 			<div class="ai-info-item">
 				<span class="ai-info-label"><?php _e('检测结果', 'argon'); ?></span>
 				<span class="ai-info-value">
@@ -623,7 +633,7 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 		</div>
 		
 		<?php if (!empty($result['analysis'])): ?>
-		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('综合分析', 'argon'); ?></h4>
+		<h4 class="ai-section-subtitle"><?php _e('综合分析', 'argon'); ?></h4>
 		<div class="ai-content-box">
 			<?php echo nl2br(esc_html($result['analysis'])); ?>
 		</div>
@@ -649,7 +659,7 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 			</div>
 		</div>
 		
-		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('功能说明', 'argon'); ?></h4>
+		<h4 class="ai-section-subtitle"><?php _e('功能说明', 'argon'); ?></h4>
 		<ul class="ai-help-list">
 			<li><?php _e('每个 AI 生成内容都有唯一的 8 位识别码，确保内容可追溯', 'argon'); ?></li>
 			<li><?php _e('支持查询 AI 文章摘要和 AI 垃圾评论检测两种类型', 'argon'); ?></li>
@@ -878,8 +888,8 @@ if (current_user_can('manage_options')):
 			html = `
 				<div class="ai-code-display">${escapeHtml(record.code)}</div>
 				
-				<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('关联文章', 'argon'); ?></h4>
-				<div class="ai-info-grid" style="margin-bottom: 24px;">
+				<h4 class="ai-section-subtitle"><?php _e('关联文章', 'argon'); ?></h4>
+				<div class="ai-info-grid" style="margin-bottom: 28px;">
 					<div class="ai-info-item">
 						<span class="ai-info-label"><?php _e('文章标题', 'argon'); ?></span>
 						<a href="${escapeHtml(record.data.post_url)}" class="ai-info-value ai-info-value-link" target="_blank">
@@ -896,12 +906,12 @@ if (current_user_can('manage_options')):
 					</div>
 				</div>
 				
-				<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('AI 生成内容', 'argon'); ?></h4>
+				<h4 class="ai-section-subtitle"><?php _e('AI 生成内容', 'argon'); ?></h4>
 				<div class="ai-content-box">
 					${escapeHtml(record.data.summary)}
 				</div>
 				
-				<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('生成信息', 'argon'); ?></h4>
+				<h4 class="ai-section-subtitle"><?php _e('生成信息', 'argon'); ?></h4>
 				<div class="ai-info-grid">
 					<div class="ai-info-item">
 						<span class="ai-info-label"><?php _e('AI 提供商', 'argon'); ?></span>
@@ -927,7 +937,7 @@ if (current_user_can('manage_options')):
 			html = `
 				<div class="ai-code-display">${escapeHtml(record.code)}</div>
 				
-				<div class="ai-alert ${isSpam ? 'ai-alert-warning' : 'ai-alert-info'}" style="margin-bottom: 20px;">
+				<div class="ai-alert ${isSpam ? 'ai-alert-warning' : 'ai-alert-info'}" style="margin-bottom: 24px;">
 					<span class="ai-alert-icon">${isSpam ? '⚠' : '✓'}</span>
 					<span>
 						<strong><?php _e('AI 识别结果', 'argon'); ?>：</strong>
@@ -935,8 +945,8 @@ if (current_user_can('manage_options')):
 					</span>
 				</div>
 				
-				<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('评论信息', 'argon'); ?></h4>
-				<div class="ai-info-grid" style="margin-bottom: 24px;">
+				<h4 class="ai-section-subtitle"><?php _e('评论信息', 'argon'); ?></h4>
+				<div class="ai-info-grid" style="margin-bottom: 28px;">
 					<div class="ai-info-item">
 						<span class="ai-info-label"><?php _e('评论 ID', 'argon'); ?></span>
 						<span class="ai-info-value ai-info-value-mono">${escapeHtml(record.data.comment_id)}</span>
@@ -957,13 +967,13 @@ if (current_user_can('manage_options')):
 					</div>
 				</div>
 				
-				<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('评论内容', 'argon'); ?></h4>
+				<h4 class="ai-section-subtitle"><?php _e('评论内容', 'argon'); ?></h4>
 				<div class="ai-content-box">
 					${escapeHtml(record.data.comment_content)}
 				</div>
 				
-				<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('AI 检测结果', 'argon'); ?></h4>
-				<div class="ai-info-grid" style="margin-bottom: 24px;">
+				<h4 class="ai-section-subtitle"><?php _e('AI 检测结果', 'argon'); ?></h4>
+				<div class="ai-info-grid" style="margin-bottom: 28px;">
 					<div class="ai-info-item">
 						<span class="ai-info-label"><?php _e('识别结果', 'argon'); ?></span>
 						<span class="ai-info-value">
@@ -1011,7 +1021,7 @@ if (current_user_can('manage_options')):
 				</div>
 				
 				${record.data.analysis ? `
-				<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('综合分析', 'argon'); ?></h4>
+				<h4 class="ai-section-subtitle"><?php _e('综合分析', 'argon'); ?></h4>
 				<div class="ai-content-box">
 					${escapeHtml(record.data.analysis)}
 				</div>
