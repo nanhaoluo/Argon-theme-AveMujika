@@ -281,7 +281,29 @@
 
 							mermaidDiv.innerHTML = '';
 
-							mermaidDiv.textContent = code;
+							// 使用 pre 标签包裹以保留换行符和空格
+
+							let pre = document.createElement('pre');
+
+							pre.textContent = code;
+
+							pre.style.display = 'none';
+
+							mermaidDiv.appendChild(pre);
+
+							
+
+							// 同时设置为 data 属性
+
+							mermaidDiv.setAttribute('data-mermaid-code', code);
+
+							
+
+							console.log('Code set to div, checking...');
+
+							console.log('div.textContent (first 100):', mermaidDiv.textContent.substring(0, 100));
+
+							console.log('div.textContent contains newline:', mermaidDiv.textContent.includes('\n'));
 
 							
 
@@ -289,9 +311,23 @@
 
 							try {
 
-								mermaid.init(undefined, mermaidDiv);
+								// 直接使用 mermaid.render 而不是 init
 
-								console.log('Mermaid diagram rendered successfully');
+								let id = 'mermaid-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+
+								mermaid.render(id, code).then(function(result) {
+
+									mermaidDiv.innerHTML = result.svg;
+
+									console.log('Mermaid diagram rendered successfully');
+
+								}).catch(function(e) {
+
+									console.error('Mermaid rendering error:', e);
+
+									console.error('Code that failed:', code.substring(0, 200));
+
+								});
 
 							} catch (e) {
 
