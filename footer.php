@@ -329,27 +329,33 @@
 
 								console.log('Code appears to be on one line, attempting to add newlines...');
 
-								// 在 Mermaid 语法关键位置添加换行
+								
 
-								// 1. 在箭头前后添加换行
+								// 简单粗暴的方法：在每个箭头和节点后添加换行
 
-								code = code.replace(/\s*(-->)\s*/g, '\n    $1 ');
+								// 先移除所有现有的换行和多余空格，重新格式化
 
-								// 2. 在每个节点定义后添加换行（方括号、圆括号、花括号结束后）
+								let lines = code.split(/\s*\n\s*/);
 
-								code = code.replace(/(\]|\)|\})\s*(?=[A-Z])/g, '$1\n');
+								let formatted = lines[0]; // flowchart TD
 
-								// 3. 在 style 语句前添加换行
+								
 
-								code = code.replace(/\s*(style\s+)/g, '\n$1');
+								// 处理剩余内容：在箭头前添加换行
 
-								// 4. 清理多余的空格
+								let rest = lines.slice(1).join(' ');
 
-								code = code.replace(/\s+/g, ' ').trim();
+								rest = rest
 
-								// 5. 确保第一行后有换行
+									.replace(/\s+/g, ' ') // 统一空格
 
-								code = code.replace(/^(flowchart\s+\w+)\s+/, '$1\n    ');
+									.replace(/\s*-->\s*/g, '\n    --> ') // 箭头前后换行
+
+									.replace(/\s*style\s+/g, '\nstyle '); // style 前换行
+
+								
+
+								code = formatted + '\n' + rest;
 
 								
 
