@@ -4674,28 +4674,42 @@ window.pjaxLoaded = function(){
 									<div style="margin-bottom: 16px;">
 										<label style="display: block; margin-bottom: 4px; font-weight: 500;"><?php _e('邮件主题', 'argon');?>：</label>
 										<input type="text" name="argon_email_template_<?php echo esc_attr($type_key); ?>_subject" 
-											value="<?php echo esc_attr(get_option('argon_email_template_' . $type_key . '_subject', $config['default_subject'])); ?>" 
-											placeholder="<?php echo esc_attr($config['default_subject']); ?>"
+									value="<?php echo esc_attr(get_option('argon_email_template_' . $type_key . '_subject', '')); ?>" 
+									placeholder="<?php printf(__('默认：%s', 'argon'), esc_attr($config['default_subject'])); ?>"
 											style="width: 100%;" />
+										<p class="description"><?php _e('留空则使用默认主题', 'argon');?></p>
 									</div>
 
 									<div style="margin-bottom: 16px;">
 										<label style="display: block; margin-bottom: 4px; font-weight: 500;"><?php _e('邮件内容', 'argon');?>：</label>
 										<textarea name="argon_email_template_<?php echo esc_attr($type_key); ?>_content" 
-											rows="12" style="width: 100%; font-family: monospace; font-size: 13px;"
-											placeholder="<?php echo esc_attr($config['default_content']); ?>"><?php echo esc_textarea(get_option('argon_email_template_' . $type_key . '_content', $config['default_content'])); ?></textarea>
+									placeholder="<?php _e('留空则使用默认模板。支持 HTML 标签，可使用下方占位符', 'argon'); ?>"><?php echo esc_textarea(get_option('argon_email_template_' . $type_key . '_content', '')); ?></textarea>
+											placeholder="<?php _e('留空则使用默认模板。支持 HTML 标签，可使用下方占位符', 'argon'); ?>"><?php echo esc_textarea(get_option('argon_email_template_' . $type_key . '_content', '')); ?></textarea>
+										<p class="description"><?php _e('支持 HTML 标签，可使用下方占位符自定义邮件内容', 'argon');?></p>
 									</div>
 
 									<div style="margin-bottom: 16px;">
 										<label style="display: block; margin-bottom: 8px; font-weight: 500;"><?php _e('可用占位符', 'argon');?>：</label>
 										<div style="background: #f6f7f7; padding: 12px; border-radius: 4px; display: flex; flex-wrap: wrap; gap: 8px;">
 											<?php foreach ($config['placeholders'] as $placeholder => $desc): ?>
-											<code style="background: #fff; padding: 4px 8px; border-radius: 3px; cursor: pointer; border: 1px solid #ddd;" 
+											<code style="background: #fff; padding: 4px 8px; border-radius: 3px; cursor: pointer; border: 1px solid #ddd; display: inline-flex; align-items: center;" 
 												onclick="argonInsertPlaceholder('argon_email_template_<?php echo esc_attr($type_key); ?>_content', '{{<?php echo esc_attr($placeholder); ?>}}')" 
-												title="<?php echo esc_attr($desc); ?>">{{<?php echo esc_html($placeholder); ?>}}</code>
+												title="<?php _e('点击插入', 'argon'); ?>: <?php echo esc_attr($desc); ?>">
+												<span style="color: #d63384;">{{<?php echo esc_html($placeholder); ?>}}</span>
+												<span style="color: #6c757d; font-size: 11px; margin-left: 4px;">- <?php echo esc_html($desc); ?></span>
+											</code>
 											<?php endforeach; ?>
 										</div>
 										<p class="description" style="margin-top: 8px;"><?php _e('点击占位符可插入到内容编辑框中，占位符会在发送时被替换为实际数据', 'argon');?></p>
+									</div>
+
+									<div style="margin-bottom: 16px; padding: 12px; background: #e7f3ff; border-left: 4px solid #2271b1; border-radius: 4px;">
+										<strong><?php _e('默认模板预览', 'argon');?>：</strong>
+										<div style="margin-top: 8px; padding: 8px; background: #fff; border-radius: 4px; max-height: 200px; overflow-y: auto;">
+											<div style="font-size: 12px; color: #666; margin-bottom: 4px;"><strong><?php _e('主题', 'argon');?>:</strong> <?php echo esc_html($config['default_subject']); ?></div>
+											<div style="font-size: 12px; color: #666;"><strong><?php _e('内容', 'argon');?>:</strong></div>
+											<div style="font-size: 11px; color: #888; font-family: monospace; white-space: pre-wrap; margin-top: 4px;"><?php echo esc_html($config['default_content']); ?></div>
+										</div>
 									</div>
 
 									<div style="display: flex; gap: 8px;">
