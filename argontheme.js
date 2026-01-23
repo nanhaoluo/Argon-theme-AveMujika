@@ -2821,54 +2821,6 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 	NProgress.start();
 	pjaxLoading = true;
 }).on('pjax:afterGetContainers', function(e, f, g) {
-	if (g.is("#main article.post-preview a.post-title")){
-		let $card = $(g.parents("article.post-preview")[0]);
-		let waterflowOn = false;
-		if ($("#main").hasClass("waterflow")){
-			waterflowOn = true;
-			$card.css("transition", "all .5s ease");
-		}
-		$card.append("<div class='loading-css-animation'><div class='loading-dot loading-dot-1' ></div><div class='loading-dot loading-dot-2' ></div><div class='loading-dot loading-dot-3' ></div><div class='loading-dot loading-dot-4' ></div><div class='loading-dot loading-dot-5' ></div><div class='loading-dot loading-dot-6' ></div><div class='loading-dot loading-dot-7' ></div><div class='loading-dot loading-dot-8' ></div></div></div>");
-		$card.addClass("post-pjax-loading");
-		$("#main").addClass("post-list-pjax-loading");
-		
-		// 隐藏其他卡片 - 先禁用transition，设置opacity，然后恢复
-		$(".post-preview").not($card).each(function() {
-			let $this = $(this);
-			let originalTransition = $this.css("transition");
-			$this.css("transition", "none");
-			$this.css("opacity", "0");
-			$this.css("pointer-events", "none");
-			// 强制浏览器重绘
-			$this[0].offsetHeight;
-			$this.css("transition", originalTransition);
-		});
-		
-		// 隐藏footer
-		$("#footer").css({
-			"opacity": "0",
-			"pointer-events": "none"
-		});
-		
-		// 让被点击的卡片居中
-		$card.css({
-			"margin-left": "auto",
-			"margin-right": "auto"
-		});
-		
-		let offsetTop = $($card).offset().top - $("#main").offset().top;
-		if ($("html").hasClass("is-home") && $("html").hasClass("banner-as-cover")){
-			offsetTop = $($card).offset().top - window.outerHeight * 0.418;
-		}
-		$card.css("transform" , "translateY(-" + offsetTop + "px)");
-		if (waterflowOn){
-			$card.css("left", "10px");
-			$card.css("width", "calc(100% - 20px)");
-		}
-		$("body,html").animate({
-			scrollTop: 0
-		}, 450);
-	}
 	pjaxScrollTop = 0;
 	if ($("html").hasClass("banner-as-cover")){
 		if (g.is(".page-link")){
@@ -2880,30 +2832,6 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 }).on('pjax:beforeReplace', function(e, dom) {
 	// 清理旧页面的资源
 	cleanupPjaxResources();
-	
-	// 清理文章列表的 PJAX 加载状态
-	$(".post-preview.post-pjax-loading").removeClass("post-pjax-loading").css({
-		"transform": "",
-		"transition": "",
-		"left": "",
-		"width": "",
-		"margin-left": "",
-		"margin-right": ""
-	});
-	$(".post-preview .loading-css-animation").remove();
-	$("#main").removeClass("post-list-pjax-loading");
-	
-	// 恢复所有卡片的显示状态
-	$(".post-preview").css({
-		"opacity": "",
-		"pointer-events": ""
-	});
-	
-	// 恢复footer
-	$("#footer").css({
-		"opacity": "",
-		"pointer-events": ""
-	});
 	
 	// 更新 UI 状态
 	if ($("#post_comment", dom[0]).length > 0){
