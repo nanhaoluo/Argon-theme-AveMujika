@@ -3877,13 +3877,13 @@ html.filter-grayscale {
 	z-index: 10;
 }
 
-.post-list-pjax-loading .post-preview {
+#main.post-list-pjax-loading .post {
 	opacity: 0;
 	pointer-events: none;
 	transition: opacity 0.3s ease;
 }
 
-.post-list-pjax-loading .post-preview.post-pjax-loading {
+#main.post-list-pjax-loading .post.post-pjax-loading {
 	opacity: 1 !important;
 	pointer-events: auto;
 }

@@ -2821,8 +2821,8 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 	NProgress.start();
 	pjaxLoading = true;
 }).on('pjax:afterGetContainers', function(e, f, g) {
-	if (g.is("#main article.post-preview a.post-title")){
-		let $card = $(g.parents("article.post-preview")[0]);
+	if (g.is("#main.article-list article.post a.post-title")){
+		let $card = $(g.parents("article.post")[0]);
 		let waterflowOn = false;
 		if ($("#main").hasClass("waterflow")){
 			waterflowOn = true;
@@ -2857,13 +2857,13 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 	cleanupPjaxResources();
 	
 	// 清理文章列表的 PJAX 加载状态
-	$(".post-preview.post-pjax-loading").removeClass("post-pjax-loading").css({
+	$(".post.post-pjax-loading").removeClass("post-pjax-loading").css({
 		"transform": "",
 		"transition": "",
 		"left": "",
 		"width": ""
 	});
-	$(".post-preview .loading-css-animation").remove();
+	$(".post .loading-css-animation").remove();
 	$("#main").removeClass("post-list-pjax-loading");
 	
 	// 更新 UI 状态
