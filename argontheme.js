@@ -4316,3 +4316,542 @@ void 0;
         };
     }
 })();
+
+// ==========================================================================
+// Mermaid 图表渲染引擎
+// ==========================================================================
+(function() {
+	'use strict';
+
+	// ---------- 配置和状态管理 ----------
+
+	/**
+	 * Mermaid 渲染引擎配置
+	 */
+	const MermaidRenderer = {
+		initialized: false,
+		rendered: new Set(), // 已渲染的图表 ID 集合
+		config: null,
+		
+		/**
+		 * 初始化 Mermaid 配置
+		 */
+		initConfig() {
+			// 检查 Mermaid 库是否已加载
+			if (typeof window.mermaid === 'undefined') {
+				this.logDebug('Mermaid 库未加载');
+				return false;
+			}
+
+			// 检查配置是否存在
+			if (typeof window.argonMermaidConfig === 'undefined') {
+				this.logDebug('Mermaid 配置未找到，使用默认配置');
+				this.config = {
+					enabled: true,
+					theme: 'auto',
+					debugMode: false,
+					fallbackUrls: []
+				};
+			} else {
+				this.config = window.argonMermaidConfig;
+			}
+
+			// 获取当前主题
+			const theme = this.getMermaidTheme();
+
+			// 配置 Mermaid
+			try {
+				window.mermaid.initialize({
+					startOnLoad: false, // 手动控制渲染时机
+					theme: theme,
+					securityLevel: 'loose', // 允许 HTML 标签
+					logLevel: this.config.debugMode ? 'debug' : 'error',
+					flowchart: {
+						useMaxWidth: true,
+						htmlLabels: true,
+						curve: 'basis'
+					},
+					sequence: {
+						useMaxWidth: true,
+						wrap: true
+					},
+					gantt: {
+						useMaxWidth: true
+					}
+				});
+
+				this.initialized = true;
+				this.logDebug('Mermaid 配置初始化成功', { theme });
+				return true;
+			} catch (error) {
+				this.logError('Mermaid 配置初始化失败', error);
+				return false;
+			}
+		},
+
+		/**
+		 * 获取当前主题对应的 Mermaid 主题
+		 * @returns {string} Mermaid 主题名称
+		 */
+		getMermaidTheme() {
+			// 如果配置了固定主题（非 auto），直接返回
+			if (this.config && this.config.theme !== 'auto') {
+				return this.config.theme;
+			}
+
+			// 根据页面主题模式自动选择
+			const isDarkMode = document.documentElement.classList.contains('darkmode');
+			return isDarkMode ? 'dark' : 'default';
+		},
+
+		// ---------- 代码块检测器 ----------
+
+		/**
+		 * 检测所有 Mermaid 代码块
+		 * @returns {Array} Mermaid 代码块元素数组
+		 */
+		detectMermaidBlocks() {
+			const blocks = [];
+			
+			// 检测规则（优先级从高到低）
+			const selectors = [
+				'div.mermaid',                           // 标准格式
+				'pre code.language-mermaid',             // Markdown 格式
+				'pre[data-lang="mermaid"]',              // 自定义属性格式
+				'code.mermaid'                           // 简化格式
+			];
+
+			selectors.forEach(selector => {
+				const elements = document.querySelectorAll(selector);
+				elements.forEach(element => {
+					// 避免重复添加
+					if (!blocks.includes(element)) {
+						// 检查是否在注释中
+						if (!this.isInComment(element)) {
+							blocks.push(element);
+						}
+					}
+				});
+			});
+
+			this.logDebug(`检测到 ${blocks.length} 个 Mermaid 代码块`);
+			return blocks;
+		},
+
+		/**
+		 * 检查元素是否在 HTML 注释中
+		 * @param {HTMLElement} element - 要检查的元素
+		 * @returns {boolean} 是否在注释中
+		 */
+		isInComment(element) {
+			let node = element.parentNode;
+			while (node) {
+				if (node.nodeType === Node.COMMENT_NODE) {
+					return true;
+				}
+				node = node.parentNode;
+			}
+			return false;
+		},
+
+		/**
+		 * 提取代码块内容
+		 * @param {HTMLElement} element - 代码块元素
+		 * @returns {string} Mermaid 代码
+		 */
+		extractMermaidCode(element) {
+			let code = '';
+
+			// 根据不同的元素类型提取代码
+			if (element.tagName === 'DIV' && element.classList.contains('mermaid')) {
+				code = element.textContent;
+			} else if (element.tagName === 'CODE') {
+				code = element.textContent;
+			} else if (element.tagName === 'PRE') {
+				const codeElement = element.querySelector('code');
+				code = codeElement ? codeElement.textContent : element.textContent;
+			}
+
+			// 解码转义字符
+			code = code
+				.replace(/\\n/g, '\n')
+				.replace(/\\"/g, '"')
+				.replace(/\\'/g, "'")
+				.replace(/\\\\/g, '\\');
+
+			return code.trim();
+		},
+
+		// ---------- 渲染引擎 ----------
+
+		/**
+		 * 批量渲染所有 Mermaid 图表
+		 */
+		renderAllCharts() {
+			if (!this.initialized) {
+				this.logDebug('Mermaid 未初始化，跳过渲染');
+				return;
+			}
+
+			// 检测所有代码块（一次 DOM 遍历）
+			const blocks = this.detectMermaidBlocks();
+
+			if (blocks.length === 0) {
+				this.logDebug('未找到 Mermaid 代码块');
+				return;
+			}
+
+			// 批量渲染
+			blocks.forEach((block, index) => {
+				this.renderChart(block, index);
+			});
+
+			this.logDebug(`完成渲染 ${blocks.length} 个图表`);
+		},
+
+		/**
+		 * 渲染单个图表
+		 * @param {HTMLElement} element - 代码块元素
+		 * @param {number} index - 图表索引
+		 */
+		renderChart(element, index) {
+			const chartId = `mermaid-chart-${Date.now()}-${index}`;
+
+			// 检查是否已渲染（避免重复渲染）
+			if (this.rendered.has(element)) {
+				this.logDebug(`图表已渲染，跳过: ${chartId}`);
+				return;
+			}
+
+			try {
+				// 提取代码
+				const code = this.extractMermaidCode(element);
+
+				if (!code) {
+					this.logDebug(`代码块为空，跳过: ${chartId}`);
+					return;
+				}
+
+				// 创建容器
+				const container = document.createElement('div');
+				container.className = 'mermaid-container';
+				container.id = chartId;
+
+				// 渲染图表
+				window.mermaid.render(`mermaid-svg-${chartId}`, code).then(result => {
+					// 渲染成功
+					container.innerHTML = result.svg;
+					
+					// 保存原始代码（用于主题切换时重新渲染）
+					container.dataset.mermaidCode = code;
+					container.dataset.currentTheme = this.getMermaidTheme();
+
+					// 替换原始代码块
+					element.parentNode.replaceChild(container, element);
+
+					// 标记为已渲染
+					this.rendered.add(container);
+
+					// 应用样式增强
+					this.applyStyles(container);
+
+					this.logDebug(`图表渲染成功: ${chartId}`);
+				}).catch(error => {
+					// 渲染失败
+					this.handleRenderError(element, error, code);
+				});
+
+			} catch (error) {
+				this.handleRenderError(element, error, '');
+			}
+		},
+
+		/**
+		 * 处理渲染错误
+		 * @param {HTMLElement} element - 原始代码块元素
+		 * @param {Error} error - 错误对象
+		 * @param {string} code - 原始代码
+		 */
+		handleRenderError(element, error, code) {
+			this.logError('图表渲染失败', error);
+
+			// 创建错误提示容器
+			const errorContainer = document.createElement('div');
+			errorContainer.className = 'mermaid-error-container';
+
+			// 提取错误信息
+			const errorMessage = error.message || '未知错误';
+			const errorType = this.getErrorType(errorMessage);
+
+			errorContainer.innerHTML = `
+				<div class="mermaid-error-header">
+					<span class="mermaid-error-icon">⚠️</span>
+					<span class="mermaid-error-title">Mermaid 图表渲染失败</span>
+				</div>
+				<div class="mermaid-error-body">
+					<p class="mermaid-error-type">错误类型: ${errorType}</p>
+					<p class="mermaid-error-message">${this.escapeHtml(errorMessage)}</p>
+				</div>
+				<details class="mermaid-error-code">
+					<summary>查看原始代码</summary>
+					<pre><code class="language-mermaid">${this.escapeHtml(code || element.textContent)}</code></pre>
+				</details>
+			`;
+
+			// 替换原始代码块
+			element.parentNode.replaceChild(errorContainer, element);
+		},
+
+		/**
+		 * 获取错误类型
+		 * @param {string} errorMessage - 错误信息
+		 * @returns {string} 错误类型
+		 */
+		getErrorType(errorMessage) {
+			if (errorMessage.includes('Syntax') || errorMessage.includes('Parse')) {
+				return '语法错误';
+			} else if (errorMessage.includes('Lexical')) {
+				return '词法错误';
+			} else if (errorMessage.includes('Expecting')) {
+				return '格式错误';
+			}
+			return '渲染错误';
+		},
+
+		/**
+		 * HTML 转义
+		 * @param {string} text - 要转义的文本
+		 * @returns {string} 转义后的文本
+		 */
+		escapeHtml(text) {
+			const div = document.createElement('div');
+			div.textContent = text;
+			return div.innerHTML;
+		},
+
+		// ---------- 样式增强 ----------
+
+		/**
+		 * 应用容器样式
+		 * @param {HTMLElement} container - 图表容器
+		 */
+		applyStyles(container) {
+			// 添加淡入动画
+			container.style.opacity = '0';
+			setTimeout(() => {
+				container.style.transition = 'opacity 0.3s ease-in';
+				container.style.opacity = '1';
+			}, 10);
+
+			// 确保 SVG 响应式
+			const svg = container.querySelector('svg');
+			if (svg) {
+				svg.style.maxWidth = '100%';
+				svg.style.height = 'auto';
+			}
+		},
+
+		// ---------- 主题切换监听 ----------
+
+		/**
+		 * 监听主题切换事件
+		 */
+		listenThemeSwitch() {
+			// 如果配置了固定主题，不需要监听切换
+			if (this.config && this.config.theme !== 'auto') {
+				return;
+			}
+
+			// 监听 Argon 主题切换事件
+			document.addEventListener('argon:theme-switched', () => {
+				this.reRenderCharts();
+			});
+
+			// 使用 MutationObserver 监听 darkmode class 变化
+			const observer = new MutationObserver((mutations) => {
+				mutations.forEach((mutation) => {
+					if (mutation.attributeName === 'class') {
+						const isDarkMode = document.documentElement.classList.contains('darkmode');
+						const currentTheme = isDarkMode ? 'dark' : 'default';
+						
+						// 检查主题是否真的改变了
+						const firstChart = document.querySelector('.mermaid-container');
+						if (firstChart && firstChart.dataset.currentTheme !== currentTheme) {
+							this.reRenderCharts();
+						}
+					}
+				});
+			});
+
+			observer.observe(document.documentElement, {
+				attributes: true,
+				attributeFilter: ['class']
+			});
+
+			this.logDebug('主题切换监听器已启动');
+		},
+
+		/**
+		 * 重新渲染所有图表（主题切换时）
+		 */
+		reRenderCharts() {
+			const charts = document.querySelectorAll('.mermaid-container');
+			
+			if (charts.length === 0) {
+				return;
+			}
+
+			this.logDebug(`重新渲染 ${charts.length} 个图表`);
+
+			// 更新 Mermaid 主题配置
+			const newTheme = this.getMermaidTheme();
+			
+			try {
+				window.mermaid.initialize({
+					startOnLoad: false,
+					theme: newTheme,
+					securityLevel: 'loose',
+					logLevel: this.config.debugMode ? 'debug' : 'error',
+					flowchart: {
+						useMaxWidth: true,
+						htmlLabels: true,
+						curve: 'basis'
+					},
+					sequence: {
+						useMaxWidth: true,
+						wrap: true
+					},
+					gantt: {
+						useMaxWidth: true
+					}
+				});
+
+				// 重新渲染每个图表
+				charts.forEach((chart, index) => {
+					const code = chart.dataset.mermaidCode;
+					if (!code) {
+						return;
+					}
+
+					const chartId = `mermaid-chart-rerender-${Date.now()}-${index}`;
+
+					window.mermaid.render(`mermaid-svg-${chartId}`, code).then(result => {
+						chart.innerHTML = result.svg;
+						chart.dataset.currentTheme = newTheme;
+
+						// 确保 SVG 响应式
+						const svg = chart.querySelector('svg');
+						if (svg) {
+							svg.style.maxWidth = '100%';
+							svg.style.height = 'auto';
+						}
+
+						this.logDebug(`图表重新渲染成功: ${chartId}`);
+					}).catch(error => {
+						this.logError('图表重新渲染失败', error);
+					});
+				});
+
+			} catch (error) {
+				this.logError('重新渲染失败', error);
+			}
+		},
+
+		// ---------- 日志工具 ----------
+
+		/**
+		 * 调试日志
+		 * @param {string} message - 日志信息
+		 * @param {*} data - 附加数据
+		 */
+		logDebug(message, data) {
+			if (this.config && this.config.debugMode) {
+				if (data) {
+					console.log(`[Argon Mermaid] ${message}`, data);
+				} else {
+					console.log(`[Argon Mermaid] ${message}`);
+				}
+			}
+		},
+
+		/**
+		 * 错误日志
+		 * @param {string} message - 错误信息
+		 * @param {Error} error - 错误对象
+		 */
+		logError(message, error) {
+			console.error(`[Argon Mermaid] ${message}`, error);
+		},
+
+		// ---------- 初始化 ----------
+
+		/**
+		 * 初始化渲染引擎
+		 */
+		init() {
+			// 检查是否启用
+			if (typeof window.argonMermaidConfig !== 'undefined' && !window.argonMermaidConfig.enabled) {
+				this.logDebug('Mermaid 支持未启用');
+				return;
+			}
+
+			// 检查 Mermaid 库是否加载
+			if (typeof window.mermaid === 'undefined') {
+				this.logDebug('Mermaid 库未加载，等待加载...');
+				
+				// 等待库加载（最多等待 5 秒）
+				let attempts = 0;
+				const checkInterval = setInterval(() => {
+					attempts++;
+					if (typeof window.mermaid !== 'undefined') {
+						clearInterval(checkInterval);
+						this.logDebug('Mermaid 库加载完成');
+						this.initAndRender();
+					} else if (attempts >= 50) {
+						clearInterval(checkInterval);
+						this.logError('Mermaid 库加载超时');
+					}
+				}, 100);
+				
+				return;
+			}
+
+			this.initAndRender();
+		},
+
+		/**
+		 * 初始化并渲染
+		 */
+		initAndRender() {
+			// 初始化配置
+			if (!this.initConfig()) {
+				return;
+			}
+
+			// 渲染所有图表
+			this.renderAllCharts();
+
+			// 监听主题切换
+			this.listenThemeSwitch();
+
+			this.logDebug('Mermaid 渲染引擎初始化完成');
+		}
+	};
+
+	// ---------- 启动渲染引擎 ----------
+
+	// 在 DOM 加载完成后初始化
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', () => {
+			MermaidRenderer.init();
+		});
+	} else {
+		// DOM 已加载完成，直接初始化
+		MermaidRenderer.init();
+	}
+
+	// 暴露到全局（用于 PJAX 等场景）
+	window.ArgonMermaidRenderer = MermaidRenderer;
+
+})();
+/* ========== End of Mermaid 图表渲染引擎 ========== */
