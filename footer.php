@@ -257,6 +257,18 @@
 
 							
 
+							// 检查前20个字符的详细信息
+
+							console.log('First 20 chars with codes:');
+
+							for (let i = 0; i < Math.min(20, code.length); i++) {
+
+								console.log('  [' + i + '] "' + code[i] + '" (code: ' + code.charCodeAt(i) + ')');
+
+							}
+
+							
+
 							console.log('WP-Markdown Mermaid code found (length: ' + code.length + ')');
 
 							console.log('Contains newlines:', code.indexOf('\n') !== -1);
