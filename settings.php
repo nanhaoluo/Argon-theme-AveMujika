@@ -3082,7 +3082,89 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 15. 高级设置 ========== -->
+					<!-- ========== 15. Mermaid 图表 ========== -->
+					<tr><th class="subtitle"><h2 id="section-mermaid"><?php _e('Mermaid 图表', 'argon');?></h2></th></tr>
+
+					<tr><th class="subtitle"><h3 id="subsection-mermaid-basic"><?php _e('基本设置', 'argon');?></h3></th></tr>
+
+					<tr>
+						<th><label><?php _e('启用 Mermaid 支持', 'argon');?></label></th>
+						<td>
+							<?php $argon_enable_mermaid = get_option('argon_enable_mermaid', 'false');?>
+							<label>
+								<input type="checkbox" name="argon_enable_mermaid" value="true" <?php if ($argon_enable_mermaid=='true'){echo 'checked';}?>/> 
+								<?php _e('启用 Mermaid 图表渲染功能', 'argon');?>
+							</label>
+							<p class="description"><?php _e('启用后，主题将支持在文章中渲染 Mermaid 图表（流程图、时序图、类图等）', 'argon');?></p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('CDN 来源', 'argon');?></label></th>
+						<td>
+							<select name="argon_mermaid_cdn_source">
+								<?php $argon_mermaid_cdn_source = get_option('argon_mermaid_cdn_source', 'jsdelivr'); ?>
+								<option value="jsdelivr" <?php if ($argon_mermaid_cdn_source=='jsdelivr'){echo 'selected';} ?>><?php _e('jsDelivr CDN', 'argon');?></option>
+								<option value="unpkg" <?php if ($argon_mermaid_cdn_source=='unpkg'){echo 'selected';} ?>><?php _e('unpkg CDN', 'argon');?></option>
+								<option value="custom" <?php if ($argon_mermaid_cdn_source=='custom'){echo 'selected';} ?>><?php _e('自定义 CDN 地址', 'argon');?></option>
+								<option value="local" <?php if ($argon_mermaid_cdn_source=='local'){echo 'selected';} ?>><?php _e('本地文件', 'argon');?></option>
+							</select>
+							<p class="description"><?php _e('选择 Mermaid 库的加载来源。jsDelivr 和 unpkg 为公共 CDN，本地文件需要手动下载到主题目录', 'argon');?></p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('自定义 CDN 地址', 'argon');?></label></th>
+						<td>
+							<input type="text" class="regular-text" name="argon_mermaid_cdn_custom_url" value="<?php echo get_option('argon_mermaid_cdn_custom_url', ''); ?>" placeholder="https://example.com/mermaid.min.js"/>
+							<p class="description"><?php _e('当 CDN 来源选择"自定义 CDN 地址"时生效。请输入完整的 Mermaid 库 URL（必须以 .js 结尾）', 'argon');?></p>
+						</td>
+					</tr>
+
+					<tr><th class="subtitle"><h3 id="subsection-mermaid-appearance"><?php _e('外观设置', 'argon');?></h3></th></tr>
+
+					<tr>
+						<th><label><?php _e('图表主题', 'argon');?></label></th>
+						<td>
+							<select name="argon_mermaid_theme">
+								<?php $argon_mermaid_theme = get_option('argon_mermaid_theme', 'auto'); ?>
+								<option value="auto" <?php if ($argon_mermaid_theme=='auto'){echo 'selected';} ?>><?php _e('自动切换（跟随页面主题）', 'argon');?></option>
+								<option value="default" <?php if ($argon_mermaid_theme=='default'){echo 'selected';} ?>><?php _e('默认主题（浅色）', 'argon');?></option>
+								<option value="dark" <?php if ($argon_mermaid_theme=='dark'){echo 'selected';} ?>><?php _e('深色主题', 'argon');?></option>
+								<option value="forest" <?php if ($argon_mermaid_theme=='forest'){echo 'selected';} ?>><?php _e('森林主题（绿色）', 'argon');?></option>
+								<option value="neutral" <?php if ($argon_mermaid_theme=='neutral'){echo 'selected';} ?>><?php _e('中性主题（灰色）', 'argon');?></option>
+							</select>
+							<p class="description"><?php _e('选择 Mermaid 图表的配色主题。"自动切换"会根据页面的日间/夜间模式自动选择浅色或深色主题', 'argon');?></p>
+						</td>
+					</tr>
+
+					<tr><th class="subtitle"><h3 id="subsection-mermaid-advanced"><?php _e('高级选项', 'argon');?></h3></th></tr>
+
+					<tr>
+						<th><label><?php _e('使用本地镜像', 'argon');?></label></th>
+						<td>
+							<?php $argon_mermaid_use_local = get_option('argon_mermaid_use_local', 'false');?>
+							<label>
+								<input type="checkbox" name="argon_mermaid_use_local" value="true" <?php if ($argon_mermaid_use_local=='true'){echo 'checked';}?>/> 
+								<?php _e('优先使用本地镜像文件', 'argon');?>
+							</label>
+							<p class="description"><?php _e('启用后，如果检测到主题目录中存在 Mermaid 库文件，将优先使用本地文件而不是 CDN', 'argon');?></p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('调试模式', 'argon');?></label></th>
+						<td>
+							<?php $argon_mermaid_debug_mode = get_option('argon_mermaid_debug_mode', 'false');?>
+							<label>
+								<input type="checkbox" name="argon_mermaid_debug_mode" value="true" <?php if ($argon_mermaid_debug_mode=='true'){echo 'checked';}?>/> 
+								<?php _e('启用调试模式', 'argon');?>
+							</label>
+							<p class="description"><?php _e('启用后，将在浏览器控制台输出详细的 Mermaid 渲染日志，便于排查问题', 'argon');?></p>
+						</td>
+					</tr>
+
+					<!-- ========== 16. 高级设置 ========== -->
 				<tr><th class="subtitle"><h2 id="section-advanced"><?php _e('高级设置', 'argon');?></h2></th></tr>
 
 				<tr><th class="subtitle"><h3 id="subsection-scripts"><?php _e('自定义脚本', 'argon');?></h3></th></tr>
@@ -3143,7 +3225,7 @@ window.pjaxLoaded = function(){
 
 					</tr>
 
-					<!-- ========== 16. 评论设置 ========== -->
+					<!-- ========== 17. 评论设置 ========== -->
 					<tr><th class="subtitle"><h2 id="section-comment"><?php _e('评论设置', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-comment-pagination"><?php _e('评论分页', 'argon');?></h3></th></tr>
@@ -3270,7 +3352,7 @@ window.pjaxLoaded = function(){
 
 					</tr>
 
-					<!-- ========== 17. 验证码设置 ========== -->
+					<!-- ========== 18. 验证码设置 ========== -->
 					<tr><th class="subtitle"><h2 id="section-captcha"><?php _e('验证码设置', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-captcha"><?php _e('验证码配置', 'argon');?></h3></th></tr>
@@ -3563,7 +3645,7 @@ window.pjaxLoaded = function(){
 
 					</tr>
 
-					<!-- ========== 18. 反馈与安全 ========== -->
+					<!-- ========== 19. 反馈与安全 ========== -->
 					<tr><th class="subtitle"><h2 id="section-feedback-security"><?php _e('反馈与安全', 'argon');?></h2></th></tr>
 
 					<tr><th class="subtitle"><h3 id="subsection-feedback"><?php _e('反馈设置', 'argon');?></h3></th></tr>
@@ -6624,6 +6706,14 @@ function argon_update_themeoptions(){
 		argon_update_option('argon_article_list_layout_mobile');
 
 		argon_update_option('argon_enable_pangu');
+
+		// Mermaid 图表配置
+		argon_update_option_checkbox('argon_enable_mermaid');
+		argon_update_option('argon_mermaid_cdn_source');
+		argon_update_option('argon_mermaid_cdn_custom_url');
+		argon_update_option('argon_mermaid_theme');
+		argon_update_option_checkbox('argon_mermaid_use_local');
+		argon_update_option_checkbox('argon_mermaid_debug_mode');
 
 		argon_update_option('argon_assets_path');
 
