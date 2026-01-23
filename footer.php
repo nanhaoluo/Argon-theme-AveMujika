@@ -187,6 +187,38 @@
 
 					});
 
+					// 递归获取所有文本节点，保留换行符
+
+					function getTextWithLineBreaks(element) {
+
+						let text = '';
+
+						for (let node of element.childNodes) {
+
+							if (node.nodeType === Node.TEXT_NODE) {
+
+								text += node.textContent;
+
+							} else if (node.nodeType === Node.ELEMENT_NODE) {
+
+								if (node.tagName === 'BR') {
+
+									text += '\n';
+
+								} else {
+
+									text += getTextWithLineBreaks(node);
+
+								}
+
+							}
+
+						}
+
+						return text;
+
+					}
+
 					// 自动渲染所有 mermaid 代码块
 
 					document.querySelectorAll('pre code.language-mermaid, pre code.mermaid').forEach(function(element) {
@@ -203,15 +235,15 @@
 
 						let pre = element.parentElement;
 
-						// 获取代码内容
+						// 获取代码内容，保留换行符
 
-						let code = element.textContent || element.innerText;
+						let code = getTextWithLineBreaks(element);
 
 						// 去除首尾空白
 
 						code = code.trim();
 
-						// 验证是否为有效的 Mermaid 代码（必须以 graph/flowchart/sequenceDiagram 等关键字开头）
+						// 验证是否为有效的 Mermaid 代码
 
 						let validKeywords = ['graph', 'flowchart', 'sequenceDiagram', 'classDiagram', 'stateDiagram', 'erDiagram', 'journey', 'gantt', 'pie', 'gitGraph', 'mindmap', 'timeline', 'quadrantChart'];
 
@@ -233,9 +265,17 @@
 
 						if (!isValid) {
 
+							console.log('Skipping invalid Mermaid code:', code.substring(0, 50));
+
 							return;
 
 						}
+
+						// 调试：输出代码内容和换行符
+
+						console.log('Mermaid code found (length: ' + code.length + '):', code);
+
+						console.log('Contains newlines:', code.indexOf('\n') !== -1);
 
 						// 创建 Mermaid 容器
 
@@ -259,13 +299,23 @@
 
 						if (mermaidElements.length > 0) {
 
+							console.log('Rendering', mermaidElements.length, 'Mermaid diagrams');
+
 							mermaidElements.forEach(function(el) {
 
 								el.classList.add('mermaid-rendered');
 
 							});
 
-							mermaid.init(undefined, mermaidElements);
+							try {
+
+								mermaid.init(undefined, mermaidElements);
+
+							} catch (e) {
+
+								console.error('Mermaid rendering error:', e);
+
+							}
 
 						}
 
