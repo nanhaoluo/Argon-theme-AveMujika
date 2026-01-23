@@ -226,6 +226,10 @@ if (!empty($query_code)) {
 							'comment_url' => get_comment_link($comment),
 							'is_spam' => isset($detection_result['is_spam']) ? $detection_result['is_spam'] : false,
 							'reason' => isset($detection_result['reason']) ? $detection_result['reason'] : '',
+							'username_invalid' => isset($detection_result['username_invalid']) ? $detection_result['username_invalid'] : false,
+							'confidence' => isset($detection_result['confidence']) ? $detection_result['confidence'] : null,
+							'suggestion' => isset($detection_result['suggestion']) ? $detection_result['suggestion'] : '',
+							'analysis' => isset($detection_result['analysis']) ? $detection_result['analysis'] : '',
 							'action' => isset($detection_result['action']) ? $detection_result['action'] : '',
 							'detection_time' => $detection_time,
 							'code' => $query_code
@@ -554,10 +558,41 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 					</span>
 				</span>
 			</div>
+			<?php if ($result['username_invalid']): ?>
+			<div class="ai-info-item">
+				<span class="ai-info-label"><?php _e('用户名审查', 'argon'); ?></span>
+				<span class="ai-info-value">
+					<span class="ai-status-badge ai-status-modified">
+						<?php _e('用户名不合规', 'argon'); ?>
+					</span>
+				</span>
+			</div>
+			<?php endif; ?>
 			<div class="ai-info-item">
 				<span class="ai-info-label"><?php _e('判定理由', 'argon'); ?></span>
 				<span class="ai-info-value"><?php echo esc_html($result['reason']); ?></span>
 			</div>
+			<?php if (!empty($result['confidence'])): ?>
+			<div class="ai-info-item">
+				<span class="ai-info-label"><?php _e('置信度', 'argon'); ?></span>
+				<span class="ai-info-value"><?php echo round($result['confidence'] * 100); ?>%</span>
+			</div>
+			<?php endif; ?>
+			<?php if (!empty($result['suggestion'])): ?>
+			<div class="ai-info-item">
+				<span class="ai-info-label"><?php _e('处理建议', 'argon'); ?></span>
+				<span class="ai-info-value">
+					<?php 
+					$suggestion_labels = [
+						'auto' => __('自动处理', 'argon'),
+						'review' => __('人工审核', 'argon'),
+						'approve' => __('直接通过', 'argon')
+					];
+					echo isset($suggestion_labels[$result['suggestion']]) ? esc_html($suggestion_labels[$result['suggestion']]) : esc_html($result['suggestion']);
+					?>
+				</span>
+			</div>
+			<?php endif; ?>
 			<?php if (!empty($result['action'])): ?>
 			<div class="ai-info-item">
 				<span class="ai-info-label"><?php _e('自动操作', 'argon'); ?></span>
@@ -586,6 +621,13 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 				<span class="ai-info-value"><?php echo esc_html(date('Y-m-d H:i:s', $result['detection_time'])); ?></span>
 			</div>
 		</div>
+		
+		<?php if (!empty($result['analysis'])): ?>
+		<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('综合分析', 'argon'); ?></h4>
+		<div class="ai-content-box">
+			<?php echo nl2br(esc_html($result['analysis'])); ?>
+		</div>
+		<?php endif; ?>
 		
 		<div class="ai-actions">
 			<a href="<?php echo esc_url($result['comment_url']); ?>" class="btn btn-primary">
@@ -690,6 +732,10 @@ if (current_user_can('manage_options')):
 					'post_url' => get_permalink($comment->comment_post_ID),
 					'is_spam' => isset($detection_result['is_spam']) ? $detection_result['is_spam'] : false,
 					'reason' => isset($detection_result['reason']) ? $detection_result['reason'] : '',
+					'username_invalid' => isset($detection_result['username_invalid']) ? $detection_result['username_invalid'] : false,
+					'confidence' => isset($detection_result['confidence']) ? $detection_result['confidence'] : null,
+					'suggestion' => isset($detection_result['suggestion']) ? $detection_result['suggestion'] : '',
+					'analysis' => isset($detection_result['analysis']) ? $detection_result['analysis'] : '',
 					'action' => isset($detection_result['action']) ? $detection_result['action'] : '',
 					'detection_time' => $detection->time
 				]
@@ -926,10 +972,32 @@ if (current_user_can('manage_options')):
 							</span>
 						</span>
 					</div>
+					${record.data.username_invalid ? `
+					<div class="ai-info-item">
+						<span class="ai-info-label"><?php _e('用户名审查', 'argon'); ?></span>
+						<span class="ai-info-value">
+							<span class="ai-status-badge ai-status-modified">
+								<?php _e('用户名不合规', 'argon'); ?>
+							</span>
+						</span>
+					</div>
+					` : ''}
 					<div class="ai-info-item">
 						<span class="ai-info-label"><?php _e('识别理由', 'argon'); ?></span>
 						<span class="ai-info-value">${escapeHtml(record.data.reason)}</span>
 					</div>
+					${record.data.confidence ? `
+					<div class="ai-info-item">
+						<span class="ai-info-label"><?php _e('置信度', 'argon'); ?></span>
+						<span class="ai-info-value">${Math.round(record.data.confidence * 100)}%</span>
+					</div>
+					` : ''}
+					${record.data.suggestion ? `
+					<div class="ai-info-item">
+						<span class="ai-info-label"><?php _e('处理建议', 'argon'); ?></span>
+						<span class="ai-info-value">${escapeHtml(record.data.suggestion)}</span>
+					</div>
+					` : ''}
 					${record.data.action ? `
 					<div class="ai-info-item">
 						<span class="ai-info-label"><?php _e('自动处理', 'argon'); ?></span>
@@ -941,6 +1009,13 @@ if (current_user_can('manage_options')):
 						<span class="ai-info-value">${record.data.detection_time ? new Date(record.data.detection_time * 1000).toLocaleString('zh-CN') : '<?php _e('未知', 'argon'); ?>'}</span>
 					</div>
 				</div>
+				
+				${record.data.analysis ? `
+				<h4 style="font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper);"><?php _e('综合分析', 'argon'); ?></h4>
+				<div class="ai-content-box">
+					${escapeHtml(record.data.analysis)}
+				</div>
+				` : ''}
 				
 				<div class="ai-actions">
 					<a href="${escapeHtml(record.url)}" class="btn btn-primary" target="_blank">
