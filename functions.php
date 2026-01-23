@@ -8219,26 +8219,38 @@ function argon_auto_detect_spam_on_comment($comment_id, $comment_approved) {
 	$should_check = false;
 	$check_reason = '';
 	
-	// 优先级1：检查是否触发关键字（最高优先级）
+	// 检查是否触发关键字
 	$keyword_check = argon_check_spam_keywords($comment);
-	if ($keyword_check && $keyword_check['triggered']) {
-		$should_check = true;
-		$check_reason = 'keyword';
-		// 保存触发的关键字信息
-		update_comment_meta($comment_id, '_argon_spam_triggered_keywords', $keyword_check['keywords']);
-	}
-	// 优先级2：全量检测模式
-	elseif ($mode === 'all') {
-		$should_check = true;
-		$check_reason = 'all';
-	}
-	// 优先级3：抽查模式
-	elseif ($mode === 'sample') {
-		// 根据用户历史通过率动态调整概率
-		$check_probability = argon_get_user_spam_check_probability($comment);
-		if (rand(1, 100) <= $check_probability) {
+	$keyword_triggered = $keyword_check && $keyword_check['triggered'];
+	
+	// 根据检测模式决定是否检测
+	if ($mode === 'keyword') {
+		// 关键字必查模式：只检测触发关键字的评论
+		if ($keyword_triggered) {
 			$should_check = true;
-			$check_reason = 'sample';
+			$check_reason = 'keyword';
+			update_comment_meta($comment_id, '_argon_spam_triggered_keywords', $keyword_check['keywords']);
+		}
+	} elseif ($mode === 'all') {
+		// 全量检测模式：检测所有评论
+		$should_check = true;
+		$check_reason = $keyword_triggered ? 'keyword' : 'all';
+		if ($keyword_triggered) {
+			update_comment_meta($comment_id, '_argon_spam_triggered_keywords', $keyword_check['keywords']);
+		}
+	} elseif ($mode === 'sample') {
+		// 智能抽查模式：关键字触发或随机抽查
+		if ($keyword_triggered) {
+			$should_check = true;
+			$check_reason = 'keyword';
+			update_comment_meta($comment_id, '_argon_spam_triggered_keywords', $keyword_check['keywords']);
+		} else {
+			// 根据用户历史通过率动态调整概率
+			$check_probability = argon_get_user_spam_check_probability($comment);
+			if (rand(1, 100) <= $check_probability) {
+				$should_check = true;
+				$check_reason = 'sample';
+			}
 		}
 	}
 	

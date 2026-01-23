@@ -3887,14 +3887,97 @@ window.pjaxLoaded = function(){
 							<select name="argon_comment_spam_detection_mode">
 								<?php $argon_comment_spam_detection_mode = get_option('argon_comment_spam_detection_mode', 'manual'); ?>
 								<option value="manual" <?php if ($argon_comment_spam_detection_mode=='manual'){echo 'selected';} ?>><?php _e('关闭实时检测', 'argon');?></option>
+								<option value="keyword" <?php if ($argon_comment_spam_detection_mode=='keyword'){echo 'selected';} ?>><?php _e('关键字必查', 'argon');?></option>
 								<option value="sample" <?php if ($argon_comment_spam_detection_mode=='sample'){echo 'selected';} ?>><?php _e('智能抽查（推荐）', 'argon');?></option>
 								<option value="all" <?php if ($argon_comment_spam_detection_mode=='all'){echo 'selected';} ?>><?php _e('全量检测', 'argon');?></option>
 							</select>
 							<p class="description">
 								<strong><?php _e('关闭实时检测', 'argon');?>：</strong><?php _e('只能使用下方的手动批量扫描', 'argon');?><br/>
+								<strong><?php _e('关键字必查', 'argon');?>：</strong><?php _e('只检测触发关键字的评论，精准防护，成本最低', 'argon');?><br/>
 								<strong><?php _e('智能抽查', 'argon');?>：</strong><?php _e('根据用户信誉动态调整检测概率，平衡成本与效果', 'argon');?><br/>
 								<strong><?php _e('全量检测', 'argon');?>：</strong><?php _e('每条新评论都检测，防护最严密但 API 消耗最高', 'argon');?>
 							</p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('关键字管理', 'argon');?></label></th>
+						<td>
+							<div style="margin-bottom: 15px;">
+								<?php $argon_comment_spam_detection_ai_learn = get_option('argon_comment_spam_detection_ai_learn', 'false'); ?>
+								<label style="display: block; margin-bottom: 10px;">
+									<input type="checkbox" name="argon_comment_spam_detection_ai_learn" value="true" <?php if ($argon_comment_spam_detection_ai_learn=='true'){echo 'checked';}?>/> 
+									<strong><?php _e('启用 AI 主动学习关键字', 'argon');?></strong>
+								</label>
+								<p class="description" style="margin: 0 0 15px 24px;">
+									<?php _e('开启后，系统会分析管理员的审核决策，自动提取并优化关键字：', 'argon');?><br/>
+									<?php _e('• 当 AI 判断与管理员决策不一致时，使用 AI 提取关键词', 'argon');?><br/>
+									<?php _e('• 统计关键词在垃圾评论和正常评论中的出现频率', 'argon');?><br/>
+									<?php _e('• 置信度 > 70% 且出现 >= 3 次的关键词自动加入下方列表', 'argon');?>
+								</p>
+							</div>
+							
+							<textarea rows="8" cols="70" name="argon_comment_spam_detection_keywords" placeholder="<?php _e('每行一个关键字或短语', 'argon');?>"><?php echo get_option('argon_comment_spam_detection_keywords', ''); ?></textarea>
+							<p class="description">
+								<strong><?php _e('手动添加关键字', 'argon');?></strong><br/>
+								<?php _e('每行一个关键字或短语，支持中英文。当评论的用户名或内容包含这些关键字时：', 'argon');?><br/>
+								<?php _e('• 关键字必查模式：立即进行 AI 检测', 'argon');?><br/>
+								<?php _e('• 智能抽查/全量检测模式：提高检测优先级', 'argon');?><br/>
+								<?php _e('常见示例：', 'argon');?> <code>加微信</code>, <code>联系QQ</code>, <code>点击链接</code>, <code>免费领取</code>, <code>刷单</code>, <code>兼职</code>
+							</p>
+							
+							<?php 
+							$learned_keywords = get_option('argon_comment_spam_learned_keywords', []);
+							if (!empty($learned_keywords) && is_array($learned_keywords)) {
+								echo '<div style="margin-top: 20px; padding: 15px; background: #f7fafc; border-radius: 4px; border-left: 4px solid var(--themecolor, #5e72e4);">';
+								echo '<h4 style="margin: 0 0 10px 0; color: #2d3748;">' . __('AI 学习到的关键字', 'argon') . '</h4>';
+								echo '<div style="max-height: 200px; overflow-y: auto;">';
+								echo '<table style="width: 100%; border-collapse: collapse; background: #fff; border-radius: 4px; overflow: hidden;">';
+								echo '<thead><tr style="background: #edf2f7;">';
+								echo '<th style="text-align: left; padding: 10px; font-weight: 600;">' . __('关键字', 'argon') . '</th>';
+								echo '<th style="text-align: center; padding: 10px; font-weight: 600;">' . __('垃圾', 'argon') . '</th>';
+								echo '<th style="text-align: center; padding: 10px; font-weight: 600;">' . __('正常', 'argon') . '</th>';
+								echo '<th style="text-align: center; padding: 10px; font-weight: 600;">' . __('置信度', 'argon') . '</th>';
+								echo '<th style="text-align: center; padding: 10px; font-weight: 600;">' . __('状态', 'argon') . '</th>';
+								echo '</tr></thead><tbody>';
+								
+								// 按置信度排序
+								uasort($learned_keywords, function($a, $b) {
+									return $b['confidence'] <=> $a['confidence'];
+								});
+								
+								$current_keywords_array = array_filter(array_map('trim', explode("\n", get_option('argon_comment_spam_detection_keywords', ''))));
+								
+								foreach ($learned_keywords as $keyword => $stats) {
+									$confidence = round($stats['confidence'] * 100);
+									$color = $confidence >= 70 ? '#48bb78' : ($confidence >= 50 ? '#ed8936' : '#a0aec0');
+									$is_added = in_array($keyword, $current_keywords_array);
+									
+									echo '<tr style="border-bottom: 1px solid #e2e8f0;">';
+									echo '<td style="padding: 10px;"><code style="background: #edf2f7; padding: 2px 6px; border-radius: 3px;">' . esc_html($keyword) . '</code></td>';
+									echo '<td style="text-align: center; padding: 10px;">' . $stats['spam_count'] . '</td>';
+									echo '<td style="text-align: center; padding: 10px;">' . $stats['normal_count'] . '</td>';
+									echo '<td style="text-align: center; padding: 10px;"><span style="color: ' . $color . '; font-weight: 600;">' . $confidence . '%</span></td>';
+									echo '<td style="text-align: center; padding: 10px;">';
+									if ($is_added) {
+										echo '<span style="color: #48bb78; font-weight: 600;">✓ ' . __('已添加', 'argon') . '</span>';
+									} elseif ($confidence >= 70 && $stats['spam_count'] >= 3) {
+										echo '<span style="color: #ed8936; font-weight: 600;">⚠ ' . __('待添加', 'argon') . '</span>';
+									} else {
+										echo '<span style="color: #a0aec0;">○ ' . __('观察中', 'argon') . '</span>';
+									}
+									echo '</td>';
+									echo '</tr>';
+								}
+								echo '</tbody></table></div>';
+								echo '<p class="description" style="margin: 10px 0 0 0; font-size: 12px;">';
+								echo __('• 绿色：置信度 ≥ 70%，已自动添加到关键字列表', 'argon') . '<br/>';
+								echo __('• 橙色：置信度 50-70%，观察中', 'argon') . '<br/>';
+								echo __('• 灰色：置信度 < 50%，数据不足', 'argon');
+								echo '</p>';
+								echo '</div>';
+							}
+							?>
 						</td>
 					</tr>
 
@@ -3905,7 +3988,8 @@ window.pjaxLoaded = function(){
 							<p class="description">
 								<?php _e('智能抽查模式的基础概率，默认 20%。系统会根据用户历史通过率自动调整：', 'argon');?><br/>
 								<?php _e('• 信誉好的用户降低检测（最低 5%）', 'argon');?><br/>
-								<?php _e('• 信誉差的用户提高检测（最高 80%）', 'argon');?>
+								<?php _e('• 信誉差的用户提高检测（最高 80%）', 'argon');?><br/>
+								<?php _e('注意：关键字必查模式下此设置无效', 'argon');?>
 							</p>
 						</td>
 					</tr>
@@ -4017,78 +4101,6 @@ window.pjaxLoaded = function(){
 								});
 							});
 							</script>
-						</td>
-					</tr>
-
-					<tr>
-						<th><label><?php _e('关键字必查', 'argon');?></label></th>
-						<td>
-							<textarea rows="6" cols="70" name="argon_comment_spam_detection_keywords" placeholder="<?php _e('每行一个关键字或短语', 'argon');?>"><?php echo get_option('argon_comment_spam_detection_keywords', ''); ?></textarea>
-							<p class="description">
-								<strong><?php _e('触发关键字后立即 AI 审核（最高优先级）', 'argon');?></strong><br/>
-								<?php _e('当评论的用户名或内容包含这些关键字时，会立即进行 AI 检测，不受检测模式限制。', 'argon');?><br/>
-								<?php _e('每行一个关键字或短语，支持中英文。例如：', 'argon');?><br/>
-								<code>加微信</code>, <code>联系QQ</code>, <code>点击链接</code>, <code>免费领取</code>, <code>刷单</code>, <code>兼职</code>
-							</p>
-						</td>
-					</tr>
-
-					<tr>
-						<th><label><?php _e('AI 主动学习', 'argon');?></label></th>
-						<td>
-							<?php $argon_comment_spam_detection_ai_learn = get_option('argon_comment_spam_detection_ai_learn', 'false'); ?>
-							<label style="display: block; margin-bottom: 8px;">
-								<input type="checkbox" name="argon_comment_spam_detection_ai_learn" value="true" <?php if ($argon_comment_spam_detection_ai_learn=='true'){echo 'checked';}?>/> 
-								<?php _e('启用 AI 主动学习关键字', 'argon');?>
-							</label>
-							<p class="description">
-								<?php _e('开启后，系统会分析管理员的审核决策，自动优化关键字列表：', 'argon');?><br/>
-								<?php _e('• 当 AI 判断与管理员决策不一致时，使用 AI 提取关键词', 'argon');?><br/>
-								<?php _e('• 统计关键词在垃圾评论和正常评论中的出现频率', 'argon');?><br/>
-								<?php _e('• 置信度 > 70% 且出现 >= 3 次的关键词自动加入关键字列表', 'argon');?><br/>
-								<?php _e('• 持续学习，不断提升检测准确性，减少误判和漏判', 'argon');?>
-							</p>
-						</td>
-					</tr>
-
-					<tr>
-						<th><label><?php _e('学习到的关键字', 'argon');?></label></th>
-						<td>
-							<?php 
-							$learned_keywords = get_option('argon_comment_spam_learned_keywords', []);
-							if (!empty($learned_keywords) && is_array($learned_keywords)) {
-								echo '<div style="background:#f7fafc;padding:15px;border-radius:4px;max-height:200px;overflow-y:auto;">';
-								echo '<table style="width:100%;border-collapse:collapse;">';
-								echo '<thead><tr style="border-bottom:2px solid #e2e8f0;">';
-								echo '<th style="text-align:left;padding:8px;">' . __('关键字', 'argon') . '</th>';
-								echo '<th style="text-align:center;padding:8px;">' . __('垃圾', 'argon') . '</th>';
-								echo '<th style="text-align:center;padding:8px;">' . __('正常', 'argon') . '</th>';
-								echo '<th style="text-align:center;padding:8px;">' . __('置信度', 'argon') . '</th>';
-								echo '</tr></thead><tbody>';
-								
-								// 按置信度排序
-								uasort($learned_keywords, function($a, $b) {
-									return $b['confidence'] <=> $a['confidence'];
-								});
-								
-								foreach ($learned_keywords as $keyword => $stats) {
-									$confidence = round($stats['confidence'] * 100);
-									$color = $confidence >= 70 ? '#48bb78' : ($confidence >= 50 ? '#ed8936' : '#cbd5e0');
-									echo '<tr style="border-bottom:1px solid #e2e8f0;">';
-									echo '<td style="padding:8px;"><code>' . esc_html($keyword) . '</code></td>';
-									echo '<td style="text-align:center;padding:8px;">' . $stats['spam_count'] . '</td>';
-									echo '<td style="text-align:center;padding:8px;">' . $stats['normal_count'] . '</td>';
-									echo '<td style="text-align:center;padding:8px;"><span style="color:' . $color . ';font-weight:bold;">' . $confidence . '%</span></td>';
-									echo '</tr>';
-								}
-								echo '</tbody></table></div>';
-								echo '<p class="description" style="margin-top:10px;">';
-								echo __('绿色表示已自动加入关键字列表（置信度 ≥ 70%），橙色表示观察中（50-70%），灰色表示置信度较低。', 'argon');
-								echo '</p>';
-							} else {
-								echo '<p class="description">' . __('暂无学习到的关键字。启用 AI 主动学习后，系统会自动分析并记录。', 'argon') . '</p>';
-							}
-							?>
 						</td>
 					</tr>
 
