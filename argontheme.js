@@ -2832,9 +2832,28 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 		$card.addClass("post-pjax-loading");
 		$("#main").addClass("post-list-pjax-loading");
 		
-		// 强制隐藏其他卡片 - 使用attr设置style以添加!important
+		// 隐藏其他卡片 - 先禁用transition，设置opacity，然后恢复
 		$(".post-preview").not($card).each(function() {
-			$(this).attr('style', ($(this).attr('style') || '') + ' opacity: 0 !important; pointer-events: none !important;');
+			let $this = $(this);
+			let originalTransition = $this.css("transition");
+			$this.css("transition", "none");
+			$this.css("opacity", "0");
+			$this.css("pointer-events", "none");
+			// 强制浏览器重绘
+			$this[0].offsetHeight;
+			$this.css("transition", originalTransition);
+		});
+		
+		// 隐藏footer
+		$("#footer").css({
+			"opacity": "0",
+			"pointer-events": "none"
+		});
+		
+		// 让被点击的卡片居中
+		$card.css({
+			"margin-left": "auto",
+			"margin-right": "auto"
 		});
 		
 		let offsetTop = $($card).offset().top - $("#main").offset().top;
@@ -2867,10 +2886,18 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 		"transform": "",
 		"transition": "",
 		"left": "",
-		"width": ""
+		"width": "",
+		"margin-left": "",
+		"margin-right": ""
 	});
 	$(".post-preview .loading-css-animation").remove();
 	$("#main").removeClass("post-list-pjax-loading");
+	
+	// 恢复footer
+	$("#footer").css({
+		"opacity": "",
+		"pointer-events": ""
+	});
 	
 	// 更新 UI 状态
 	if ($("#post_comment", dom[0]).length > 0){
