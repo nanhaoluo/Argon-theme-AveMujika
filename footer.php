@@ -235,9 +235,19 @@
 
 						let pre = element.parentElement;
 
-						// 获取代码内容，保留换行符
+						// 优先从 data-mermaid-code 属性获取代码
 
-						let code = getTextWithLineBreaks(element);
+						let code = element.getAttribute('data-mermaid-code');
+
+						
+
+						// 如果没有 data 属性，尝试从内容获取
+
+						if (!code) {
+
+							code = getTextWithLineBreaks(element);
+
+						}
 
 						// 去除首尾空白
 
@@ -276,6 +286,8 @@
 						console.log('Mermaid code found (length: ' + code.length + '):', code);
 
 						console.log('Contains newlines:', code.indexOf('\n') !== -1);
+
+						console.log('First 200 chars:', code.substring(0, 200));
 
 						// 创建 Mermaid 容器
 

@@ -3577,8 +3577,15 @@ function the_content_filter($content){
 				$code = html_entity_decode($code, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 				// 去除首尾空白
 				$code = trim($code);
-				// 返回带换行符的代码块
-				return '<pre><code class="language-mermaid">' . htmlspecialchars($code, ENT_QUOTES, 'UTF-8') . '</code></pre>';
+				// 如果没有换行符，尝试恢复（WordPress 可能把换行符转换成了空格）
+				// 检测常见的 Mermaid 关键字后应该有换行
+				$keywords = ['flowchart', 'graph', 'sequenceDiagram', 'classDiagram', 'stateDiagram', 'erDiagram', 'journey', 'gantt', 'pie'];
+				foreach ($keywords as $keyword) {
+					// 匹配关键字后跟方向（TD/LR等）或其他内容，但没有换行符的情况
+					$code = preg_replace('/(' . preg_quote($keyword, '/') . '\s+(?:TD|LR|RL|BT|TB))\s+(?![\r\n])/', "$1\n", $code);
+				}
+				// 返回带换行符的代码块，使用 data 属性存储原始代码
+				return '<pre><code class="language-mermaid" data-mermaid-code="' . esc_attr($code) . '">' . esc_html($code) . '</code></pre>';
 			},
 			$content
 		);
