@@ -211,15 +211,31 @@
 
 						let scriptContent = scriptElement.textContent;
 
+						console.log('=== WP-Markdown Debug ===');
+
+						console.log('Script content (first 300 chars):', scriptContent.substring(0, 300));
+
+						
+
 						let match = scriptContent.match(/document\.write\("(.*)"\)/s);
 
 						
 
 						if (match && match[1]) {
 
+							let rawCode = match[1];
+
+							console.log('Raw code (first 300 chars):', rawCode.substring(0, 300));
+
+							console.log('Contains literal backslash-n:', rawCode.includes('\\n'));
+
+							console.log('Contains actual newline:', rawCode.includes('\n'));
+
+							
+
 							// 解码转义字符
 
-							let code = match[1]
+							let code = rawCode
 
 								.replace(/\\n/g, '\n')
 
@@ -232,6 +248,12 @@
 								.replace(/&gt;/g, '>')
 
 								.replace(/&amp;/g, '&');
+
+							
+
+							console.log('After decode (first 300 chars):', code.substring(0, 300));
+
+							console.log('After decode contains newline:', code.includes('\n'));
 
 							
 
