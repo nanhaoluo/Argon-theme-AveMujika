@@ -113,44 +113,6 @@ function argon_get_email_types() {
                 'theme_color' => __('主题色', 'argon'),
             ),
         ),
-        'user_register' => array(
-            'name' => __('用户注册', 'argon'),
-            'description' => __('新用户注册成功后发送的欢迎邮件', 'argon'),
-            'default_subject' => '[{{blog_name}}] 注册成功',
-            'default_content' => '<h2 style="margin: 0 0 20px 0; font-size: 18px; font-weight: 600; color: {{theme_color}};">欢迎加入 {{blog_name}}</h2>
-<p style="margin: 0 0 16px 0; color: #525f7f; line-height: 1.6;"><strong>{{user_name}}</strong>，您好：</p>
-<p style="margin: 0 0 20px 0; color: #525f7f; line-height: 1.6;">您的账户已创建成功，现在可以登录使用了。</p>
-<p style="margin: 0;">
-    <a href="{{login_url}}" style="display: inline-block; background: {{theme_color}}; color: #ffffff; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-size: 14px;">立即登录</a>
-</p>',
-            'placeholders' => array(
-                'blog_name' => __('博客名称', 'argon'),
-                'user_name' => __('用户名', 'argon'),
-                'user_email' => __('用户邮箱', 'argon'),
-                'login_url' => __('登录链接', 'argon'),
-                'register_date' => __('注册时间', 'argon'),
-                'theme_color' => __('主题色', 'argon'),
-            ),
-        ),
-        'password_reset' => array(
-            'name' => __('密码重置', 'argon'),
-            'description' => __('用户请求重置密码时发送的邮件', 'argon'),
-            'default_subject' => '[{{blog_name}}] 密码重置请求',
-            'default_content' => '<h2 style="margin: 0 0 20px 0; font-size: 18px; font-weight: 600; color: {{theme_color}};">密码重置请求</h2>
-<p style="margin: 0 0 16px 0; color: #525f7f; line-height: 1.6;"><strong>{{user_name}}</strong>，您好：</p>
-<p style="margin: 0 0 20px 0; color: #525f7f; line-height: 1.6;">我们收到了您的密码重置请求，请点击下方按钮重置密码。如果这不是您本人的操作，请忽略此邮件。</p>
-<p style="margin: 0 0 20px 0;">
-    <a href="{{reset_url}}" style="display: inline-block; background: {{theme_color}}; color: #ffffff; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-size: 14px;">重置密码</a>
-</p>
-<p style="margin: 0; color: #8898aa; font-size: 12px;">此链接将在 24 小时后失效。</p>',
-            'placeholders' => array(
-                'blog_name' => __('博客名称', 'argon'),
-                'user_name' => __('用户名', 'argon'),
-                'user_email' => __('用户邮箱', 'argon'),
-                'reset_url' => __('重置链接', 'argon'),
-                'theme_color' => __('主题色', 'argon'),
-            ),
-        ),
         'todo_urge' => array(
             'name' => __('TODO 提醒', 'argon'),
             'description' => __('访客催促作者完成 TODO 时发送的邮件', 'argon'),
@@ -169,20 +131,6 @@ function argon_get_email_types() {
                 'todo_content' => __('TODO 内容', 'argon'),
                 'todo_id' => __('TODO ID', 'argon'),
                 'urge_time' => __('提醒时间', 'argon'),
-                'theme_color' => __('主题色', 'argon'),
-            ),
-        ),
-        'general' => array(
-            'name' => __('通用邮件', 'argon'),
-            'description' => __('其他类型的通用邮件模板', 'argon'),
-            'default_subject' => '[{{blog_name}}] {{subject}}',
-            'default_content' => '<h2 style="margin: 0 0 20px 0; font-size: 18px; font-weight: 600; color: {{theme_color}};">{{title}}</h2>
-<div style="margin: 0; color: #525f7f; line-height: 1.6;">{{content}}</div>',
-            'placeholders' => array(
-                'blog_name' => __('博客名称', 'argon'),
-                'subject' => __('邮件主题', 'argon'),
-                'title' => __('内容标题', 'argon'),
-                'content' => __('邮件内容', 'argon'),
                 'theme_color' => __('主题色', 'argon'),
             ),
         ),
@@ -539,21 +487,6 @@ function argon_get_sample_email_vars($type) {
                 'reply_date' => date_i18n(get_option('date_format') . ' ' . get_option('time_format')),
             ));
             
-        case 'user_register':
-            return array_merge($common, array(
-                'user_name' => '新用户',
-                'user_email' => 'newuser@example.com',
-                'login_url' => wp_login_url(),
-                'register_date' => date_i18n(get_option('date_format') . ' ' . get_option('time_format')),
-            ));
-            
-        case 'password_reset':
-            return array_merge($common, array(
-                'user_name' => '用户名',
-                'user_email' => 'user@example.com',
-                'reset_url' => home_url('/wp-login.php?action=rp&key=sample_key'),
-            ));
-            
         case 'todo_urge':
             return array_merge($common, array(
                 'todo_content' => '这是一个示例 TODO 任务内容',
@@ -561,13 +494,8 @@ function argon_get_sample_email_vars($type) {
                 'urge_time' => date_i18n(get_option('date_format') . ' ' . get_option('time_format')),
             ));
             
-        case 'general':
         default:
-            return array_merge($common, array(
-                'subject' => '示例邮件主题',
-                'title' => '示例标题',
-                'content' => '<p>这是通用邮件模板的示例内容。您可以在这里放置任何 HTML 内容。</p>',
-            ));
+            return $common;
     }
 }
 

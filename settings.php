@@ -6404,7 +6404,7 @@ function argon_update_themeoptions(){
 		update_option('argon_email_social_links', $social_links);
 
 		// 保存邮件模板配置
-		$email_types = array('comment_notify', 'spam_notify', 'reply_notify', 'user_register', 'password_reset', 'todo_urge', 'general');
+		$email_types = array('comment_notify', 'spam_notify', 'reply_notify', 'todo_urge');
 		foreach ($email_types as $type) {
 			// 保存启用状态
 			argon_update_option_checkbox('argon_email_template_' . $type . '_enabled');

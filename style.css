@@ -6761,48 +6761,6 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 /*短代码适配*/
 
-/*短代�?checkbox*/
-
-.shortcode-todo {
-
-	cursor: default;
-
-	margin: 3px 0;
-
-}
-
-.shortcode-todo .custom-control-input {
-
-	pointer-events: none;
-
-}
-
-.shortcode-todo * {
-
-	cursor: default !important;
-
-}
-
-.shortcode-todo .custom-control-label span {
-
-	transform: translateY(-2.5px);
-
-	display: block;
-
-	cursor: text !important;
-
-}
-
-.shortcode-todo.inline {
-
-	display: inline-block;
-
-	margin-right: 10px;
-
-}
-
-
-
 /*短代�?警告与折叠块*/
 
 .admonition,
