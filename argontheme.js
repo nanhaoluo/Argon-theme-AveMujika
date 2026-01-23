@@ -2893,6 +2893,12 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 	$(".post-preview .loading-css-animation").remove();
 	$("#main").removeClass("post-list-pjax-loading");
 	
+	// 恢复所有卡片的显示状态
+	$(".post-preview").css({
+		"opacity": "",
+		"pointer-events": ""
+	});
+	
 	// 恢复footer
 	$("#footer").css({
 		"opacity": "",
