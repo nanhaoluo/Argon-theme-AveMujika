@@ -5198,6 +5198,12 @@ void 0;
 
 			container.appendChild(controls);
 
+			// 创建提示文本
+			const hint = document.createElement('div');
+			hint.className = 'mermaid-hint';
+			hint.textContent = '按住 Ctrl+滚轮缩放 | 拖拽移动';
+			container.appendChild(hint);
+
 			// 缩放状态
 			let scale = 1;
 			const minScale = 0.5;
@@ -5243,6 +5249,54 @@ void 0;
 					}
 				}
 			}, { passive: false });
+
+			// 拖拽功能
+			let isDragging = false;
+			let startX = 0;
+			let startY = 0;
+			let scrollLeft = 0;
+			let scrollTop = 0;
+
+			inner.addEventListener('mousedown', (e) => {
+				// 只响应左键
+				if (e.button !== 0) return;
+				
+				isDragging = true;
+				inner.classList.add('dragging');
+				
+				startX = e.pageX - inner.offsetLeft;
+				startY = e.pageY - inner.offsetTop;
+				scrollLeft = inner.scrollLeft;
+				scrollTop = inner.scrollTop;
+				
+				e.preventDefault();
+			});
+
+			document.addEventListener('mousemove', (e) => {
+				if (!isDragging) return;
+				
+				e.preventDefault();
+				
+				const x = e.pageX - inner.offsetLeft;
+				const y = e.pageY - inner.offsetTop;
+				const walkX = (x - startX) * 2;
+				const walkY = (y - startY) * 2;
+				
+				inner.scrollLeft = scrollLeft - walkX;
+				inner.scrollTop = scrollTop - walkY;
+			});
+
+			document.addEventListener('mouseup', () => {
+				if (isDragging) {
+					isDragging = false;
+					inner.classList.remove('dragging');
+				}
+			});
+
+			// 防止拖拽时选中文本
+			inner.addEventListener('dragstart', (e) => {
+				e.preventDefault();
+			});
 		},
 
 		// ---------- 主题切换监听 ----------

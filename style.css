@@ -988,6 +988,43 @@ html.darkmode .mermaid-zoom-level {
 	color: #aaa;
 }
 
+/* 提示文本 */
+.mermaid-hint {
+	position: absolute;
+	bottom: 10px;
+	left: 50%;
+	transform: translateX(-50%);
+	background: rgba(0, 0, 0, 0.7);
+	color: white;
+	padding: 6px 12px;
+	border-radius: 4px;
+	font-size: 12px;
+	pointer-events: none;
+	opacity: 0;
+	transition: opacity 0.3s;
+	white-space: nowrap;
+	z-index: 9;
+}
+
+.mermaid-container:hover .mermaid-hint {
+	opacity: 1;
+}
+
+html.darkmode .mermaid-hint {
+	background: rgba(255, 255, 255, 0.15);
+	backdrop-filter: blur(10px);
+}
+
+/* 拖拽时的光标 */
+.mermaid-container-inner.dragging {
+	cursor: grabbing !important;
+	user-select: none;
+}
+
+.mermaid-container-inner:not(.dragging) {
+	cursor: grab;
+}
+
 /* Mermaid 淡入动画 */
 @keyframes mermaidFadeIn {
 	from {
