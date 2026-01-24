@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>单元素容器语法测试</title>
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			max-width: 1200px;
+			margin: 0 auto;
+			padding: 20px;
+			background: #f5f5f5;
+		}
+		.test-case {
+			background: white;
+			padding: 20px;
+			margin: 20px 0;
+			border-radius: 8px;
+			box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+		}
+		h2 {
+			color: #333;
+			border-bottom: 2px solid #007bff;
+			padding-bottom: 10px;
+		}
+		.success {
+			color: green;
+			font-weight: bold;
+		}
+		.error {
+			color: red;
+			font-weight: bold;
+		}
+		pre {
+			background: #f4f4f4;
+			padding: 10px;
+			border-radius: 4px;
+			overflow-x: auto;
+			white-space: pre-wrap;
+		}
+	</style>
+</head>
+<body>
+	<h1>单元素容器语法测试</h1>
+	<p>测试 WP-Markdown 将整个容器语法放在一个 &lt;p&gt; 元素中的情况</p>
+
+	<!-- 测试用例 1: 简单流程图（单元素） -->
+	<div class="test-case">
+		<h2>测试 1: 简单流程图（单元素，带全角箭头）</h2>
+		<p>::: mermaid<br>flowchart TD<br>    Start([开始]) –> Process[处理]<br>    Process –> End([结束])<br>:::</p>
+		<div id="result1"></div>
+	</div>
+
+	<!-- 测试用例 2: 带样式的流程图（单元素） -->
+	<div class="test-case">
+		<h2>测试 2: 带样式定义（单元素）</h2>
+		<p>::: mermaid<br>flowchart LR<br>    A[开始] –> B[处理]<br>    B –> C[结束]<br>    style A fill:#e1f5e1,stroke:#2e7d32<br>    style C fill:#ffe1e1,stroke:#c62828<br>:::</p>
+		<div id="result2"></div>
+	</div>
+
+	<!-- 测试用例 3: 复杂流程图（单元素，模拟 AI 评论审核） -->
+	<div class="test-case">
+		<h2>测试 3: 复杂流程图（单元素，多个节点）</h2>
+		<p>::: mermaid<br>flowchart TD<br>    Start([用户提交评论]) –> PreProcess[预处理]<br>    PreProcess –> CheckEnabled{启用 AI 检测?}<br>    CheckEnabled –>|否| SaveComment[保存评论]<br>    CheckEnabled –>|是| CheckMode{检测模式?}<br>    CheckMode –>|manual| SaveComment<br>    CheckMode –>|keyword/sample/all| AICheck[AI 检测]<br>    AICheck –> CheckResult{检测结果?}<br>    CheckResult –>|垃圾评论| Trash[移入回收站]<br>    CheckResult –>|正常评论| SaveComment<br>    style Start fill:#e1f5e1,stroke:#2e7d32<br>    style Trash fill:#ff6b6b,stroke:#c62828<br>:::</p>
+		<div id="result3"></div>
+	</div>
+
+	<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+	<script>
+		// 模拟 Argon 主题的 htmlToText 函数（增强版）
+		function htmlToText(html) {
+			// 将 <br> 和 <br/> 转换为换行符
+			let text = html.replace(/<br\s*\/?>/gi, '\n');
+			// 移除其他 HTML 标签
+			text = text.replace(/<[^>]+>/g, '');
+			// 解码 HTML 实体
+			text = text
+				.replace(/&nbsp;/g, ' ')
+				.replace(/&lt;/g, '<')
+				.replace(/&gt;/g, '>')
+				.replace(/&amp;/g, '&')
+				.replace(/&quot;/g, '"')
+				.replace(/&#039;/g, "'")
+				.replace(/&#8211;/g, '-')  // EN DASH
+				.replace(/&#8212;/g, '--') // EM DASH
+				.replace(/&#8594;/g, '->') // RIGHTWARDS ARROW
+				.replace(/&ndash;/g, '-')  // EN DASH (named entity)
+				.replace(/&mdash;/g, '--') // EM DASH (named entity)
+				.replace(/&rarr;/g, '->'); // RIGHTWARDS ARROW (named entity)
+			
+			// 转换 Unicode 字符（WordPress 可能直接输出 Unicode）
+			text = text
+				.replace(/–/g, '-')   // U+2013 EN DASH
+				.replace(/—/g, '--')  // U+2014 EM DASH
+				.replace(/→/g, '->'); // U+2192 RIGHTWARDS ARROW
+			
+			return text;
+		}
+
+		// 提取单元素容器语法内容
+		function extractSingleElementContainer(element) {
+			let html = element.innerHTML;
+			let text = element.textContent.trim();
+			
+			console.log('[测试] 原始 HTML:', html.substring(0, 200));
+			console.log('[测试] 原始文本:', text.substring(0, 200));
+			
+			if (!text.startsWith('::: mermaid')) {
+				return null;
+			}
+			
+			// 检查是否整个内容都在一个元素中
+			if (text.includes(':::') && text.lastIndexOf(':::') > 10) {
+				console.log('[测试] 检测到单元素容器语法');
+				
+				// 使用 htmlToText 转换
+				let fullText = htmlToText(html);
+				console.log('[测试] 转换后文本:', fullText.substring(0, 200));
+				
+				// 移除开始和结束标记
+				fullText = fullText.replace(/^:::\s*mermaid\s*/i, '').trim();
+				fullText = fullText.replace(/:::\s*$/, '').trim();
+				
+				console.log('[测试] 最终代码:', fullText);
+				return fullText;
+			}
+			
+			return null;
+		}
+
+		// 测试函数
+		function testMermaid(testId, resultId) {
+			const element = document.querySelector(`#${testId}`).previousElementSibling;
+			const resultDiv = document.getElementById(resultId);
+			
+			try {
+				const code = extractSingleElementContainer(element);
+				
+				if (!code) {
+					resultDiv.innerHTML = '<p class="error">❌ 提取失败：未找到代码</p>';
+					return;
+				}
+				
+				// 检查换行符
+				const lines = code.split('\n');
+				console.log(`[测试 ${testId}] 提取到 ${lines.length} 行代码`);
+				
+				// 检查箭头符号
+				const hasCorrectArrows = code.includes('-->') || code.includes('->');
+				const hasWrongArrows = code.includes('–>') || code.includes('→');
+				
+				// 渲染图表
+				mermaid.render(`mermaid-${testId}`, code).then(result => {
+					resultDiv.innerHTML = `
+						<p class="success">✅ 渲染成功</p>
+						<p>提取到 ${lines.length} 行代码</p>
+						<p>箭头符号: ${hasCorrectArrows ? '✅ 正确 (-->)' : '❌ 错误'}</p>
+						<p>全角箭头: ${hasWrongArrows ? '❌ 存在 (–>)' : '✅ 不存在'}</p>
+						<details>
+							<summary>查看提取的代码</summary>
+							<pre>${code}</pre>
+						</details>
+						${result.svg}
+					`;
+				}).catch(error => {
+					resultDiv.innerHTML = `
+						<p class="error">❌ 渲染失败: ${error.message}</p>
+						<p>箭头符号: ${hasCorrectArrows ? '✅ 正确 (-->)' : '❌ 错误'}</p>
+						<p>全角箭头: ${hasWrongArrows ? '❌ 存在 (–>)' : '✅ 不存在'}</p>
+						<details>
+							<summary>查看提取的代码</summary>
+							<pre>${code}</pre>
+						</details>
+					`;
+				});
+			} catch (error) {
+				resultDiv.innerHTML = `<p class="error">❌ 错误: ${error.message}</p>`;
+			}
+		}
+
+		// 初始化
+		document.addEventListener('DOMContentLoaded', function() {
+			mermaid.initialize({
+				startOnLoad: false,
+				theme: 'default',
+				securityLevel: 'loose'
+			});
+
+			// 运行测试
+			testMermaid('test1', 'result1');
+			testMermaid('test2', 'result2');
+			testMermaid('test3', 'result3');
+		});
+	</script>
+</body>
+</html>

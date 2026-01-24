@@ -4429,6 +4429,7 @@ void 0;
 			
 			// 检测规则（优先级从高到低）
 			const selectors = [
+				'div.mermaid-shortcode',                 // Shortcode 格式（推荐）
 				'div.mermaid',                           // 标准格式
 				'pre code.language-mermaid',             // Markdown 格式
 				'pre[data-lang="mermaid"]',              // 自定义属性格式
@@ -4690,8 +4691,13 @@ void 0;
 		extractMermaidCode(element) {
 			let code = '';
 
+			// 处理 Shortcode 格式（推荐）
+			if (element.classList.contains('mermaid-shortcode')) {
+				code = element.textContent;
+				this.logDebug('从 Shortcode 格式提取代码');
+			}
 			// 处理 Markdown 容器语法格式
-			if (element.classList.contains('mermaid-container-block')) {
+			else if (element.classList.contains('mermaid-container-block')) {
 				code = element.textContent;
 				this.logDebug('从 Markdown 容器语法提取代码');
 			}

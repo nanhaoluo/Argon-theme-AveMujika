@@ -4586,6 +4586,32 @@ function shortcode_video($attr,$content=""){
 	$out .= "</video>";
 	return $out;
 }
+add_shortcode('mermaid','shortcode_mermaid');
+function shortcode_mermaid($attr,$content=""){
+	// 预处理内容：移除 WordPress 自动添加的 <p> 和 <br> 标签
+	$content = shortcode_content_preprocess($attr, $content);
+	
+	// 获取参数
+	$theme = isset( $attr['theme'] ) ? $attr['theme'] : 'default';
+	$width = isset( $attr['width'] ) ? $attr['width'] : '100%';
+	$height = isset( $attr['height'] ) ? $attr['height'] : 'auto';
+	$align = isset( $attr['align'] ) ? $attr['align'] : 'center';
+	
+	// 生成唯一 ID
+	$chart_id = 'mermaid-' . mt_rand(1000000000, 9999999999);
+	
+	// 构建输出
+	$out = '<div class="mermaid-shortcode-container" style="text-align: ' . esc_attr($align) . ';">';
+	$out .= '<div class="mermaid-shortcode" ';
+	$out .= 'id="' . esc_attr($chart_id) . '" ';
+	$out .= 'data-theme="' . esc_attr($theme) . '" ';
+	$out .= 'style="width: ' . esc_attr($width) . '; height: ' . esc_attr($height) . ';">';
+	$out .= esc_html($content);
+	$out .= '</div>';
+	$out .= '</div>';
+	
+	return $out;
+}
 add_shortcode('hide_reading_time','shortcode_hide_reading_time');
 function shortcode_hide_reading_time($attr,$content=""){
 	return "";
@@ -9200,7 +9226,8 @@ function argon_has_mermaid_content($content) {
 		'/<div[^>]*class=["\']([^"\']*\s)?mermaid(\s[^"\']*)?["\'][^>]*>/i',  // <div class="mermaid">
 		'/<code[^>]*class=["\']([^"\']*\s)?language-mermaid(\s[^"\']*)?["\'][^>]*>/i',  // <code class="language-mermaid">
 		'/<pre[^>]*data-lang=["\']mermaid["\'][^>]*>/i',  // <pre data-lang="mermaid">
-		'/<code[^>]*class=["\']([^"\']*\s)?mermaid(\s[^"\']*)?["\'][^>]*>/i'  // <code class="mermaid">
+		'/<code[^>]*class=["\']([^"\']*\s)?mermaid(\s[^"\']*)?["\'][^>]*>/i',  // <code class="mermaid">
+		'/:::\s*mermaid/i'  // ::: mermaid (Markdown 容器语法)
 	];
 	
 	foreach ($patterns as $pattern) {
