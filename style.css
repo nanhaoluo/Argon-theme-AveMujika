@@ -941,14 +941,25 @@ article .wp-block-separator {
 	display: flex;
 	gap: 5px;
 	z-index: 10;
-	background: rgba(255, 255, 255, 0.9);
+	background: rgba(255, 255, 255, 0.85);
+	backdrop-filter: blur(10px);
 	border-radius: 6px;
 	padding: 5px;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+	opacity: 0;
+	transform: translateY(-10px);
+	transition: opacity 0.3s ease, transform 0.3s ease;
+	pointer-events: none;
+}
+
+.mermaid-container:hover .mermaid-zoom-controls {
+	opacity: 1;
+	transform: translateY(0);
+	pointer-events: auto;
 }
 
 html.darkmode .mermaid-zoom-controls {
-	background: rgba(30, 30, 30, 0.9);
+	background: rgba(30, 30, 30, 0.85);
 }
 
 .mermaid-zoom-btn {
@@ -986,6 +997,38 @@ html.darkmode .mermaid-zoom-controls {
 
 html.darkmode .mermaid-zoom-level {
 	color: #aaa;
+}
+
+/* 按钮 tooltip */
+.mermaid-zoom-btn[title] {
+	position: relative;
+}
+
+.mermaid-zoom-btn[title]::after {
+	content: attr(title);
+	position: absolute;
+	bottom: -35px;
+	left: 50%;
+	transform: translateX(-50%);
+	background: rgba(0, 0, 0, 0.85);
+	color: white;
+	padding: 4px 8px;
+	border-radius: 4px;
+	font-size: 12px;
+	white-space: nowrap;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.2s ease;
+	z-index: 100;
+}
+
+.mermaid-zoom-btn[title]:hover::after {
+	opacity: 1;
+}
+
+html.darkmode .mermaid-zoom-btn[title]::after {
+	background: rgba(255, 255, 255, 0.9);
+	color: #333;
 }
 
 /* 提示文本 */
@@ -16787,14 +16830,25 @@ html.darkmode .mermaid-error-container .error-code code {
 	display: flex;
 	gap: 5px;
 	z-index: 10;
-	background: rgba(255, 255, 255, 0.9);
+	background: rgba(255, 255, 255, 0.85);
+	backdrop-filter: blur(10px);
 	border-radius: 6px;
 	padding: 5px;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+	opacity: 0;
+	transform: translateY(-10px);
+	transition: opacity 0.3s ease, transform 0.3s ease;
+	pointer-events: none;
+}
+
+.mermaid-container:hover .mermaid-zoom-controls {
+	opacity: 1;
+	transform: translateY(0);
+	pointer-events: auto;
 }
 
 html.darkmode .mermaid-zoom-controls {
-	background: rgba(30, 30, 30, 0.9);
+	background: rgba(30, 30, 30, 0.85);
 }
 
 .mermaid-zoom-btn {
@@ -16832,6 +16886,38 @@ html.darkmode .mermaid-zoom-controls {
 
 html.darkmode .mermaid-zoom-level {
 	color: #aaa;
+}
+
+/* 按钮 tooltip */
+.mermaid-zoom-btn[title] {
+	position: relative;
+}
+
+.mermaid-zoom-btn[title]::after {
+	content: attr(title);
+	position: absolute;
+	bottom: -35px;
+	left: 50%;
+	transform: translateX(-50%);
+	background: rgba(0, 0, 0, 0.85);
+	color: white;
+	padding: 4px 8px;
+	border-radius: 4px;
+	font-size: 12px;
+	white-space: nowrap;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.2s ease;
+	z-index: 100;
+}
+
+.mermaid-zoom-btn[title]:hover::after {
+	opacity: 1;
+}
+
+html.darkmode .mermaid-zoom-btn[title]::after {
+	background: rgba(255, 255, 255, 0.9);
+	color: #333;
 }
 
 /* ---------- 卡片内的 Mermaid 图表 ---------- */
