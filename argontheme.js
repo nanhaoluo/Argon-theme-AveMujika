@@ -4907,6 +4907,18 @@ void 0;
 		renderChart(element, index) {
 			const chartId = `mermaid-chart-${Date.now()}-${index}`;
 
+			// 检查是否已经是错误容器（避免重复处理错误）
+			if (element.classList && element.classList.contains('mermaid-error-container')) {
+				this.logDebug(`元素已经是错误容器，跳过: ${chartId}`);
+				return;
+			}
+
+			// 检查是否已经是渲染成功的容器（避免重复渲染）
+			if (element.classList && element.classList.contains('mermaid-container') && element.dataset.mermaidCode) {
+				this.logDebug(`图表已成功渲染，跳过: ${chartId}`);
+				return;
+			}
+
 			// 检查是否已渲染（避免重复渲染）
 			if (this.rendered.has(element)) {
 				this.logDebug(`图表已渲染，跳过: ${chartId}`);
@@ -4963,7 +4975,9 @@ void 0;
 					container.dataset.currentTheme = this.getMermaidTheme();
 
 					// 替换原始代码块
-					element.parentNode.replaceChild(container, element);
+					if (element.parentNode) {
+						element.parentNode.replaceChild(container, element);
+					}
 
 					// 标记为已渲染
 					this.rendered.add(container);
@@ -5035,31 +5049,72 @@ void 0;
 		handleRenderError(element, error, code) {
 			this.logError('图表渲染失败', error);
 
+			// 如果元素已经是错误容器，避免重复嵌套
+			if (element.classList && element.classList.contains('mermaid-error-container')) {
+				this.logDebug('元素已经是错误容器，跳过重复处理');
+				return;
+			}
+
+			// 提取原始代码（优先使用传入的 code，其次从元素中提取）
+			let originalCode = code;
+			if (!originalCode) {
+				// 尝试从不同类型的元素中提取代码
+				if (element.dataset && element.dataset.mermaidCode) {
+					originalCode = element.dataset.mermaidCode;
+				} else if (element.textContent) {
+					originalCode = element.textContent.trim();
+				}
+			}
+
 			// 创建错误提示容器
 			const errorContainer = document.createElement('div');
 			errorContainer.className = 'mermaid-error-container';
+			errorContainer.dataset.errorHandled = 'true'; // 标记已处理
 
 			// 提取错误信息
 			const errorMessage = error.message || '未知错误';
 			const errorType = this.getErrorType(errorMessage);
 
-			errorContainer.innerHTML = `
-				<div class="mermaid-error-header">
-					<span class="mermaid-error-icon">⚠️</span>
-					<span class="mermaid-error-title">Mermaid 图表渲染失败</span>
-				</div>
-				<div class="mermaid-error-body">
-					<p class="mermaid-error-type">错误类型: ${errorType}</p>
-					<p class="mermaid-error-message">${this.escapeHtml(errorMessage)}</p>
-				</div>
-				<details class="mermaid-error-code">
-					<summary>查看原始代码</summary>
-					<pre><code class="language-mermaid">${this.escapeHtml(code || element.textContent)}</code></pre>
-				</details>
+			// 创建错误显示结构
+			const errorHeader = document.createElement('div');
+			errorHeader.className = 'mermaid-error-header';
+			errorHeader.innerHTML = `
+				<span class="mermaid-error-icon">⚠️</span>
+				<span class="mermaid-error-title">Mermaid 图表渲染失败</span>
 			`;
 
+			const errorBody = document.createElement('div');
+			errorBody.className = 'mermaid-error-body';
+			errorBody.innerHTML = `
+				<p class="mermaid-error-type">错误类型: ${errorType}</p>
+				<p class="mermaid-error-message">${this.escapeHtml(errorMessage)}</p>
+			`;
+
+			// 创建代码查看区域
+			const codeDetails = document.createElement('details');
+			codeDetails.className = 'mermaid-error-code';
+			
+			const codeSummary = document.createElement('summary');
+			codeSummary.textContent = '查看原始代码';
+			
+			const codeBlock = document.createElement('pre');
+			const codeElement = document.createElement('code');
+			codeElement.className = 'language-mermaid';
+			codeElement.textContent = originalCode || '(无法提取代码)';
+			
+			codeBlock.appendChild(codeElement);
+			codeDetails.appendChild(codeSummary);
+			codeDetails.appendChild(codeBlock);
+
+			// 组装错误容器
+			errorContainer.appendChild(errorHeader);
+			errorContainer.appendChild(errorBody);
+			errorContainer.appendChild(codeDetails);
+
 			// 替换原始代码块
-			element.parentNode.replaceChild(errorContainer, element);
+			if (element.parentNode) {
+				element.parentNode.replaceChild(errorContainer, element);
+			}
 		},
 
 		/**
@@ -5155,7 +5210,8 @@ void 0;
 		 * 重新渲染所有图表（主题切换时）
 		 */
 		reRenderCharts() {
-			const charts = document.querySelectorAll('.mermaid-container');
+			// 只选择成功渲染的图表容器，排除错误容器
+			const charts = document.querySelectorAll('.mermaid-container:not(.mermaid-error-container)');
 			
 			if (charts.length === 0) {
 				return;
@@ -5190,6 +5246,13 @@ void 0;
 				charts.forEach((chart, index) => {
 					const code = chart.dataset.mermaidCode;
 					if (!code) {
+						this.logDebug('图表缺少原始代码，跳过重新渲染');
+						return;
+					}
+
+					// 检查主题是否真的需要更新
+					if (chart.dataset.currentTheme === newTheme) {
+						this.logDebug('图表主题未改变，跳过重新渲染');
 						return;
 					}
 
@@ -5209,6 +5272,8 @@ void 0;
 						this.logDebug(`图表重新渲染成功: ${chartId}`);
 					}).catch(error => {
 						this.logError('图表重新渲染失败', error);
+						// 重新渲染失败时，不替换为错误容器，保持原样
+						// 因为之前已经成功渲染过，只是主题切换失败
 					});
 				});
 

@@ -3117,7 +3117,7 @@ function themeoptions_page(){
 						<th><label><?php _e('自定义 CDN 地址', 'argon');?></label></th>
 						<td>
 							<input type="text" class="regular-text" name="argon_mermaid_cdn_custom_url" value="<?php echo get_option('argon_mermaid_cdn_custom_url', ''); ?>" placeholder="https://example.com/mermaid.min.js"/>
-							<p class="description"><?php _e('当 CDN 来源选择"自定义 CDN 地址"时生效。请输入完整的 Mermaid 库 URL（必须以 .js 结尾）', 'argon');?></p>
+							<p class="description"><?php _e('当 CDN 来源选择"自定义 CDN 地址"时生效。请输入完整的 Mermaid 库 URL（必须以 .js 结尾）。推荐使用 Mermaid v11 或更高版本', 'argon');?></p>
 						</td>
 					</tr>
 
@@ -3384,7 +3384,7 @@ function themeoptions_page(){
 									// 动态加载 Mermaid 库
 									if (typeof mermaid === 'undefined') {
 										const script = document.createElement('script');
-										script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
+										script.src = 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js';
 										script.onload = function() {
 											renderMermaid(code);
 										};

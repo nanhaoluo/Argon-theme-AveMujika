@@ -9256,8 +9256,8 @@ function argon_get_mermaid_library_url() {
 	
 	// 根据 CDN 来源返回对应的 URL
 	$cdn_urls = [
-		'jsdelivr' => 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js',
-		'unpkg' => 'https://unpkg.com/mermaid@10/dist/mermaid.min.js',
+		'jsdelivr' => 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js',
+		'unpkg' => 'https://unpkg.com/mermaid@11/dist/mermaid.min.js',
 		'local' => get_template_directory_uri() . '/assets/vendor/mermaid/mermaid.min.js'
 	];
 	
@@ -9283,8 +9283,8 @@ function argon_get_mermaid_library_url() {
  */
 function argon_get_mermaid_fallback_urls() {
 	return [
-		'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js',
-		'https://unpkg.com/mermaid@10/dist/mermaid.min.js',
+		'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js',
+		'https://unpkg.com/mermaid@11/dist/mermaid.min.js',
 		get_template_directory_uri() . '/assets/vendor/mermaid/mermaid.min.js'
 	];
 }
