@@ -3029,6 +3029,113 @@ function resetGT4Captcha() {
 	}
 }
 
+// ==========================================================================
+// 内联脚本执行器 (Inline Script Executor)
+// ==========================================================================
+
+/**
+ * 执行单个脚本元素
+ * 需求 4.4: 脚本执行失败时捕获错误并记录日志，不中断其他脚本执行
+ * 
+ * @param {HTMLScriptElement} oldScript - 原始脚本元素
+ * @returns {boolean} 是否执行成功
+ */
+function executeScript(oldScript) {
+	try {
+		// 创建新的 script 元素
+		const newScript = document.createElement('script');
+		
+		// 复制脚本内容
+		if (oldScript.textContent) {
+			newScript.textContent = oldScript.textContent;
+		}
+		
+		// 复制所有属性（包括 type, async, defer 等）
+		// 需求 4.5: 尊重 async 和 defer 属性的执行时机
+		Array.from(oldScript.attributes).forEach(attr => {
+			newScript.setAttribute(attr.name, attr.value);
+		});
+		
+		// 将脚本添加到 head 并立即执行
+		document.head.appendChild(newScript);
+		
+		// 执行后立即移除，避免污染 DOM
+		document.head.removeChild(newScript);
+		
+		ArgonDebug.log('Script executed successfully:', oldScript.textContent.substring(0, 50) + '...');
+		return true;
+	} catch (error) {
+		// 需求 4.4: 捕获错误并记录日志
+		ArgonDebug.error('Script execution failed:', error);
+		ArgonDebug.error('Failed script content:', oldScript.textContent);
+		return false;
+	}
+}
+
+/**
+ * 执行新页面中的所有内联脚本
+ * 需求 4.1: 提取新页面中的所有 script 标签
+ * 需求 4.2: 区分内联脚本和外部脚本
+ * 需求 4.3: 按照脚本在 DOM 中的顺序执行
+ * 需求 4.4: 脚本执行失败不中断其他脚本执行
+ * 
+ * @param {HTMLElement|Document} container - 新页面的容器元素或文档对象
+ * @returns {Object} 执行结果统计 {total, success, failed}
+ */
+function executeInlineScripts(container) {
+	// 如果没有传入容器，使用整个文档
+	if (!container) {
+		container = document;
+	}
+	
+	// 需求 4.1: 提取所有 script 标签
+	const scripts = container.querySelectorAll('script');
+	
+	if (scripts.length === 0) {
+		ArgonDebug.log('No scripts found in new page');
+		return {total: 0, success: 0, failed: 0};
+	}
+	
+	let successCount = 0;
+	let failedCount = 0;
+	
+	ArgonDebug.log(`Found ${scripts.length} script tags in new page`);
+	
+	// 需求 4.3: 按照脚本在 DOM 中的顺序执行
+	scripts.forEach((script, index) => {
+		// 需求 4.2: 只执行内联脚本（没有 src 属性的脚本）
+		if (!script.src) {
+			// 跳过空脚本
+			if (!script.textContent || script.textContent.trim() === '') {
+				ArgonDebug.log(`Script ${index + 1}: Empty, skipped`);
+				return;
+			}
+			
+			ArgonDebug.log(`Executing inline script ${index + 1}/${scripts.length}`);
+			
+			// 需求 4.4: 错误隔离 - 单个脚本失败不影响其他脚本
+			const success = executeScript(script);
+			if (success) {
+				successCount++;
+			} else {
+				failedCount++;
+			}
+		} else {
+			// 外部脚本由浏览器自动加载，不需要手动执行
+			ArgonDebug.log(`Script ${index + 1}: External (${script.src}), skipped`);
+		}
+	});
+	
+	const result = {
+		total: scripts.length,
+		success: successCount,
+		failed: failedCount
+	};
+	
+	ArgonDebug.log('Script execution completed:', result);
+	return result;
+}
+
 $.pjax.defaults.timeout = 10000;
 $.pjax.defaults.container = ['#primary', '#leftbar_part1_menu', '#leftbar_part2_inner', '.page-information-card-container', '#rightbar', '#wpadminbar'];
 $.pjax.defaults.fragment = ['#primary', '#leftbar_part1_menu', '#leftbar_part2_inner', '.page-information-card-container', '#rightbar', '#wpadminbar'];
@@ -3086,6 +3193,13 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 	// ========== 需求 1.5, 1.6: 重新初始化所有功能模块 ==========
 	pjaxLoading = false;
 	NProgress.inc();
+	
+	// ========== 需求 4.1-4.5: 执行新页面中的内联脚本 ==========
+	try {
+		executeInlineScripts(document);
+	} catch (err) {
+		ArgonDebug.error('executeInlineScripts failed:', err);
+	}
 	
 	// MathJax 数学公式渲染
 	try{
