@@ -1152,7 +1152,8 @@ article.card .mermaid-container {
 	margin: 20px -20px;
 }
 
-/* 响应式调�?*/
+/* 响应式调整 */
+/* 需求 16.1: 移动端工具栏适配 - 调整按钮大小 */
 @media screen and (max-width: 768px) {
 	.mermaid-container {
 		margin: 15px -15px;
@@ -1161,6 +1162,62 @@ article.card .mermaid-container {
 	
 	article.card .mermaid-container {
 		margin: 15px -15px;
+	}
+	
+	/* 移动端工具栏按钮放大，便于触摸 */
+	.mermaid-zoom-controls {
+		padding: 8px;
+		gap: 8px;
+	}
+	
+	.mermaid-zoom-btn {
+		width: 40px;
+		height: 40px;
+		font-size: 20px;
+	}
+	
+	.mermaid-zoom-level {
+		font-size: 14px;
+		min-width: 55px;
+		padding: 0 10px;
+	}
+	
+	/* 移动端提示文本调整 */
+	.mermaid-hint {
+		font-size: 11px;
+		padding: 5px 10px;
+		bottom: 8px;
+	}
+}
+
+/* 需求 16.5: 横屏模式优化 - 自动调整图表布局 */
+@media screen and (max-width: 768px) and (orientation: landscape) {
+	.mermaid-container {
+		max-height: 70vh;
+		overflow-y: auto;
+	}
+	
+	.mermaid-container-inner {
+		max-height: 65vh;
+	}
+	
+	/* 横屏时工具栏更紧凑 */
+	.mermaid-zoom-controls {
+		padding: 5px;
+		gap: 5px;
+		top: 5px;
+		right: 5px;
+	}
+	
+	.mermaid-zoom-btn {
+		width: 36px;
+		height: 36px;
+		font-size: 18px;
+	}
+	
+	/* 横屏时隐藏提示文本，节省空间 */
+	.mermaid-hint {
+		display: none;
 	}
 }
 

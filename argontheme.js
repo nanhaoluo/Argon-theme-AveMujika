@@ -5931,6 +5931,147 @@ void 0;
 					container.scrollTop = offsetY * scale - mouseY;
 				}, 50);
 			});
+
+			// ==========================================================================
+			// 需求 16.2-16.4: 移动端触摸手势支持
+			// ==========================================================================
+
+			// 触摸状态
+			let touchStartDistance = 0;
+			let touchStartScale = 1;
+			let touchStartX = 0;
+			let touchStartY = 0;
+			let isTouchDragging = false;
+			let touchScrollLeft = 0;
+			let touchScrollTop = 0;
+
+			/**
+			 * 计算两个触摸点之间的距离
+			 * @param {Touch} touch1 - 第一个触摸点
+			 * @param {Touch} touch2 - 第二个触摸点
+			 * @returns {number} 距离
+			 */
+			const getTouchDistance = (touch1, touch2) => {
+				const dx = touch2.clientX - touch1.clientX;
+				const dy = touch2.clientY - touch1.clientY;
+				return Math.sqrt(dx * dx + dy * dy);
+			};
+
+			/**
+			 * 获取两个触摸点的中心位置
+			 * @param {Touch} touch1 - 第一个触摸点
+			 * @param {Touch} touch2 - 第二个触摸点
+			 * @returns {Object} 中心位置 {x, y}
+			 */
+			const getTouchCenter = (touch1, touch2) => {
+				return {
+					x: (touch1.clientX + touch2.clientX) / 2,
+					y: (touch1.clientY + touch2.clientY) / 2
+				};
+			};
+
+			// 需求 16.2: 双指缩放手势
+			inner.addEventListener('touchstart', (e) => {
+				if (e.touches.length === 2) {
+					// 双指触摸 - 缩放模式
+					e.preventDefault();
+					
+					touchStartDistance = getTouchDistance(e.touches[0], e.touches[1]);
+					touchStartScale = scale;
+					
+					// 记录缩放中心点
+					const center = getTouchCenter(e.touches[0], e.touches[1]);
+					const rect = container.getBoundingClientRect();
+					touchStartX = center.x - rect.left;
+					touchStartY = center.y - rect.top;
+					
+				} else if (e.touches.length === 1) {
+					// 需求 16.3: 单指拖拽移动
+					// 检查是否需要启用拖拽
+					if (!checkDragEnabled()) return;
+					
+					isTouchDragging = true;
+					inner.classList.add('dragging');
+					
+					const touch = e.touches[0];
+					touchStartX = touch.clientX;
+					touchStartY = touch.clientY;
+					touchScrollLeft = container.scrollLeft;
+					touchScrollTop = container.scrollTop;
+				}
+			}, { passive: false });
+
+			// 需求 16.4: 优化触摸事件响应速度
+			inner.addEventListener('touchmove', (e) => {
+				if (e.touches.length === 2) {
+					// 双指缩放
+					e.preventDefault();
+					
+					const currentDistance = getTouchDistance(e.touches[0], e.touches[1]);
+					const scaleChange = currentDistance / touchStartDistance;
+					const newScale = Math.max(minScale, Math.min(maxScale, touchStartScale * scaleChange));
+					
+					if (newScale !== scale) {
+						// 获取缩放中心点
+						const center = getTouchCenter(e.touches[0], e.touches[1]);
+						const rect = container.getBoundingClientRect();
+						const centerX = center.x - rect.left;
+						const centerY = center.y - rect.top;
+						
+						// 计算缩放前的内容位置
+						const scrollLeft = container.scrollLeft;
+						const scrollTop = container.scrollTop;
+						const offsetX = (scrollLeft + centerX) / scale;
+						const offsetY = (scrollTop + centerY) / scale;
+						
+						// 更新缩放（不使用过渡动画，更流畅）
+						scale = newScale;
+						updateZoom(false);
+						
+						// 调整滚动位置，使缩放中心保持不变
+						requestAnimationFrame(() => {
+							container.scrollLeft = offsetX * scale - centerX;
+							container.scrollTop = offsetY * scale - centerY;
+						});
+					}
+					
+				} else if (e.touches.length === 1 && isTouchDragging) {
+					// 单指拖拽
+					e.preventDefault();
+					
+					const touch = e.touches[0];
+					const deltaX = touch.clientX - touchStartX;
+					const deltaY = touch.clientY - touchStartY;
+					
+					// 使用 requestAnimationFrame 优化性能
+					requestAnimationFrame(() => {
+						container.scrollLeft = touchScrollLeft - deltaX;
+						container.scrollTop = touchScrollTop - deltaY;
+					});
+				}
+			}, { passive: false });
+
+			inner.addEventListener('touchend', (e) => {
+				if (isTouchDragging) {
+					isTouchDragging = false;
+					inner.classList.remove('dragging');
+				}
+				
+				// 重置触摸状态
+				if (e.touches.length === 0) {
+					touchStartDistance = 0;
+					touchStartScale = 1;
+				}
+			}, { passive: true });
+
+			inner.addEventListener('touchcancel', () => {
+				if (isTouchDragging) {
+					isTouchDragging = false;
+					inner.classList.remove('dragging');
+				}
+				touchStartDistance = 0;
+				touchStartScale = 1;
+			}, { passive: true });
 		},
 
 		// ---------- 主题切换监听 ----------
