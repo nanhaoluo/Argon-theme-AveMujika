@@ -4005,6 +4005,13 @@ function convertMermaidCodeblocks(){
 			container.textContent = code;
 			container.dataset.processed = 'true';
 			
+			// 调试日志
+			if (typeof console !== 'undefined' && console.log) {
+				console.log('[Mermaid 转换] 代码长度:', code.length);
+				console.log('[Mermaid 转换] 代码内容:', code.substring(0, 200));
+				console.log('[Mermaid 转换] 容器 textContent:', container.textContent.substring(0, 200));
+			}
+			
 			// 替换元素
 			const targetElement = element.closest('pre') || element;
 			if (targetElement.parentNode) {
@@ -4781,17 +4788,21 @@ void 0;
 			// 处理 Shortcode 格式（推荐）
 			if (element.classList.contains('mermaid-shortcode')) {
 				code = element.textContent;
-				this.logDebug('从 Shortcode 格式提取代码');
+				this.logDebug('从 Shortcode 格式提取代码，长度: ' + code.length);
+				this.logDebug('代码内容: ' + code.substring(0, 200));
 			}
 			// 处理代码块魔改格式（新增）
 			else if (element.classList.contains('mermaid-from-codeblock')) {
 				code = element.textContent;
-				this.logDebug('从代码块魔改格式提取代码');
+				this.logDebug('从代码块魔改格式提取代码，长度: ' + code.length);
+				this.logDebug('代码内容: ' + code.substring(0, 200));
+				this.logDebug('元素 HTML: ' + element.outerHTML.substring(0, 300));
 			}
 			// 处理 Markdown 容器语法格式
 			else if (element.classList.contains('mermaid-container-block')) {
 				code = element.textContent;
-				this.logDebug('从 Markdown 容器语法提取代码');
+				this.logDebug('从 Markdown 容器语法提取代码，长度: ' + code.length);
+				this.logDebug('代码内容: ' + code.substring(0, 200));
 			}
 			// 根据不同的元素类型提取代码
 			else if (element.tagName === 'DIV' && element.classList.contains('mermaid')) {
