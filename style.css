@@ -919,12 +919,17 @@ article .wp-block-separator {
 	max-width: 100%;
 	opacity: 0;
 	animation: mermaidFadeIn 0.3s ease-in-out forwards;
+	display: flex;
+	justify-content: center;
+	align-items: center;
 }
 
 .mermaid-container svg {
 	max-width: 100%;
+	max-height: 600px;
 	height: auto;
 	display: block;
+	width: auto !important;
 }
 
 /* Mermaid 淡入动画 */
@@ -16631,11 +16636,17 @@ html.darkmode .mermaid-error-container .error-code code {
 	overflow-x: auto;
 	max-width: 100%;
 	transition: opacity 0.3s ease-in;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-height: 100px;
 }
 
 .mermaid-container svg {
 	max-width: 100%;
+	max-height: 600px;
 	height: auto;
+	width: auto !important;
 	display: block;
 	margin: 0 auto;
 }
@@ -16664,6 +16675,7 @@ html.darkmode .mermaid-container {
 	
 	.mermaid-container svg {
 		max-width: 100%;
+		max-height: 500px;
 	}
 }
 
@@ -16671,6 +16683,10 @@ html.darkmode .mermaid-container {
 	.mermaid-container {
 		padding: 10px;
 		margin: 10px 0;
+	}
+	
+	.mermaid-container svg {
+		max-height: 400px;
 	}
 }
 
