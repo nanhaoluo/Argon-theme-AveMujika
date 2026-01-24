@@ -1176,6 +1176,103 @@ html.darkmode .mermaid-fullscreen .mermaid-zoom-controls {
 	color: var(--themecolor);
 }
 
+/* 需求 15: Mermaid 导出功能样式 */
+/* 导出按钮 */
+.mermaid-export-btn {
+	position: relative;
+}
+
+/* 导出菜单 */
+.mermaid-export-menu {
+	position: absolute;
+	top: 45px;
+	right: 10px;
+	background: white;
+	border-radius: 6px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	padding: 8px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	opacity: 0;
+	visibility: hidden;
+	transform: translateY(-10px);
+	transition: all 0.2s ease;
+	z-index: 11;
+	min-width: 140px;
+}
+
+.mermaid-export-menu.visible {
+	opacity: 1;
+	visibility: visible;
+	transform: translateY(0);
+}
+
+html.darkmode .mermaid-export-menu {
+	background: #2a2a2a;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* 导出选项按钮 */
+.mermaid-export-option {
+	padding: 8px 12px;
+	border: none;
+	background: transparent;
+	color: #333;
+	text-align: left;
+	cursor: pointer;
+	border-radius: 4px;
+	font-size: 14px;
+	transition: background 0.2s;
+	white-space: nowrap;
+}
+
+.mermaid-export-option:hover {
+	background: rgba(94, 114, 228, 0.1);
+	color: var(--themecolor);
+}
+
+html.darkmode .mermaid-export-option {
+	color: #ddd;
+}
+
+html.darkmode .mermaid-export-option:hover {
+	background: rgba(94, 114, 228, 0.2);
+}
+
+/* 需求 15.5: 导出错误提示 */
+.mermaid-export-error {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	background: rgba(220, 53, 69, 0.95);
+	color: white;
+	padding: 12px 20px;
+	border-radius: 6px;
+	font-size: 14px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+	z-index: 100;
+	animation: slideInDown 0.3s ease;
+	max-width: 80%;
+	text-align: center;
+}
+
+@keyframes slideInDown {
+	from {
+		opacity: 0;
+		transform: translate(-50%, -60%);
+	}
+	to {
+		opacity: 1;
+		transform: translate(-50%, -50%);
+	}
+}
+
+html.darkmode .mermaid-export-error {
+	background: rgba(200, 35, 51, 0.95);
+}
+
 /* 全屏模式下的内部容器 */
 .mermaid-fullscreen .mermaid-container-inner {
 	max-height: calc(100vh - 100px);
@@ -1242,6 +1339,18 @@ article.card .mermaid-container {
 		font-size: 11px;
 		padding: 5px 10px;
 		bottom: 8px;
+	}
+	
+	/* 移动端导出菜单调整 */
+	.mermaid-export-menu {
+		right: 8px;
+		top: 50px;
+		min-width: 150px;
+	}
+	
+	.mermaid-export-option {
+		padding: 10px 14px;
+		font-size: 15px;
 	}
 }
 

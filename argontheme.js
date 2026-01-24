@@ -5688,6 +5688,7 @@ void 0;
 
 			// 创建缩放控制
 			// 需求 14.1: 添加全屏按钮
+			// 需求 15.1: 添加导出按钮和菜单
 			const controls = document.createElement('div');
 			controls.className = 'mermaid-zoom-controls';
 			controls.innerHTML = `
@@ -5696,9 +5697,19 @@ void 0;
 				<button class="mermaid-zoom-btn" data-action="zoom-in" title="放大">+</button>
 				<button class="mermaid-zoom-btn" data-action="zoom-reset" title="重置">⟲</button>
 				<button class="mermaid-zoom-btn" data-action="fullscreen" title="全屏">⛶</button>
+				<button class="mermaid-zoom-btn mermaid-export-btn" data-action="export" title="导出">⬇</button>
 			`;
 
 			container.appendChild(controls);
+
+			// 需求 15.1: 创建导出菜单
+			const exportMenu = document.createElement('div');
+			exportMenu.className = 'mermaid-export-menu';
+			exportMenu.innerHTML = `
+				<button class="mermaid-export-option" data-format="png">导出为 PNG</button>
+				<button class="mermaid-export-option" data-format="svg">导出为 SVG</button>
+			`;
+			container.appendChild(exportMenu);
 
 			// 创建提示文本
 			const hint = document.createElement('div');
@@ -5762,6 +5773,7 @@ void 0;
 
 			// 绑定按钮事件
 			// 需求 14.1, 14.2, 14.3: 全屏按钮功能
+			// 需求 15.1: 导出按钮功能
 			controls.addEventListener('click', (e) => {
 				const btn = e.target.closest('.mermaid-zoom-btn');
 				if (!btn || btn.disabled) return; // 忽略禁用的按钮
@@ -5780,8 +5792,194 @@ void 0;
 				} else if (action === 'fullscreen') {
 					// 需求 14.1: 点击全屏按钮
 					toggleFullscreen();
+				} else if (action === 'export') {
+					// 需求 15.1: 点击导出按钮，显示/隐藏导出菜单
+					toggleExportMenu();
 				}
 			});
+
+			// ==========================================================================
+			// 需求 15: Mermaid 导出功能
+			// ==========================================================================
+
+			/**
+			 * 切换导出菜单显示/隐藏
+			 * 需求 15.1: 点击导出按钮显示导出选项
+			 */
+			const toggleExportMenu = () => {
+				const isVisible = exportMenu.classList.contains('visible');
+				if (isVisible) {
+					exportMenu.classList.remove('visible');
+				} else {
+					exportMenu.classList.add('visible');
+				}
+			};
+
+			// 点击导出选项
+			exportMenu.addEventListener('click', (e) => {
+				const option = e.target.closest('.mermaid-export-option');
+				if (!option) return;
+
+				const format = option.dataset.format;
+				exportMenu.classList.remove('visible');
+
+				if (format === 'png') {
+					exportAsPNG();
+				} else if (format === 'svg') {
+					exportAsSVG();
+				}
+			});
+
+			// 点击容器外部关闭导出菜单
+			document.addEventListener('click', (e) => {
+				if (!container.contains(e.target)) {
+					exportMenu.classList.remove('visible');
+				}
+			});
+
+			/**
+			 * 导出为 PNG
+			 * 需求 15.2: 将图表转换为 PNG 图片并下载
+			 * 需求 15.4: 保持图表当前的缩放级别和样式
+			 */
+			const exportAsPNG = async () => {
+				try {
+					const svgElement = inner.querySelector('svg');
+					if (!svgElement) {
+						throw new Error('未找到 SVG 元素');
+					}
+
+					// 克隆 SVG 以避免修改原始元素
+					const clonedSvg = svgElement.cloneNode(true);
+					
+					// 需求 15.4: 应用当前缩放级别
+					const svgWidth = svgElement.getBoundingClientRect().width * scale;
+					const svgHeight = svgElement.getBoundingClientRect().height * scale;
+					
+					clonedSvg.setAttribute('width', svgWidth);
+					clonedSvg.setAttribute('height', svgHeight);
+
+					// 将 SVG 转换为 data URL
+					const svgData = new XMLSerializer().serializeToString(clonedSvg);
+					const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+					const svgUrl = URL.createObjectURL(svgBlob);
+
+					// 创建图片元素
+					const img = new Image();
+					img.onload = () => {
+						// 创建 canvas
+						const canvas = document.createElement('canvas');
+						canvas.width = svgWidth;
+						canvas.height = svgHeight;
+						
+						const ctx = canvas.getContext('2d');
+						
+						// 设置白色背景（PNG 默认透明）
+						ctx.fillStyle = '#ffffff';
+						ctx.fillRect(0, 0, canvas.width, canvas.height);
+						
+						// 绘制图片
+						ctx.drawImage(img, 0, 0, svgWidth, svgHeight);
+						
+						// 转换为 PNG 并下载
+						canvas.toBlob((blob) => {
+							if (blob) {
+								downloadFile(blob, 'mermaid-chart.png');
+							}
+							URL.revokeObjectURL(svgUrl);
+						}, 'image/png');
+					};
+
+					// 需求 15.5: 添加导出错误处理
+					img.onerror = () => {
+						URL.revokeObjectURL(svgUrl);
+						throw new Error('图片加载失败');
+					};
+
+					img.src = svgUrl;
+
+				} catch (error) {
+					// 需求 15.5: 显示友好的错误提示
+					handleExportError('PNG', error);
+				}
+			};
+
+			/**
+			 * 导出为 SVG
+			 * 需求 15.3: 将 SVG 代码保存为文件并下载
+			 * 需求 15.4: 保持图表当前的缩放级别和样式
+			 */
+			const exportAsSVG = () => {
+				try {
+					const svgElement = inner.querySelector('svg');
+					if (!svgElement) {
+						throw new Error('未找到 SVG 元素');
+					}
+
+					// 克隆 SVG
+					const clonedSvg = svgElement.cloneNode(true);
+					
+					// 需求 15.4: 应用当前缩放级别
+					if (scale !== 1) {
+						const svgWidth = svgElement.getBoundingClientRect().width * scale;
+						const svgHeight = svgElement.getBoundingClientRect().height * scale;
+						
+						clonedSvg.setAttribute('width', svgWidth);
+						clonedSvg.setAttribute('height', svgHeight);
+					}
+
+					// 添加 XML 声明和命名空间
+					const svgData = new XMLSerializer().serializeToString(clonedSvg);
+					const svgWithDeclaration = '<?xml version="1.0" encoding="UTF-8"?>\n' + svgData;
+					
+					// 创建 Blob 并下载
+					const blob = new Blob([svgWithDeclaration], { type: 'image/svg+xml;charset=utf-8' });
+					downloadFile(blob, 'mermaid-chart.svg');
+
+				} catch (error) {
+					// 需求 15.5: 显示友好的错误提示
+					handleExportError('SVG', error);
+				}
+			};
+
+			/**
+			 * 下载文件
+			 * @param {Blob} blob - 文件内容
+			 * @param {string} filename - 文件名
+			 */
+			const downloadFile = (blob, filename) => {
+				const url = URL.createObjectURL(blob);
+				const link = document.createElement('a');
+				link.href = url;
+				link.download = filename;
+				document.body.appendChild(link);
+				link.click();
+				document.body.removeChild(link);
+				URL.revokeObjectURL(url);
+			};
+
+			/**
+			 * 处理导出错误
+			 * 需求 15.5: 显示友好的错误提示
+			 * @param {string} format - 导出格式
+			 * @param {Error} error - 错误对象
+			 */
+			const handleExportError = (format, error) => {
+				console.error(`导出 ${format} 失败:`, error);
+				
+				// 显示错误提示
+				const errorMsg = document.createElement('div');
+				errorMsg.className = 'mermaid-export-error';
+				errorMsg.textContent = `导出 ${format} 失败: ${error.message}`;
+				container.appendChild(errorMsg);
+				
+				// 3秒后自动移除错误提示
+				setTimeout(() => {
+					if (errorMsg.parentNode) {
+						errorMsg.parentNode.removeChild(errorMsg);
+					}
+				}, 3000);
+			};
 
 			// 鼠标滚轮缩放（按住 Ctrl）
 			// 需求 12.1: 以鼠标为中心进行缩放
