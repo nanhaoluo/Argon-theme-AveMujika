@@ -3959,6 +3959,14 @@ function highlightJsRender(){
 		if ($(block).hasClass("no-hljs")){
 			return;
 		}
+		// 跳过 mermaid 代码块（避免代码高亮干扰 mermaid 渲染）
+		if ($(block).hasClass("language-mermaid") || $(block).hasClass("mermaid")){
+			return;
+		}
+		// 跳过在 .mermaid 容器内的代码块
+		if ($(block).closest('.mermaid').length > 0){
+			return;
+		}
 		$(block).parent().attr("id", randomString());
 		hljs.highlightBlock(block);
 		hljs.lineNumbersBlock(block, {singleLine: true});
@@ -4440,6 +4448,10 @@ void 0;
 				});
 			});
 
+			// 检测 Markdown 容器语法的 Mermaid 代码块
+			// 格式: ::: mermaid ... :::
+			this.detectContainerBlocks(blocks);
+
 			this.logDebug(`检测到 ${blocks.length} 个 Mermaid 代码块`);
 			return blocks;
 		},
@@ -4461,6 +4473,79 @@ void 0;
 		},
 
 		/**
+		 * 检测 Markdown 容器语法的 Mermaid 代码块
+		 * 格式: ::: mermaid ... :::
+		 * @param {Array} blocks - 代码块数组
+		 */
+		detectContainerBlocks(blocks) {
+			// 查找所有包含 ::: mermaid 的文本节点或 pre/code 元素
+			const walker = document.createTreeWalker(
+				document.body,
+				NodeFilter.SHOW_ELEMENT,
+				{
+					acceptNode: function(node) {
+						// 检查 pre 或 code 元素
+						if (node.tagName === 'PRE' || node.tagName === 'CODE') {
+							const text = node.textContent;
+							if (text && text.trim().startsWith('::: mermaid')) {
+								return NodeFilter.FILTER_ACCEPT;
+							}
+						}
+						// 检查 p 元素（可能被 Markdown 解析器包裹）
+						if (node.tagName === 'P') {
+							const text = node.textContent;
+							if (text && text.trim().startsWith('::: mermaid')) {
+								return NodeFilter.FILTER_ACCEPT;
+							}
+						}
+						return NodeFilter.FILTER_SKIP;
+					}
+				},
+				false
+			);
+
+			while (walker.nextNode()) {
+				const element = walker.currentNode;
+				const container = this.extractContainerContent(element);
+				if (container && !blocks.includes(container)) {
+					blocks.push(container);
+					this.logDebug('检测到 Markdown 容器语法的 Mermaid 代码块');
+				}
+			}
+		},
+
+		/**
+		 * 提取 Markdown 容器语法的内容
+		 * @param {HTMLElement} element - 包含容器语法的元素
+		 * @returns {HTMLElement|null} 包含代码的容器元素
+		 */
+		extractContainerContent(element) {
+			let text = element.textContent.trim();
+			
+			// 移除开始标记 ::: mermaid（保留后面的换行符和空行）
+			text = text.replace(/^:::\s*mermaid\s*\n?/i, '');
+			
+			// 移除结束标记 :::（保留前面的换行符和空行）
+			text = text.replace(/\n?:::\s*$/i, '');
+			
+			// 不要 trim，保留代码中的空行
+			if (!text) {
+				return null;
+			}
+
+			// 创建一个新的容器来存储代码
+			const container = document.createElement('div');
+			container.className = 'mermaid-container-block';
+			container.textContent = text;
+			container.dataset.containerBlock = 'true';
+
+			// 替换原始元素
+			element.parentNode.replaceChild(container, element);
+
+			return container;
+		},
+
+		/**
 		 * 提取代码块内容
 		 * @param {HTMLElement} element - 代码块元素
 		 * @returns {string} Mermaid 代码
@@ -4468,23 +4553,46 @@ void 0;
 		extractMermaidCode(element) {
 			let code = '';
 
+			// 处理 Markdown 容器语法格式
+			if (element.classList.contains('mermaid-container-block')) {
+				code = element.textContent;
+				this.logDebug('从 Markdown 容器语法提取代码');
+			}
 			// 根据不同的元素类型提取代码
-			if (element.tagName === 'DIV' && element.classList.contains('mermaid')) {
+			else if (element.tagName === 'DIV' && element.classList.contains('mermaid')) {
 				// 检查是否包含 WP-Markdown 生成的 script 标签
 				const scriptTag = element.querySelector('script');
 				if (scriptTag) {
 					// 提取 document.write() 中的内容
 					const scriptContent = scriptTag.textContent || scriptTag.innerText;
-					const match = scriptContent.match(/document\.write\s*\(\s*["'](.+?)["']\s*\)/);
+					this.logDebug('检测到 script 标签，原始内容: ' + scriptContent.substring(0, 100));
+					
+					// 使用更精确的正则：匹配 document.write() 中的字符串内容
+					// 支持双引号和单引号，支持转义字符
+					// 使用贪婪匹配 [\s\S]* 来匹配包括换行在内的所有字符
+					let match = scriptContent.match(/document\.write\s*\(\s*["']([\s\S]*?)["']\s*\)/);
+					
 					if (match && match[1]) {
 						code = match[1];
-						this.logDebug('检测到 WP-Markdown 格式，从 script 标签提取代码');
+						this.logDebug('从 document.write() 提取到代码，长度: ' + code.length);
 					} else {
-						// 如果没有匹配到，使用整个元素的文本内容（排除 script 标签）
-						code = element.textContent;
+						// 如果没有匹配到 document.write()，尝试直接提取引号内的内容
+						match = scriptContent.match(/["']([\s\S]*?)["']/);
+						if (match && match[1]) {
+							code = match[1];
+							this.logDebug('从引号内提取到代码，长度: ' + code.length);
+						} else {
+							// 最后的降级方案：获取除 script 标签外的文本内容
+							const clonedElement = element.cloneNode(true);
+							const scripts = clonedElement.querySelectorAll('script');
+							scripts.forEach(script => script.remove());
+							code = clonedElement.textContent;
+							this.logDebug('使用降级方案提取代码');
+						}
 					}
 				} else {
 					code = element.textContent;
+					this.logDebug('从纯文本提取代码');
 				}
 			} else if (element.tagName === 'CODE') {
 				code = element.textContent;
@@ -4493,13 +4601,24 @@ void 0;
 				code = codeElement ? codeElement.textContent : element.textContent;
 			}
 
-			// 解码转义字符
+			// 解码 HTML 实体（WordPress 可能会转义 HTML）
+			code = code
+				.replace(/&lt;/g, '<')
+				.replace(/&gt;/g, '>')
+				.replace(/&amp;/g, '&')
+				.replace(/&quot;/g, '"')
+				.replace(/&#039;/g, "'");
+
+			// 解码转义字符（必须在 HTML 实体解码之后）
 			code = code
 				.replace(/\\n/g, '\n')
+				.replace(/\\t/g, '\t')
+				.replace(/\\r/g, '\r')
 				.replace(/\\"/g, '"')
 				.replace(/\\'/g, "'")
 				.replace(/\\\\/g, '\\');
 
+			this.logDebug('最终提取的代码: ' + code.substring(0, 100) + (code.length > 100 ? '...' : ''));
 			return code.trim();
 		},
 
