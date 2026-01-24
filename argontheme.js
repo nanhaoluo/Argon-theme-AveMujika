@@ -5526,6 +5526,7 @@ void 0;
 			// 提取错误信息
 			const errorMessage = error.message || '未知错误';
 			const errorType = this.getErrorType(errorMessage);
+			const errorLine = this.extractErrorLine(errorMessage);
 
 			// 创建错误显示结构
 			const errorHeader = document.createElement('div');
@@ -5537,17 +5538,25 @@ void 0;
 
 			const errorBody = document.createElement('div');
 			errorBody.className = 'mermaid-error-body';
-			errorBody.innerHTML = `
+			
+			let errorBodyHTML = `
 				<p class="mermaid-error-type">错误类型: ${errorType}</p>
 				<p class="mermaid-error-message">${this.escapeHtml(errorMessage)}</p>
 			`;
+			
+			// 如果提取到错误行号，显示它
+			if (errorLine) {
+				errorBodyHTML += `<p class="mermaid-error-type">错误位置: 第 ${errorLine} 行</p>`;
+			}
+			
+			errorBody.innerHTML = errorBodyHTML;
 
 			// 创建代码查看区域
 			const codeDetails = document.createElement('details');
 			codeDetails.className = 'mermaid-error-code';
 			
 			const codeSummary = document.createElement('summary');
-			codeSummary.textContent = '查看原始代码';
+			codeSummary.textContent = '📄 查看原始代码';
 			
 			const codeBlock = document.createElement('pre');
 			const codeElement = document.createElement('code');
@@ -5581,8 +5590,34 @@ void 0;
 				return '词法错误';
 			} else if (errorMessage.includes('Expecting')) {
 				return '格式错误';
+			} else if (errorMessage.includes('Unknown')) {
+				return '未知图表类型';
 			}
 			return '渲染错误';
+		},
+
+		/**
+		 * 从错误信息中提取行号
+		 * @param {string} errorMessage - 错误信息
+		 * @returns {string|null} 行号或 null
+		 */
+		extractErrorLine(errorMessage) {
+			// 尝试匹配常见的行号格式
+			const linePatterns = [
+				/line (\d+)/i,
+				/at line (\d+)/i,
+				/on line (\d+)/i,
+				/第 (\d+) 行/,
+			];
+			
+			for (const pattern of linePatterns) {
+				const match = errorMessage.match(pattern);
+				if (match && match[1]) {
+					return match[1];
+				}
+			}
+			
+			return null;
 		},
 
 		/**

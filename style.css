@@ -1187,67 +1187,125 @@ article.card .mermaid-container {
 	}
 }
 
-/* Mermaid 错误提示样式 */
+/* ---------- Mermaid 错误提示样式 ---------- */
 .mermaid-error-container {
-	background: rgba(220, 53, 69, 0.1);
-	border: 1px solid rgba(220, 53, 69, 0.3);
-	border-radius: 8px;
+	background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
+	border: 2px solid #fc8181;
+	border-left: 5px solid #e53e3e;
+	border-radius: var(--card-radius);
 	padding: 20px;
 	margin: 20px 0;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+	box-shadow: 0 2px 8px rgba(220, 53, 69, 0.15);
+	transition: box-shadow 0.3s ease;
 }
 
-.mermaid-error-container .error-header {
+.mermaid-error-container:hover {
+	box-shadow: 0 4px 12px rgba(220, 53, 69, 0.25);
+}
+
+.mermaid-error-header {
 	display: flex;
 	align-items: center;
-	margin-bottom: 12px;
+	margin-bottom: 15px;
+	padding-bottom: 12px;
+	border-bottom: 1px solid rgba(220, 53, 69, 0.2);
 }
 
-.mermaid-error-container .error-icon {
-	font-size: 24px;
-	margin-right: 10px;
+.mermaid-error-icon {
+	font-size: 28px;
+	margin-right: 12px;
+	animation: pulse 2s ease-in-out infinite;
 }
 
-.mermaid-error-container .error-title {
-	font-size: 16px;
-	font-weight: 600;
-	color: #dc3545;
+@keyframes pulse {
+	0%, 100% {
+		transform: scale(1);
+		opacity: 1;
+	}
+	50% {
+		transform: scale(1.1);
+		opacity: 0.8;
+	}
 }
 
-.mermaid-error-container .error-body {
-	margin-bottom: 12px;
-	color: #721c24;
+.mermaid-error-title {
+	font-size: 18px;
+	font-weight: bold;
+	color: #c53030;
+	letter-spacing: 0.3px;
 }
 
-.mermaid-error-container .error-type,
-.mermaid-error-container .error-message,
-.mermaid-error-container .error-line {
-	margin: 6px 0;
-	font-size: 14px;
+.mermaid-error-body {
+	margin-bottom: 15px;
+	line-height: 1.6;
 }
 
-.mermaid-error-container .error-code {
-	margin-top: 12px;
-}
-
-.mermaid-error-container .error-code summary {
-	cursor: pointer;
-	font-weight: 500;
-	color: #721c24;
-	user-select: none;
-}
-
-.mermaid-error-container .error-code pre {
-	margin-top: 10px;
-	background: rgba(0, 0, 0, 0.05);
-	padding: 12px;
+.mermaid-error-type {
+	font-weight: bold;
+	color: #742a2a;
+	margin: 8px 0;
+	padding: 4px 8px;
+	background: rgba(220, 53, 69, 0.1);
 	border-radius: 4px;
-	overflow-x: auto;
+	display: inline-block;
 }
 
-.mermaid-error-container .error-code code {
-	font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-	font-size: 13px;
-	color: #333;
+.mermaid-error-message {
+	color: #742a2a;
+	margin: 8px 0;
+	padding: 8px 12px;
+	background: rgba(255, 255, 255, 0.6);
+	border-radius: 4px;
+	border-left: 3px solid #fc8181;
+}
+
+.mermaid-error-code {
+	margin-top: 15px;
+}
+
+.mermaid-error-code summary {
+	cursor: pointer;
+	color: var(--themecolor);
+	font-weight: bold;
+	padding: 8px 12px;
+	background: rgba(255, 255, 255, 0.6);
+	border-radius: 4px;
+	user-select: none;
+	transition: all 0.2s ease;
+	display: inline-block;
+}
+
+.mermaid-error-code summary:hover {
+	background: rgba(255, 255, 255, 0.9);
+	transform: translateX(4px);
+}
+
+.mermaid-error-code summary::marker {
+	color: var(--themecolor);
+}
+
+.mermaid-error-code[open] summary {
+	margin-bottom: 10px;
+}
+
+.mermaid-error-code pre {
+	background: #2d3748;
+	color: #e2e8f0;
+	padding: 15px;
+	border-radius: 6px;
+	overflow-x: auto;
+	margin-top: 10px;
+	font-family: 'Courier New', Consolas, Monaco, monospace;
+	font-size: 14px;
+	line-height: 1.6;
+	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.mermaid-error-code code {
+	background: transparent;
+	color: inherit;
+	padding: 0;
 }
 
 ::-webkit-scrollbar {
@@ -16834,29 +16892,50 @@ html.darkmode .mermaid-container {
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
+/* ---------- 夜间模式下的 Mermaid 错误提示 ---------- */
 html.darkmode .mermaid-error-container {
-	background: rgba(220, 53, 69, 0.2);
-	border-color: rgba(220, 53, 69, 0.4);
+	background: linear-gradient(135deg, #2d1f1f 0%, #3d2020 100%);
+	border-color: #9b2c2c;
+	border-left-color: #e53e3e;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
-html.darkmode .mermaid-error-container .error-title {
-	color: #ff6b7a;
+html.darkmode .mermaid-error-container:hover {
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
 }
 
-html.darkmode .mermaid-error-container .error-body {
-	color: #ffb3ba;
+html.darkmode .mermaid-error-header {
+	border-bottom-color: rgba(155, 44, 44, 0.3);
 }
 
-html.darkmode .mermaid-error-container .error-code summary {
-	color: #ffb3ba;
+html.darkmode .mermaid-error-title {
+	color: #fc8181;
 }
 
-html.darkmode .mermaid-error-container .error-code pre {
+html.darkmode .mermaid-error-type {
+	color: #feb2b2;
+	background: rgba(155, 44, 44, 0.3);
+}
+
+html.darkmode .mermaid-error-message {
+	color: #feb2b2;
 	background: rgba(0, 0, 0, 0.3);
+	border-left-color: #9b2c2c;
 }
 
-html.darkmode .mermaid-error-container .error-code code {
-	color: #eee;
+html.darkmode .mermaid-error-code summary {
+	background: rgba(0, 0, 0, 0.3);
+	color: #90cdf4;
+}
+
+html.darkmode .mermaid-error-code summary:hover {
+	background: rgba(0, 0, 0, 0.5);
+}
+
+html.darkmode .mermaid-error-code pre {
+	background: #1a202c;
+	color: #cbd5e0;
+	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 
@@ -17045,103 +17124,6 @@ html.darkmode .mermaid-container {
 		height: 28px;
 		font-size: 16px;
 	}
-}
-
-/* ---------- Mermaid 错误提示样式 ---------- */
-.mermaid-error-container {
-	background: #fff5f5;
-	border: 1px solid #fc8181;
-	border-radius: var(--card-radius);
-	padding: 20px;
-	margin: 20px 0;
-	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-}
-
-.mermaid-error-header {
-	display: flex;
-	align-items: center;
-	margin-bottom: 15px;
-}
-
-.mermaid-error-icon {
-	font-size: 24px;
-	margin-right: 10px;
-}
-
-.mermaid-error-title {
-	font-size: 18px;
-	font-weight: bold;
-	color: #c53030;
-}
-
-.mermaid-error-body {
-	margin-bottom: 15px;
-	line-height: 1.6;
-}
-
-.mermaid-error-type {
-	font-weight: bold;
-	color: #742a2a;
-	margin: 5px 0;
-}
-
-.mermaid-error-message {
-	color: #742a2a;
-	margin: 5px 0;
-}
-
-.mermaid-error-code {
-	margin-top: 10px;
-}
-
-.mermaid-error-code summary {
-	cursor: pointer;
-	color: var(--themecolor);
-	font-weight: bold;
-	padding: 5px 0;
-	user-select: none;
-}
-
-.mermaid-error-code summary:hover {
-	text-decoration: underline;
-}
-
-.mermaid-error-code pre {
-	background: #2d3748;
-	color: #e2e8f0;
-	padding: 15px;
-	border-radius: 4px;
-	overflow-x: auto;
-	margin-top: 10px;
-	font-family: 'Courier New', Consolas, Monaco, monospace;
-	font-size: 14px;
-	line-height: 1.5;
-}
-
-.mermaid-error-code code {
-	background: transparent;
-	color: inherit;
-	padding: 0;
-}
-
-/* ---------- 夜间模式下的错误提示 ---------- */
-html.darkmode .mermaid-error-container {
-	background: #2d1f1f;
-	border-color: #9b2c2c;
-}
-
-html.darkmode .mermaid-error-title {
-	color: #fc8181;
-}
-
-html.darkmode .mermaid-error-type,
-html.darkmode .mermaid-error-message {
-	color: #feb2b2;
-}
-
-html.darkmode .mermaid-error-code pre {
-	background: #1a202c;
-	color: #cbd5e0;
 }
 
 /* ---------- 打印样式 ---------- */
