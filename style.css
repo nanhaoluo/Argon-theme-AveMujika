@@ -921,6 +921,55 @@ article .wp-block-separator {
 	animation: mermaidFadeIn 0.3s ease-in-out forwards;
 }
 
+/* 需求 18.2: Mermaid 加载动画容器 */
+.mermaid-loading {
+	background: var(--color-foreground);
+	border-radius: 8px;
+	padding: 40px 20px;
+	margin: 20px -20px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	min-height: 150px;
+}
+
+.mermaid-loading-spinner {
+	width: 40px;
+	height: 40px;
+	border: 3px solid rgba(94, 114, 228, 0.2);
+	border-top-color: #5e72e4;
+	border-radius: 50%;
+	animation: mermaidSpinner 0.8s linear infinite;
+}
+
+.mermaid-loading-text {
+	margin-top: 15px;
+	color: #666;
+	font-size: 14px;
+}
+
+html.darkmode .mermaid-loading {
+	background: var(--color-widgets);
+}
+
+html.darkmode .mermaid-loading-text {
+	color: #aaa;
+}
+
+html.darkmode .mermaid-loading-spinner {
+	border-color: rgba(94, 114, 228, 0.3);
+	border-top-color: #5e72e4;
+}
+
+/* 加载动画旋转 */
+@keyframes mermaidSpinner {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
 .mermaid-container-inner {
 	overflow: auto;
 	transform-origin: top left;

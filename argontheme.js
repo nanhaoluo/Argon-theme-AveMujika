@@ -5235,6 +5235,8 @@ void 0;
 
 		/**
 		 * 批量渲染所有 Mermaid 图表
+		 * 需求 18.1: 使用批量渲染，避免阻塞主线程
+		 * 需求 18.4: 延迟渲染视口外的图表，优先渲染可见图表
 		 */
 		renderAllCharts() {
 			if (!this.initialized) {
@@ -5250,41 +5252,111 @@ void 0;
 				return;
 			}
 
-			// 批量渲染
-			blocks.forEach((block, index) => {
-				this.renderChart(block, index);
+			this.logDebug(`准备批量渲染 ${blocks.length} 个图表`);
+
+			// 需求 18.4: 将图表分为视口内和视口外两组
+			const visibleBlocks = [];
+			const invisibleBlocks = [];
+
+			blocks.forEach(block => {
+				if (this.isInViewport(block)) {
+					visibleBlocks.push(block);
+				} else {
+					invisibleBlocks.push(block);
+				}
 			});
 
-			this.logDebug(`完成渲染 ${blocks.length} 个图表`);
+			this.logDebug(`视口内图表: ${visibleBlocks.length}, 视口外图表: ${invisibleBlocks.length}`);
+
+			// 优先渲染视口内的图表
+			let currentIndex = 0;
+			const batchSize = 3; // 每批渲染 3 个图表
+
+			const renderBatch = (blockList, isVisible) => {
+				if (currentIndex >= blockList.length) {
+					// 当前列表渲染完成
+					if (isVisible && invisibleBlocks.length > 0) {
+						// 视口内图表渲染完成，开始渲染视口外图表
+						this.logDebug('视口内图表渲染完成，开始渲染视口外图表');
+						currentIndex = 0;
+						requestAnimationFrame(() => renderBatch(invisibleBlocks, false));
+					} else {
+						this.logDebug(`完成渲染 ${blocks.length} 个图表`);
+					}
+					return;
+				}
+
+				const endIndex = Math.min(currentIndex + batchSize, blockList.length);
+				
+				// 渲染当前批次
+				for (let i = currentIndex; i < endIndex; i++) {
+					const globalIndex = blocks.indexOf(blockList[i]);
+					this.renderChart(blockList[i], globalIndex);
+				}
+
+				currentIndex = endIndex;
+
+				// 继续下一批
+				requestAnimationFrame(() => renderBatch(blockList, isVisible));
+			};
+
+			// 开始渲染（优先渲染视口内图表）
+			if (visibleBlocks.length > 0) {
+				requestAnimationFrame(() => renderBatch(visibleBlocks, true));
+			} else if (invisibleBlocks.length > 0) {
+				// 如果没有视口内图表，直接渲染视口外图表
+				requestAnimationFrame(() => renderBatch(invisibleBlocks, false));
+			}
+		},
+
+		/**
+		 * 检查元素是否在视口内
+		 * @param {HTMLElement} element - 要检查的元素
+		 * @returns {boolean} 是否在视口内
+		 */
+		isInViewport(element) {
+			const rect = element.getBoundingClientRect();
+			const windowHeight = window.innerHeight || document.documentElement.clientHeight;
+			const windowWidth = window.innerWidth || document.documentElement.clientWidth;
+
+			// 元素至少部分可见
+			return (
+				rect.top < windowHeight &&
+				rect.bottom > 0 &&
+				rect.left < windowWidth &&
+				rect.right > 0
+			);
 		},
 
 		/**
 		 * 渲染单个图表
+		 * 需求 18.5: 图表渲染失败不阻塞其他图表的渲染
 		 * @param {HTMLElement} element - 代码块元素
 		 * @param {number} index - 图表索引
 		 */
 		renderChart(element, index) {
 			const chartId = `mermaid-chart-${Date.now()}-${index}`;
 
-			// 检查是否已经是错误容器（避免重复处理错误）
-			if (element.classList && element.classList.contains('mermaid-error-container')) {
-				this.logDebug(`元素已经是错误容器，跳过: ${chartId}`);
-				return;
-			}
-
-			// 检查是否已经是渲染成功的容器（避免重复渲染）
-			if (element.classList && element.classList.contains('mermaid-container') && element.dataset.mermaidCode) {
-				this.logDebug(`图表已成功渲染，跳过: ${chartId}`);
-				return;
-			}
-
-			// 检查是否已渲染（避免重复渲染）
-			if (this.rendered.has(element)) {
-				this.logDebug(`图表已渲染，跳过: ${chartId}`);
-				return;
-			}
-
+			// 需求 18.5: 使用 try-catch 包裹整个渲染过程
 			try {
+				// 检查是否已经是错误容器（避免重复处理错误）
+				if (element.classList && element.classList.contains('mermaid-error-container')) {
+					this.logDebug(`元素已经是错误容器，跳过: ${chartId}`);
+					return;
+				}
+
+				// 检查是否已经是渲染成功的容器（避免重复渲染）
+				if (element.classList && element.classList.contains('mermaid-container') && element.dataset.mermaidCode) {
+					this.logDebug(`图表已成功渲染，跳过: ${chartId}`);
+					return;
+				}
+
+				// 检查是否已渲染（避免重复渲染）
+				if (this.rendered.has(element)) {
+					this.logDebug(`图表已渲染，跳过: ${chartId}`);
+					return;
+				}
+
 				// 提取代码
 				const code = this.extractMermaidCode(element);
 
@@ -5296,7 +5368,20 @@ void 0;
 				this.logDebug(`准备渲染图表: ${chartId}, 代码长度: ${code.length}`);
 				this.logDebug(`代码内容: ${code.substring(0, 200)}`);
 
-				// 创建容器
+				// 需求 18.2: 创建加载动画容器
+				const loadingContainer = document.createElement('div');
+				loadingContainer.className = 'mermaid-loading';
+				loadingContainer.innerHTML = `
+					<div class="mermaid-loading-spinner"></div>
+					<div class="mermaid-loading-text">正在渲染图表...</div>
+				`;
+
+				// 替换原始元素为加载动画
+				if (element.parentNode) {
+					element.parentNode.replaceChild(loadingContainer, element);
+				}
+
+				// 创建最终容器
 				const container = document.createElement('div');
 				container.className = 'mermaid-container';
 				container.id = chartId;
@@ -5304,13 +5389,13 @@ void 0;
 				// 检查 Mermaid API
 				if (typeof window.mermaid === 'undefined') {
 					this.logError('Mermaid 库未加载');
-					this.handleRenderError(element, new Error('Mermaid 库未加载'), code);
+					this.handleRenderError(loadingContainer, new Error('Mermaid 库未加载'), code);
 					return;
 				}
 
 				if (typeof window.mermaid.render !== 'function') {
 					this.logError('Mermaid.render 方法不存在');
-					this.handleRenderError(element, new Error('Mermaid.render 方法不存在'), code);
+					this.handleRenderError(loadingContainer, new Error('Mermaid.render 方法不存在'), code);
 					return;
 				}
 
@@ -5321,7 +5406,7 @@ void 0;
 				if (!renderPromise || typeof renderPromise.then !== 'function') {
 					this.logError('Mermaid.render 没有返回 Promise，可能是版本不兼容');
 					// 尝试使用旧版 API
-					this.renderChartLegacy(element, code, container, chartId);
+					this.renderChartLegacy(loadingContainer, code, container, chartId);
 					return;
 				}
 
@@ -5333,27 +5418,35 @@ void 0;
 					container.dataset.mermaidCode = code;
 					container.dataset.currentTheme = this.getMermaidTheme();
 
-					// 替换原始代码块
-					if (element.parentNode) {
-						element.parentNode.replaceChild(container, element);
+					// 替换加载动画为渲染结果
+					if (loadingContainer.parentNode) {
+						loadingContainer.parentNode.replaceChild(container, loadingContainer);
 					}
 
 					// 标记为已渲染
 					this.rendered.add(container);
 
-					// 应用样式增强
+					// 应用样式增强（包含淡入动画）
 					this.applyStyles(container);
 
 					this.logDebug(`图表渲染成功: ${chartId}`);
 				}).catch(error => {
-					// 渲染失败
+					// 需求 18.5: 渲染失败时记录错误但不抛出异常
 					this.logError(`图表渲染失败: ${chartId}`, error);
-					this.handleRenderError(element, error, code);
+					this.handleRenderError(loadingContainer, error, code);
 				});
 
 			} catch (error) {
+				// 需求 18.5: 捕获所有异常，确保不影响其他图表
 				this.logError(`渲染异常: ${chartId}`, error);
-				this.handleRenderError(element, error, '');
+				
+				// 尝试显示错误信息
+				try {
+					this.handleRenderError(element, error, '');
+				} catch (e) {
+					// 如果错误处理也失败，只记录日志
+					this.logError('错误处理失败', e);
+				}
 			}
 		},
 
@@ -5507,15 +5600,23 @@ void 0;
 
 		/**
 		 * 应用容器样式并添加缩放控制
+		 * 需求 18.3: 使用淡入动画，提升视觉体验
 		 * @param {HTMLElement} container - 图表容器
 		 */
 		applyStyles(container) {
-			// 添加淡入动画
+			// 需求 18.3: 添加淡入动画
 			container.style.opacity = '0';
-			setTimeout(() => {
-				container.style.transition = 'opacity 0.3s ease-in';
+			
+			// 使用 requestAnimationFrame 确保动画流畅
+			requestAnimationFrame(() => {
+				container.style.transition = 'opacity 0.4s ease-in';
 				container.style.opacity = '1';
-			}, 10);
+				
+				// 动画完成后清理过渡样式
+				setTimeout(() => {
+					container.style.transition = '';
+				}, 400);
+			});
 
 			// 确保 SVG 响应式
 			const svg = container.querySelector('svg');
