@@ -2900,6 +2900,11 @@ function cleanupMermaidInstances() {
 				const newToolbar = toolbar.cloneNode(true);
 				toolbar.parentNode.replaceChild(newToolbar, toolbar);
 			}
+			
+			// 清理全屏模式
+			if (container._fullscreenCleanup) {
+				container._fullscreenCleanup();
+			}
 		});
 		
 		ArgonDebug.log('Mermaid 实例已清理');
@@ -5682,6 +5687,7 @@ void 0;
 			inner.appendChild(svg);
 
 			// 创建缩放控制
+			// 需求 14.1: 添加全屏按钮
 			const controls = document.createElement('div');
 			controls.className = 'mermaid-zoom-controls';
 			controls.innerHTML = `
@@ -5689,6 +5695,7 @@ void 0;
 				<span class="mermaid-zoom-level">100%</span>
 				<button class="mermaid-zoom-btn" data-action="zoom-in" title="放大">+</button>
 				<button class="mermaid-zoom-btn" data-action="zoom-reset" title="重置">⟲</button>
+				<button class="mermaid-zoom-btn" data-action="fullscreen" title="全屏">⛶</button>
 			`;
 
 			container.appendChild(controls);
@@ -5754,6 +5761,7 @@ void 0;
 			};
 
 			// 绑定按钮事件
+			// 需求 14.1, 14.2, 14.3: 全屏按钮功能
 			controls.addEventListener('click', (e) => {
 				const btn = e.target.closest('.mermaid-zoom-btn');
 				if (!btn || btn.disabled) return; // 忽略禁用的按钮
@@ -5769,6 +5777,9 @@ void 0;
 				} else if (action === 'zoom-reset') {
 					scale = 1;
 					updateZoom(true); // 重置使用平滑过渡
+				} else if (action === 'fullscreen') {
+					// 需求 14.1: 点击全屏按钮
+					toggleFullscreen();
 				}
 			});
 
@@ -5931,6 +5942,114 @@ void 0;
 					container.scrollTop = offsetY * scale - mouseY;
 				}, 50);
 			});
+
+			// ==========================================================================
+			// 需求 14: Mermaid 全屏模式
+			// ==========================================================================
+
+			// 全屏状态
+			let isFullscreen = false;
+			let savedScale = 1;
+			let savedScrollLeft = 0;
+			let savedScrollTop = 0;
+
+			/**
+			 * 切换全屏模式
+			 * 需求 14.1: 点击全屏按钮将图表全屏显示
+			 * 需求 14.2, 14.3: 全屏模式下保持缩放和拖拽功能可用
+			 * 需求 14.5: 退出全屏恢复图表原始状态
+			 */
+			const toggleFullscreen = () => {
+				if (!isFullscreen) {
+					// 进入全屏
+					enterFullscreen();
+				} else {
+					// 退出全屏
+					exitFullscreen();
+				}
+			};
+
+			/**
+			 * 进入全屏模式
+			 */
+			const enterFullscreen = () => {
+				// 保存当前状态
+				savedScale = scale;
+				savedScrollLeft = container.scrollLeft;
+				savedScrollTop = container.scrollTop;
+
+				// 添加全屏类
+				container.classList.add('mermaid-fullscreen');
+				isFullscreen = true;
+
+				// 更新全屏按钮
+				const fullscreenBtn = controls.querySelector('[data-action="fullscreen"]');
+				if (fullscreenBtn) {
+					fullscreenBtn.textContent = '⛶';
+					fullscreenBtn.title = '退出全屏';
+					fullscreenBtn.classList.add('active');
+				}
+
+				// 需求 14.3: 全屏模式下显示退出全屏按钮（已在工具栏中）
+				// 工具栏在全屏模式下仍然可见
+
+				// 禁用页面滚动
+				document.body.style.overflow = 'hidden';
+
+				this.logDebug('进入全屏模式');
+			};
+
+			/**
+			 * 退出全屏模式
+			 * 需求 14.5: 恢复图表原始状态（缩放级别和位置）
+			 */
+			const exitFullscreen = () => {
+				// 移除全屏类
+				container.classList.remove('mermaid-fullscreen');
+				isFullscreen = false;
+
+				// 更新全屏按钮
+				const fullscreenBtn = controls.querySelector('[data-action="fullscreen"]');
+				if (fullscreenBtn) {
+					fullscreenBtn.textContent = '⛶';
+					fullscreenBtn.title = '全屏';
+					fullscreenBtn.classList.remove('active');
+				}
+
+				// 恢复原始状态
+				scale = savedScale;
+				updateZoom(false);
+
+				// 恢复滚动位置
+				setTimeout(() => {
+					container.scrollLeft = savedScrollLeft;
+					container.scrollTop = savedScrollTop;
+				}, 50);
+
+				// 恢复页面滚动
+				document.body.style.overflow = '';
+
+				this.logDebug('退出全屏模式');
+			};
+
+			// 需求 14.4: 按 ESC 键退出全屏模式
+			const handleEscKey = (e) => {
+				if (e.key === 'Escape' && isFullscreen) {
+					exitFullscreen();
+				}
+			};
+
+			// 绑定 ESC 键事件
+			document.addEventListener('keydown', handleEscKey);
+
+			// 清理函数（在容器销毁时调用）
+			container.dataset.cleanupFullscreen = 'registered';
+			container._fullscreenCleanup = () => {
+				document.removeEventListener('keydown', handleEscKey);
+				if (isFullscreen) {
+					exitFullscreen();
+				}
+			};
 
 			// ==========================================================================
 			// 需求 16.2-16.4: 移动端触摸手势支持

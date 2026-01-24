@@ -1135,6 +1135,61 @@ html.darkmode .mermaid-hint {
 	-ms-user-select: none;
 }
 
+/* 需求 14: Mermaid 全屏模式样式 */
+.mermaid-fullscreen {
+	position: fixed !important;
+	top: 0 !important;
+	left: 0 !important;
+	right: 0 !important;
+	bottom: 0 !important;
+	width: 100vw !important;
+	height: 100vh !important;
+	margin: 0 !important;
+	padding: 20px !important;
+	z-index: 99999 !important;
+	background: var(--color-foreground) !important;
+	border-radius: 0 !important;
+	box-shadow: none !important;
+	overflow: auto !important;
+}
+
+html.darkmode .mermaid-fullscreen {
+	background: var(--color-widgets) !important;
+}
+
+/* 全屏模式下的工具栏 */
+.mermaid-fullscreen .mermaid-zoom-controls {
+	opacity: 1;
+	transform: translateY(0);
+	background: rgba(255, 255, 255, 0.95);
+	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+html.darkmode .mermaid-fullscreen .mermaid-zoom-controls {
+	background: rgba(30, 30, 30, 0.95);
+	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* 全屏按钮激活状态 */
+.mermaid-zoom-btn[data-action="fullscreen"].active {
+	background: rgba(94, 114, 228, 0.2);
+	color: var(--themecolor);
+}
+
+/* 全屏模式下的内部容器 */
+.mermaid-fullscreen .mermaid-container-inner {
+	max-height: calc(100vh - 100px);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+/* 全屏模式下的提示文本 */
+.mermaid-fullscreen .mermaid-hint {
+	opacity: 1;
+	bottom: 20px;
+}
+
 /* Mermaid 淡入动画 */
 @keyframes mermaidFadeIn {
 	from {
