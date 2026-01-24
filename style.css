@@ -1053,7 +1053,6 @@ html.darkmode .mermaid-zoom-controls {
 html.darkmode .mermaid-zoom-level {
 	color: #aaa;
 }
-}
 
 /* 按钮 tooltip */
 .mermaid-zoom-btn[title] {
@@ -1114,14 +1113,26 @@ html.darkmode .mermaid-hint {
 	backdrop-filter: blur(10px);
 }
 
-/* 拖拽时的光标 */
+/* 拖拽时的光标和视觉反馈 */
+/* 需求 13.1, 13.2, 13.4: 优化拖拽视觉反馈 */
 .mermaid-container-inner.dragging {
 	cursor: grabbing !important;
 	user-select: none;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
 }
 
 .mermaid-container-inner:not(.dragging) {
 	cursor: grab;
+}
+
+/* 拖拽时禁用 SVG 内的文本选择 */
+.mermaid-container-inner.dragging svg {
+	user-select: none;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
 }
 
 /* Mermaid 淡入动画 */

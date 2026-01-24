@@ -5775,12 +5775,47 @@ void 0;
 			let startY = 0;
 			let scrollLeft = 0;
 			let scrollTop = 0;
+			let rafId = null;
+			let pendingX = 0;
+			let pendingY = 0;
+
+			// 需求 13.5: 智能启用拖拽 - 检查图表是否需要拖拽
+			const checkDragEnabled = () => {
+				const svgElement = inner.querySelector('svg');
+				if (!svgElement) return false;
+				
+				// 如果图表未缩放且完全可见，禁用拖拽
+				const containerRect = container.getBoundingClientRect();
+				const svgRect = svgElement.getBoundingClientRect();
+				const isFullyVisible = svgRect.width <= containerRect.width && 
+				                       svgRect.height <= containerRect.height;
+				const isNotZoomed = Math.abs(scale - 1) < 0.01;
+				
+				return !(isFullyVisible && isNotZoomed);
+			};
+
+			// 需求 13.3: 使用 requestAnimationFrame 优化拖拽性能
+			const updateDragPosition = () => {
+				if (!isDragging) {
+					rafId = null;
+					return;
+				}
+				
+				inner.scrollLeft = scrollLeft - pendingX;
+				inner.scrollTop = scrollTop - pendingY;
+				
+				rafId = requestAnimationFrame(updateDragPosition);
+			};
 
 			inner.addEventListener('mousedown', (e) => {
 				// 只响应左键
 				if (e.button !== 0) return;
 				
+				// 需求 13.5: 检查是否需要启用拖拽
+				if (!checkDragEnabled()) return;
+				
 				isDragging = true;
+				// 需求 13.1: 改变鼠标光标为抓手样式
 				inner.classList.add('dragging');
 				
 				startX = e.pageX - inner.offsetLeft;
@@ -5788,7 +5823,13 @@ void 0;
 				scrollLeft = inner.scrollLeft;
 				scrollTop = inner.scrollTop;
 				
+				// 需求 13.2: 禁用文本选择
 				e.preventDefault();
+				
+				// 启动 RAF 循环
+				if (!rafId) {
+					rafId = requestAnimationFrame(updateDragPosition);
+				}
 			});
 
 			document.addEventListener('mousemove', (e) => {
@@ -5798,23 +5839,34 @@ void 0;
 				
 				const x = e.pageX - inner.offsetLeft;
 				const y = e.pageY - inner.offsetTop;
-				const walkX = (x - startX) * 2;
-				const walkY = (y - startY) * 2;
-				
-				inner.scrollLeft = scrollLeft - walkX;
-				inner.scrollTop = scrollTop - walkY;
+				// 更新待处理的位置，由 RAF 循环处理
+				pendingX = (x - startX) * 2;
+				pendingY = (y - startY) * 2;
 			});
 
 			document.addEventListener('mouseup', () => {
 				if (isDragging) {
 					isDragging = false;
+					// 需求 13.4: 恢复正常光标
 					inner.classList.remove('dragging');
+					// 取消 RAF 循环
+					if (rafId) {
+						cancelAnimationFrame(rafId);
+						rafId = null;
+					}
 				}
 			});
 
 			// 防止拖拽时选中文本
 			inner.addEventListener('dragstart', (e) => {
 				e.preventDefault();
+			});
+			
+			// 需求 13.2: 禁用文本选择
+			inner.addEventListener('selectstart', (e) => {
+				if (isDragging) {
+					e.preventDefault();
+				}
 			});
 
 			// 需求 12.5: 双击智能缩放
