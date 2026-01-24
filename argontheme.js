@@ -2732,46 +2732,198 @@ if ($("html").hasClass("banner-as-cover")){
 /*Pjax*/
 var pjaxScrollTop = 0, pjaxLoading = false;
 
+// ==========================================================================
+// 统一的资源清理管理器
+// ==========================================================================
+// 在 PJAX 页面切换时清理所有旧页面资源，避免内存泄漏和功能失效
+// Validates: Requirements 1.1, 1.2, 1.3, 1.4, 2.3, 6.1
+// ==========================================================================
+
 /**
- * 清理 PJAX 页面切换前的所有资源
- * 包括 LazyLoad Observer、Zoomify 实例、Tippy 实例
- * 在 pjax:beforeReplace 事件中调用
+ * 清理 Lazyload Observer
+ * @returns {void}
  */
-function cleanupPjaxResources() {
-	// 清理 LazyLoad Observer
+function cleanupLazyloadObserver() {
 	if (lazyloadObserver) {
-		lazyloadObserver.disconnect();
-		lazyloadObserver = null;
+		try {
+			lazyloadObserver.disconnect();
+			lazyloadObserver = null;
+			ArgonDebug.log('Lazyload Observer 已清理');
+		} catch(e) {
+			ArgonDebug.warn('清理 Lazyload Observer 失败:', e);
+		}
 	}
-	
-	// 清理 Zoomify 实例
+}
+
+/**
+ * 清理 Zoomify 实例
+ * @returns {void}
+ */
+function cleanupZoomifyInstances() {
 	if (zoomifyInstances && zoomifyInstances.length > 0) {
+		let cleanedCount = 0;
 		zoomifyInstances.forEach(function(instance) {
 			try {
 				if (instance && typeof instance.destroy === 'function') {
 					instance.destroy();
+					cleanedCount++;
 				}
 			} catch(e) {
-				ArgonDebug.warn('Failed to destroy Zoomify instance:', e);
+				ArgonDebug.warn('销毁 Zoomify 实例失败:', e);
 			}
 		});
 		zoomifyInstances = [];
+		ArgonDebug.log(`已清理 ${cleanedCount} 个 Zoomify 实例`);
 	}
+	// 移除初始化标记
 	$('img.zoomify-initialized').removeClass('zoomify-initialized');
-	
-	// 清理 Tippy 实例
+}
+
+/**
+ * 清理 Tippy 实例
+ * @returns {void}
+ */
+function cleanupTippyInstances() {
 	if (typeof tippy !== 'undefined') {
+		let cleanedCount = 0;
 		document.querySelectorAll('[data-tippy-root]').forEach(function(el) {
 			try {
 				if (el._tippy && typeof el._tippy.destroy === 'function') {
 					el._tippy.destroy();
+					cleanedCount++;
 				}
 			} catch(e) {
-				ArgonDebug.warn('Failed to destroy Tippy instance:', e);
+				ArgonDebug.warn('销毁 Tippy 实例失败:', e);
 			}
 		});
 		$('.tippy-initialized').removeClass('tippy-initialized');
+		if (cleanedCount > 0) {
+			ArgonDebug.log(`已清理 ${cleanedCount} 个 Tippy 实例`);
+		}
 	}
+}
+
+/**
+ * 清理 Mermaid 实例
+ * @returns {void}
+ */
+function cleanupMermaidInstances() {
+	try {
+		// 清理已渲染的图表记录
+		if (typeof MermaidRenderer !== 'undefined' && MermaidRenderer.rendered) {
+			const count = MermaidRenderer.rendered.size;
+			MermaidRenderer.rendered.clear();
+			if (count > 0) {
+				ArgonDebug.log(`已清理 ${count} 个 Mermaid 图表记录`);
+			}
+		}
+		
+		// 移除 Mermaid 容器的事件监听器
+		document.querySelectorAll('.mermaid-container').forEach(function(container) {
+			// 移除工具栏事件监听器
+			const toolbar = container.querySelector('.mermaid-toolbar');
+			if (toolbar) {
+				// 克隆节点以移除所有事件监听器
+				const newToolbar = toolbar.cloneNode(true);
+				toolbar.parentNode.replaceChild(newToolbar, toolbar);
+			}
+		});
+		
+		ArgonDebug.log('Mermaid 实例已清理');
+	} catch(e) {
+		ArgonDebug.warn('清理 Mermaid 实例失败:', e);
+	}
+}
+
+/**
+ * 清理动态添加的 style 标签
+ * @returns {void}
+ */
+function cleanupDynamicStyles() {
+	try {
+		// 只清理标记为动态的样式
+		const dynamicStyles = document.querySelectorAll('style[data-dynamic="true"]');
+		if (dynamicStyles.length > 0) {
+			dynamicStyles.forEach(function(style) {
+				style.remove();
+			});
+			ArgonDebug.log(`已清理 ${dynamicStyles.length} 个动态样式`);
+		}
+	} catch(e) {
+		ArgonDebug.warn('清理动态样式失败:', e);
+	}
+}
+
+/**
+ * 清理动态添加的 script 标签
+ * @returns {void}
+ */
+function cleanupDynamicScripts() {
+	try {
+		// 只清理标记为动态的脚本
+		const dynamicScripts = document.querySelectorAll('script[data-dynamic="true"]');
+		if (dynamicScripts.length > 0) {
+			dynamicScripts.forEach(function(script) {
+				script.remove();
+			});
+			ArgonDebug.log(`已清理 ${dynamicScripts.length} 个动态脚本`);
+		}
+	} catch(e) {
+		ArgonDebug.warn('清理动态脚本失败:', e);
+	}
+}
+
+/**
+ * 清理事件监听器
+ * @returns {void}
+ */
+function cleanupEventListeners() {
+	try {
+		// 清理 Mermaid 相关的事件监听器
+		// 注意：大部分事件使用事件委托，不需要手动清理
+		// 这里只清理特定的非委托事件
+		
+		// 清理滚动监听（如果使用了降级方案）
+		if (typeof lazyloadScrollHandler !== 'undefined') {
+			window.removeEventListener('scroll', lazyloadScrollHandler);
+			window.removeEventListener('resize', lazyloadScrollHandler);
+			ArgonDebug.log('已清理 Lazyload 滚动监听器');
+		}
+		
+		ArgonDebug.log('事件监听器已清理');
+	} catch(e) {
+		ArgonDebug.warn('清理事件监听器失败:', e);
+	}
+}
+
+/**
+ * 清理 PJAX 页面切换前的所有资源
+ * 统一的资源清理管理器，在 pjax:beforeReplace 事件中调用
+ * 
+ * 清理内容包括：
+ * - Lazyload Observer
+ * - Zoomify 实例
+ * - Tippy 实例
+ * - Mermaid 实例
+ * - 动态 style 标签
+ * - 动态 script 标签
+ * - 事件监听器
+ * 
+ * @returns {void}
+ */
+function cleanupPjaxResources() {
+	ArgonDebug.log('开始清理 PJAX 资源...');
+	
+	// 按顺序清理各类资源
+	cleanupLazyloadObserver();
+	cleanupZoomifyInstances();
+	cleanupTippyInstances();
+	cleanupMermaidInstances();
+	cleanupDynamicStyles();
+	cleanupDynamicScripts();
+	cleanupEventListeners();
+	
+	ArgonDebug.log('PJAX 资源清理完成');
 }
 
 /**
