@@ -3964,9 +3964,39 @@ function convertMermaidCodeblocks(){
 			}
 			
 			// 提取代码
-			let code = element.textContent.trim();
+			let code = element.textContent;
+			
+			// 清理代码：移除前后空白，但保留内部换行
+			code = code.trim();
+			
+			// 如果代码为空，跳过
 			if (!code) {
 				return;
+			}
+			
+			// 移除每行开头的统一缩进（保持相对缩进）
+			const lines = code.split('\n');
+			if (lines.length > 1) {
+				// 找到最小缩进
+				let minIndent = Infinity;
+				lines.forEach(line => {
+					if (line.trim().length > 0) {
+						const indent = line.match(/^\s*/)[0].length;
+						if (indent < minIndent) {
+							minIndent = indent;
+						}
+					}
+				});
+				
+				// 移除最小缩进
+				if (minIndent > 0 && minIndent !== Infinity) {
+					code = lines.map(line => {
+						if (line.trim().length === 0) {
+							return '';
+						}
+						return line.substring(minIndent);
+					}).join('\n');
+				}
 			}
 			
 			// 创建容器
@@ -4881,13 +4911,39 @@ void 0;
 					return;
 				}
 
+				this.logDebug(`准备渲染图表: ${chartId}, 代码长度: ${code.length}`);
+				this.logDebug(`代码内容: ${code.substring(0, 200)}`);
+
 				// 创建容器
 				const container = document.createElement('div');
 				container.className = 'mermaid-container';
 				container.id = chartId;
 
+				// 检查 Mermaid API
+				if (typeof window.mermaid === 'undefined') {
+					this.logError('Mermaid 库未加载');
+					this.handleRenderError(element, new Error('Mermaid 库未加载'), code);
+					return;
+				}
+
+				if (typeof window.mermaid.render !== 'function') {
+					this.logError('Mermaid.render 方法不存在');
+					this.handleRenderError(element, new Error('Mermaid.render 方法不存在'), code);
+					return;
+				}
+
 				// 渲染图表
-				window.mermaid.render(`mermaid-svg-${chartId}`, code).then(result => {
+				const renderPromise = window.mermaid.render(`mermaid-svg-${chartId}`, code);
+				
+				// 检查返回值是否是 Promise
+				if (!renderPromise || typeof renderPromise.then !== 'function') {
+					this.logError('Mermaid.render 没有返回 Promise，可能是版本不兼容');
+					// 尝试使用旧版 API
+					this.renderChartLegacy(element, code, container, chartId);
+					return;
+				}
+
+				renderPromise.then(result => {
 					// 渲染成功
 					container.innerHTML = result.svg;
 					
@@ -4907,11 +4963,55 @@ void 0;
 					this.logDebug(`图表渲染成功: ${chartId}`);
 				}).catch(error => {
 					// 渲染失败
+					this.logError(`图表渲染失败: ${chartId}`, error);
 					this.handleRenderError(element, error, code);
 				});
 
 			} catch (error) {
+				this.logError(`渲染异常: ${chartId}`, error);
 				this.handleRenderError(element, error, '');
+			}
+		},
+
+		/**
+		 * 使用旧版 Mermaid API 渲染（兼容 Mermaid 8.x）
+		 * @param {HTMLElement} element - 原始代码块元素
+		 * @param {string} code - Mermaid 代码
+		 * @param {HTMLElement} container - 容器元素
+		 * @param {string} chartId - 图表 ID
+		 */
+		renderChartLegacy(element, code, container, chartId) {
+			try {
+				this.logDebug('尝试使用旧版 Mermaid API');
+				
+				// Mermaid 8.x 使用 mermaidAPI.render
+				if (typeof window.mermaidAPI !== 'undefined' && typeof window.mermaidAPI.render === 'function') {
+					window.mermaidAPI.render(`mermaid-svg-${chartId}`, code, (svgCode) => {
+						container.innerHTML = svgCode;
+						container.dataset.mermaidCode = code;
+						container.dataset.currentTheme = this.getMermaidTheme();
+						element.parentNode.replaceChild(container, element);
+						this.rendered.add(container);
+						this.applyStyles(container);
+						this.logDebug(`图表渲染成功（旧版 API）: ${chartId}`);
+					});
+				} else {
+					// 最后的降级方案：直接使用 mermaid.init()
+					container.className = 'mermaid';
+					container.textContent = code;
+					element.parentNode.replaceChild(container, element);
+					
+					if (typeof window.mermaid.init === 'function') {
+						window.mermaid.init(undefined, container);
+						this.rendered.add(container);
+						this.logDebug(`图表渲染成功（init 方法）: ${chartId}`);
+					} else {
+						this.handleRenderError(element, new Error('无可用的 Mermaid 渲染方法'), code);
+					}
+				}
+			} catch (error) {
+				this.logError('旧版 API 渲染失败', error);
+				this.handleRenderError(element, error, code);
 			}
 		},
 
