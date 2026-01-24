@@ -2460,12 +2460,33 @@ $.fancybox.defaults.i18n = {
  */
 // 全局 Observer 实例，用于清理
 var lazyloadObserver = null;
+// 全局滚动监听 handler，用于降级方案清理
+var lazyloadScrollHandler = null;
 
 function lazyloadInit() {
-	// 清理旧的 Observer
+	// 清理旧的 Observer（防止重复初始化）
 	if (lazyloadObserver) {
-		lazyloadObserver.disconnect();
-		lazyloadObserver = null;
+		try {
+			lazyloadObserver.disconnect();
+			lazyloadObserver = null;
+			ArgonDebug.log('清理旧的 Lazyload Observer');
+		} catch(e) {
+			ArgonDebug.warn('清理 Lazyload Observer 失败:', e);
+			lazyloadObserver = null;
+		}
+	}
+	
+	// 清理旧的滚动监听器（降级方案）
+	if (lazyloadScrollHandler) {
+		try {
+			window.removeEventListener('scroll', lazyloadScrollHandler);
+			window.removeEventListener('resize', lazyloadScrollHandler);
+			lazyloadScrollHandler = null;
+			ArgonDebug.log('清理旧的滚动监听器');
+		} catch(e) {
+			ArgonDebug.warn('清理滚动监听器失败:', e);
+			lazyloadScrollHandler = null;
+		}
 	}
 	
 	// 检查是否启用懒加载
@@ -2477,35 +2498,46 @@ function lazyloadInit() {
 	
 	let images = document.querySelectorAll('img.lazyload[data-src]');
 	if (images.length === 0) {
+		ArgonDebug.log('没有需要懒加载的图片');
 		return;
 	}
 	
 	let effect = argonConfig.lazyload_effect || 'fadeIn';
 	let threshold = parseInt(argonConfig.lazyload_threshold) || 800;
 	
+	ArgonDebug.log(`初始化懒加载: ${images.length} 张图片, 效果: ${effect}, 阈值: ${threshold}px`);
+	
 	// 使用 IntersectionObserver 实现懒加载
 	if ('IntersectionObserver' in window) {
-		lazyloadObserver = new IntersectionObserver(function(entries) {
-			entries.forEach(function(entry) {
-				if (entry.isIntersecting) {
-					let img = entry.target;
-					loadImageOptimized(img, effect);
-					lazyloadObserver.unobserve(img);
-				}
+		try {
+			lazyloadObserver = new IntersectionObserver(function(entries) {
+				entries.forEach(function(entry) {
+					if (entry.isIntersecting) {
+						let img = entry.target;
+						loadImageOptimized(img, effect);
+						lazyloadObserver.unobserve(img);
+					}
+				});
+			}, {
+				rootMargin: threshold + 'px 0px'
 			});
-		}, {
-			rootMargin: threshold + 'px 0px'
-		});
-		
-		images.forEach(function(img) {
-			// 重置图片状态
-			img.style.opacity = '';
-			img.style.transform = '';
-			img.style.transition = '';
-			lazyloadObserver.observe(img);
-		});
+			
+			images.forEach(function(img) {
+				// 重置图片状态
+				img.style.opacity = '';
+				img.style.transform = '';
+				img.style.transition = '';
+				lazyloadObserver.observe(img);
+			});
+			
+			ArgonDebug.log('使用 IntersectionObserver 实现懒加载');
+		} catch(e) {
+			ArgonDebug.error('IntersectionObserver 初始化失败，使用降级方案:', e);
+			lazyloadFallback(images, effect, threshold);
+		}
 	} else {
 		// 降级方案：使用滚动监听
+		ArgonDebug.log('浏览器不支持 IntersectionObserver，使用滚动监听降级方案');
 		lazyloadFallback(images, effect, threshold);
 	}
 }
@@ -2518,27 +2550,43 @@ function lazyloadInit() {
  */
 function loadImageOptimized(img, effect) {
 	let src = img.getAttribute('data-src');
-	if (!src) return;
+	if (!src) {
+		// 如果没有 data-src，取消 Observer 监听
+		if (lazyloadObserver) {
+			lazyloadObserver.unobserve(img);
+		}
+		return;
+	}
 	
 	// 预加载图片
 	let tempImg = new Image();
 	tempImg.onload = function() {
-		img.src = src;
-		img.removeAttribute('data-src');
-		img.classList.remove('lazyload');
-		
-		// 移除所有lazyload-style-* 类
-		img.className = img.className.replace(/\blazyload-style-\d+\b/g, '').trim();
-		
-		// 使用 requestAnimationFrame 应用加载效果
-		applyLoadEffectOptimized(img, effect);
+		// 使用 requestAnimationFrame 优化 DOM 操作
+		requestAnimationFrame(function() {
+			img.src = src;
+			img.removeAttribute('data-src');
+			img.classList.remove('lazyload');
+			
+			// 移除所有lazyload-style-* 类
+			img.className = img.className.replace(/\blazyload-style-\d+\b/g, '').trim();
+			
+			// 应用加载效果
+			applyLoadEffectOptimized(img, effect);
+		});
 	};
 	tempImg.onerror = function() {
-		// 加载失败时使用原有src
-		img.src = src;
-		img.removeAttribute('data-src');
-		img.classList.remove('lazyload');
-		img.className = img.className.replace(/\blazyload-style-\d+\b/g, '').trim();
+		// 加载失败时使用降级方案
+		requestAnimationFrame(function() {
+			img.src = src;
+			img.removeAttribute('data-src');
+			img.classList.remove('lazyload');
+			img.className = img.className.replace(/\blazyload-style-\d+\b/g, '').trim();
+			
+			// 取消 Observer 监听
+			if (lazyloadObserver) {
+				lazyloadObserver.unobserve(img);
+			}
+		});
 	};
 	tempImg.src = src;
 }
@@ -2604,16 +2652,26 @@ function lazyloadFallback(images, effect, threshold) {
 				loadedImages.add(img);
 			}
 		});
+		
+		// 如果所有图片都已加载，清理监听器
+		if (loadedImages.size === images.length) {
+			if (lazyloadScrollHandler) {
+				window.removeEventListener('scroll', lazyloadScrollHandler);
+				window.removeEventListener('resize', lazyloadScrollHandler);
+				lazyloadScrollHandler = null;
+				ArgonDebug.log('所有图片已加载，清理滚动监听器');
+			}
+		}
 	}
 	
 	// 使用 eventManager 的节流函数优化性能
-	const throttledCheck = argonEventManager ? 
+	lazyloadScrollHandler = argonEventManager ? 
 		argonEventManager.throttle(checkImagesInView, 100) : 
 		checkImagesInView;
 	
 	// 绑定事件监听器
-	window.addEventListener('scroll', throttledCheck, {passive: true});
-	window.addEventListener('resize', throttledCheck, {passive: true});
+	window.addEventListener('scroll', lazyloadScrollHandler, {passive: true});
+	window.addEventListener('resize', lazyloadScrollHandler, {passive: true});
 	
 	// 立即检查一次
 	checkImagesInView();
@@ -2740,10 +2798,11 @@ var pjaxScrollTop = 0, pjaxLoading = false;
 // ==========================================================================
 
 /**
- * 清理 Lazyload Observer
+ * 清理 Lazyload Observer 和滚动监听器
  * @returns {void}
  */
 function cleanupLazyloadObserver() {
+	// 清理 IntersectionObserver
 	if (lazyloadObserver) {
 		try {
 			lazyloadObserver.disconnect();
@@ -2751,6 +2810,20 @@ function cleanupLazyloadObserver() {
 			ArgonDebug.log('Lazyload Observer 已清理');
 		} catch(e) {
 			ArgonDebug.warn('清理 Lazyload Observer 失败:', e);
+			lazyloadObserver = null;
+		}
+	}
+	
+	// 清理滚动监听器（降级方案）
+	if (lazyloadScrollHandler) {
+		try {
+			window.removeEventListener('scroll', lazyloadScrollHandler);
+			window.removeEventListener('resize', lazyloadScrollHandler);
+			lazyloadScrollHandler = null;
+			ArgonDebug.log('Lazyload 滚动监听器已清理');
+		} catch(e) {
+			ArgonDebug.warn('清理 Lazyload 滚动监听器失败:', e);
+			lazyloadScrollHandler = null;
 		}
 	}
 }
@@ -2883,12 +2956,7 @@ function cleanupEventListeners() {
 		// 注意：大部分事件使用事件委托，不需要手动清理
 		// 这里只清理特定的非委托事件
 		
-		// 清理滚动监听（如果使用了降级方案）
-		if (typeof lazyloadScrollHandler !== 'undefined') {
-			window.removeEventListener('scroll', lazyloadScrollHandler);
-			window.removeEventListener('resize', lazyloadScrollHandler);
-			ArgonDebug.log('已清理 Lazyload 滚动监听器');
-		}
+		// Lazyload 滚动监听器已在 cleanupLazyloadObserver() 中清理
 		
 		ArgonDebug.log('事件监听器已清理');
 	} catch(e) {
