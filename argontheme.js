@@ -5700,6 +5700,8 @@ void 0;
 
 		/**
 		 * 重新渲染所有图表（主题切换时）
+		 * 需求 17.3: 保持图表的缩放级别和位置
+		 * 需求 17.4, 17.5: 使用淡入淡出过渡效果
 		 */
 		reRenderCharts() {
 			// 只选择成功渲染的图表容器，排除错误容器
@@ -5748,25 +5750,121 @@ void 0;
 						return;
 					}
 
+					// 需求 17.3: 保存当前的缩放级别和滚动位置
+					const inner = chart.querySelector('.mermaid-container-inner');
+					let savedState = null;
+					
+					if (inner) {
+						const transform = window.getComputedStyle(inner).transform;
+						const scrollLeft = inner.scrollLeft;
+						const scrollTop = inner.scrollTop;
+						
+						// 提取缩放比例
+						let scale = 1;
+						if (transform && transform !== 'none') {
+							const matrix = transform.match(/matrix\(([^)]+)\)/);
+							if (matrix) {
+								const values = matrix[1].split(',').map(v => parseFloat(v.trim()));
+								scale = values[0]; // scaleX
+							}
+						}
+						
+						savedState = {
+							scale: scale,
+							scrollLeft: scrollLeft,
+							scrollTop: scrollTop
+						};
+						
+						this.logDebug('保存图表状态', savedState);
+					}
+
 					const chartId = `mermaid-chart-rerender-${Date.now()}-${index}`;
 
-					window.mermaid.render(`mermaid-svg-${chartId}`, code).then(result => {
-						chart.innerHTML = result.svg;
-						chart.dataset.currentTheme = newTheme;
+					// 需求 17.4: 添加淡出动画
+					chart.style.transition = 'opacity 0.2s ease-out';
+					chart.style.opacity = '0';
 
-						// 确保 SVG 响应式
-						const svg = chart.querySelector('svg');
-						if (svg) {
-							svg.style.maxWidth = '100%';
-							svg.style.height = 'auto';
-						}
+					// 等待淡出完成后重新渲染
+					setTimeout(() => {
+						window.mermaid.render(`mermaid-svg-${chartId}`, code).then(result => {
+							// 保存旧的内部容器引用
+							const oldInner = chart.querySelector('.mermaid-container-inner');
+							
+							// 更新 SVG 内容
+							if (oldInner) {
+								// 只替换 SVG，保留容器结构
+								const oldSvg = oldInner.querySelector('svg');
+								if (oldSvg) {
+									// 创建临时容器解析新的 SVG
+									const temp = document.createElement('div');
+									temp.innerHTML = result.svg;
+									const newSvg = temp.querySelector('svg');
+									
+									if (newSvg) {
+										// 替换 SVG
+										oldSvg.replaceWith(newSvg);
+										
+										// 确保 SVG 响应式
+										newSvg.style.width = '100%';
+										newSvg.style.height = 'auto';
+									}
+								}
+							} else {
+								// 如果没有内部容器，直接替换内容
+								chart.innerHTML = result.svg;
+								
+								// 确保 SVG 响应式
+								const svg = chart.querySelector('svg');
+								if (svg) {
+									svg.style.width = '100%';
+									svg.style.height = 'auto';
+								}
+							}
+							
+							// 更新主题标记
+							chart.dataset.currentTheme = newTheme;
 
-						this.logDebug(`图表重新渲染成功: ${chartId}`);
-					}).catch(error => {
-						this.logError('图表重新渲染失败', error);
-						// 重新渲染失败时，不替换为错误容器，保持原样
-						// 因为之前已经成功渲染过，只是主题切换失败
-					});
+							// 需求 17.3: 恢复缩放级别和滚动位置
+							if (savedState && oldInner) {
+								// 恢复缩放
+								oldInner.style.transform = `scale(${savedState.scale})`;
+								
+								// 恢复滚动位置
+								oldInner.scrollLeft = savedState.scrollLeft;
+								oldInner.scrollTop = savedState.scrollTop;
+								
+								// 更新缩放显示
+								const zoomLevel = chart.querySelector('.mermaid-zoom-level');
+								if (zoomLevel) {
+									zoomLevel.textContent = Math.round(savedState.scale * 100) + '%';
+								}
+								
+								this.logDebug('恢复图表状态', savedState);
+							}
+
+							// 需求 17.5: 添加淡入动画
+							requestAnimationFrame(() => {
+								chart.style.transition = 'opacity 0.3s ease-in';
+								chart.style.opacity = '1';
+								
+								// 动画完成后清理过渡样式
+								setTimeout(() => {
+									chart.style.transition = '';
+								}, 300);
+							});
+
+							this.logDebug(`图表重新渲染成功: ${chartId}`);
+						}).catch(error => {
+							this.logError('图表重新渲染失败', error);
+							
+							// 重新渲染失败时，恢复显示
+							chart.style.opacity = '1';
+							chart.style.transition = '';
+							
+							// 不替换为错误容器，保持原样
+							// 因为之前已经成功渲染过，只是主题切换失败
+						});
+					}, 200); // 等待淡出动画完成
 				});
 
 			} catch (error) {
