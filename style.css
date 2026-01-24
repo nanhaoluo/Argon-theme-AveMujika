@@ -921,7 +921,7 @@ article .wp-block-separator {
 	animation: mermaidFadeIn 0.3s ease-in-out forwards;
 }
 
-/* 需求 18.2: Mermaid 加载动画容器 */
+/* 需�?18.2: Mermaid 加载动画容器 */
 .mermaid-loading {
 	background: var(--color-foreground);
 	border-radius: 8px;
@@ -1034,6 +1034,12 @@ html.darkmode .mermaid-zoom-controls {
 	transform: scale(0.95);
 }
 
+.mermaid-zoom-btn:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+	pointer-events: none;
+}
+
 .mermaid-zoom-level {
 	display: flex;
 	align-items: center;
@@ -1046,6 +1052,7 @@ html.darkmode .mermaid-zoom-controls {
 
 html.darkmode .mermaid-zoom-level {
 	color: #aaa;
+}
 }
 
 /* 按钮 tooltip */
@@ -1134,7 +1141,7 @@ article.card .mermaid-container {
 	margin: 20px -20px;
 }
 
-/* 响应式调整 */
+/* 响应式调�?*/
 @media screen and (max-width: 768px) {
 	.mermaid-container {
 		margin: 15px -15px;
@@ -2503,7 +2510,7 @@ html:not(.is-home) .cover-scroll-down {
 
 
 
-/* 左侧栏 */
+/* 左侧�?*/
 
 .leftbar-banner {
 
@@ -2863,7 +2870,7 @@ html.navbar-absolute #leftbar_part2.sticky {
 	max-height: calc(100vh - 110px - var(--leftbar-part3-height, 0px));
 }
 
-/* 只有文章目录标签需要滚动 */
+/* 只有文章目录标签需要滚�?*/
 #leftbar_part2.sticky #leftbar_tab_catalog {
 	max-height: calc(100vh - 200px - var(--leftbar-part3-height, 0px));
 	overflow-y: auto;
@@ -7717,7 +7724,7 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 	border-radius: 0px;
 }
 
-/*短代码 Github*/
+/*短代�?Github*/
 
 .github-info-card {
 
@@ -11197,7 +11204,7 @@ html.darkmode.amoled-dark #content:after {
 		text-align: center;
 	}
 	
-	/* 移动端已完成任务分隔栏 */
+	/* 移动端已完成任务分隔�?*/
 	.mobile-todo-completed-divider {
 		display: flex;
 		align-items: center;
@@ -12816,7 +12823,7 @@ html.navbar-absolute #leftbar_part3.sticky {
 	margin-left: auto;
 }
 
-/* 折叠已完成按钮 */
+/* 折叠已完成按�?*/
 .todo-collapse-btn {
 	display: flex;
 	align-items: center;
@@ -14416,7 +14423,7 @@ article.post.card {
     transition: all var(--m3-motion-duration-short) var(--m3-motion-standard);
 }
 
-/* M3 代码块 */
+/* M3 代码�?*/
 article pre:not(.hljs-codeblock) {
     border-radius: var(--m3-shape-md) !important;
 }
@@ -14965,7 +14972,7 @@ html.darkmode #leftbar_part2 {
     border-color: var(--themecolor);
 }
 
-/* 评论项悬浮效果 */
+/* 评论项悬浮效�?*/
 .comment-body {
     transition: all 0.25s ease;
     border-radius: var(--m3-shape-md);
@@ -16923,6 +16930,12 @@ html.darkmode .mermaid-zoom-controls {
 	transform: scale(0.95);
 }
 
+.mermaid-zoom-btn:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+	pointer-events: none;
+}
+
 .mermaid-zoom-level {
 	display: flex;
 	align-items: center;
@@ -16983,7 +16996,7 @@ html.darkmode .mermaid-container {
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-/* ---------- 响应式设计 ---------- */
+/* ---------- 响应式设�?---------- */
 @media screen and (max-width: 768px) {
 	.mermaid-container {
 		padding: 15px;
@@ -17149,7 +17162,7 @@ html.darkmode .mermaid-error-code pre {
 	font-size: 14px;
 }
 
-/* ---------- 滚动条样式（Webkit） ---------- */
+/* ---------- 滚动条样式（Webkit�?---------- */
 .mermaid-container::-webkit-scrollbar {
 	height: 8px;
 }

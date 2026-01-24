@@ -5671,31 +5671,74 @@ void 0;
 			const step = 0.25;
 
 			// 更新缩放显示
-			const updateZoom = () => {
+			// 需求 12.2, 12.3: 使用 CSS transform 实现硬件加速和平滑过渡
+			// 需求 12.4, 20.3: 更新按钮状态
+			const updateZoom = (useTransition = true) => {
+				// 控制是否使用过渡动画
+				if (!useTransition) {
+					inner.style.transition = 'none';
+				} else {
+					inner.style.transition = 'transform 0.3s ease';
+				}
+				
 				inner.style.transform = `scale(${scale})`;
 				controls.querySelector('.mermaid-zoom-level').textContent = Math.round(scale * 100) + '%';
+				
+				// 更新按钮状态
+				const zoomInBtn = controls.querySelector('[data-action="zoom-in"]');
+				const zoomOutBtn = controls.querySelector('[data-action="zoom-out"]');
+				
+				// 禁用/启用放大按钮
+				if (scale >= maxScale) {
+					zoomInBtn.disabled = true;
+					zoomInBtn.style.opacity = '0.4';
+					zoomInBtn.style.cursor = 'not-allowed';
+				} else {
+					zoomInBtn.disabled = false;
+					zoomInBtn.style.opacity = '1';
+					zoomInBtn.style.cursor = 'pointer';
+				}
+				
+				// 禁用/启用缩小按钮
+				if (scale <= minScale) {
+					zoomOutBtn.disabled = true;
+					zoomOutBtn.style.opacity = '0.4';
+					zoomOutBtn.style.cursor = 'not-allowed';
+				} else {
+					zoomOutBtn.disabled = false;
+					zoomOutBtn.style.opacity = '1';
+					zoomOutBtn.style.cursor = 'pointer';
+				}
+				
+				// 恢复过渡（用于下次按钮点击）
+				if (!useTransition) {
+					requestAnimationFrame(() => {
+						inner.style.transition = 'transform 0.3s ease';
+					});
+				}
 			};
 
 			// 绑定按钮事件
 			controls.addEventListener('click', (e) => {
 				const btn = e.target.closest('.mermaid-zoom-btn');
-				if (!btn) return;
+				if (!btn || btn.disabled) return; // 忽略禁用的按钮
 
 				const action = btn.dataset.action;
 				
 				if (action === 'zoom-in' && scale < maxScale) {
 					scale = Math.min(scale + step, maxScale);
-					updateZoom();
+					updateZoom(true); // 按钮点击使用平滑过渡
 				} else if (action === 'zoom-out' && scale > minScale) {
 					scale = Math.max(scale - step, minScale);
-					updateZoom();
+					updateZoom(true); // 按钮点击使用平滑过渡
 				} else if (action === 'zoom-reset') {
 					scale = 1;
-					updateZoom();
+					updateZoom(true); // 重置使用平滑过渡
 				}
 			});
 
 			// 鼠标滚轮缩放（按住 Ctrl）
+			// 需求 12.1: 以鼠标为中心进行缩放
 			container.addEventListener('wheel', (e) => {
 				if (e.ctrlKey || e.metaKey) {
 					e.preventDefault();
@@ -5704,8 +5747,24 @@ void 0;
 					const newScale = Math.max(minScale, Math.min(maxScale, scale + delta));
 					
 					if (newScale !== scale) {
+						// 获取鼠标相对于容器的位置
+						const rect = container.getBoundingClientRect();
+						const mouseX = e.clientX - rect.left;
+						const mouseY = e.clientY - rect.top;
+						
+						// 计算鼠标相对于内容的位置（缩放前）
+						const scrollLeft = container.scrollLeft;
+						const scrollTop = container.scrollTop;
+						const offsetX = (scrollLeft + mouseX) / scale;
+						const offsetY = (scrollTop + mouseY) / scale;
+						
+						// 更新缩放（滚轮缩放不使用过渡动画，更流畅）
 						scale = newScale;
-						updateZoom();
+						updateZoom(false);
+						
+						// 调整滚动位置，使鼠标位置保持不变
+						container.scrollLeft = offsetX * scale - mouseX;
+						container.scrollTop = offsetY * scale - mouseY;
 					}
 				}
 			}, { passive: false });
@@ -5756,6 +5815,34 @@ void 0;
 			// 防止拖拽时选中文本
 			inner.addEventListener('dragstart', (e) => {
 				e.preventDefault();
+			});
+
+			// 需求 12.5: 双击智能缩放
+			// 双击图表时，如果当前是默认大小则放大到 2 倍，否则重置到 1 倍
+			inner.addEventListener('dblclick', (e) => {
+				e.preventDefault();
+				
+				// 获取双击位置
+				const rect = container.getBoundingClientRect();
+				const mouseX = e.clientX - rect.left;
+				const mouseY = e.clientY - rect.top;
+				
+				// 计算鼠标相对于内容的位置（缩放前）
+				const scrollLeft = container.scrollLeft;
+				const scrollTop = container.scrollTop;
+				const offsetX = (scrollLeft + mouseX) / scale;
+				const offsetY = (scrollTop + mouseY) / scale;
+				
+				// 智能缩放：如果接近默认大小则放大，否则重置
+				const targetScale = Math.abs(scale - 1) < 0.1 ? 2 : 1;
+				scale = targetScale;
+				updateZoom(true); // 使用平滑过渡
+				
+				// 调整滚动位置，使双击位置保持在视野中心
+				setTimeout(() => {
+					container.scrollLeft = offsetX * scale - mouseX;
+					container.scrollTop = offsetY * scale - mouseY;
+				}, 50);
 			});
 		},
 
