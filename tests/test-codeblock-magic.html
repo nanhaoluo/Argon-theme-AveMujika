@@ -269,15 +269,17 @@ classDiagram
 				const code = block.textContent;
 				
 				try {
-					mermaid.render(id, code).then(result => {
+					// Mermaid 10.x 使用 render 方法，返回 Promise
+					mermaid.render(id, code).then(function(result) {
 						block.innerHTML = result.svg;
 						console.log('[Mermaid] 成功渲染图表 ' + (index + 1));
-					}).catch(error => {
+					}).catch(function(error) {
 						console.error('[Mermaid] 渲染失败:', error);
 						block.innerHTML = '<div style="color: red; padding: 10px; border: 1px solid red; border-radius: 4px;">渲染失败: ' + error.message + '</div>';
 					});
 				} catch (error) {
 					console.error('[Mermaid] 渲染异常:', error);
+					block.innerHTML = '<div style="color: red; padding: 10px; border: 1px solid red; border-radius: 4px;">渲染异常: ' + error.message + '</div>';
 				}
 			});
 		}
