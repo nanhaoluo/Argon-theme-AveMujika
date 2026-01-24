@@ -3035,10 +3035,15 @@ $.pjax.defaults.fragment = ['#primary', '#leftbar_part1_menu', '#leftbar_part2_i
 
 /*
  * PJAX 事件处理优化说明：
- * 1. pjax:beforeReplace - 统一清理资源（LazyLoad Observer、Zoomify、Tippy）
- * 2. pjax:complete - 单次初始化所有功能模块，添加错误处理
+ * 1. pjax:beforeReplace - 统一清理资源（LazyLoad Observer、Zoomify、Tippy、Mermaid）
+ * 2. pjax:complete - 单次初始化所有功能模块，添加错误处理，包含 Mermaid 渲染
  * 3. pjax:end - 只处理特定任务（移动端目录重置、GT4 验证码重置）
  * 4. 移除了重复的初始化调用，避免资源泄漏和性能问题
+ * 
+ * 需求映射：
+ * - pjax:beforeReplace: 需求 1.1-1.4 (资源清理)
+ * - pjax:complete: 需求 1.5, 1.6 (模块初始化和错误隔离)
+ * - pjax:end: 需求 1.7 (特定任务处理)
  */
 $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):not([download]):not(.reference-link):not(.reference-list-backlink)")
 .on('pjax:click', function(e, f, g){
@@ -3059,7 +3064,9 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 }).on('pjax:send', function() {
 	NProgress.set(0.618);
 }).on('pjax:beforeReplace', function(e, dom) {
-	// 清理旧页面的资源
+	// ========== 需求 1.1-1.4: 清理旧页面的所有资源 ==========
+	// 调用统一的资源清理管理器
+	// 清理内容：Lazyload Observer、Zoomify、Tippy、Mermaid 实例、动态标签
 	cleanupPjaxResources();
 	
 	// 更新 UI 状态
@@ -3076,8 +3083,11 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 		}
 	}
 }).on('pjax:complete', function() {
+	// ========== 需求 1.5, 1.6: 重新初始化所有功能模块 ==========
 	pjaxLoading = false;
 	NProgress.inc();
+	
+	// MathJax 数学公式渲染
 	try{
 		if (MathJax != undefined){
 			if (MathJax.Hub != undefined){
@@ -3087,6 +3097,8 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 			}
 		}
 	}catch (err){}
+	
+	// KaTeX 数学公式渲染
 	try{
 		if (renderMathInElement != undefined){
 			renderMathInElement(document.body,{
@@ -3112,6 +3124,16 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 	try { calcHumanTimesOnPage(); } catch (err) { ArgonDebug.error('calcHumanTimesOnPage failed:', err); }
 	try { foldLongComments(); } catch (err) { ArgonDebug.error('foldLongComments failed:', err); }
 	try { foldLongShuoshuo(); } catch (err) { ArgonDebug.error('foldLongShuoshuo failed:', err); }
+	
+	// Mermaid 图表渲染（需求 3.6: 页面切换时重新渲染）
+	try {
+		if (typeof MermaidRenderer !== 'undefined' && MermaidRenderer.renderAllCharts) {
+			MermaidRenderer.renderAllCharts();
+		}
+	} catch (err) {
+		ArgonDebug.error('MermaidRenderer.renderAllCharts failed:', err);
+	}
+	
 	$("html").trigger("resize");
 	
 	// 恢复滚动位置
@@ -3120,6 +3142,7 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 		pjaxScrollTop = 0;
 	}
 
+	// 调用用户自定义的 PJAX 加载完成回调
 	if (typeof(window.pjaxLoaded) == "function"){
 		try{
 			window.pjaxLoaded();
@@ -3130,6 +3153,8 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 
 	NProgress.done();
 }).on('pjax:end', function() {
+	// ========== 需求 1.7: 执行特定任务 ==========
+	
 	// 重置移动端目录状态
 	if (typeof window.resetMobileCatalog === 'function') {
 		try {
