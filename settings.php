@@ -4488,13 +4488,75 @@ window.pjaxLoaded = function(){
 						<td>
 							<label style="display: block; margin-bottom: 8px;">
 								<?php _e('置信度阈值', 'argon');?>: 
-								<input type="number" name="argon_comment_spam_detection_confidence_threshold" min="0" max="100" step="5" value="<?php echo get_option('argon_comment_spam_detection_confidence_threshold', '85'); ?>" style="width: 80px;"/> %
+								<input type="number" name="argon_comment_spam_detection_confidence_threshold" min="50" max="100" step="5" value="<?php echo get_option('argon_comment_spam_detection_confidence_threshold', '85'); ?>" style="width: 80px;"/> %
 							</label>
 							<p class="description">
 								<?php _e('只有 AI 判断的置信度高于此阈值时，才会自动处理垃圾评论。', 'argon');?><br/>
 								<?php _e('建议值：小型博客 90%，中型博客 85%，大型博客 80%', 'argon');?><br/>
 								<?php _e('置信度低于阈值的评论会被标记为待审核，由管理员人工判断', 'argon');?>
 							</p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('隐私保护级别', 'argon');?></label></th>
+						<td>
+							<select name="argon_comment_spam_detection_privacy_level">
+								<?php $privacy_level = get_option('argon_comment_spam_detection_privacy_level', 'standard'); ?>
+								<option value="standard" <?php if ($privacy_level=='standard'){echo 'selected';} ?>><?php _e('标准模式', 'argon');?></option>
+								<option value="strict" <?php if ($privacy_level=='strict'){echo 'selected';} ?>><?php _e('严格模式', 'argon');?></option>
+							</select>
+							<p class="description">
+								<strong><?php _e('标准模式', 'argon');?></strong>: <?php _e('发送邮箱域名和 IP 地址段（如 @example.com、192.168.*.*）', 'argon');?><br/>
+								<strong><?php _e('严格模式', 'argon');?></strong>: <?php _e('不发送任何用户标识信息，仅发送评论内容和文章信息', 'argon');?><br/>
+								<?php _e('严格模式下检测准确率可能降低，但更好地保护用户隐私', 'argon');?>
+							</p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('推荐配置', 'argon');?></label></th>
+						<td>
+							<div style="margin-bottom: 15px;">
+								<button type="button" class="button" id="argon-apply-config-small"><?php _e('小型博客配置', 'argon');?></button>
+								<button type="button" class="button" id="argon-apply-config-medium" style="margin-left: 10px;"><?php _e('中型博客配置', 'argon');?></button>
+								<button type="button" class="button" id="argon-apply-config-large" style="margin-left: 10px;"><?php _e('大型博客配置', 'argon');?></button>
+							</div>
+							<p class="description">
+								<strong><?php _e('小型博客', 'argon');?></strong> (<?php _e('评论量 < 100/天', 'argon');?>): <?php _e('标准模式，阈值 90%，抽查 20%', 'argon');?><br/>
+								<strong><?php _e('中型博客', 'argon');?></strong> (<?php _e('评论量 100-500/天', 'argon');?>): <?php _e('标准模式，阈值 85%，抽查 30%', 'argon');?><br/>
+								<strong><?php _e('大型博客', 'argon');?></strong> (<?php _e('评论量 > 500/天', 'argon');?>): <?php _e('极简模式，阈值 80%，抽查 40%', 'argon');?>
+							</p>
+							<script>
+							jQuery(document).ready(function($) {
+								$('#argon-apply-config-small').on('click', function() {
+									if (confirm('<?php _e('确定要应用小型博客推荐配置吗？', 'argon');?>')) {
+										$('select[name="argon_comment_spam_detection_prompt_mode"]').val('standard');
+										$('input[name="argon_comment_spam_detection_confidence_threshold"]').val('90');
+										$('input[name="argon_comment_spam_detection_sample_rate"]').val('20');
+										alert('<?php _e('已应用小型博客配置，请保存设置', 'argon');?>');
+									}
+								});
+								
+								$('#argon-apply-config-medium').on('click', function() {
+									if (confirm('<?php _e('确定要应用中型博客推荐配置吗？', 'argon');?>')) {
+										$('select[name="argon_comment_spam_detection_prompt_mode"]').val('standard');
+										$('input[name="argon_comment_spam_detection_confidence_threshold"]').val('85');
+										$('input[name="argon_comment_spam_detection_sample_rate"]').val('30');
+										alert('<?php _e('已应用中型博客配置，请保存设置', 'argon');?>');
+									}
+								});
+								
+								$('#argon-apply-config-large').on('click', function() {
+									if (confirm('<?php _e('确定要应用大型博客推荐配置吗？', 'argon');?>')) {
+										$('select[name="argon_comment_spam_detection_prompt_mode"]').val('minimal');
+										$('input[name="argon_comment_spam_detection_confidence_threshold"]').val('80');
+										$('input[name="argon_comment_spam_detection_sample_rate"]').val('40');
+										alert('<?php _e('已应用大型博客配置，请保存设置', 'argon');?>');
+									}
+								});
+							});
+							</script>
 						</td>
 					</tr>
 
@@ -4627,6 +4689,132 @@ window.pjaxLoaded = function(){
 								
 								$('#argon-spam-detection-scan-pending').on('click', function() {
 									startScan('pending');
+								});
+							});
+							</script>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('检测统计', 'argon');?></label></th>
+						<td>
+							<?php
+							// 获取统计数据
+							$learning_module = new Argon_Spam_Learning_Module();
+							$stats = $learning_module->get_statistics();
+							$error_handler = new Argon_Spam_API_Error_Handler();
+							$api_status = $error_handler->get_status();
+							?>
+							<div style="background: #f9f9f9; padding: 15px; border-radius: 4px; margin-bottom: 15px;">
+								<p style="margin: 0 0 10px 0; font-weight: 600;"><?php _e('检测准确率', 'argon');?></p>
+								<p style="margin: 0 0 5px 0;">
+									<?php _e('最近 7 天', 'argon');?>: 
+									<strong style="color: <?php echo $stats['accuracy_7d'] >= 80 ? '#46b450' : '#dc3232'; ?>;">
+										<?php echo number_format($stats['accuracy_7d'], 2); ?>%
+									</strong>
+									(<?php echo $stats['error_rate_7d']['total']; ?> <?php _e('次检测', 'argon');?>)
+								</p>
+								<p style="margin: 0;">
+									<?php _e('最近 30 天', 'argon');?>: 
+									<strong style="color: <?php echo $stats['accuracy_30d'] >= 80 ? '#46b450' : '#dc3232'; ?>;">
+										<?php echo number_format($stats['accuracy_30d'], 2); ?>%
+									</strong>
+									(<?php echo $stats['error_rate_30d']['total']; ?> <?php _e('次检测', 'argon');?>)
+								</p>
+							</div>
+							
+							<?php if ($api_status['is_disabled']): ?>
+							<div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin-bottom: 15px;">
+								<p style="margin: 0; color: #856404;">
+									<strong><?php _e('⚠️ 实时检测已自动禁用', 'argon');?></strong><br/>
+									<?php _e('原因：连续 API 调用失败', 'argon');?><br/>
+									<?php _e('剩余时间', 'argon');?>: <?php echo $api_status['remaining_minutes']; ?> <?php _e('分钟', 'argon');?>
+								</p>
+								<button type="button" class="button" id="argon-manual-enable-detection" style="margin-top: 10px;">
+									<?php _e('立即恢复检测', 'argon');?>
+								</button>
+							</div>
+							<?php endif; ?>
+							
+							<p class="description">
+								<?php _e('显示 AI 检测的准确率统计。准确率 = (总检测数 - 误判数) / 总检测数', 'argon');?><br/>
+								<?php _e('误判包括：AI 认为是垃圾但管理员批准的（假阳性），以及 AI 认为正常但管理员标记为垃圾的（假阴性）', 'argon');?>
+							</p>
+							
+							<script>
+							jQuery(document).ready(function($) {
+								$('#argon-manual-enable-detection').on('click', function() {
+									if (!confirm('<?php _e('确定要立即恢复实时检测吗？', 'argon');?>')) {
+										return;
+									}
+									
+									$.post(ajaxurl, {
+										action: 'argon_manual_enable_spam_detection',
+										nonce: '<?php echo wp_create_nonce('argon_manual_enable'); ?>'
+									}, function(response) {
+										if (response.success) {
+											alert('<?php _e('已恢复实时检测', 'argon');?>');
+											location.reload();
+										} else {
+											alert('<?php _e('操作失败', 'argon');?>: ' + (response.data || ''));
+										}
+									});
+								});
+							});
+							</script>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('API 错误日志', 'argon');?></label></th>
+						<td>
+							<?php
+							$errors = $error_handler->get_errors(10);
+							if (empty($errors)): ?>
+								<p style="color: #46b450;">✓ <?php _e('暂无 API 错误', 'argon');?></p>
+							<?php else: ?>
+								<div style="max-height: 300px; overflow-y: auto; background: #f9f9f9; padding: 10px; border-radius: 4px;">
+									<?php foreach ($errors as $error): ?>
+										<div style="padding: 8px; margin-bottom: 8px; background: #fff; border-left: 3px solid #dc3232; border-radius: 2px;">
+											<p style="margin: 0 0 5px 0; font-size: 13px;">
+												<strong><?php echo esc_html($error['type']); ?></strong>
+												<span style="float: right; color: #666; font-size: 12px;">
+													<?php echo date('Y-m-d H:i:s', $error['timestamp']); ?>
+												</span>
+											</p>
+											<p style="margin: 0; font-size: 12px; color: #666;">
+												<?php echo esc_html($error['message']); ?>
+											</p>
+										</div>
+									<?php endforeach; ?>
+								</div>
+								<button type="button" class="button" id="argon-clear-error-log" style="margin-top: 10px;">
+									<?php _e('清除错误日志', 'argon');?>
+								</button>
+							<?php endif; ?>
+							
+							<p class="description">
+								<?php _e('显示最近 10 条 API 错误日志。连续失败 3 次后会自动禁用实时检测 1 小时', 'argon');?>
+							</p>
+							
+							<script>
+							jQuery(document).ready(function($) {
+								$('#argon-clear-error-log').on('click', function() {
+									if (!confirm('<?php _e('确定要清除所有错误日志吗？', 'argon');?>')) {
+										return;
+									}
+									
+									$.post(ajaxurl, {
+										action: 'argon_clear_spam_error_log',
+										nonce: '<?php echo wp_create_nonce('argon_clear_errors'); ?>'
+									}, function(response) {
+										if (response.success) {
+											alert('<?php _e('已清除错误日志', 'argon');?>');
+											location.reload();
+										} else {
+											alert('<?php _e('操作失败', 'argon');?>: ' + (response.data || ''));
+										}
+									});
 								});
 							});
 							</script>
@@ -7166,6 +7354,7 @@ function argon_update_themeoptions(){
 	argon_update_option_checkbox('argon_comment_spam_detection_enable');
 	argon_update_option('argon_comment_spam_detection_prompt_mode');
 	argon_update_option('argon_comment_spam_detection_confidence_threshold');
+	argon_update_option('argon_comment_spam_detection_privacy_level');
 	argon_update_option('argon_comment_spam_detection_prompt');
 	argon_update_option('argon_comment_spam_detection_mode');
 	argon_update_option('argon_comment_spam_detection_sample_rate');

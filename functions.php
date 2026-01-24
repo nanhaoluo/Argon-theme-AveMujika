@@ -9696,3 +9696,1659 @@ function argon_should_load_mermaid_library() {
 	// 没有检测到插件或已加载的库，主题应该加载
 	return true;
 }
+
+
+// ==========================================================================
+// AI 垃圾评论检测优化 - 数据库表管理
+// ==========================================================================
+
+/**
+ * 创建 AI 垃圾评论检测反馈数据表
+ * 用于存储 AI 检测结果和管理员审核决策的对比数据
+ */
+function argon_create_spam_feedback_table() {
+	global $wpdb;
+	
+	$table_name = $wpdb->prefix . 'argon_spam_feedback';
+	$charset_collate = $wpdb->get_charset_collate();
+	
+	$sql = "CREATE TABLE IF NOT EXISTS $table_name (
+		id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		comment_id BIGINT UNSIGNED NOT NULL,
+		ai_is_spam TINYINT(1) NOT NULL,
+		ai_confidence FLOAT NOT NULL,
+		ai_reason TEXT,
+		ai_suggestion VARCHAR(20),
+		admin_action VARCHAR(20) NOT NULL,
+		is_error TINYINT(1) NOT NULL,
+		pattern_hash VARCHAR(64),
+		created_at DATETIME NOT NULL,
+		PRIMARY KEY (id),
+		KEY comment_id (comment_id),
+		KEY created_at (created_at),
+		KEY is_error (is_error)
+	) $charset_collate;";
+	
+	require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+	dbDelta($sql);
+	
+	// 记录数据库版本，用于后续升级
+	update_option('argon_spam_feedback_db_version', '1.0');
+}
+
+/**
+ * 主题激活时初始化数据库
+ */
+function argon_spam_detection_activation() {
+	argon_create_spam_feedback_table();
+	
+	// 初始化默认配置（如果不存在）
+	if (get_option('argon_comment_spam_detection_prompt_mode') === false) {
+		update_option('argon_comment_spam_detection_prompt_mode', 'standard');
+	}
+	if (get_option('argon_comment_spam_detection_confidence_threshold') === false) {
+		update_option('argon_comment_spam_detection_confidence_threshold', '85');
+	}
+	if (get_option('argon_comment_spam_detection_privacy_level') === false) {
+		update_option('argon_comment_spam_detection_privacy_level', 'standard');
+	}
+}
+add_action('after_switch_theme', 'argon_spam_detection_activation');
+
+/**
+ * 检查并升级数据库表结构
+ */
+function argon_check_spam_feedback_db_version() {
+	$current_version = get_option('argon_spam_feedback_db_version', '0');
+	
+	// 如果版本不匹配，重新创建表
+	if (version_compare($current_version, '1.0', '<')) {
+		argon_create_spam_feedback_table();
+	}
+}
+add_action('admin_init', 'argon_check_spam_feedback_db_version');
+
+
+// ==========================================================================
+// AI 垃圾评论检测优化 - Prompt Engine
+// ==========================================================================
+
+/**
+ * Prompt 引擎类
+ * 管理和生成不同模式的 Prompt
+ */
+class Argon_Spam_Prompt_Engine {
+	
+	/**
+	 * 获取指定模式的 Prompt
+	 * 
+	 * @param string $mode 模式: minimal, standard, enhanced, custom
+	 * @param array $context 评论上下文信息
+	 * @return string 完整的 Prompt
+	 */
+	public function get_prompt($mode, $context = []) {
+		if ($mode === 'custom') {
+			return $this->get_custom_template();
+		}
+		
+		$template = $this->get_template($mode);
+		return $this->fill_template($template, $context);
+	}
+	
+	/**
+	 * 获取 Prompt 模板
+	 * 
+	 * @param string $mode 模式
+	 * @return string 模板内容
+	 */
+	private function get_template($mode) {
+		$templates = [
+			'minimal' => '你是一个垃圾评论检测助手。请判断以下评论是否为垃圾评论。
+
+评论内容: {content}
+评论者: {author}
+网站: {url}
+
+请以 JSON 格式返回:
+{
+  "is_spam": true/false,
+  "confidence": 0.0-1.0,
+  "reason": "简短理由"
+}',
+			
+			'standard' => '你是一个专业的垃圾评论检测助手。请根据以下标准判断评论是否为垃圾:
+1. 内容质量: 是否有实质性内容
+2. 相关性: 是否与文章主题相关
+3. 用户行为: 用户名、邮箱、网站是否可疑
+4. 语言特征: 是否包含垃圾评论常见模式
+
+评论信息:
+- 内容: {content}
+- 评论者: {author}
+- 邮箱域名: {email_domain}
+- 网站: {url}
+- 文章标题: {post_title}
+- 文章摘要: {post_excerpt}
+
+用户历史:
+- 历史评论数: {comment_count}
+- 通过率: {approval_rate}
+
+请以 JSON 格式返回:
+{
+  "is_spam": true/false,
+  "confidence": 0.0-1.0,
+  "reason": "详细理由",
+  "suggestion": "auto/review/approve"
+}',
+			
+			'enhanced' => '你是一个高级垃圾评论检测专家。请进行多维度深度分析:
+
+1. 内容合规性分析
+   - 是否包含违规内容
+   - 是否包含广告推广
+   - 是否包含恶意链接
+
+2. 内容质量分析
+   - 是否有实质性观点
+   - 语言表达是否自然
+   - 是否为复制粘贴内容
+
+3. 用户行为分析
+   - 用户名是否可疑（随机字符、营销词汇）
+   - 邮箱域名是否可信
+   - 网站是否为垃圾站点
+
+4. 上下文相关性分析
+   - 评论与文章主题的相关度
+   - 评论时间是否异常（批量发送）
+   - 用户历史行为是否正常
+
+评论信息:
+- 内容: {content}
+- 评论者: {author}
+- 邮箱域名: {email_domain}
+- 网站: {url}
+- IP 地址段: {ip_segment}
+- 评论时间: {comment_time}
+
+文章信息:
+- 标题: {post_title}
+- 摘要: {post_excerpt}
+- 分类: {post_category}
+
+用户历史:
+- 历史评论数: {comment_count}
+- 通过率: {approval_rate}
+- 最近评论时间: {last_comment_time}
+
+请以 JSON 格式返回:
+{
+  "is_spam": true/false,
+  "confidence": 0.0-1.0,
+  "reason": "综合分析理由",
+  "suggestion": "auto/review/approve",
+  "analysis": {
+    "content_compliance": "分析结果",
+    "content_quality": "分析结果",
+    "user_behavior": "分析结果",
+    "context_relevance": "分析结果"
+  }
+}'
+		];
+		
+		return isset($templates[$mode]) ? $templates[$mode] : $templates['standard'];
+	}
+	
+	/**
+	 * 填充模板变量
+	 * 
+	 * @param string $template 模板内容
+	 * @param array $context 上下文数据
+	 * @return string 填充后的 Prompt
+	 */
+	private function fill_template($template, $context) {
+		$replacements = [
+			'{content}' => isset($context['content']) ? $context['content'] : '',
+			'{author}' => isset($context['author']) ? $context['author'] : '',
+			'{email_domain}' => isset($context['email_domain']) ? $context['email_domain'] : '',
+			'{url}' => isset($context['url']) ? $context['url'] : '',
+			'{ip_segment}' => isset($context['ip_segment']) ? $context['ip_segment'] : '',
+			'{comment_time}' => isset($context['comment_time']) ? $context['comment_time'] : '',
+			'{post_title}' => isset($context['post_title']) ? $context['post_title'] : '',
+			'{post_excerpt}' => isset($context['post_excerpt']) ? $context['post_excerpt'] : '',
+			'{post_category}' => isset($context['post_category']) ? $context['post_category'] : '',
+			'{comment_count}' => isset($context['comment_count']) ? $context['comment_count'] : '0',
+			'{approval_rate}' => isset($context['approval_rate']) ? $context['approval_rate'] : '0',
+			'{last_comment_time}' => isset($context['last_comment_time']) ? $context['last_comment_time'] : ''
+		];
+		
+		return str_replace(array_keys($replacements), array_values($replacements), $template);
+	}
+	
+	/**
+	 * 获取自定义 Prompt 模板
+	 * 
+	 * @return string 自定义模板
+	 */
+	public function get_custom_template() {
+		return get_option('argon_comment_spam_detection_prompt', '');
+	}
+	
+	/**
+	 * 保存自定义 Prompt 模板
+	 * 
+	 * @param string $template 模板内容
+	 * @return bool 是否成功
+	 */
+	public function save_custom_template($template) {
+		$validation = $this->validate_template($template);
+		if (!$validation['valid']) {
+			return false;
+		}
+		
+		return update_option('argon_comment_spam_detection_prompt', $template);
+	}
+	
+	/**
+	 * 验证 Prompt 模板格式
+	 * 
+	 * @param string $template 模板内容
+	 * @return array ['valid' => bool, 'errors' => array]
+	 */
+	public function validate_template($template) {
+		$errors = [];
+		
+		// 检查是否为空
+		if (empty(trim($template))) {
+			$errors[] = 'Prompt 模板不能为空';
+		}
+		
+		// 检查长度（不超过 10000 字符）
+		if (strlen($template) > 10000) {
+			$errors[] = 'Prompt 模板过长（最多 10000 字符）';
+		}
+		
+		// 检查是否包含 JSON 格式要求
+		if (stripos($template, 'json') === false) {
+			$errors[] = 'Prompt 模板应包含 JSON 格式要求';
+		}
+		
+		return [
+			'valid' => empty($errors),
+			'errors' => $errors
+		];
+	}
+}
+
+
+// ==========================================================================
+// AI 垃圾评论检测优化 - Context Builder
+// ==========================================================================
+
+/**
+ * 上下文构建器类
+ * 收集和构建评论上下文信息
+ */
+class Argon_Spam_Context_Builder {
+	
+	/**
+	 * 用户统计缓存
+	 * @var array
+	 */
+	private $user_stats_cache = [];
+	
+	/**
+	 * 构建评论上下文
+	 * 
+	 * @param WP_Comment $comment 评论对象
+	 * @param string $privacy_level 隐私级别: standard, strict
+	 * @return array 上下文信息数组
+	 */
+	public function build_context($comment, $privacy_level = 'standard') {
+		$context = [];
+		
+		// 基本评论信息
+		$context['content'] = $comment->comment_content;
+		$context['author'] = $comment->comment_author;
+		$context['url'] = $comment->comment_author_url;
+		$context['comment_time'] = $comment->comment_date;
+		
+		// 邮箱和 IP 脱敏处理
+		$context['email_domain'] = $this->sanitize_email($comment->comment_author_email, $privacy_level);
+		$context['ip_segment'] = $this->sanitize_ip($comment->comment_author_IP, $privacy_level);
+		
+		// 获取文章信息
+		$post_info = $this->get_post_info($comment->comment_post_ID);
+		$context['post_title'] = $post_info['title'];
+		$context['post_excerpt'] = $post_info['excerpt'];
+		$context['post_category'] = $post_info['category'];
+		
+		// 获取用户历史统计
+		if ($privacy_level !== 'strict') {
+			$user_stats = $this->get_user_stats($comment->comment_author_email);
+			$context['comment_count'] = $user_stats['count'];
+			$context['approval_rate'] = $user_stats['approval_rate'];
+			$context['last_comment_time'] = $user_stats['last_time'];
+		} else {
+			// 严格模式下不提供用户历史
+			$context['comment_count'] = 0;
+			$context['approval_rate'] = 0;
+			$context['last_comment_time'] = '';
+		}
+		
+		return $context;
+	}
+	
+	/**
+	 * 获取文章信息
+	 * 
+	 * @param int $post_id 文章 ID
+	 * @return array ['title' => string, 'excerpt' => string, 'category' => string]
+	 */
+	private function get_post_info($post_id) {
+		$post = get_post($post_id);
+		
+		if (!$post) {
+			return [
+				'title' => '',
+				'excerpt' => '',
+				'category' => ''
+			];
+		}
+		
+		// 获取摘要（截取 200 字符）
+		$excerpt = $post->post_excerpt;
+		if (empty($excerpt)) {
+			$excerpt = wp_strip_all_tags($post->post_content);
+		}
+		if (mb_strlen($excerpt) > 200) {
+			$excerpt = mb_substr($excerpt, 0, 200) . '...';
+		}
+		
+		// 获取分类
+		$categories = get_the_category($post_id);
+		$category = !empty($categories) ? $categories[0]->name : '';
+		
+		return [
+			'title' => $post->post_title,
+			'excerpt' => $excerpt,
+			'category' => $category
+		];
+	}
+	
+	/**
+	 * 获取用户历史统计
+	 * 
+	 * @param string $email 用户邮箱
+	 * @return array ['count' => int, 'approval_rate' => float, 'last_time' => string]
+	 */
+	private function get_user_stats($email) {
+		// 检查缓存
+		if (isset($this->user_stats_cache[$email])) {
+			return $this->user_stats_cache[$email];
+		}
+		
+		global $wpdb;
+		
+		// 查询用户的评论统计
+		$total = $wpdb->get_var($wpdb->prepare(
+			"SELECT COUNT(*) FROM {$wpdb->comments} WHERE comment_author_email = %s",
+			$email
+		));
+		
+		$approved = $wpdb->get_var($wpdb->prepare(
+			"SELECT COUNT(*) FROM {$wpdb->comments} WHERE comment_author_email = %s AND comment_approved = '1'",
+			$email
+		));
+		
+		$last_comment = $wpdb->get_var($wpdb->prepare(
+			"SELECT comment_date FROM {$wpdb->comments} WHERE comment_author_email = %s ORDER BY comment_date DESC LIMIT 1",
+			$email
+		));
+		
+		$approval_rate = $total > 0 ? round(($approved / $total) * 100, 2) : 0;
+		
+		$stats = [
+			'count' => intval($total),
+			'approval_rate' => $approval_rate,
+			'last_time' => $last_comment ? $last_comment : ''
+		];
+		
+		// 缓存结果
+		$this->user_stats_cache[$email] = $stats;
+		
+		return $stats;
+	}
+	
+	/**
+	 * 邮箱脱敏处理
+	 * 
+	 * @param string $email 邮箱地址
+	 * @param string $privacy_level 隐私级别
+	 * @return string 脱敏后的邮箱（仅域名）
+	 */
+	private function sanitize_email($email, $privacy_level) {
+		if ($privacy_level === 'strict') {
+			return '';
+		}
+		
+		if (empty($email) || strpos($email, '@') === false) {
+			return '';
+		}
+		
+		// 只保留域名部分
+		$parts = explode('@', $email);
+		return '@' . $parts[1];
+	}
+	
+	/**
+	 * IP 地址脱敏处理
+	 * 
+	 * @param string $ip IP 地址
+	 * @param string $privacy_level 隐私级别
+	 * @return string 脱敏后的 IP（仅前两段）
+	 */
+	private function sanitize_ip($ip, $privacy_level) {
+		if ($privacy_level === 'strict') {
+			return '';
+		}
+		
+		if (empty($ip)) {
+			return '';
+		}
+		
+		// IPv4: 只保留前两段
+		if (strpos($ip, '.') !== false) {
+			$parts = explode('.', $ip);
+			return $parts[0] . '.' . $parts[1] . '.*.*';
+		}
+		
+		// IPv6: 只保留前两段
+		if (strpos($ip, ':') !== false) {
+			$parts = explode(':', $ip);
+			return $parts[0] . ':' . $parts[1] . ':*:*';
+		}
+		
+		return '';
+	}
+}
+
+
+// ==========================================================================
+// AI 垃圾评论检测优化 - Threshold Manager
+// ==========================================================================
+
+/**
+ * 阈值管理器类
+ * 管理检测阈值和处理策略
+ */
+class Argon_Spam_Threshold_Manager {
+	
+	/**
+	 * 获取当前阈值
+	 * 
+	 * @return float 阈值 0.5-1.0
+	 */
+	public function get_threshold() {
+		$threshold = floatval(get_option('argon_comment_spam_detection_confidence_threshold', 85)) / 100;
+		
+		// 确保阈值在有效范围内
+		if ($threshold < 0.5) {
+			$threshold = 0.5;
+		}
+		if ($threshold > 1.0) {
+			$threshold = 1.0;
+		}
+		
+		return $threshold;
+	}
+	
+	/**
+	 * 设置阈值
+	 * 
+	 * @param float $threshold 阈值（0.5-1.0 或 50-100）
+	 * @return bool 是否成功
+	 */
+	public function set_threshold($threshold) {
+		// 如果是百分比形式（50-100），转换为小数
+		if ($threshold > 1.0) {
+			$threshold = $threshold / 100;
+		}
+		
+		// 验证范围
+		if ($threshold < 0.5 || $threshold > 1.0) {
+			return false;
+		}
+		
+		// 保存为百分比形式
+		return update_option('argon_comment_spam_detection_confidence_threshold', intval($threshold * 100));
+	}
+	
+	/**
+	 * 判断是否应该自动处理
+	 * 
+	 * @param array $result 检测结果
+	 * @return bool 是否自动处理
+	 */
+	public function should_auto_process($result) {
+		if (!isset($result['is_spam']) || !$result['is_spam']) {
+			return false;
+		}
+		
+		$confidence = isset($result['confidence']) ? floatval($result['confidence']) : 0;
+		$suggestion = isset($result['suggestion']) ? $result['suggestion'] : '';
+		$threshold = $this->get_threshold();
+		
+		// 根据置信度和建议判断
+		if ($confidence >= $threshold && $suggestion === 'auto') {
+			return true;
+		}
+		
+		return false;
+	}
+	
+	/**
+	 * 获取处理建议
+	 * 
+	 * @param array $result 检测结果
+	 * @return string auto/review/approve
+	 */
+	public function get_suggestion($result) {
+		if (isset($result['suggestion'])) {
+			return $result['suggestion'];
+		}
+		
+		// 如果 AI 没有返回建议，根据置信度生成
+		$is_spam = isset($result['is_spam']) ? $result['is_spam'] : false;
+		$confidence = isset($result['confidence']) ? floatval($result['confidence']) : 0;
+		$threshold = $this->get_threshold();
+		
+		if (!$is_spam) {
+			return 'approve';
+		}
+		
+		if ($confidence >= $threshold) {
+			return 'auto';
+		} elseif ($confidence >= 0.5) {
+			return 'review';
+		} else {
+			return 'approve';
+		}
+	}
+	
+	/**
+	 * 获取推荐配置
+	 * 
+	 * @param string $blog_size 博客规模: small, medium, large
+	 * @return array 推荐配置
+	 */
+	public function get_recommended_config($blog_size) {
+		$configs = [
+			'small' => [
+				'prompt_mode' => 'standard',
+				'threshold' => 0.9,
+				'sample_rate' => 20,
+				'description' => '小型博客（评论量 < 100/天）'
+			],
+			'medium' => [
+				'prompt_mode' => 'standard',
+				'threshold' => 0.85,
+				'sample_rate' => 30,
+				'description' => '中型博客（评论量 100-500/天）'
+			],
+			'large' => [
+				'prompt_mode' => 'minimal',
+				'threshold' => 0.8,
+				'sample_rate' => 40,
+				'description' => '大型博客（评论量 > 500/天）'
+			]
+		];
+		
+		return isset($configs[$blog_size]) ? $configs[$blog_size] : $configs['medium'];
+	}
+	
+	/**
+	 * 应用推荐配置
+	 * 
+	 * @param string $blog_size 博客规模
+	 * @return bool 是否成功
+	 */
+	public function apply_recommended_config($blog_size) {
+		$config = $this->get_recommended_config($blog_size);
+		
+		update_option('argon_comment_spam_detection_prompt_mode', $config['prompt_mode']);
+		update_option('argon_comment_spam_detection_confidence_threshold', intval($config['threshold'] * 100));
+		update_option('argon_comment_spam_detection_sample_rate', $config['sample_rate']);
+		
+		return true;
+	}
+}
+
+
+// ==========================================================================
+// AI 垃圾评论检测优化 - AI Detector
+// ==========================================================================
+
+/**
+ * AI 检测器主控制器类
+ * 协调各模块完成检测流程
+ */
+class Argon_Spam_AI_Detector {
+	
+	/**
+	 * Prompt 引擎实例
+	 * @var Argon_Spam_Prompt_Engine
+	 */
+	private $prompt_engine;
+	
+	/**
+	 * 上下文构建器实例
+	 * @var Argon_Spam_Context_Builder
+	 */
+	private $context_builder;
+	
+	/**
+	 * 阈值管理器实例
+	 * @var Argon_Spam_Threshold_Manager
+	 */
+	private $threshold_manager;
+	
+	/**
+	 * 构造函数
+	 */
+	public function __construct() {
+		$this->prompt_engine = new Argon_Spam_Prompt_Engine();
+		$this->context_builder = new Argon_Spam_Context_Builder();
+		$this->threshold_manager = new Argon_Spam_Threshold_Manager();
+	}
+	
+	/**
+	 * 检测评论是否为垃圾
+	 * 
+	 * @param WP_Comment $comment 评论对象
+	 * @param bool $async 是否异步检测
+	 * @return array|null 检测结果，异步时返回 null
+	 */
+	public function detect($comment, $async = true) {
+		if ($async) {
+			// 异步检测：调度后台任务
+			wp_schedule_single_event(time() + 1, 'argon_async_spam_detection_v2', [$comment->comment_ID]);
+			return null;
+		}
+		
+		// 同步检测
+		return $this->detect_sync($comment);
+	}
+	
+	/**
+	 * 同步检测评论
+	 * 
+	 * @param WP_Comment $comment 评论对象
+	 * @return array 检测结果
+	 */
+	private function detect_sync($comment) {
+		// 获取配置
+		$mode = get_option('argon_comment_spam_detection_prompt_mode', 'standard');
+		$privacy_level = get_option('argon_comment_spam_detection_privacy_level', 'standard');
+		
+		// 构建上下文
+		$context = $this->context_builder->build_context($comment, $privacy_level);
+		
+		// 生成 Prompt
+		$prompt = $this->prompt_engine->get_prompt($mode, $context);
+		
+		// 调用 AI API
+		$api_result = $this->call_ai_api($prompt, $context['content']);
+		
+		// 处理 API 结果
+		$result = $this->process_api_result($api_result, $mode);
+		
+		// 添加元数据
+		$result['timestamp'] = time();
+		$result['mode'] = $mode;
+		$result['api_provider'] = get_option('argon_ai_summary_api_provider', 'openai');
+		
+		// 生成处理建议（如果 AI 没有返回）
+		if (!isset($result['suggestion'])) {
+			$result['suggestion'] = $this->threshold_manager->get_suggestion($result);
+		}
+		
+		return $result;
+	}
+	
+	/**
+	 * 调用 AI API
+	 * 
+	 * @param string $prompt Prompt 内容
+	 * @param string $content 评论内容
+	 * @return array|false API 响应结果
+	 */
+	private function call_ai_api($prompt, $content) {
+		$provider = get_option('argon_ai_summary_api_provider', 'openai');
+		$api_key = get_option('argon_ai_summary_api_key', '');
+		$model = get_option('argon_ai_summary_model', '');
+		
+		if (empty($api_key)) {
+			return false;
+		}
+		
+		// 使用现有的 API 调用函数
+		return argon_call_ai_api_for_spam_detection($provider, $api_key, $model, $prompt, $content);
+	}
+	
+	/**
+	 * 处理 API 结果
+	 * 
+	 * @param array|false $api_result API 响应
+	 * @param string $mode Prompt 模式
+	 * @return array 标准化的检测结果
+	 */
+	private function process_api_result($api_result, $mode) {
+		// API 调用失败，返回默认值
+		if (!$api_result || !isset($api_result['content_spam'])) {
+			return [
+				'is_spam' => false,
+				'confidence' => 0,
+				'reason' => 'API 调用失败',
+				'suggestion' => 'approve'
+			];
+		}
+		
+		// 解析 AI 返回的结果
+		$is_spam = isset($api_result['content_spam']) ? $api_result['content_spam'] : false;
+		$reason = isset($api_result['reason']) ? $api_result['reason'] : '';
+		
+		// 尝试从 reason 中提取置信度（如果 AI 返回了）
+		$confidence = $this->extract_confidence($api_result);
+		
+		// 提取处理建议
+		$suggestion = $this->extract_suggestion($api_result);
+		
+		// 提取详细分析（仅增强模式）
+		$analysis = null;
+		if ($mode === 'enhanced' && isset($api_result['analysis'])) {
+			$analysis = $api_result['analysis'];
+		}
+		
+		$result = [
+			'is_spam' => $is_spam,
+			'confidence' => $confidence,
+			'reason' => $reason,
+			'suggestion' => $suggestion
+		];
+		
+		if ($analysis) {
+			$result['analysis'] = $analysis;
+		}
+		
+		return $result;
+	}
+	
+	/**
+	 * 从 API 结果中提取置信度
+	 * 
+	 * @param array $api_result API 结果
+	 * @return float 置信度 0-1
+	 */
+	private function extract_confidence($api_result) {
+		// 如果 API 直接返回了 confidence
+		if (isset($api_result['confidence'])) {
+			$confidence = floatval($api_result['confidence']);
+			// 如果是百分比形式，转换为小数
+			if ($confidence > 1.0) {
+				$confidence = $confidence / 100;
+			}
+			return max(0, min(1, $confidence));
+		}
+		
+		// 如果没有置信度，根据 is_spam 返回默认值
+		if (isset($api_result['content_spam']) && $api_result['content_spam']) {
+			return 0.8; // 默认中等置信度
+		}
+		
+		return 0.2;
+	}
+	
+	/**
+	 * 从 API 结果中提取处理建议
+	 * 
+	 * @param array $api_result API 结果
+	 * @return string auto/review/approve
+	 */
+	private function extract_suggestion($api_result) {
+		if (isset($api_result['suggestion'])) {
+			$suggestion = strtolower($api_result['suggestion']);
+			if (in_array($suggestion, ['auto', 'review', 'approve'])) {
+				return $suggestion;
+			}
+		}
+		
+		return '';
+	}
+	
+	/**
+	 * 处理检测结果
+	 * 
+	 * @param WP_Comment $comment 评论对象
+	 * @param array $result 检测结果
+	 * @return void
+	 */
+	public function process_result($comment, $result) {
+		// 保存检测结果
+		update_comment_meta($comment->comment_ID, '_argon_spam_detection_result', $result);
+		update_comment_meta($comment->comment_ID, '_argon_spam_detection_time', time());
+		
+		// 根据建议处理评论
+		$suggestion = $this->threshold_manager->get_suggestion($result);
+		
+		if ($suggestion === 'auto' && $this->threshold_manager->should_auto_process($result)) {
+			// 自动处理垃圾评论
+			$auto_action = get_option('argon_comment_spam_detection_auto_action', 'trash');
+			
+			if ($auto_action === 'trash') {
+				wp_trash_comment($comment->comment_ID);
+			} elseif ($auto_action === 'hold') {
+				wp_set_comment_status($comment->comment_ID, 'hold');
+			}
+			// 'mark' 选项只标记不处理
+			
+		} elseif ($suggestion === 'review') {
+			// 标记为待审核
+			wp_set_comment_status($comment->comment_ID, 'hold');
+			update_comment_meta($comment->comment_ID, '_argon_spam_low_confidence', true);
+			
+		}
+		// 'approve' 建议不做处理，让评论正常发布
+	}
+	
+	/**
+	 * 批量检测评论
+	 * 
+	 * @param array $comment_ids 评论 ID 数组
+	 * @param callable $progress_callback 进度回调函数
+	 * @return array 检测结果统计
+	 */
+	public function batch_detect($comment_ids, $progress_callback = null) {
+		$stats = [
+			'total' => count($comment_ids),
+			'processed' => 0,
+			'spam_found' => 0,
+			'errors' => 0
+		];
+		
+		foreach ($comment_ids as $comment_id) {
+			$comment = get_comment($comment_id);
+			if (!$comment) {
+				$stats['errors']++;
+				continue;
+			}
+			
+			try {
+				$result = $this->detect_sync($comment);
+				$this->process_result($comment, $result);
+				
+				if ($result['is_spam']) {
+					$stats['spam_found']++;
+				}
+				
+				$stats['processed']++;
+				
+				// 调用进度回调
+				if ($progress_callback && is_callable($progress_callback)) {
+					call_user_func($progress_callback, $stats);
+				}
+				
+				// 避免 API 速率限制，每次检测后延迟
+				usleep(500000); // 0.5 秒
+				
+			} catch (Exception $e) {
+				$stats['errors']++;
+			}
+		}
+		
+		return $stats;
+	}
+	
+	/**
+	 * 测试 Prompt
+	 * 
+	 * @param string $content 测试内容
+	 * @param string $mode Prompt 模式
+	 * @return array 检测结果
+	 */
+	public function test_prompt($content, $mode) {
+		// 创建临时评论对象
+		$test_comment = new WP_Comment((object)[
+			'comment_ID' => 0,
+			'comment_content' => $content,
+			'comment_author' => 'Test User',
+			'comment_author_email' => 'test@example.com',
+			'comment_author_url' => '',
+			'comment_author_IP' => '127.0.0.1',
+			'comment_date' => current_time('mysql'),
+			'comment_post_ID' => 0
+		]);
+		
+		// 构建上下文
+		$privacy_level = get_option('argon_comment_spam_detection_privacy_level', 'standard');
+		$context = $this->context_builder->build_context($test_comment, $privacy_level);
+		
+		// 生成 Prompt
+		$prompt = $this->prompt_engine->get_prompt($mode, $context);
+		
+		// 调用 AI API
+		$api_result = $this->call_ai_api($prompt, $content);
+		
+		// 处理结果
+		$result = $this->process_api_result($api_result, $mode);
+		$result['prompt'] = $prompt;
+		
+		return $result;
+	}
+}
+
+/**
+ * 异步检测处理函数（新版本）
+ * 
+ * @param int $comment_id 评论 ID
+ */
+function argon_async_spam_detection_handler_v2($comment_id) {
+	$comment = get_comment($comment_id);
+	if (!$comment) {
+		return;
+	}
+	
+	// 检查是否已经检测过
+	$detection_time = get_comment_meta($comment_id, '_argon_spam_detection_time', true);
+	if (!empty($detection_time)) {
+		return;
+	}
+	
+	// 创建检测器实例
+	$detector = new Argon_Spam_AI_Detector();
+	
+	// 执行检测
+	$result = $detector->detect_sync($comment);
+	
+	// 处理结果
+	$detector->process_result($comment, $result);
+}
+add_action('argon_async_spam_detection_v2', 'argon_async_spam_detection_handler_v2');
+
+
+// ==========================================================================
+// AI 垃圾评论检测优化 - API 错误处理
+// ==========================================================================
+
+/**
+ * API 错误处理类
+ * 管理 API 错误、自动禁用和恢复机制
+ */
+class Argon_Spam_API_Error_Handler {
+	
+	/**
+	 * 记录 API 错误
+	 * 
+	 * @param string $error_message 错误信息
+	 * @param string $error_type 错误类型: timeout, 4xx, 5xx, format
+	 * @return void
+	 */
+	public function log_error($error_message, $error_type = 'unknown') {
+		$errors = get_option('argon_spam_detection_api_errors', []);
+		
+		// 添加新错误
+		$errors[] = [
+			'message' => $error_message,
+			'type' => $error_type,
+			'timestamp' => time()
+		];
+		
+		// 只保留最近 10 条
+		if (count($errors) > 10) {
+			$errors = array_slice($errors, -10);
+		}
+		
+		update_option('argon_spam_detection_api_errors', $errors);
+		
+		// 检查是否需要自动禁用
+		if (in_array($error_type, ['timeout', '5xx'])) {
+			$this->check_auto_disable();
+		}
+	}
+	
+	/**
+	 * 检查是否需要自动禁用
+	 * 
+	 * @return void
+	 */
+	private function check_auto_disable() {
+		$consecutive_failures = intval(get_option('argon_spam_detection_consecutive_failures', 0));
+		$consecutive_failures++;
+		
+		update_option('argon_spam_detection_consecutive_failures', $consecutive_failures);
+		
+		$max_failures = intval(get_option('argon_spam_detection_auto_disable_after_errors', 3));
+		
+		if ($consecutive_failures >= $max_failures) {
+			$this->auto_disable();
+		}
+	}
+	
+	/**
+	 * 自动禁用实时检测
+	 * 
+	 * @return void
+	 */
+	private function auto_disable() {
+		$duration = intval(get_option('argon_spam_detection_auto_disable_duration', 3600));
+		$disable_until = time() + $duration;
+		
+		update_option('argon_spam_detection_disabled_until', $disable_until);
+		update_option('argon_spam_detection_auto_disabled', true);
+		
+		// 记录禁用原因
+		$this->log_error('连续失败次数过多，自动禁用实时检测', 'auto_disable');
+	}
+	
+	/**
+	 * 检查是否被禁用
+	 * 
+	 * @return bool 是否被禁用
+	 */
+	public function is_disabled() {
+		$disabled_until = intval(get_option('argon_spam_detection_disabled_until', 0));
+		
+		if ($disabled_until === 0) {
+			return false;
+		}
+		
+		// 检查是否已过期
+		if (time() >= $disabled_until) {
+			$this->auto_enable();
+			return false;
+		}
+		
+		return true;
+	}
+	
+	/**
+	 * 自动恢复实时检测
+	 * 
+	 * @return void
+	 */
+	private function auto_enable() {
+		update_option('argon_spam_detection_disabled_until', 0);
+		update_option('argon_spam_detection_auto_disabled', false);
+		update_option('argon_spam_detection_consecutive_failures', 0);
+	}
+	
+	/**
+	 * 手动恢复实时检测
+	 * 
+	 * @return bool 是否成功
+	 */
+	public function manual_enable() {
+		$this->auto_enable();
+		$this->log_error('管理员手动恢复实时检测', 'manual_enable');
+		return true;
+	}
+	
+	/**
+	 * 记录成功的 API 调用
+	 * 
+	 * @return void
+	 */
+	public function log_success() {
+		// 重置连续失败计数
+		update_option('argon_spam_detection_consecutive_failures', 0);
+		
+		// 如果之前被自动禁用，现在恢复
+		if (get_option('argon_spam_detection_auto_disabled', false)) {
+			$this->auto_enable();
+			$this->log_error('API 调用成功，自动恢复实时检测', 'auto_enable');
+		}
+	}
+	
+	/**
+	 * 获取错误日志
+	 * 
+	 * @param int $limit 返回数量限制
+	 * @return array 错误日志数组
+	 */
+	public function get_errors($limit = 10) {
+		$errors = get_option('argon_spam_detection_api_errors', []);
+		
+		if ($limit > 0 && count($errors) > $limit) {
+			$errors = array_slice($errors, -$limit);
+		}
+		
+		return array_reverse($errors);
+	}
+	
+	/**
+	 * 清除错误日志
+	 * 
+	 * @return bool 是否成功
+	 */
+	public function clear_errors() {
+		return update_option('argon_spam_detection_api_errors', []);
+	}
+	
+	/**
+	 * 获取禁用状态信息
+	 * 
+	 * @return array 状态信息
+	 */
+	public function get_status() {
+		$disabled_until = intval(get_option('argon_spam_detection_disabled_until', 0));
+		$consecutive_failures = intval(get_option('argon_spam_detection_consecutive_failures', 0));
+		$auto_disabled = get_option('argon_spam_detection_auto_disabled', false);
+		
+		$status = [
+			'is_disabled' => $this->is_disabled(),
+			'disabled_until' => $disabled_until,
+			'consecutive_failures' => $consecutive_failures,
+			'auto_disabled' => $auto_disabled
+		];
+		
+		if ($status['is_disabled']) {
+			$remaining = $disabled_until - time();
+			$status['remaining_minutes'] = ceil($remaining / 60);
+		}
+		
+		return $status;
+	}
+}
+
+/**
+ * 增强的 AI API 调用函数（带错误处理）
+ * 
+ * @param string $provider API 提供商
+ * @param string $api_key API 密钥
+ * @param string $model 模型名称
+ * @param string $prompt Prompt 内容
+ * @param string $content 评论内容
+ * @return array|false API 响应结果
+ */
+function argon_call_ai_api_with_error_handling($provider, $api_key, $model, $prompt, $content) {
+	$error_handler = new Argon_Spam_API_Error_Handler();
+	
+	// 检查是否被禁用
+	if ($error_handler->is_disabled()) {
+		return false;
+	}
+	
+	// 调用原有的 API 函数
+	$result = argon_call_ai_api_for_spam_detection($provider, $api_key, $model, $prompt, $content);
+	
+	// 处理结果
+	if ($result === false) {
+		$error_handler->log_error('API 调用失败', 'unknown');
+		return false;
+	}
+	
+	// 检查响应格式
+	if (!isset($result['content_spam'])) {
+		$error_handler->log_error('API 响应格式错误：缺少 content_spam 字段', 'format');
+		return false;
+	}
+	
+	// 记录成功
+	$error_handler->log_success();
+	
+	return $result;
+}
+
+
+// ==========================================================================
+// AI 垃圾评论检测优化 - 批量扫描（新版本）
+// ==========================================================================
+
+/**
+ * AJAX: 批量扫描评论（使用新的 AI_Detector）
+ */
+function argon_spam_detection_scan_v2() {
+	check_ajax_referer('argon_spam_detection_scan', 'nonce');
+	
+	if (!current_user_can('moderate_comments')) {
+		wp_send_json_error(__('权限不足', 'argon'));
+	}
+	
+	$scan_type = isset($_POST['scan_type']) ? sanitize_text_field($_POST['scan_type']) : 'all';
+	
+	// 获取评论列表
+	$args = [
+		'status' => $scan_type === 'pending' ? 'hold' : 'approve',
+		'number' => 0,
+		'orderby' => 'comment_ID',
+		'order' => 'DESC'
+	];
+	
+	$all_comments = get_comments($args);
+	
+	// 过滤掉已检测过的评论
+	$comment_ids = [];
+	foreach ($all_comments as $comment) {
+		$detection_time = get_comment_meta($comment->comment_ID, '_argon_spam_detection_time', true);
+		if (empty($detection_time)) {
+			$comment_ids[] = $comment->comment_ID;
+		}
+	}
+	
+	if (empty($comment_ids)) {
+		wp_send_json_success([
+			'status' => 'completed',
+			'total' => 0,
+			'spam_found' => 0,
+			'results' => [],
+			'message' => __('所有评论都已检测过，无需重复检测', 'argon')
+		]);
+		return;
+	}
+	
+	// 创建检测器实例
+	$detector = new Argon_Spam_AI_Detector();
+	
+	// 执行批量检测
+	$stats = $detector->batch_detect($comment_ids);
+	
+	// 获取垃圾评论列表
+	$spam_results = [];
+	foreach ($comment_ids as $comment_id) {
+		$result = get_comment_meta($comment_id, '_argon_spam_detection_result', true);
+		if ($result && isset($result['is_spam']) && $result['is_spam']) {
+			$comment = get_comment($comment_id);
+			if ($comment) {
+				$spam_results[] = [
+					'comment_id' => $comment_id,
+					'author' => $comment->comment_author,
+					'content' => mb_substr(strip_tags($comment->comment_content), 0, 100),
+					'reason' => $result['reason'],
+					'confidence' => isset($result['confidence']) ? $result['confidence'] : 0,
+					'suggestion' => isset($result['suggestion']) ? $result['suggestion'] : 'review'
+				];
+			}
+		}
+	}
+	
+	wp_send_json_success([
+		'status' => 'completed',
+		'total' => $stats['total'],
+		'processed' => $stats['processed'],
+		'spam_found' => $stats['spam_found'],
+		'errors' => $stats['errors'],
+		'results' => $spam_results
+	]);
+}
+add_action('wp_ajax_argon_spam_detection_scan_v2', 'argon_spam_detection_scan_v2');
+
+
+// ==========================================================================
+// AI 垃圾评论检测优化 - Learning Module
+// ==========================================================================
+
+/**
+ * 学习模块类
+ * 记录反馈数据，分析误判率，提供优化建议
+ */
+class Argon_Spam_Learning_Module {
+	
+	/**
+	 * 记录反馈
+	 * 
+	 * @param int $comment_id 评论 ID
+	 * @param array $ai_result AI 检测结果
+	 * @param string $admin_action 管理员操作: approve, spam, trash
+	 * @return bool 是否成功
+	 */
+	public function record_feedback($comment_id, $ai_result, $admin_action) {
+		global $wpdb;
+		
+		$table_name = $wpdb->prefix . 'argon_spam_feedback';
+		
+		// 判断是否误判
+		$ai_is_spam = isset($ai_result['is_spam']) ? $ai_result['is_spam'] : false;
+		$is_error = false;
+		
+		if ($ai_is_spam && $admin_action === 'approve') {
+			// AI 认为是垃圾，但管理员批准了 -> 误判（假阳性）
+			$is_error = true;
+		} elseif (!$ai_is_spam && in_array($admin_action, ['spam', 'trash'])) {
+			// AI 认为正常，但管理员标记为垃圾 -> 误判（假阴性）
+			$is_error = true;
+		}
+		
+		// 生成评论特征哈希
+		$comment = get_comment($comment_id);
+		$pattern_hash = $this->generate_pattern_hash($comment);
+		
+		// 插入反馈记录
+		$result = $wpdb->insert(
+			$table_name,
+			[
+				'comment_id' => $comment_id,
+				'ai_is_spam' => $ai_is_spam ? 1 : 0,
+				'ai_confidence' => isset($ai_result['confidence']) ? floatval($ai_result['confidence']) : 0,
+				'ai_reason' => isset($ai_result['reason']) ? $ai_result['reason'] : '',
+				'ai_suggestion' => isset($ai_result['suggestion']) ? $ai_result['suggestion'] : '',
+				'admin_action' => $admin_action,
+				'is_error' => $is_error ? 1 : 0,
+				'pattern_hash' => $pattern_hash,
+				'created_at' => current_time('mysql')
+			],
+			['%d', '%d', '%f', '%s', '%s', '%s', '%d', '%s', '%s']
+		);
+		
+		return $result !== false;
+	}
+	
+	/**
+	 * 生成评论特征哈希
+	 * 
+	 * @param WP_Comment $comment 评论对象
+	 * @return string 特征哈希
+	 */
+	private function generate_pattern_hash($comment) {
+		if (!$comment) {
+			return '';
+		}
+		
+		// 提取关键特征
+		$features = [
+			'author_length' => strlen($comment->comment_author),
+			'content_length' => strlen($comment->comment_content),
+			'has_url' => !empty($comment->comment_author_url),
+			'email_domain' => $this->get_email_domain($comment->comment_author_email)
+		];
+		
+		return md5(json_encode($features));
+	}
+	
+	/**
+	 * 获取邮箱域名
+	 * 
+	 * @param string $email 邮箱地址
+	 * @return string 域名
+	 */
+	private function get_email_domain($email) {
+		if (empty($email) || strpos($email, '@') === false) {
+			return '';
+		}
+		
+		$parts = explode('@', $email);
+		return $parts[1];
+	}
+	
+	/**
+	 * 计算误判率
+	 * 
+	 * @param int $days 统计天数
+	 * @return array ['total' => int, 'false_positive' => int, 'false_negative' => int, 'rate' => float]
+	 */
+	public function calculate_error_rate($days = 30) {
+		global $wpdb;
+		
+		$table_name = $wpdb->prefix . 'argon_spam_feedback';
+		$date_threshold = date('Y-m-d H:i:s', strtotime("-{$days} days"));
+		
+		// 总检测数
+		$total = $wpdb->get_var($wpdb->prepare(
+			"SELECT COUNT(*) FROM {$table_name} WHERE created_at >= %s",
+			$date_threshold
+		));
+		
+		// 误判总数
+		$errors = $wpdb->get_var($wpdb->prepare(
+			"SELECT COUNT(*) FROM {$table_name} WHERE created_at >= %s AND is_error = 1",
+			$date_threshold
+		));
+		
+		// 假阳性（AI 认为是垃圾，但管理员批准）
+		$false_positive = $wpdb->get_var($wpdb->prepare(
+			"SELECT COUNT(*) FROM {$table_name} WHERE created_at >= %s AND ai_is_spam = 1 AND admin_action = 'approve'",
+			$date_threshold
+		));
+		
+		// 假阴性（AI 认为正常，但管理员标记为垃圾）
+		$false_negative = $wpdb->get_var($wpdb->prepare(
+			"SELECT COUNT(*) FROM {$table_name} WHERE created_at >= %s AND ai_is_spam = 0 AND admin_action IN ('spam', 'trash')",
+			$date_threshold
+		));
+		
+		$rate = $total > 0 ? round(($errors / $total) * 100, 2) : 0;
+		
+		return [
+			'total' => intval($total),
+			'errors' => intval($errors),
+			'false_positive' => intval($false_positive),
+			'false_negative' => intval($false_negative),
+			'rate' => $rate
+		];
+	}
+	
+	/**
+	 * 获取优化建议
+	 * 
+	 * @return array 建议列表
+	 */
+	public function get_optimization_suggestions() {
+		$suggestions = [];
+		$error_rate = $this->calculate_error_rate(30);
+		
+		// 如果误判率过高，提供建议
+		if ($error_rate['rate'] > 30) {
+			$suggestions[] = [
+				'type' => 'error',
+				'title' => '误判率过高',
+				'message' => sprintf('最近 30 天的误判率为 %.2f%%，建议调整检测阈值或 Prompt 模式', $error_rate['rate'])
+			];
+		}
+		
+		// 如果假阳性过多（误杀正常评论）
+		if ($error_rate['false_positive'] > $error_rate['total'] * 0.2) {
+			$suggestions[] = [
+				'type' => 'warning',
+				'title' => '假阳性过多',
+				'message' => '系统误杀了较多正常评论，建议提高置信度阈值或使用增强模式'
+			];
+		}
+		
+		// 如果假阴性过多（漏掉垃圾评论）
+		if ($error_rate['false_negative'] > $error_rate['total'] * 0.2) {
+			$suggestions[] = [
+				'type' => 'warning',
+				'title' => '假阴性过多',
+				'message' => '系统漏掉了较多垃圾评论，建议降低置信度阈值或优化 Prompt'
+			];
+		}
+		
+		// 如果检测数量太少
+		if ($error_rate['total'] < 10) {
+			$suggestions[] = [
+				'type' => 'info',
+				'title' => '数据量不足',
+				'message' => '反馈数据较少，建议积累更多数据后再分析'
+			];
+		}
+		
+		return $suggestions;
+	}
+	
+	/**
+	 * 导出反馈数据
+	 * 
+	 * @param int $days 导出天数
+	 * @return string CSV 格式数据
+	 */
+	public function export_feedback($days = 30) {
+		global $wpdb;
+		
+		$table_name = $wpdb->prefix . 'argon_spam_feedback';
+		$date_threshold = date('Y-m-d H:i:s', strtotime("-{$days} days"));
+		
+		$results = $wpdb->get_results($wpdb->prepare(
+			"SELECT * FROM {$table_name} WHERE created_at >= %s ORDER BY created_at DESC",
+			$date_threshold
+		), ARRAY_A);
+		
+		if (empty($results)) {
+			return '';
+		}
+		
+		// 生成 CSV
+		$csv = [];
+		
+		// 表头
+		$csv[] = implode(',', [
+			'ID',
+			'评论ID',
+			'AI判断',
+			'置信度',
+			'AI理由',
+			'处理建议',
+			'管理员操作',
+			'是否误判',
+			'特征哈希',
+			'创建时间'
+		]);
+		
+		// 数据行
+		foreach ($results as $row) {
+			$csv[] = implode(',', [
+				$row['id'],
+				$row['comment_id'],
+				$row['ai_is_spam'] ? '垃圾' : '正常',
+				$row['ai_confidence'],
+				'"' . str_replace('"', '""', $row['ai_reason']) . '"',
+				$row['ai_suggestion'],
+				$row['admin_action'],
+				$row['is_error'] ? '是' : '否',
+				$row['pattern_hash'],
+				$row['created_at']
+			]);
+		}
+		
+		return implode("\n", $csv);
+	}
+	
+	/**
+	 * 获取统计数据
+	 * 
+	 * @return array 统计信息
+	 */
+	public function get_statistics() {
+		global $wpdb;
+		
+		$table_name = $wpdb->prefix . 'argon_spam_feedback';
+		
+		// 总检测数
+		$total_detections = $wpdb->get_var("SELECT COUNT(*) FROM {$table_name}");
+		
+		// 自动处理数
+		$auto_processed = $wpdb->get_var(
+			"SELECT COUNT(*) FROM {$table_name} WHERE admin_action IN ('spam', 'trash')"
+		);
+		
+		// 误判数
+		$errors = $wpdb->get_var("SELECT COUNT(*) FROM {$table_name} WHERE is_error = 1");
+		
+		// 最近 30 天的误判率
+		$error_rate_30d = $this->calculate_error_rate(30);
+		
+		// 最近 7 天的误判率
+		$error_rate_7d = $this->calculate_error_rate(7);
+		
+		return [
+			'total_detections' => intval($total_detections),
+			'auto_processed' => intval($auto_processed),
+			'errors' => intval($errors),
+			'error_rate_30d' => $error_rate_30d,
+			'error_rate_7d' => $error_rate_7d,
+			'accuracy_30d' => 100 - $error_rate_30d['rate'],
+			'accuracy_7d' => 100 - $error_rate_7d['rate']
+		];
+	}
+}
+
+/**
+ * 评论状态变更时记录反馈
+ * 
+ * @param int $comment_id 评论 ID
+ * @param string $comment_status 新状态
+ */
+function argon_record_spam_feedback_on_status_change($comment_id, $comment_status) {
+	// 获取 AI 检测结果
+	$ai_result = get_comment_meta($comment_id, '_argon_spam_detection_result', true);
+	
+	if (empty($ai_result)) {
+		return; // 没有 AI 检测结果，不记录
+	}
+	
+	// 映射评论状态到管理员操作
+	$action_map = [
+		'approve' => 'approve',
+		'approved' => 'approve',
+		'1' => 'approve',
+		'spam' => 'spam',
+		'trash' => 'trash'
+	];
+	
+	$admin_action = isset($action_map[$comment_status]) ? $action_map[$comment_status] : '';
+	
+	if (empty($admin_action)) {
+		return;
+	}
+	
+	// 记录反馈
+	$learning_module = new Argon_Spam_Learning_Module();
+	$learning_module->record_feedback($comment_id, $ai_result, $admin_action);
+}
+add_action('wp_set_comment_status', 'argon_record_spam_feedback_on_status_change', 10, 2);
+
+
+// ==========================================================================
+// AI 垃圾评论检测优化 - AJAX 处理函数
+// ==========================================================================
+
+/**
+ * AJAX: 手动恢复实时检测
+ */
+function argon_manual_enable_spam_detection() {
+	check_ajax_referer('argon_manual_enable', 'nonce');
+	
+	if (!current_user_can('manage_options')) {
+		wp_send_json_error(__('权限不足', 'argon'));
+	}
+	
+	$error_handler = new Argon_Spam_API_Error_Handler();
+	$result = $error_handler->manual_enable();
+	
+	if ($result) {
+		wp_send_json_success(__('已恢复实时检测', 'argon'));
+	} else {
+		wp_send_json_error(__('操作失败', 'argon'));
+	}
+}
+add_action('wp_ajax_argon_manual_enable_spam_detection', 'argon_manual_enable_spam_detection');
+
+/**
+ * AJAX: 清除错误日志
+ */
+function argon_clear_spam_error_log() {
+	check_ajax_referer('argon_clear_errors', 'nonce');
+	
+	if (!current_user_can('manage_options')) {
+		wp_send_json_error(__('权限不足', 'argon'));
+	}
+	
+	$error_handler = new Argon_Spam_API_Error_Handler();
+	$result = $error_handler->clear_errors();
+	
+	if ($result) {
+		wp_send_json_success(__('已清除错误日志', 'argon'));
+	} else {
+		wp_send_json_error(__('操作失败', 'argon'));
+	}
+}
+add_action('wp_ajax_argon_clear_spam_error_log', 'argon_clear_spam_error_log');
