@@ -120,7 +120,7 @@ flowchart TD
 			return blocks;
 		}
 
-		// 提取代码块内容
+		// 提取代码块内容（使用改进后的正则）
 		function extractMermaidCode(element) {
 			let code = '';
 
@@ -128,25 +128,31 @@ flowchart TD
 				const scriptTag = element.querySelector('script');
 				if (scriptTag) {
 					const scriptContent = scriptTag.textContent || scriptTag.innerText;
-					console.log('[测试] 原始 script 内容:', scriptContent);
+					console.log('[测试] 原始 script 内容:', scriptContent.substring(0, 100));
 					
-					// 匹配 document.write("...") 或 document.write('...')
-					let match = scriptContent.match(/document\.write\s*\(\s*"((?:[^"\\]|\\.)*)"\s*\)/s);
-					if (!match) {
-						match = scriptContent.match(/document\.write\s*\(\s*'((?:[^'\\]|\\.)*)'\s*\)/s);
-					}
+					// 使用改进后的正则：[\s\S]*? 匹配包括换行在内的所有字符
+					let match = scriptContent.match(/document\.write\s*\(\s*["']([\s\S]*?)["']\s*\)/);
 					
 					if (match && match[1]) {
 						code = match[1];
-						console.log('[测试] 提取到的代码（转义前）:', code);
+						console.log('[测试] 从 document.write() 提取到代码，长度:', code.length);
 					} else {
-						const clonedElement = element.cloneNode(true);
-						const scripts = clonedElement.querySelectorAll('script');
-						scripts.forEach(script => script.remove());
-						code = clonedElement.textContent;
+						// 降级方案：直接提取引号内容
+						match = scriptContent.match(/["']([\s\S]*?)["']/);
+						if (match && match[1]) {
+							code = match[1];
+							console.log('[测试] 从引号内提取到代码，长度:', code.length);
+						} else {
+							const clonedElement = element.cloneNode(true);
+							const scripts = clonedElement.querySelectorAll('script');
+							scripts.forEach(script => script.remove());
+							code = clonedElement.textContent;
+							console.log('[测试] 使用降级方案提取代码');
+						}
 					}
 				} else {
 					code = element.textContent;
+					console.log('[测试] 从纯文本提取代码');
 				}
 			} else if (element.tagName === 'CODE') {
 				code = element.textContent;
@@ -172,7 +178,7 @@ flowchart TD
 				.replace(/\\'/g, "'")
 				.replace(/\\\\/g, '\\');
 
-			console.log('[测试] 最终提取的代码:', code);
+			console.log('[测试] 最终提取的代码:', code.substring(0, 100) + (code.length > 100 ? '...' : ''));
 			return code.trim();
 		}
 

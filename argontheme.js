@@ -3939,7 +3939,63 @@ function getCodeFromBlock(block){
 	codeOfBlocks[block.id] = res;
 	return res;
 }
+
+/**
+ * 在代码高亮之前转换 Mermaid 代码块
+ * 将 <pre><code class="language-mermaid"> 转换为 <div class="mermaid-from-codeblock">
+ * 这样可以避免代码高亮干扰 Mermaid 渲染
+ */
+function convertMermaidCodeblocks(){
+	// 支持多种代码块格式
+	const selectors = [
+		'pre > code.language-mermaid',  // 标准 Markdown 格式（最常见）
+		'pre > code.mermaid',           // 简化格式
+		'code.language-mermaid',        // 无 pre 包裹
+		'pre[data-lang="mermaid"]'      // 自定义属性格式
+	];
+	
+	let processedCount = 0;
+	
+	selectors.forEach(selector => {
+		document.querySelectorAll(selector).forEach(element => {
+			// 避免重复处理
+			if (element.dataset.mermaidProcessed) {
+				return;
+			}
+			
+			// 提取代码
+			let code = element.textContent.trim();
+			if (!code) {
+				return;
+			}
+			
+			// 创建容器
+			const container = document.createElement('div');
+			container.className = 'mermaid-from-codeblock';
+			container.textContent = code;
+			container.dataset.processed = 'true';
+			
+			// 替换元素
+			const targetElement = element.closest('pre') || element;
+			if (targetElement.parentNode) {
+				targetElement.parentNode.replaceChild(container, targetElement);
+				processedCount++;
+			}
+			
+			// 标记已处理
+			element.dataset.mermaidProcessed = 'true';
+		});
+	});
+	
+	if (processedCount > 0 && typeof console !== 'undefined' && console.log) {
+		console.log('[Mermaid] 转换了 ' + processedCount + ' 个代码块');
+	}
+}
+
 function highlightJsRender(){
+	// 在代码高亮之前，先处理 Mermaid 代码块
+	convertMermaidCodeblocks();
+	
 	if (typeof(hljs) == "undefined"){
 		return;
 	}
@@ -4430,8 +4486,9 @@ void 0;
 			// 检测规则（优先级从高到低）
 			const selectors = [
 				'div.mermaid-shortcode',                 // Shortcode 格式（推荐）
+				'div.mermaid-from-codeblock',            // 代码块魔改格式（新增）
 				'div.mermaid',                           // 标准格式
-				'pre code.language-mermaid',             // Markdown 格式
+				'pre code.language-mermaid',             // Markdown 格式（降级）
 				'pre[data-lang="mermaid"]',              // 自定义属性格式
 				'code.mermaid'                           // 简化格式
 			];
@@ -4695,6 +4752,11 @@ void 0;
 			if (element.classList.contains('mermaid-shortcode')) {
 				code = element.textContent;
 				this.logDebug('从 Shortcode 格式提取代码');
+			}
+			// 处理代码块魔改格式（新增）
+			else if (element.classList.contains('mermaid-from-codeblock')) {
+				code = element.textContent;
+				this.logDebug('从代码块魔改格式提取代码');
 			}
 			// 处理 Markdown 容器语法格式
 			else if (element.classList.contains('mermaid-container-block')) {

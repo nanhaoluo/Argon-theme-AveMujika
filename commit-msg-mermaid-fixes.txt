@@ -1,0 +1,96 @@
+fix: 修复代码高亮和容器语法的两个关键问题
+
+## 问题描述
+
+1. **代码高亮干扰 mermaid 渲染**
+   - 传统 Markdown 代码块（```mermaid）使用 document.write
+   - 代码高亮会处理这些代码块，导致 mermaid 无法正常渲染
+
+2. **容器语法空行处理错误**
+   - 使用 ::: mermaid 语法时，空行会导致内容被截断
+   - WPMD 将空行后的内容识别为代码块
+
+## 修复方案
+
+### 1. 代码高亮排除 mermaid（argontheme.js:3942-3962）
+
+在 `highlightJsRender()` 函数中添加检查：
+
+```javascript
+// 跳过 mermaid 代码块（避免代码高亮干扰 mermaid 渲染）
+if ($(block).hasClass("language-mermaid") || $(block).hasClass("mermaid")){
+    return;
+}
+// 跳过在 .mermaid 容器内的代码块
+if ($(block).closest('.mermaid').length > 0){
+    return;
+}
+```
+
+**效果**：
+- ✅ mermaid 代码块不会被代码高亮处理
+- ✅ 避免嵌套结构和渲染冲突
+- ✅ 普通代码块仍正常高亮
+
+### 2. 容器语法保留空行（argontheme.js:4508-4530）
+
+修改 `extractContainerContent()` 函数：
+
+```javascript
+// 移除开始标记 ::: mermaid（保留后面的换行符和空行）
+text = text.replace(/^:::\s*mermaid\s*\n?/i, '');
+
+// 移除结束标记 :::（保留前面的换行符和空行）
+text = text.replace(/\n?:::\s*$/i, '');
+
+// 不要 trim，保留代码中的空行
+if (!text) {
+    return null;
+}
+```
+
+**效果**：
+- ✅ 空行被正确保留
+- ✅ 多行 mermaid 代码完整提取
+- ✅ 避免内容被截断
+
+## 测试验证
+
+创建了 `tests/test-mermaid-fixes.html` 测试页面，包含：
+
+1. **代码高亮排除测试**
+   - Markdown 格式 mermaid（应排除）
+   - div.mermaid 格式（应排除）
+   - 普通代码块（应高亮）
+
+2. **容器语法空行测试**
+   - 包含空行的流程图
+   - 包含空行的时序图
+   - 包含多个连续空行
+
+3. **WP-Markdown 兼容性测试**
+   - document.write 格式
+
+## 影响范围
+
+- ✅ 不影响现有功能
+- ✅ 向后兼容所有标记格式
+- ✅ 提升用户体验
+
+## 相关文件
+
+- `argontheme.js` - 核心修复
+- `docs/mermaid-usage-guide.md` - 更新文档
+- `tests/test-mermaid-fixes.html` - 测试页面
+
+## 提交信息
+
+```
+fix: 修复代码高亮和容器语法的两个关键问题
+
+- 代码高亮排除 mermaid 代码块，避免干扰渲染
+- 容器语法正确处理空行，不再截断内容
+- 添加测试页面验证修复效果
+```
+
+Commit: 0ac5794

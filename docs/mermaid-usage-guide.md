@@ -2,7 +2,30 @@
 
 ## 推荐的标记方式
 
-### Markdown 容器语法（推荐）⭐
+### 1. 标准 Markdown 代码块（推荐）⭐
+
+```markdown
+三个反引号mermaid
+flowchart TD
+    A[开始] --> B[处理]
+    B --> C[结束]
+三个反引号
+```
+
+**优点**：
+- ✅ 符合标准 Markdown 语法
+- ✅ 在所有 Markdown 编辑器中都能正确显示
+- ✅ 支持语法高亮（编辑器层面）
+- ✅ 易于迁移到其他平台（GitHub、GitLab、Typora 等）
+- ✅ 主题自动拦截处理，避免代码高亮干扰
+- ✅ 支持所有 Mermaid 图表类型
+
+**工作原理**：
+- 主题在代码高亮之前拦截 mermaid 代码块
+- 自动转换为 Mermaid 渲染容器
+- 完全绕过代码高亮和 WordPress 格式化
+
+### 2. Markdown 容器语法（备选）
 
 ```markdown
 ::: mermaid
@@ -20,19 +43,41 @@ flowchart TD
 - ✅ 在纯文本编辑器中也很清晰
 - ✅ 易于迁移到其他平台
 
-### 为什么使用容器语法？
+### 3. Shortcode 格式（兼容）
 
-**Markdown 容器语法** (`::: mermaid ... :::`) 是现代 Markdown 扩展的标准方式：
+```
+[mermaid]
+flowchart TD
+    A[开始] --> B[处理]
+    B --> C[结束]
+[/mermaid]
+```
 
-- **VuePress** 使用这种语法
-- **Docusaurus** 使用这种语法
-- **MkDocs** 使用类似语法
-- **符合 CommonMark 扩展规范**
+**优点**：
+- ✅ WordPress 原生支持
+- ✅ 不会被任何插件干扰
+- ✅ 兼容性最好
 
-这种语法不会被 WP-Markdown 插件当作代码块处理，因此：
-- 不会被套上代码高亮窗口
+**缺点**：
+- ❌ 不符合 Markdown 标准
+- ❌ 在其他平台无法使用
+- ❌ 编辑器中不显示为代码块
+
+### 为什么推荐标准 Markdown 代码块？
+
+**标准 Markdown 代码块** (` ```mermaid `) 是最通用的方式：
+
+- **GitHub** 使用这种语法
+- **GitLab** 使用这种语法
+- **Typora** 使用这种语法
+- **VS Code** 使用这种语法
+- **符合 CommonMark 规范**
+
+Argon 主题通过**代码块魔改**技术，在代码高亮之前拦截并转换 mermaid 代码块，因此：
+- 不会被代码高亮处理（无行号、无控制按钮）
+- 不会有字符转义问题（`-->` 保持不变）
 - 不会有嵌套结构问题
-- 不会有字符转义问题
+- 完全符合标准 Markdown 语法
 
 ---
 
@@ -40,6 +85,17 @@ flowchart TD
 
 ### 流程图
 
+**标准 Markdown 代码块：**
+```markdown
+三个反引号mermaid
+flowchart LR
+    A[用户] --> B{登录?}
+    B -->|是| C[显示首页]
+    B -->|否| D[跳转登录页]
+三个反引号
+```
+
+**容器语法：**
 ```markdown
 ::: mermaid
 flowchart LR
@@ -52,18 +108,18 @@ flowchart LR
 ### 时序图
 
 ```markdown
-::: mermaid
+三个反引号mermaid
 sequenceDiagram
     Alice->>Bob: Hello Bob!
     Bob-->>Alice: Hi Alice!
     Alice->>Bob: How are you?
-:::
+三个反引号
 ```
 
 ### 类图
 
 ```markdown
-::: mermaid
+三个反引号mermaid
 classDiagram
     class Animal {
         +String name
@@ -75,13 +131,13 @@ classDiagram
         +bark()
     }
     Animal <|-- Dog
-:::
+三个反引号
 ```
 
 ### 甘特图
 
 ```markdown
-::: mermaid
+三个反引号mermaid
 gantt
     title 项目进度
     dateFormat YYYY-MM-DD
@@ -91,31 +147,31 @@ gantt
     section 开发
     前端开发 :b1, after a2, 10d
     后端开发 :b2, after a2, 12d
-:::
+三个反引号
 ```
 
 ### 状态图
 
 ```markdown
-::: mermaid
+三个反引号mermaid
 stateDiagram-v2
     [*] --> 待审核
     待审核 --> 已通过: 审核通过
     待审核 --> 已拒绝: 审核拒绝
     已通过 --> [*]
     已拒绝 --> [*]
-:::
+三个反引号
 ```
 
 ### 饼图
 
 ```markdown
-::: mermaid
+三个反引号mermaid
 pie title 宠物分布
     "狗" : 386
     "猫" : 85
     "兔子" : 15
-:::
+三个反引号
 ```
 
 ---
@@ -195,9 +251,17 @@ pie title 宠物分布
 
 ## 最佳实践
 
-### 1. 使用容器语法
+### 1. 使用标准 Markdown 代码块
 
 **推荐：**
+```markdown
+三个反引号mermaid
+flowchart TD
+    A --> B
+三个反引号
+```
+
+**也可以使用容器语法：**
 ```markdown
 ::: mermaid
 flowchart TD
@@ -205,12 +269,12 @@ flowchart TD
 :::
 ```
 
-**不推荐：**
+**不推荐（Shortcode）：**
 ```
-三个反引号mermaid
+[mermaid]
 flowchart TD
     A --> B
-三个反引号
+[/mermaid]
 ```
 
 ### 2. 避免特殊字符
@@ -252,19 +316,48 @@ flowchart TD
 
 Argon 主题支持以下格式（按优先级排序）：
 
-1. `::: mermaid ... :::` - Markdown 容器语法 ⭐（推荐）
-2. `<div class="mermaid">` - 标准格式（WPMD 生成）
-3. `<pre><code class="language-mermaid">` - Markdown 格式
-4. `<pre data-lang="mermaid">` - 自定义属性格式
-5. `<code class="mermaid">` - 简化格式
+1. ` ```mermaid ... ``` ` - 标准 Markdown 代码块 ⭐（推荐）
+2. `::: mermaid ... :::` - Markdown 容器语法（备选）
+3. `[mermaid]...[/mermaid]` - Shortcode 格式（兼容）
+4. `<div class="mermaid">` - 标准格式（WPMD 生成）
+5. `<pre><code class="language-mermaid">` - Markdown 格式（降级）
+6. `<pre data-lang="mermaid">` - 自定义属性格式
+7. `<code class="mermaid">` - 简化格式
+
+### 代码块魔改技术
+
+**工作原理**：
+
+1. **拦截阶段**（在代码高亮之前）
+   - 查找所有 `<pre><code class="language-mermaid">` 元素
+   - 提取纯文本代码（使用 `textContent`）
+   - 创建 `<div class="mermaid-from-codeblock">` 容器
+   - 替换原始代码块元素
+
+2. **代码高亮阶段**
+   - 处理其他代码块
+   - 跳过 mermaid 相关的元素
+
+3. **Mermaid 渲染阶段**
+   - 检测所有 Mermaid 容器（包括新的 `mermaid-from-codeblock`）
+   - 提取代码并渲染为 SVG 图表
+
+**优势**：
+- ✅ 完全绕过代码高亮干扰
+- ✅ 特殊字符不被转换（`-->` 保持不变）
+- ✅ 换行符正确保留
+- ✅ 支持 PJAX 页面切换
+- ✅ 性能无明显影响
 
 ### 代码提取逻辑
 
 1. **检测代码块**
    - CSS 选择器查找标准格式
    - TreeWalker 查找容器语法
+   - 代码块魔改：在代码高亮前拦截
 
 2. **提取代码**
+   - 代码块魔改格式：直接提取 `textContent`
    - 容器语法：移除 `::: mermaid` 和 `:::`
    - WPMD 格式：正则提取 `document.write()` 内容
    - 标准格式：直接提取文本内容
@@ -329,11 +422,16 @@ Argon 主题支持以下格式（按优先级排序）：
 ## 更新日志
 
 ### 2026-01-24
+- ✅ **新增代码块魔改支持**：支持标准 Markdown 代码块 (` ```mermaid `)
+- ✅ 在代码高亮之前拦截并转换 mermaid 代码块
+- ✅ 完全绕过代码高亮和 WordPress 格式化
+- ✅ 特殊字符不被转换（`-->` 保持不变）
+- ✅ 换行符正确保留
+- ✅ 支持 PJAX 页面切换
 - ✅ 添加 Markdown 容器语法支持（`::: mermaid ... :::`）
 - ✅ 修复 WP-Markdown 格式的代码提取问题
 - ✅ 改进正则表达式，支持多行代码
 - ✅ 添加降级方案和详细日志
-- ✅ 简化标记方式，只保留容器语法作为推荐方式
 - ✅ 修复代码高亮干扰 mermaid 渲染的问题（排除 mermaid 代码块）
 - ✅ 修复容器语法中空行导致内容被截断的问题
 - ✅ 修复 WP-Markdown 的 document.write 重复输出问题

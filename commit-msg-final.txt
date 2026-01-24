@@ -1,0 +1,69 @@
+feat: 添加 Markdown 容器语法支持，修复 WPMD 代码提取问题
+
+问题描述:
+- WP-Markdown 插件将 Markdown 代码块转换为特殊格式
+- 传统标记方式会被 WPMD 套上代码高亮窗口，导致嵌套结构
+- 某些字符被自动转义，导致渲染失败
+- 之前的正则表达式只能提取到第一个单词
+
+解决方案:
+添加 Markdown 容器语法支持（::: mermaid ... :::）
+- 符合 Markdown 扩展规范（VuePress、Docusaurus 等使用相同语法）
+- 不会被 WPMD 当作代码块处理，避免嵌套问题
+- 语法简洁，易于编写和阅读
+- 易于迁移到其他平台
+
+修复内容:
+1. 改进正则表达式为 ([\s\S]*?)，匹配包括换行在内的所有字符
+2. 添加三层降级方案：
+   - 方案1: 匹配 document.write("...")
+   - 方案2: 直接提取引号内容
+   - 方案3: 纯文本提取
+3. 增加详细的调试日志（原始内容、提取长度、最终代码）
+4. 优化解码顺序（先 HTML 实体，后转义字符）
+5. 添加容器语法检测逻辑（TreeWalker）
+
+代码变更:
+- functions.php:
+  * argon_has_mermaid_content(): 添加容器语法检测
+
+- argontheme.js:
+  * detectMermaidBlocks(): 添加容器语法检测
+  * detectContainerBlocks(): 新增函数，检测 ::: mermaid 容器
+  * extractContainerContent(): 新增函数，提取容器内容
+  * extractMermaidCode(): 支持容器语法的代码提取
+
+- tests/test-wp-markdown-format.html:
+  * 添加 7 种测试场景
+  * 包含容器语法和标准格式测试
+
+- docs/mermaid-usage-guide.md:
+  * 详细说明容器语法使用方法
+  * 提供使用示例和最佳实践
+  * 包含故障排除指南
+
+支持的标记格式（按优先级）:
+1. ::: mermaid ... ::: - Markdown 容器语法 ⭐（推荐）
+2. <div class="mermaid"> - 标准格式（WPMD 生成）
+3. <pre><code class="language-mermaid"> - Markdown 格式
+4. <pre data-lang="mermaid"> - 自定义属性格式
+5. <code class="mermaid"> - 简化格式
+
+推荐使用方式:
+::: mermaid
+flowchart TD
+    A[开始] --> B[处理]
+    B --> C[结束]
+:::
+
+测试方法:
+1. 访问测试页面：https://blog.cartol.top/wp-content/themes/argon/tests/test-wp-markdown-format.html
+2. 查看控制台日志，确认所有测试用例都能正确提取和渲染
+3. 在文章中使用推荐的容器语法
+4. 如果还有问题，查看控制台的详细日志
+
+注意事项:
+- 强烈推荐使用 Markdown 容器语法，避免 WPMD 处理
+- 传统 Markdown 代码块仍然支持，但可能有嵌套问题
+- 所有标记方式都会自动解码 HTML 实体和转义字符
+- 容器语法符合现代 Markdown 扩展规范，易于迁移

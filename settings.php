@@ -3217,6 +3217,239 @@ function themeoptions_page(){
 						</td>
 					</tr>
 
+					<tr><th class="subtitle"><h3 id="subsection-mermaid-preview"><?php _e('预览与示例', 'argon');?></h3></th></tr>
+
+					<tr>
+						<th><label><?php _e('实时预览', 'argon');?></label></th>
+						<td>
+							<div id="mermaid-preview-container" style="margin-bottom: 20px;">
+								<div style="margin-bottom: 10px;">
+									<label style="display: block; margin-bottom: 5px; font-weight: bold;">
+										<?php _e('选择示例图表：', 'argon'); ?>
+									</label>
+									<select id="mermaid-example-selector" style="width: 100%; max-width: 400px; padding: 5px;">
+										<option value="flowchart"><?php _e('流程图 (Flowchart)', 'argon'); ?></option>
+										<option value="sequence"><?php _e('时序图 (Sequence Diagram)', 'argon'); ?></option>
+										<option value="class"><?php _e('类图 (Class Diagram)', 'argon'); ?></option>
+										<option value="state"><?php _e('状态图 (State Diagram)', 'argon'); ?></option>
+										<option value="gantt"><?php _e('甘特图 (Gantt Chart)', 'argon'); ?></option>
+										<option value="pie"><?php _e('饼图 (Pie Chart)', 'argon'); ?></option>
+										<option value="git"><?php _e('Git 图 (Git Graph)', 'argon'); ?></option>
+									</select>
+								</div>
+								
+								<div style="margin-bottom: 10px;">
+									<label style="display: block; margin-bottom: 5px; font-weight: bold;">
+										<?php _e('Mermaid 代码：', 'argon'); ?>
+									</label>
+									<textarea id="mermaid-code-input" rows="10" style="width: 100%; font-family: monospace; padding: 10px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+								</div>
+								
+								<div style="margin-bottom: 10px;">
+									<button type="button" id="mermaid-render-btn" class="button button-primary">
+										<?php _e('渲染预览', 'argon'); ?>
+									</button>
+									<button type="button" id="mermaid-reset-btn" class="button">
+										<?php _e('重置', 'argon'); ?>
+									</button>
+								</div>
+								
+								<div style="margin-bottom: 10px;">
+									<label style="display: block; margin-bottom: 5px; font-weight: bold;">
+										<?php _e('预览效果：', 'argon'); ?>
+									</label>
+									<div id="mermaid-preview-output" style="padding: 20px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; min-height: 200px; overflow-x: auto;">
+										<p style="color: #666; text-align: center; margin: 80px 0;">
+											<?php _e('请选择示例或输入 Mermaid 代码，然后点击"渲染预览"按钮', 'argon'); ?>
+										</p>
+									</div>
+								</div>
+								
+								<div id="mermaid-preview-error" style="display: none; padding: 10px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; margin-top: 10px;">
+									<p style="margin: 0; color: #856404;">
+										<strong><?php _e('渲染错误：', 'argon'); ?></strong>
+										<span id="mermaid-error-message"></span>
+									</p>
+								</div>
+							</div>
+							
+							<p class="description">
+								<?php _e('在此预览区域可以实时测试 Mermaid 图表的渲染效果。选择示例图表或输入自定义代码，点击"渲染预览"查看效果。', 'argon'); ?>
+							</p>
+							
+							<script>
+							// Mermaid 示例代码
+							const mermaidExamples = {
+								flowchart: `flowchart TD
+    A[开始] --> B{是否登录?}
+    B -->|是| C[显示主页]
+    B -->|否| D[跳转登录页]
+    C --> E[结束]
+    D --> E`,
+								sequence: `sequenceDiagram
+    participant 用户
+    participant 浏览器
+    participant 服务器
+    用户->>浏览器: 输入网址
+    浏览器->>服务器: 发送请求
+    服务器-->>浏览器: 返回页面
+    浏览器-->>用户: 显示内容`,
+								class: `classDiagram
+    class Animal {
+        +String name
+        +int age
+        +makeSound()
+    }
+    class Dog {
+        +String breed
+        +bark()
+    }
+    class Cat {
+        +String color
+        +meow()
+    }
+    Animal <|-- Dog
+    Animal <|-- Cat`,
+								state: `stateDiagram-v2
+    [*] --> 待机
+    待机 --> 运行: 启动
+    运行 --> 暂停: 暂停
+    暂停 --> 运行: 继续
+    运行 --> 停止: 停止
+    停止 --> [*]`,
+								gantt: `gantt
+    title 项目开发计划
+    dateFormat YYYY-MM-DD
+    section 设计阶段
+    需求分析           :a1, 2024-01-01, 7d
+    UI设计            :a2, after a1, 5d
+    section 开发阶段
+    前端开发          :b1, after a2, 10d
+    后端开发          :b2, after a2, 12d
+    section 测试阶段
+    功能测试          :c1, after b1, 5d
+    性能测试          :c2, after b2, 3d`,
+								pie: `pie title 编程语言使用占比
+    "JavaScript" : 35
+    "Python" : 25
+    "Java" : 20
+    "C++" : 12
+    "其他" : 8`,
+								git: `gitGraph
+    commit
+    commit
+    branch develop
+    checkout develop
+    commit
+    commit
+    checkout main
+    merge develop
+    commit
+    commit`
+							};
+							
+							// 初始化
+							jQuery(document).ready(function($) {
+								const $selector = $('#mermaid-example-selector');
+								const $codeInput = $('#mermaid-code-input');
+								const $renderBtn = $('#mermaid-render-btn');
+								const $resetBtn = $('#mermaid-reset-btn');
+								const $output = $('#mermaid-preview-output');
+								const $error = $('#mermaid-preview-error');
+								const $errorMsg = $('#mermaid-error-message');
+								
+								// 加载默认示例
+								$codeInput.val(mermaidExamples.flowchart);
+								
+								// 切换示例
+								$selector.on('change', function() {
+									const example = $(this).val();
+									$codeInput.val(mermaidExamples[example]);
+								});
+								
+								// 渲染预览
+								$renderBtn.on('click', function() {
+									const code = $codeInput.val().trim();
+									if (!code) {
+										alert('<?php _e('请输入 Mermaid 代码', 'argon'); ?>');
+										return;
+									}
+									
+									// 隐藏错误信息
+									$error.hide();
+									
+									// 显示加载状态
+									$output.html('<p style="color: #666; text-align: center; margin: 80px 0;"><?php _e('正在渲染...', 'argon'); ?></p>');
+									
+									// 动态加载 Mermaid 库
+									if (typeof mermaid === 'undefined') {
+										const script = document.createElement('script');
+										script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
+										script.onload = function() {
+											renderMermaid(code);
+										};
+										script.onerror = function() {
+											showError('<?php _e('Mermaid 库加载失败，请检查网络连接', 'argon'); ?>');
+										};
+										document.head.appendChild(script);
+									} else {
+										renderMermaid(code);
+									}
+								});
+								
+								// 重置
+								$resetBtn.on('click', function() {
+									$selector.val('flowchart').trigger('change');
+									$output.html('<p style="color: #666; text-align: center; margin: 80px 0;"><?php _e('请选择示例或输入 Mermaid 代码，然后点击"渲染预览"按钮', 'argon'); ?></p>');
+									$error.hide();
+								});
+								
+								// 渲染函数
+								function renderMermaid(code) {
+									try {
+										// 获取当前主题设置
+										const themeSelect = $('select[name="argon_mermaid_theme"]');
+										let theme = themeSelect.length ? themeSelect.val() : 'default';
+										
+										// 如果是自动切换，根据当前页面模式选择主题
+										if (theme === 'auto') {
+											theme = $('html').hasClass('darkmode') ? 'dark' : 'default';
+										}
+										
+										// 初始化 Mermaid
+										mermaid.initialize({
+											startOnLoad: false,
+											theme: theme,
+											securityLevel: 'loose',
+											logLevel: 'error'
+										});
+										
+										// 生成唯一 ID
+										const id = 'mermaid-preview-' + Date.now();
+										
+										// 渲染
+										mermaid.render(id, code).then(function(result) {
+											$output.html(result.svg);
+											$error.hide();
+										}).catch(function(error) {
+											showError(error.message || error.toString());
+										});
+									} catch (error) {
+										showError(error.message || error.toString());
+									}
+								}
+								
+								// 显示错误
+								function showError(message) {
+									$output.html('<p style="color: #666; text-align: center; margin: 80px 0;"><?php _e('渲染失败', 'argon'); ?></p>');
+									$errorMsg.text(message);
+									$error.show();
+								}
+							});
+							</script>
+						</td>
+					</tr>
+
 					<!-- ========== 16. 高级设置 ========== -->
 				<tr><th class="subtitle"><h2 id="section-advanced"><?php _e('高级设置', 'argon');?></h2></th></tr>
 
