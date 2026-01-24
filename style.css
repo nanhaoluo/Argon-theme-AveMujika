@@ -913,19 +913,79 @@ article .wp-block-separator {
 	background: var(--color-foreground);
 	border-radius: 8px;
 	padding: 20px;
-	margin: 20px 0;
+	margin: 20px -20px;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-	overflow-x: auto;
-	max-width: 100%;
+	overflow: hidden;
+	position: relative;
 	opacity: 0;
 	animation: mermaidFadeIn 0.3s ease-in-out forwards;
+}
+
+.mermaid-container-inner {
+	overflow: auto;
+	transform-origin: top left;
+	transition: transform 0.3s ease;
 }
 
 .mermaid-container svg {
 	width: 100% !important;
 	height: auto !important;
-	max-width: 100%;
 	display: block;
+}
+
+/* 缩放控制按钮 */
+.mermaid-zoom-controls {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	display: flex;
+	gap: 5px;
+	z-index: 10;
+	background: rgba(255, 255, 255, 0.9);
+	border-radius: 6px;
+	padding: 5px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+html.darkmode .mermaid-zoom-controls {
+	background: rgba(30, 30, 30, 0.9);
+}
+
+.mermaid-zoom-btn {
+	width: 32px;
+	height: 32px;
+	border: none;
+	background: transparent;
+	cursor: pointer;
+	border-radius: 4px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 18px;
+	color: #5e72e4;
+	transition: all 0.2s;
+}
+
+.mermaid-zoom-btn:hover {
+	background: rgba(94, 114, 228, 0.1);
+}
+
+.mermaid-zoom-btn:active {
+	transform: scale(0.95);
+}
+
+.mermaid-zoom-level {
+	display: flex;
+	align-items: center;
+	padding: 0 8px;
+	font-size: 13px;
+	color: #666;
+	min-width: 50px;
+	justify-content: center;
+}
+
+html.darkmode .mermaid-zoom-level {
+	color: #aaa;
 }
 
 /* Mermaid 淡入动画 */
@@ -942,7 +1002,42 @@ article .wp-block-separator {
 
 /* 文章卡片内的 Mermaid 图表 */
 article.card .mermaid-container {
-	margin: 20px 0;
+	margin: 20px -20px;
+}
+
+/* 响应式调整 */
+@media screen and (max-width: 768px) {
+	.mermaid-container {
+		margin: 15px -15px;
+		padding: 15px;
+	}
+	
+	article.card .mermaid-container {
+		margin: 15px -15px;
+	}
+}
+
+@media screen and (max-width: 480px) {
+	.mermaid-container {
+		margin: 10px -10px;
+		padding: 10px;
+	}
+	
+	article.card .mermaid-container {
+		margin: 10px -10px;
+	}
+	
+	.mermaid-zoom-controls {
+		top: 5px;
+		right: 5px;
+		padding: 3px;
+	}
+	
+	.mermaid-zoom-btn {
+		width: 28px;
+		height: 28px;
+		font-size: 16px;
+	}
 }
 
 /* Mermaid 错误提示样式 */
@@ -16629,16 +16724,77 @@ html.darkmode .mermaid-error-container .error-code code {
 	padding: 20px;
 	margin: 20px 0;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-	overflow-x: auto;
-	max-width: 100%;
+	overflow: hidden;
+	position: relative;
+	margin: 20px -20px;
 	transition: opacity 0.3s ease-in;
+}
+
+.mermaid-container-inner {
+	overflow: auto;
+	transform-origin: top left;
+	transition: transform 0.3s ease;
 }
 
 .mermaid-container svg {
 	width: 100% !important;
 	height: auto !important;
-	max-width: 100%;
 	display: block;
+}
+
+/* 缩放控制按钮 */
+.mermaid-zoom-controls {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	display: flex;
+	gap: 5px;
+	z-index: 10;
+	background: rgba(255, 255, 255, 0.9);
+	border-radius: 6px;
+	padding: 5px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+html.darkmode .mermaid-zoom-controls {
+	background: rgba(30, 30, 30, 0.9);
+}
+
+.mermaid-zoom-btn {
+	width: 32px;
+	height: 32px;
+	border: none;
+	background: transparent;
+	cursor: pointer;
+	border-radius: 4px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 18px;
+	color: #5e72e4;
+	transition: all 0.2s;
+}
+
+.mermaid-zoom-btn:hover {
+	background: rgba(94, 114, 228, 0.1);
+}
+
+.mermaid-zoom-btn:active {
+	transform: scale(0.95);
+}
+
+.mermaid-zoom-level {
+	display: flex;
+	align-items: center;
+	padding: 0 8px;
+	font-size: 13px;
+	color: #666;
+	min-width: 50px;
+	justify-content: center;
+}
+
+html.darkmode .mermaid-zoom-level {
+	color: #aaa;
 }
 
 /* ---------- 卡片内的 Mermaid 图表 ---------- */
@@ -16646,7 +16802,7 @@ html.darkmode .mermaid-error-container .error-code code {
 .post-card .mermaid-container,
 .comment-content .mermaid-container {
 	padding: 15px;
-	margin: 15px 0;
+	margin: 15px -15px;
 }
 
 /* ---------- 夜间模式适配 ---------- */
@@ -16659,15 +16815,39 @@ html.darkmode .mermaid-container {
 @media screen and (max-width: 768px) {
 	.mermaid-container {
 		padding: 15px;
-		margin: 15px 0;
+		margin: 15px -15px;
 		border-radius: calc(var(--card-radius) * 0.8);
+	}
+	
+	.card .mermaid-container,
+	.post-card .mermaid-container,
+	.comment-content .mermaid-container {
+		margin: 15px -15px;
 	}
 }
 
 @media screen and (max-width: 480px) {
 	.mermaid-container {
 		padding: 10px;
-		margin: 10px 0;
+		margin: 10px -10px;
+	}
+	
+	.card .mermaid-container,
+	.post-card .mermaid-container,
+	.comment-content .mermaid-container {
+		margin: 10px -10px;
+	}
+	
+	.mermaid-zoom-controls {
+		top: 5px;
+		right: 5px;
+		padding: 3px;
+	}
+	
+	.mermaid-zoom-btn {
+		width: 28px;
+		height: 28px;
+		font-size: 16px;
 	}
 }
 

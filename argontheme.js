@@ -5147,7 +5147,7 @@ void 0;
 		// ---------- 样式增强 ----------
 
 		/**
-		 * 应用容器样式
+		 * 应用容器样式并添加缩放控制
 		 * @param {HTMLElement} container - 图表容器
 		 */
 		applyStyles(container) {
@@ -5161,9 +5161,88 @@ void 0;
 			// 确保 SVG 响应式
 			const svg = container.querySelector('svg');
 			if (svg) {
-				svg.style.maxWidth = '100%';
+				svg.style.width = '100%';
 				svg.style.height = 'auto';
 			}
+
+			// 添加缩放功能
+			this.addZoomControls(container);
+		},
+
+		/**
+		 * 添加缩放控制按钮
+		 * @param {HTMLElement} container - 图表容器
+		 */
+		addZoomControls(container) {
+			// 创建内部容器包裹 SVG
+			const svg = container.querySelector('svg');
+			if (!svg) return;
+
+			// 创建内部容器
+			const inner = document.createElement('div');
+			inner.className = 'mermaid-container-inner';
+			
+			// 将 SVG 移到内部容器
+			container.appendChild(inner);
+			inner.appendChild(svg);
+
+			// 创建缩放控制
+			const controls = document.createElement('div');
+			controls.className = 'mermaid-zoom-controls';
+			controls.innerHTML = `
+				<button class="mermaid-zoom-btn" data-action="zoom-out" title="缩小">−</button>
+				<span class="mermaid-zoom-level">100%</span>
+				<button class="mermaid-zoom-btn" data-action="zoom-in" title="放大">+</button>
+				<button class="mermaid-zoom-btn" data-action="zoom-reset" title="重置">⟲</button>
+			`;
+
+			container.appendChild(controls);
+
+			// 缩放状态
+			let scale = 1;
+			const minScale = 0.5;
+			const maxScale = 3;
+			const step = 0.25;
+
+			// 更新缩放显示
+			const updateZoom = () => {
+				inner.style.transform = `scale(${scale})`;
+				controls.querySelector('.mermaid-zoom-level').textContent = Math.round(scale * 100) + '%';
+			};
+
+			// 绑定按钮事件
+			controls.addEventListener('click', (e) => {
+				const btn = e.target.closest('.mermaid-zoom-btn');
+				if (!btn) return;
+
+				const action = btn.dataset.action;
+				
+				if (action === 'zoom-in' && scale < maxScale) {
+					scale = Math.min(scale + step, maxScale);
+					updateZoom();
+				} else if (action === 'zoom-out' && scale > minScale) {
+					scale = Math.max(scale - step, minScale);
+					updateZoom();
+				} else if (action === 'zoom-reset') {
+					scale = 1;
+					updateZoom();
+				}
+			});
+
+			// 鼠标滚轮缩放（按住 Ctrl）
+			container.addEventListener('wheel', (e) => {
+				if (e.ctrlKey || e.metaKey) {
+					e.preventDefault();
+					
+					const delta = e.deltaY > 0 ? -step : step;
+					const newScale = Math.max(minScale, Math.min(maxScale, scale + delta));
+					
+					if (newScale !== scale) {
+						scale = newScale;
+						updateZoom();
+					}
+				}
+			}, { passive: false });
 		},
 
 		// ---------- 主题切换监听 ----------
