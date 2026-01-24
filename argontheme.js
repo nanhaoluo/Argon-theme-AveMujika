@@ -4478,69 +4478,121 @@ void 0;
 		 * @param {Array} blocks - 代码块数组
 		 */
 		detectContainerBlocks(blocks) {
-			// 查找所有包含 ::: mermaid 的文本节点或 pre/code 元素
-			const walker = document.createTreeWalker(
-				document.body,
-				NodeFilter.SHOW_ELEMENT,
-				{
-					acceptNode: function(node) {
-						// 检查 pre 或 code 元素
-						if (node.tagName === 'PRE' || node.tagName === 'CODE') {
-							const text = node.textContent;
-							if (text && text.trim().startsWith('::: mermaid')) {
-								return NodeFilter.FILTER_ACCEPT;
-							}
-						}
-						// 检查 p 元素（可能被 Markdown 解析器包裹）
-						if (node.tagName === 'P') {
-							const text = node.textContent;
-							if (text && text.trim().startsWith('::: mermaid')) {
-								return NodeFilter.FILTER_ACCEPT;
-							}
-						}
-						return NodeFilter.FILTER_SKIP;
-					}
-				},
-				false
-			);
-
-			while (walker.nextNode()) {
-				const element = walker.currentNode;
-				const container = this.extractContainerContent(element);
-				if (container && !blocks.includes(container)) {
-					blocks.push(container);
-					this.logDebug('检测到 Markdown 容器语法的 Mermaid 代码块');
+			// 查找所有包含 ::: mermaid 的元素
+			const allElements = document.querySelectorAll('p, pre, code, div');
+			const processedElements = new Set();
+			
+			allElements.forEach(element => {
+				// 跳过已处理的元素
+				if (processedElements.has(element)) {
+					return;
 				}
-			}
+				
+				const text = element.textContent.trim();
+				
+				// 检查是否是开始标记
+				if (text.startsWith('::: mermaid') || text === '::: mermaid') {
+					this.logDebug('找到容器语法开始标记');
+					
+					// 收集所有内容直到结束标记
+					const container = this.extractContainerContent(element, processedElements);
+					if (container && !blocks.includes(container)) {
+						blocks.push(container);
+						this.logDebug('检测到 Markdown 容器语法的 Mermaid 代码块');
+					}
+				}
+			});
 		},
 
 		/**
 		 * 提取 Markdown 容器语法的内容
-		 * @param {HTMLElement} element - 包含容器语法的元素
+		 * @param {HTMLElement} startElement - 包含开始标记的元素
+		 * @param {Set} processedElements - 已处理的元素集合
 		 * @returns {HTMLElement|null} 包含代码的容器元素
 		 */
-		extractContainerContent(element) {
-			let text = element.textContent.trim();
+		extractContainerContent(startElement, processedElements) {
+			let codeLines = [];
+			let currentElement = startElement;
+			let foundStart = false;
+			let foundEnd = false;
 			
-			// 移除开始标记 ::: mermaid（保留后面的换行符和空行）
-			text = text.replace(/^:::\s*mermaid\s*\n?/i, '');
+			// 标记开始元素为已处理
+			processedElements.add(startElement);
 			
-			// 移除结束标记 :::（保留前面的换行符和空行）
-			text = text.replace(/\n?:::\s*$/i, '');
+			// 处理开始元素
+			let startText = startElement.textContent.trim();
+			if (startText.startsWith('::: mermaid')) {
+				foundStart = true;
+				// 移除开始标记，保留同一元素中的其他内容
+				startText = startText.replace(/^:::\s*mermaid\s*/i, '').trim();
+				if (startText && !startText.startsWith(':::')) {
+					codeLines.push(startText);
+				}
+				// 检查是否在同一元素中就有结束标记
+				if (startText.endsWith(':::')) {
+					foundEnd = true;
+					// 移除结束标记
+					let lastLine = codeLines[codeLines.length - 1];
+					if (lastLine) {
+						codeLines[codeLines.length - 1] = lastLine.replace(/:::\s*$/, '').trim();
+					}
+				}
+			}
 			
-			// 不要 trim，保留代码中的空行
-			if (!text) {
+			// 如果还没找到结束标记，继续查找后续兄弟元素
+			if (foundStart && !foundEnd) {
+				currentElement = startElement.nextElementSibling;
+				
+				while (currentElement) {
+					processedElements.add(currentElement);
+					let text = currentElement.textContent.trim();
+					
+					// 检查是否是结束标记
+					if (text === ':::' || text.endsWith(':::')) {
+						foundEnd = true;
+						// 如果结束标记前还有内容，保留它
+						if (text !== ':::') {
+							text = text.replace(/:::\s*$/, '').trim();
+							if (text) {
+								codeLines.push(text);
+							}
+						}
+						break;
+					}
+					
+					// 添加当前元素的内容
+					if (text) {
+						codeLines.push(text);
+					} else {
+						// 空元素，添加空行
+						codeLines.push('');
+					}
+					
+					currentElement = currentElement.nextElementSibling;
+				}
+			}
+			
+			// 如果没有找到完整的容器语法，返回 null
+			if (!foundStart || !foundEnd) {
+				this.logDebug('容器语法不完整，跳过');
+				return null;
+			}
+			
+			// 合并所有行
+			let code = codeLines.join('\n').trim();
+			
+			if (!code) {
 				return null;
 			}
 
 			// 创建一个新的容器来存储代码
 			const container = document.createElement('div');
 			container.className = 'mermaid-container-block';
-			container.textContent = text;
+			container.textContent = code;
 			container.dataset.containerBlock = 'true';
 
-			// 替换原始元素
-			element.parentNode.replaceChild(container, element);
+			// 替换开始元素
+			startElement.parentNode.replaceChild(container, startElement);
 
 			return container;
 		},
@@ -4590,6 +4642,10 @@ void 0;
 							this.logDebug('使用降级方案提取代码');
 						}
 					}
+					
+					// 重要：移除 script 标签，避免重复渲染
+					// WP-Markdown 会在 script 后面再输出一次代码
+					scriptTag.remove();
 				} else {
 					code = element.textContent;
 					this.logDebug('从纯文本提取代码');
