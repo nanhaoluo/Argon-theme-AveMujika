@@ -4520,20 +4520,31 @@ void 0;
 			processedElements.add(startElement);
 			
 			// 处理开始元素
+			// 使用 innerHTML 来获取原始内容，包括 <br> 标签
+			let startHTML = startElement.innerHTML;
 			let startText = startElement.textContent.trim();
+			
 			if (startText.startsWith('::: mermaid')) {
 				foundStart = true;
+				this.logDebug('找到容器语法开始标记，原始 HTML: ' + startHTML.substring(0, 100));
+				
 				// 移除开始标记，保留同一元素中的其他内容
 				startText = startText.replace(/^:::\s*mermaid\s*/i, '').trim();
 				if (startText && !startText.startsWith(':::')) {
-					codeLines.push(startText);
+					// 如果开始标记后有内容，需要从 HTML 中提取
+					// 将 <br> 转换为换行符
+					let contentHTML = startHTML.replace(/^:::\s*mermaid\s*<br\s*\/?>/i, '');
+					let contentText = this.htmlToText(contentHTML);
+					if (contentText.trim()) {
+						codeLines.push(contentText);
+					}
 				}
 				// 检查是否在同一元素中就有结束标记
 				if (startText.endsWith(':::')) {
 					foundEnd = true;
 					// 移除结束标记
-					let lastLine = codeLines[codeLines.length - 1];
-					if (lastLine) {
+					if (codeLines.length > 0) {
+						let lastLine = codeLines[codeLines.length - 1];
 						codeLines[codeLines.length - 1] = lastLine.replace(/:::\s*$/, '').trim();
 					}
 				}
@@ -4554,15 +4565,19 @@ void 0;
 						if (text !== ':::') {
 							text = text.replace(/:::\s*$/, '').trim();
 							if (text) {
-								codeLines.push(text);
+								// 将 HTML 转换为文本，保留换行符
+								let contentText = this.htmlToText(currentElement.innerHTML);
+								codeLines.push(contentText);
 							}
 						}
 						break;
 					}
 					
 					// 添加当前元素的内容
-					if (text) {
-						codeLines.push(text);
+					// 将 HTML 转换为文本，保留换行符
+					let contentText = this.htmlToText(currentElement.innerHTML);
+					if (contentText.trim()) {
+						codeLines.push(contentText);
 					} else {
 						// 空元素，添加空行
 						codeLines.push('');
@@ -4581,6 +4596,8 @@ void 0;
 			// 合并所有行
 			let code = codeLines.join('\n').trim();
 			
+			this.logDebug('提取的完整代码: ' + code.substring(0, 200));
+			
 			if (!code) {
 				return null;
 			}
@@ -4595,6 +4612,27 @@ void 0;
 			startElement.parentNode.replaceChild(container, startElement);
 
 			return container;
+		},
+		
+		/**
+		 * 将 HTML 转换为纯文本，保留换行符
+		 * @param {string} html - HTML 字符串
+		 * @returns {string} 纯文本
+		 */
+		htmlToText(html) {
+			// 将 <br> 和 <br/> 转换为换行符
+			let text = html.replace(/<br\s*\/?>/gi, '\n');
+			// 移除其他 HTML 标签
+			text = text.replace(/<[^>]+>/g, '');
+			// 解码 HTML 实体
+			text = text
+				.replace(/&nbsp;/g, ' ')
+				.replace(/&lt;/g, '<')
+				.replace(/&gt;/g, '>')
+				.replace(/&amp;/g, '&')
+				.replace(/&quot;/g, '"')
+				.replace(/&#039;/g, "'");
+			return text;
 		},
 
 		/**
