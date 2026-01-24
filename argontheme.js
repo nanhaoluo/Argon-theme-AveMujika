@@ -4524,10 +4524,44 @@ void 0;
 			let startHTML = startElement.innerHTML;
 			let startText = startElement.textContent.trim();
 			
+			this.logDebug('检查元素，textContent: ' + startText.substring(0, 50));
+			this.logDebug('innerHTML: ' + startHTML.substring(0, 100));
+			
 			if (startText.startsWith('::: mermaid')) {
 				foundStart = true;
-				this.logDebug('找到容器语法开始标记，原始 HTML: ' + startHTML.substring(0, 100));
+				this.logDebug('找到容器语法开始标记');
 				
+				// 检查是否整个内容都在一个元素中
+				if (startText.includes(':::') && startText.lastIndexOf(':::') > 10) {
+					// 整个容器语法在一个元素中
+					this.logDebug('检测到单元素容器语法');
+					
+					// 使用 htmlToText 转换整个 HTML
+					let fullText = this.htmlToText(startHTML);
+					this.logDebug('转换后的完整文本: ' + fullText.substring(0, 200));
+					
+					// 移除开始和结束标记
+					fullText = fullText.replace(/^:::\s*mermaid\s*/i, '').trim();
+					fullText = fullText.replace(/:::\s*$/, '').trim();
+					
+					this.logDebug('移除标记后的代码: ' + fullText.substring(0, 200));
+					
+					if (fullText) {
+						// 创建容器
+						const container = document.createElement('div');
+						container.className = 'mermaid-container-block';
+						container.textContent = fullText;
+						container.dataset.containerBlock = 'true';
+						
+						// 替换开始元素
+						startElement.parentNode.replaceChild(container, startElement);
+						
+						return container;
+					}
+					return null;
+				}
+				
+				// 多元素容器语法（原有逻辑）
 				// 移除开始标记，保留同一元素中的其他内容
 				startText = startText.replace(/^:::\s*mermaid\s*/i, '').trim();
 				if (startText && !startText.startsWith(':::')) {
@@ -4631,7 +4665,20 @@ void 0;
 				.replace(/&gt;/g, '>')
 				.replace(/&amp;/g, '&')
 				.replace(/&quot;/g, '"')
-				.replace(/&#039;/g, "'");
+				.replace(/&#039;/g, "'")
+				.replace(/&#8211;/g, '-')  // EN DASH
+				.replace(/&#8212;/g, '--') // EM DASH
+				.replace(/&#8594;/g, '->') // RIGHTWARDS ARROW
+				.replace(/&ndash;/g, '-')  // EN DASH (named entity)
+				.replace(/&mdash;/g, '--') // EM DASH (named entity)
+				.replace(/&rarr;/g, '->'); // RIGHTWARDS ARROW (named entity)
+			
+			// 转换 Unicode 字符（WordPress 可能直接输出 Unicode）
+			text = text
+				.replace(/–/g, '-')   // U+2013 EN DASH
+				.replace(/—/g, '--')  // U+2014 EM DASH
+				.replace(/→/g, '->'); // U+2192 RIGHTWARDS ARROW
+			
 			return text;
 		},
 
