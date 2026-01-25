@@ -4799,6 +4799,44 @@ void 0;
 		config: null,
 		
 		/**
+		 * 等待 Mermaid 库加载
+		 * 需求 2.6: 清除缓存后首次加载时等待 Mermaid 库完全加载
+		 * 需求 4.1: 开始渲染前检查 Mermaid 库是否已加载
+		 * 需求 4.2: Mermaid 库未加载时等待库加载或显示错误提示
+		 * @param {number} timeout - 超时时间（毫秒），默认 5000ms
+		 * @returns {Promise<boolean>} 是否加载成功
+		 */
+		waitForMermaid(timeout = 5000) {
+			return new Promise((resolve) => {
+				// 如果已经加载，直接返回成功
+				if (typeof window.mermaid !== 'undefined') {
+					this.logDebug('Mermaid 库已加载');
+					resolve(true);
+					return;
+				}
+				
+				this.logDebug('Mermaid 库未加载，开始等待...');
+				
+				const startTime = Date.now();
+				const checkInterval = setInterval(() => {
+					// 检查是否已加载
+					if (typeof window.mermaid !== 'undefined') {
+						clearInterval(checkInterval);
+						const loadTime = Date.now() - startTime;
+						this.logDebug(`Mermaid 库加载成功，耗时 ${loadTime}ms`);
+						resolve(true);
+					} 
+					// 检查是否超时
+					else if (Date.now() - startTime > timeout) {
+						clearInterval(checkInterval);
+						this.logError(`Mermaid 库加载超时（${timeout}ms）`);
+						resolve(false);
+					}
+				}, 100); // 每 100ms 检查一次
+			});
+		},
+		
+		/**
 		 * 初始化 Mermaid 配置
 		 */
 		initConfig() {
@@ -5251,10 +5289,19 @@ void 0;
 
 		/**
 		 * 批量渲染所有 Mermaid 图表
+		 * 需求 2.6: 清除缓存后首次加载时等待 Mermaid 库完全加载
+		 * 需求 4.1: 开始渲染前检查 Mermaid 库是否已加载
 		 * 需求 18.1: 使用批量渲染，避免阻塞主线程
 		 * 需求 18.4: 延迟渲染视口外的图表，优先渲染可见图表
+		 * @returns {Promise<void>}
 		 */
-		renderAllCharts() {
+		async renderAllCharts() {
+			// 需求 4.1-4.2: 等待 Mermaid 库加载
+			if (!await this.waitForMermaid()) {
+				this.logError('Mermaid 库加载失败，无法渲染图表');
+				return;
+			}
+			
 			if (!this.initialized) {
 				this.logDebug('Mermaid 未初始化，跳过渲染');
 				return;
@@ -6657,32 +6704,18 @@ void 0;
 
 		/**
 		 * 初始化渲染引擎
+		 * @returns {Promise<void>}
 		 */
-		init() {
+		async init() {
 			// 检查是否启用
 			if (typeof window.argonMermaidConfig !== 'undefined' && !window.argonMermaidConfig.enabled) {
 				this.logDebug('Mermaid 支持未启用');
 				return;
 			}
 
-			// 检查 Mermaid 库是否加载
-			if (typeof window.mermaid === 'undefined') {
-				this.logDebug('Mermaid 库未加载，等待加载...');
-				
-				// 等待库加载（最多等待 5 秒）
-				let attempts = 0;
-				const checkInterval = setInterval(() => {
-					attempts++;
-					if (typeof window.mermaid !== 'undefined') {
-						clearInterval(checkInterval);
-						this.logDebug('Mermaid 库加载完成');
-						this.initAndRender();
-					} else if (attempts >= 50) {
-						clearInterval(checkInterval);
-						this.logError('Mermaid 库加载超时');
-					}
-				}, 100);
-				
+			// 需求 2.6, 4.1-4.2: 等待 Mermaid 库加载
+			if (!await this.waitForMermaid()) {
+				this.logError('Mermaid 库加载失败');
 				return;
 			}
 
