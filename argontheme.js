@@ -4879,40 +4879,51 @@ void 0;
 
 		/**
 		 * 检测所有 Mermaid 代码块
-		 * @returns {Array} Mermaid 代码块元素数组
+		 * 需求 3.1-3.5: 扫描页面中的 Mermaid 代码块并过滤已渲染的块
+		 * @returns {HTMLElement[]} 未渲染的 Mermaid 代码块数组
 		 */
 		detectMermaidBlocks() {
 			const blocks = [];
 			
-			// 检测规则（优先级从高到低）
-			const selectors = [
-				'div.mermaid-shortcode',                 // Shortcode 格式（推荐）
-				'div.mermaid-from-codeblock',            // 代码块魔改格式（新增）
-				'div.mermaid',                           // 标准格式
-				'pre code.language-mermaid',             // Markdown 格式（降级）
-				'pre[data-lang="mermaid"]',              // 自定义属性格式
-				'code.mermaid'                           // 简化格式
-			];
-
-			selectors.forEach(selector => {
-				const elements = document.querySelectorAll(selector);
-				elements.forEach(element => {
-					// 避免重复添加
-					if (!blocks.includes(element)) {
-						// 检查是否在注释中
-						if (!this.isInComment(element)) {
-							blocks.push(element);
-						}
-					}
-				});
+			// 需求 3.1: 扫描所有 <pre><code> 元素
+			// 需求 3.2: 识别 language-mermaid 类名
+			document.querySelectorAll('pre code.language-mermaid').forEach(code => {
+				// 需求 3.5: 过滤已渲染的代码块
+				if (!this.isRendered(code)) {
+					blocks.push(code);
+				}
 			});
-
-			// 检测 Markdown 容器语法的 Mermaid 代码块
-			// 格式: ::: mermaid ... :::
-			this.detectContainerBlocks(blocks);
-
-			this.logDebug(`检测到 ${blocks.length} 个 Mermaid 代码块`);
+			
+			// 需求 3.3: 识别 mermaid 类名
+			document.querySelectorAll('pre code.mermaid').forEach(code => {
+				// 需求 3.5: 过滤已渲染的代码块
+				if (!this.isRendered(code)) {
+					blocks.push(code);
+				}
+			});
+			
+			this.logDebug(`检测到 ${blocks.length} 个未渲染的 Mermaid 代码块`);
 			return blocks;
+		},
+
+		/**
+		 * 检查代码块是否已渲染
+		 * 需求 3.5: 避免重复渲染已渲染的代码块
+		 * @param {HTMLElement} element - 代码块元素
+		 * @returns {boolean} 是否已渲染
+		 */
+		isRendered(element) {
+			// 检查元素是否有渲染标记
+			if (element.hasAttribute('data-mermaid-rendered')) {
+				return true;
+			}
+			
+			// 检查元素是否在 mermaid-container 容器中
+			if (element.closest('.mermaid-container') !== null) {
+				return true;
+			}
+			
+			return false;
 		},
 
 		/**
