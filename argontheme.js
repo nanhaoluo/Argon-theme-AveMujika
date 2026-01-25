@@ -5287,11 +5287,23 @@ void 0;
 					this.logDebug('从纯文本提取代码');
 				}
 			} else if (element.tagName === 'CODE') {
-				code = element.textContent;
+				// 修复：使用 innerText 而不是 textContent，保留换行符
+				// textContent 可能会丢失某些格式化信息
+				code = element.innerText || element.textContent;
+				this.logDebug('从 CODE 标签提取，使用 innerText');
 			} else if (element.tagName === 'PRE') {
 				const codeElement = element.querySelector('code');
-				code = codeElement ? codeElement.textContent : element.textContent;
+				if (codeElement) {
+					code = codeElement.innerText || codeElement.textContent;
+				} else {
+					code = element.innerText || element.textContent;
+				}
+				this.logDebug('从 PRE 标签提取，使用 innerText');
 			}
+
+			// 记录原始提取的代码（调试用）
+			this.logDebug('原始提取的代码长度: ' + code.length);
+			this.logDebug('原始代码前100字符: ' + code.substring(0, 100));
 
 			// 解码 HTML 实体（WordPress 可能会转义 HTML）
 			code = code
@@ -5310,8 +5322,18 @@ void 0;
 				.replace(/\\'/g, "'")
 				.replace(/\\\\/g, '\\');
 
-			this.logDebug('最终提取的代码: ' + code.substring(0, 100) + (code.length > 100 ? '...' : ''));
-			return code.trim();
+			// 清理代码：移除首尾空白，但保留内部换行
+			code = code.trim();
+
+			// 验证代码完整性
+			if (code.length < 10) {
+				this.logError('提取的代码过短，可能不完整: ' + code);
+			}
+
+			this.logDebug('最终提取的代码长度: ' + code.length);
+			this.logDebug('最终代码前200字符: ' + code.substring(0, 200) + (code.length > 200 ? '...' : ''));
+			
+			return code;
 		},
 
 		// ---------- 渲染引擎 ----------
