@@ -5433,6 +5433,9 @@ void 0;
 					// 保存原始代码（用于主题切换时重新渲染）
 					container.dataset.mermaidCode = code;
 					container.dataset.currentTheme = this.getMermaidTheme();
+					
+					// 需求 3.5: 添加渲染状态标记，避免重复渲染
+					container.setAttribute('data-mermaid-rendered', 'true');
 
 					// 替换加载动画为渲染结果
 					if (loadingContainer.parentNode) {
@@ -5483,6 +5486,10 @@ void 0;
 						container.innerHTML = svgCode;
 						container.dataset.mermaidCode = code;
 						container.dataset.currentTheme = this.getMermaidTheme();
+						
+						// 需求 3.5: 添加渲染状态标记，避免重复渲染
+						container.setAttribute('data-mermaid-rendered', 'true');
+						
 						element.parentNode.replaceChild(container, element);
 						this.rendered.add(container);
 						this.applyStyles(container);
@@ -5497,6 +5504,10 @@ void 0;
 					if (typeof window.mermaid.init === 'function') {
 						window.mermaid.init(undefined, container);
 						this.rendered.add(container);
+						
+						// 需求 3.5: 添加渲染状态标记，避免重复渲染
+						container.setAttribute('data-mermaid-rendered', 'true');
+						
 						this.logDebug(`图表渲染成功（init 方法）: ${chartId}`);
 					} else {
 						this.handleRenderError(element, new Error('无可用的 Mermaid 渲染方法'), code);
