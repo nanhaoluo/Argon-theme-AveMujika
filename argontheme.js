@@ -4869,22 +4869,51 @@ void 0;
 			const theme = this.getMermaidTheme();
 
 			// 配置 Mermaid
+			// 需求 2.1-2.4: 支持多种图表类型，设置正确的主题和安全级别
 			try {
 				window.mermaid.initialize({
 					startOnLoad: false, // 手动控制渲染时机
-					theme: theme,
+					theme: theme, // 根据网站主题自动切换
 					securityLevel: 'loose', // 允许 HTML 标签
 					logLevel: this.config.debugMode ? 'debug' : 'error',
+					// 流程图配置 (需求 2.2)
 					flowchart: {
 						useMaxWidth: true,
 						htmlLabels: true,
 						curve: 'basis'
 					},
+					// 时序图配置
 					sequence: {
 						useMaxWidth: true,
 						wrap: true
 					},
+					// 甘特图配置
 					gantt: {
+						useMaxWidth: true
+					},
+					// ER 图配置 (需求 2.3)
+					er: {
+						useMaxWidth: true,
+						layoutDirection: 'TB'
+					},
+					// 状态图配置 (需求 2.4)
+					stateDiagram: {
+						useMaxWidth: true
+					},
+					// 类图配置
+					class: {
+						useMaxWidth: true
+					},
+					// 饼图配置
+					pie: {
+						useMaxWidth: true
+					},
+					// Git 图配置
+					gitGraph: {
+						useMaxWidth: true
+					},
+					// 用户旅程图配置
+					journey: {
 						useMaxWidth: true
 					}
 				});
