@@ -6780,11 +6780,11 @@ function argon_call_anthropic_api($api_key, $prompt, $content) {
  * 调用通义千问 API
  */
 function argon_call_qianwen_api($api_key, $prompt, $content) {
-	$provider = \'qianwen\';
+	$provider = 'qianwen';
 	$config = argon_get_ai_provider_config($provider);
 	
-	$endpoint = !empty($config[\'api_endpoint\']) ? $config[\'api_endpoint\'] : \'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation\';
-	$model = !empty($config[\'model\']) ? $config[\'model\'] : \'qwen-turbo\';
+	$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation';
+	$model = !empty($config['model']) ? $config['model'] : 'qwen-turbo';
 
 	$data = [
 		'model' => $model,
