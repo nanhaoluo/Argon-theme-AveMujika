@@ -1064,6 +1064,220 @@ if (current_user_can('manage_options')):
 
 <?php
 	endif; // !empty($all_records)
+	
+	// ==========================================================================
+	// AI 查询统计
+	// ==========================================================================
+	?>
+	
+	<article class="post card shadow-sm bg-white border-0 ai-verify-card" style="margin-top: 16px;">
+		<h3 class="ai-verify-section-title">
+			<i class="fa fa-bar-chart"></i><?php _e('AI 查询统计', 'argon'); ?>
+		</h3>
+		
+		<div class="ai-alert ai-alert-info" style="margin-bottom: 20px;">
+			<span class="ai-alert-icon">ℹ</span>
+			<div>
+				<strong><?php _e('管理员专属', 'argon'); ?></strong><br>
+				<?php _e('显示 AI 查询的统计信息，包括总查询次数、成功率、平均响应时间等', 'argon'); ?>
+			</div>
+		</div>
+		
+		<div id="aiStatsContainer">
+			<div style="text-align: center; padding: 40px; color: var(--color-text-muted);">
+				<i class="fa fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 12px;"></i>
+				<p><?php _e('加载统计数据中...', 'argon'); ?></p>
+			</div>
+		</div>
+		
+		<style>
+		.ai-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+		.ai-stat-card { background: linear-gradient(135deg, rgba(var(--themecolor-rgbstr), 0.08) 0%, rgba(var(--themecolor-rgbstr), 0.03) 100%); border: 1px solid rgba(var(--themecolor-rgbstr), 0.15); border-radius: var(--card-radius); padding: 20px; text-align: center; transition: all var(--animation-fast) var(--ease-standard); }
+		.ai-stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(var(--themecolor-rgbstr), 0.15); }
+		.ai-stat-value { font-size: 32px; font-weight: 700; color: var(--themecolor); margin-bottom: 8px; font-family: 'Consolas', 'Monaco', monospace; }
+		.ai-stat-label { font-size: 13px; color: var(--color-text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+		
+		.ai-stats-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 20px; }
+		.ai-stats-table th { background: linear-gradient(135deg, rgba(var(--themecolor-rgbstr), 0.08) 0%, rgba(var(--themecolor-rgbstr), 0.04) 100%); padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: var(--color-text-deeper); }
+		.ai-stats-table td { padding: 12px 16px; font-size: 14px; color: var(--color-text); border-bottom: 1px solid var(--color-border-on-foreground); }
+		.ai-stats-table tbody tr:last-child td { border-bottom: none; }
+		.ai-stats-table tbody tr:hover { background: rgba(var(--themecolor-rgbstr), 0.05); }
+		
+		@media (max-width: 768px) {
+			.ai-stats-grid { grid-template-columns: repeat(2, 1fr); }
+			.ai-stat-value { font-size: 24px; }
+		}
+		</style>
+		
+		<script data-pjax>
+		(function() {
+			// 加载统计数据
+			fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/x-www-form-urlencoded',
+				},
+				body: new URLSearchParams({
+					action: 'argon_get_ai_query_stats',
+					nonce: '<?php echo wp_create_nonce('argon_ai_query_stats'); ?>'
+				})
+			})
+			.then(response => response.json())
+			.then(data => {
+				if (data.success) {
+					renderStats(data.data);
+				} else {
+					showError(data.data || '<?php _e('加载失败', 'argon'); ?>');
+				}
+			})
+			.catch(error => {
+				console.error('Error loading stats:', error);
+				showError('<?php _e('网络错误', 'argon'); ?>');
+			});
+			
+			function renderStats(stats) {
+				const container = document.getElementById('aiStatsContainer');
+				
+				let html = `
+					<div class="ai-stats-grid">
+						<div class="ai-stat-card">
+							<div class="ai-stat-value">${stats.total_queries || 0}</div>
+							<div class="ai-stat-label"><?php _e('总查询次数', 'argon'); ?></div>
+						</div>
+						<div class="ai-stat-card">
+							<div class="ai-stat-value">${stats.success_queries || 0}</div>
+							<div class="ai-stat-label"><?php _e('成功次数', 'argon'); ?></div>
+						</div>
+						<div class="ai-stat-card">
+							<div class="ai-stat-value">${stats.error_queries || 0}</div>
+							<div class="ai-stat-label"><?php _e('失败次数', 'argon'); ?></div>
+						</div>
+						<div class="ai-stat-card">
+							<div class="ai-stat-value">${stats.success_rate || 0}%</div>
+							<div class="ai-stat-label"><?php _e('成功率', 'argon'); ?></div>
+						</div>
+						<div class="ai-stat-card">
+							<div class="ai-stat-value">${stats.avg_response_time || 0}ms</div>
+							<div class="ai-stat-label"><?php _e('平均响应时间', 'argon'); ?></div>
+						</div>
+					</div>
+				`;
+				
+				// 按场景统计
+				if (stats.by_scenario && stats.by_scenario.length > 0) {
+					html += `
+						<h4 class="ai-section-subtitle"><?php _e('按场景统计', 'argon'); ?></h4>
+						<div style="overflow-x: auto;">
+							<table class="ai-stats-table">
+								<thead>
+									<tr>
+										<th><?php _e('场景', 'argon'); ?></th>
+										<th><?php _e('查询次数', 'argon'); ?></th>
+										<th><?php _e('平均响应时间', 'argon'); ?></th>
+									</tr>
+								</thead>
+								<tbody>
+					`;
+					
+					const scenarioNames = {
+						'summary': '<?php _e('文章摘要', 'argon'); ?>',
+						'spam_detection': '<?php _e('垃圾评论检测', 'argon'); ?>',
+						'spam_detection_batch': '<?php _e('批量评论检测', 'argon'); ?>',
+						'keyword_extraction': '<?php _e('关键词提取', 'argon'); ?>'
+					};
+					
+					stats.by_scenario.forEach(item => {
+						const scenarioName = scenarioNames[item.scenario] || item.scenario;
+						html += `
+							<tr>
+								<td><strong>${escapeHtml(scenarioName)}</strong></td>
+								<td>${item.count || 0}</td>
+								<td>${Math.round(item.avg_time || 0)}ms</td>
+							</tr>
+						`;
+					});
+					
+					html += `
+								</tbody>
+							</table>
+						</div>
+					`;
+				}
+				
+				// 按服务商统计
+				if (stats.by_provider && stats.by_provider.length > 0) {
+					html += `
+						<h4 class="ai-section-subtitle" style="margin-top: 28px;"><?php _e('按服务商统计', 'argon'); ?></h4>
+						<div style="overflow-x: auto;">
+							<table class="ai-stats-table">
+								<thead>
+									<tr>
+										<th><?php _e('服务商', 'argon'); ?></th>
+										<th><?php _e('查询次数', 'argon'); ?></th>
+										<th><?php _e('平均响应时间', 'argon'); ?></th>
+									</tr>
+								</thead>
+								<tbody>
+					`;
+					
+					const providerNames = {
+						'openai': 'OpenAI',
+						'anthropic': 'Anthropic',
+						'deepseek': 'DeepSeek',
+						'xiaomi': '小米 Mimo',
+						'qianwen': '通义千问',
+						'wenxin': '文心一言',
+						'doubao': '豆包',
+						'kimi': 'Kimi',
+						'zhipu': '智谱',
+						'siliconflow': 'SiliconFlow'
+					};
+					
+					stats.by_provider.forEach(item => {
+						const providerName = providerNames[item.provider] || item.provider;
+						html += `
+							<tr>
+								<td><strong>${escapeHtml(providerName)}</strong></td>
+								<td>${item.count || 0}</td>
+								<td>${Math.round(item.avg_time || 0)}ms</td>
+							</tr>
+						`;
+					});
+					
+					html += `
+								</tbody>
+							</table>
+						</div>
+					`;
+				}
+				
+				container.innerHTML = html;
+			}
+			
+			function showError(message) {
+				const container = document.getElementById('aiStatsContainer');
+				container.innerHTML = `
+					<div class="ai-alert ai-alert-warning">
+						<span class="ai-alert-icon">⚠</span>
+						<div>
+							<strong><?php _e('加载失败', 'argon'); ?></strong><br>
+							${escapeHtml(message)}
+						</div>
+					</div>
+				`;
+			}
+			
+			function escapeHtml(text) {
+				if (!text) return '';
+				const div = document.createElement('div');
+				div.textContent = text;
+				return div.innerHTML;
+			}
+		})();
+		</script>
+	</article>
+	
+<?php
 endif; // current_user_can('manage_options')
 ?>
 
