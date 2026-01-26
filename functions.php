@@ -6387,6 +6387,321 @@ if (!wp_next_scheduled('argon_daily_link_check')) {
 add_action('argon_daily_link_check', 'argon_scheduled_link_check');
 
 
+// ==================== AI 查询组件 ====================
+
+/**
+ * 创建 AI 查询记录表
+ */
+function argon_create_ai_query_log_table() {
+	global $wpdb;
+	$table_name = $wpdb->prefix . 'argon_ai_query_log';
+	$charset_collate = $wpdb->get_charset_collate();
+	
+	$sql = "CREATE TABLE IF NOT EXISTS $table_name (
+		id bigint(20) NOT NULL AUTO_INCREMENT,
+		query_time datetime NOT NULL,
+		provider varchar(50) NOT NULL,
+		model varchar(100) DEFAULT NULL,
+		scenario varchar(50) NOT NULL,
+		prompt_length int(11) DEFAULT 0,
+		content_length int(11) DEFAULT 0,
+		response_length int(11) DEFAULT 0,
+		response_time int(11) DEFAULT 0,
+		status varchar(20) NOT NULL,
+		error_message text DEFAULT NULL,
+		post_id bigint(20) DEFAULT NULL,
+		comment_id bigint(20) DEFAULT NULL,
+		user_id bigint(20) DEFAULT NULL,
+		PRIMARY KEY  (id),
+		KEY provider (provider),
+		KEY scenario (scenario),
+		KEY query_time (query_time),
+		KEY status (status)
+	) $charset_collate;";
+	
+	require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+	dbDelta($sql);
+}
+add_action('after_switch_theme', 'argon_create_ai_query_log_table');
+
+/**
+ * 记录 AI 查询
+ * 
+ * @param string $provider 服务商
+ * @param string $model 模型
+ * @param string $scenario 使用场景 (summary/spam_detection/keyword_extraction)
+ * @param int $prompt_length 提示词长度
+ * @param int $content_length 内容长度
+ * @param int $response_length 响应长度
+ * @param int $response_time 响应时间（毫秒）
+ * @param string $status 状态 (success/error)
+ * @param string $error_message 错误信息
+ * @param array $context 上下文信息 (post_id, comment_id, user_id)
+ */
+function argon_log_ai_query($provider, $model, $scenario, $prompt_length, $content_length, $response_length, $response_time, $status, $error_message = '', $context = []) {
+	global $wpdb;
+	$table_name = $wpdb->prefix . 'argon_ai_query_log';
+	
+	$wpdb->insert(
+		$table_name,
+		[
+			'query_time' => current_time('mysql'),
+			'provider' => $provider,
+			'model' => $model,
+			'scenario' => $scenario,
+			'prompt_length' => $prompt_length,
+			'content_length' => $content_length,
+			'response_length' => $response_length,
+			'response_time' => $response_time,
+			'status' => $status,
+			'error_message' => $error_message,
+			'post_id' => isset($context['post_id']) ? $context['post_id'] : null,
+			'comment_id' => isset($context['comment_id']) ? $context['comment_id'] : null,
+			'user_id' => isset($context['user_id']) ? $context['user_id'] : null
+		],
+		[
+			'%s', // query_time
+			'%s', // provider
+			'%s', // model
+			'%s', // scenario
+			'%d', // prompt_length
+			'%d', // content_length
+			'%d', // response_length
+			'%d', // response_time
+			'%s', // status
+			'%s', // error_message
+			'%d', // post_id
+			'%d', // comment_id
+			'%d'  // user_id
+		]
+	);
+}
+
+/**
+ * 统一的 AI 查询接口
+ * 
+ * @param string $scenario 使用场景 (summary/spam_detection/keyword_extraction)
+ * @param string $prompt 提示词
+ * @param string $content 内容
+ * @param array $context 上下文信息 (post_id, comment_id, user_id, provider, model)
+ * @return string|false 返回 AI 响应内容或 false
+ */
+function argon_ai_query($scenario, $prompt, $content, $context = []) {
+	// 获取服务商配置
+	$provider = isset($context['provider']) ? $context['provider'] : get_option('argon_ai_summary_provider', 'openai');
+	$config = argon_get_ai_provider_config($provider);
+	
+	if (!$config || !isset($config['api_key'])) {
+		error_log("Argon AI Query Error: Provider config not found for {$provider}");
+		return false;
+	}
+	
+	$api_key = $config['api_key'];
+	$model = isset($context['model']) ? $context['model'] : (isset($config['model']) ? $config['model'] : '');
+	
+	// 记录开始时间
+	$start_time = microtime(true);
+	
+	// 获取 post_id（用于错误记录）
+	$post_id = isset($context['post_id']) ? $context['post_id'] : 0;
+	
+	// 调用对应的 API
+	$result = false;
+	$error_message = '';
+	
+	try {
+		switch ($provider) {
+			case 'openai':
+				$result = argon_call_openai_api($api_key, $prompt, $content, $post_id);
+				break;
+			case 'anthropic':
+				$result = argon_call_anthropic_api($api_key, $prompt, $content, $post_id);
+				break;
+			case 'deepseek':
+				$result = argon_call_deepseek_api($api_key, $prompt, $content, $post_id);
+				break;
+			case 'xiaomi':
+				$result = argon_call_xiaomi_api($api_key, $prompt, $content, $post_id);
+				break;
+			case 'qianwen':
+				$result = argon_call_qianwen_api($api_key, $prompt, $content, $post_id);
+				break;
+			case 'wenxin':
+				$result = argon_call_wenxin_api($api_key, $prompt, $content, $post_id);
+				break;
+			case 'doubao':
+				$result = argon_call_doubao_api($api_key, $prompt, $content, $post_id);
+				break;
+			case 'kimi':
+				$result = argon_call_kimi_api($api_key, $prompt, $content, $post_id);
+				break;
+			case 'zhipu':
+				$result = argon_call_zhipu_api($api_key, $prompt, $content, $post_id);
+				break;
+			case 'siliconflow':
+				$result = argon_call_siliconflow_api($api_key, $prompt, $content, $post_id);
+				break;
+			default:
+				$error_message = "Unsupported provider: {$provider}";
+				error_log("Argon AI Query Error: {$error_message}");
+		}
+	} catch (Exception $e) {
+		$error_message = $e->getMessage();
+		error_log("Argon AI Query Exception: {$error_message}");
+	}
+	
+	// 计算响应时间（毫秒）
+	$response_time = round((microtime(true) - $start_time) * 1000);
+	
+	// 记录查询日志
+	$status = ($result !== false) ? 'success' : 'error';
+	if ($result === false && empty($error_message)) {
+		$error_message = 'API call returned false';
+	}
+	
+	argon_log_ai_query(
+		$provider,
+		$model,
+		$scenario,
+		mb_strlen($prompt),
+		mb_strlen($content),
+		$result !== false ? mb_strlen($result) : 0,
+		$response_time,
+		$status,
+		$error_message,
+		$context
+	);
+	
+	// 记录详细日志
+	if ($result !== false) {
+		error_log(sprintf(
+			'Argon AI Query Success: scenario=%s, provider=%s, model=%s, response_time=%dms, prompt_len=%d, content_len=%d, response_len=%d',
+			$scenario,
+			$provider,
+			$model,
+			$response_time,
+			mb_strlen($prompt),
+			mb_strlen($content),
+			mb_strlen($result)
+		));
+	} else {
+		error_log(sprintf(
+			'Argon AI Query Failed: scenario=%s, provider=%s, model=%s, response_time=%dms, error=%s',
+			$scenario,
+			$provider,
+			$model,
+			$response_time,
+			$error_message
+		));
+	}
+	
+	return $result;
+}
+
+/**
+ * 获取 AI 查询统计信息
+ * 
+ * @param array $filters 过滤条件 (scenario, provider, date_from, date_to)
+ * @return array 统计信息
+ */
+function argon_get_ai_query_stats($filters = []) {
+	global $wpdb;
+	$table_name = $wpdb->prefix . 'argon_ai_query_log';
+	
+	$where = ['1=1'];
+	$params = [];
+	
+	if (!empty($filters['scenario'])) {
+		$where[] = 'scenario = %s';
+		$params[] = $filters['scenario'];
+	}
+	
+	if (!empty($filters['provider'])) {
+		$where[] = 'provider = %s';
+		$params[] = $filters['provider'];
+	}
+	
+	if (!empty($filters['date_from'])) {
+		$where[] = 'query_time >= %s';
+		$params[] = $filters['date_from'];
+	}
+	
+	if (!empty($filters['date_to'])) {
+		$where[] = 'query_time <= %s';
+		$params[] = $filters['date_to'];
+	}
+	
+	$where_clause = implode(' AND ', $where);
+	
+	if (!empty($params)) {
+		$where_clause = $wpdb->prepare($where_clause, $params);
+	}
+	
+	// 总查询次数
+	$total_queries = $wpdb->get_var("SELECT COUNT(*) FROM $table_name WHERE $where_clause");
+	
+	// 成功次数
+	$success_queries = $wpdb->get_var("SELECT COUNT(*) FROM $table_name WHERE $where_clause AND status = 'success'");
+	
+	// 平均响应时间
+	$avg_response_time = $wpdb->get_var("SELECT AVG(response_time) FROM $table_name WHERE $where_clause AND status = 'success'");
+	
+	// 按场景统计
+	$by_scenario = $wpdb->get_results("
+		SELECT scenario, COUNT(*) as count, AVG(response_time) as avg_time
+		FROM $table_name
+		WHERE $where_clause
+		GROUP BY scenario
+	", ARRAY_A);
+	
+	// 按服务商统计
+	$by_provider = $wpdb->get_results("
+		SELECT provider, COUNT(*) as count, AVG(response_time) as avg_time
+		FROM $table_name
+		WHERE $where_clause
+		GROUP BY provider
+	", ARRAY_A);
+	
+	return [
+		'total_queries' => intval($total_queries),
+		'success_queries' => intval($success_queries),
+		'error_queries' => intval($total_queries) - intval($success_queries),
+		'success_rate' => $total_queries > 0 ? round(($success_queries / $total_queries) * 100, 2) : 0,
+		'avg_response_time' => round($avg_response_time, 2),
+		'by_scenario' => $by_scenario,
+		'by_provider' => $by_provider
+	];
+}
+
+/**
+ * AJAX: 获取 AI 查询统计
+ */
+function argon_ajax_get_ai_query_stats() {
+	check_ajax_referer('argon_ai_query_stats', 'nonce');
+	
+	if (!current_user_can('manage_options')) {
+		wp_send_json_error(__('权限不足', 'argon'));
+	}
+	
+	$filters = [];
+	if (!empty($_POST['scenario'])) {
+		$filters['scenario'] = sanitize_text_field($_POST['scenario']);
+	}
+	if (!empty($_POST['provider'])) {
+		$filters['provider'] = sanitize_text_field($_POST['provider']);
+	}
+	if (!empty($_POST['date_from'])) {
+		$filters['date_from'] = sanitize_text_field($_POST['date_from']);
+	}
+	if (!empty($_POST['date_to'])) {
+		$filters['date_to'] = sanitize_text_field($_POST['date_to']);
+	}
+	
+	$stats = argon_get_ai_query_stats($filters);
+	wp_send_json_success($stats);
+}
+add_action('wp_ajax_argon_get_ai_query_stats', 'argon_ajax_get_ai_query_stats');
+
 // ==================== AI 文章摘要功能 ====================
 
 /**
@@ -6686,22 +7001,6 @@ function argon_log_ai_error($provider, $error_type, $error_message, $post_id = 0
  * @return string|false 摘要内容或 false
  */
 function argon_generate_ai_summary($post) {
-	$provider = get_option('argon_ai_summary_provider', 'openai');
-	$config = argon_get_ai_provider_config($provider);
-	$api_key = $config['api_key'];
-	
-	// 错误检查：API 密钥
-	if (empty($api_key)) {
-		argon_log_ai_error($provider, '配置错误', 'API 密钥未配置', $post->ID);
-		return false;
-	}
-	
-	// 错误检查：配置完整性
-	if (!isset($config['api_endpoint']) || !isset($config['model'])) {
-		argon_log_ai_error($provider, '配置错误', 'API 配置不完整', $post->ID, $config);
-		return false;
-	}
-
 	// 准备文章内容
 	$content = wp_strip_all_tags($post->post_content);
 	$content = preg_replace('/\s+/', ' ', $content);
@@ -6709,72 +7008,27 @@ function argon_generate_ai_summary($post) {
 	
 	// 错误检查：文章内容
 	if (empty($content) || mb_strlen($content) < 50) {
-		argon_log_ai_error($provider, '内容错误', '文章内容过短（至少需要50字）', $post->ID, [
-			'content_length' => mb_strlen($content)
-		]);
+		error_log(sprintf(
+			'Argon AI Summary Error: 文章内容过短 (文章ID: %d, 内容长度: %d)',
+			$post->ID,
+			mb_strlen($content)
+		));
 		return false;
 	}
 	
+	// 获取提示词
 	$prompt = get_option('argon_ai_summary_prompt', '你是一个专业的内容摘要助手。请仔细阅读以下文章内容，用简洁、准确的语言总结文章的核心观点和主要内容。要求：1) 控制在 100-150 字以内；2) 突出文章的关键信息和亮点；3) 使用通俗易懂的语言；4) 保持客观中立的语气。');
 	
-	// 记录调用信息
-	error_log(sprintf(
-		'Argon AI Summary: 开始生成摘要 (文章ID: %d, 标题: %s, 提供商: %s, 模型: %s, 内容长度: %d)',
-		$post->ID,
-		$post->post_title,
-		$provider,
-		$config['model'],
-		mb_strlen($content)
-	));
-	
-	// 根据不同服务商调用 API
-	$result = false;
-	switch ($provider) {
-		case 'openai':
-			$result = argon_call_openai_api($api_key, $prompt, $content, $post->ID);
-			break;
-		case 'anthropic':
-			$result = argon_call_anthropic_api($api_key, $prompt, $content, $post->ID);
-			break;
-		case 'deepseek':
-			$result = argon_call_deepseek_api($api_key, $prompt, $content, $post->ID);
-			break;
-		case 'xiaomi':
-			$result = argon_call_xiaomi_api($api_key, $prompt, $content, $post->ID);
-			break;
-		case 'qianwen':
-			$result = argon_call_qianwen_api($api_key, $prompt, $content, $post->ID);
-			break;
-		case 'wenxin':
-			$result = argon_call_wenxin_api($api_key, $prompt, $content, $post->ID);
-			break;
-		case 'doubao':
-			$result = argon_call_doubao_api($api_key, $prompt, $content, $post->ID);
-			break;
-		case 'kimi':
-			$result = argon_call_kimi_api($api_key, $prompt, $content, $post->ID);
-			break;
-		case 'zhipu':
-			$result = argon_call_zhipu_api($api_key, $prompt, $content, $post->ID);
-			break;
-		case 'siliconflow':
-			$result = argon_call_siliconflow_api($api_key, $prompt, $content, $post->ID);
-			break;
-		default:
-			argon_log_ai_error($provider, '配置错误', '不支持的服务商', $post->ID);
-			return false;
-	}
+	// 使用统一的 AI 查询接口
+	$result = argon_ai_query('summary', $prompt, $content, [
+		'post_id' => $post->ID,
+		'user_id' => get_current_user_id()
+	]);
 	
 	// 检查结果
 	if ($result === false) {
-		error_log('Argon AI Summary: API 调用失败 (文章ID: ' . $post->ID . ', 提供商: ' . $provider . ')');
-		// 错误信息已在具体的 API 调用函数中记录
+		error_log('Argon AI Summary: 摘要生成失败 (文章ID: ' . $post->ID . ')');
 	} else {
-		error_log(sprintf(
-			'Argon AI Summary: 摘要生成成功 (文章ID: %d, 摘要长度: %d字)',
-			$post->ID,
-			mb_strlen($result)
-		));
 		delete_post_meta($post->ID, '_argon_ai_summary_error');
 		delete_post_meta($post->ID, '_argon_ai_summary_error_time');
 	}
