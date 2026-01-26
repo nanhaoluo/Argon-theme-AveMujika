@@ -2238,14 +2238,23 @@ function themeoptions_page(){
 								
 								// 删除 API 配置
 								$(document).on('click', '.argon-delete-api', function() {
-									if (!confirm('<?php _e('确定要删除这个 API 配置吗？', 'argon'); ?>')) {
-										return;
-									}
-									
 									var provider = $(this).data('provider');
 									var index = $(this).data('index');
 									var apiList = $('.argon-api-list[data-provider="' + provider + '"]');
 									var apisData = JSON.parse(apiList.find('.argon-apis-data').val() || '[]');
+									
+									// 检查是否是当前激活的 API
+									var activeApiId = $('input[name="argon_ai_' + provider + '_active_api"]:checked').val();
+									var apiToDelete = apisData[index];
+									
+									if (apiToDelete && apiToDelete.id === activeApiId) {
+										alert('<?php _e('无法删除当前正在使用的 API 配置，请先切换到其他 API', 'argon'); ?>');
+										return;
+									}
+									
+									if (!confirm('<?php _e('确定要删除这个 API 配置吗？', 'argon'); ?>')) {
+										return;
+									}
 									
 									// 删除指定索引的 API
 									apisData.splice(index, 1);
@@ -2280,6 +2289,9 @@ function themeoptions_page(){
 										return;
 									}
 									
+									// 获取当前激活的 API ID
+									var activeApiId = $('input[name="argon_ai_' + provider + '_active_api"]:checked').val();
+									
 									var apiConfig = {
 										id: index >= 0 ? apisData[index].id : 'api_' + Date.now(),
 										name: name,
@@ -2289,12 +2301,26 @@ function themeoptions_page(){
 										is_active: false
 									};
 									
+									// 如果是编辑现有配置，保留其激活状态
+									if (index >= 0 && apisData[index]) {
+										apiConfig.is_active = (apisData[index].id === activeApiId);
+									}
+									
 									if (index >= 0) {
 										// 编辑现有配置
 										apisData[index] = apiConfig;
 									} else {
 										// 添加新配置
 										apisData.push(apiConfig);
+										
+										// 如果是第一个 API，自动设置为激活
+										if (apisData.length === 1) {
+											apiConfig.is_active = true;
+											// 更新单选框
+											setTimeout(function() {
+												$('input[name="argon_ai_' + provider + '_active_api"][value="' + apiConfig.id + '"]').prop('checked', true);
+											}, 100);
+										}
 									}
 									
 									// 更新隐藏字段
