@@ -2133,8 +2133,14 @@ function themeoptions_page(){
 									<p>
 										<label>
 											<strong><?php _e('模型:', 'argon'); ?></strong> <small>(<?php _e('可选', 'argon'); ?>)</small><br>
-											<input type="text" class="regular-text argon-api-form-model" placeholder="<?php _e('留空使用默认模型', 'argon'); ?>" />
+											<input type="text" class="regular-text argon-api-form-model" placeholder="<?php _e('留空使用默认模型', 'argon'); ?>" style="width: calc(100% - 120px);" />
+											<button type="button" class="button argon-refresh-models" data-provider="<?php echo esc_attr($provider_key); ?>" style="margin-left: 5px;">
+												<span class="dashicons dashicons-update"></span> <?php _e('刷新', 'argon'); ?>
+											</button>
 										</label>
+										<div class="argon-models-list" style="display:none; margin-top: 10px; max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background: #fafafa; border-radius: 4px;">
+											<p style="margin: 0; color: #666;"><?php _e('加载中...', 'argon'); ?></p>
+										</div>
 									</p>
 									
 									<p>
@@ -2337,6 +2343,100 @@ function themeoptions_page(){
 								$('.argon-cancel-api').on('click', function() {
 									var provider = $(this).data('provider');
 									$('.argon-api-form[data-provider="' + provider + '"]').slideUp();
+								});
+								
+								// 刷新模型列表
+								$('.argon-refresh-models').on('click', function() {
+									var btn = $(this);
+									var provider = btn.data('provider');
+									var form = $('.argon-api-form[data-provider="' + provider + '"]');
+									var modelsList = form.find('.argon-models-list');
+									var apiKey = form.find('.argon-api-form-key').val().trim();
+									var apiEndpoint = form.find('.argon-api-form-endpoint').val().trim();
+									
+									if (!apiKey) {
+										alert('<?php _e('请先输入 API 密钥', 'argon'); ?>');
+										return;
+									}
+									
+									// 显示加载状态
+									btn.prop('disabled', true);
+									btn.find('.dashicons').addClass('spin');
+									modelsList.html('<p style="margin: 0; color: #666;"><?php _e('加载中...', 'argon'); ?></p>').slideDown();
+									
+									// 发送 AJAX 请求
+									$.post(ajaxurl, {
+										action: 'argon_get_ai_models',
+										nonce: '<?php echo wp_create_nonce('argon_get_ai_models'); ?>',
+										provider: provider,
+										api_key: apiKey,
+										api_endpoint: apiEndpoint
+									}, function(response) {
+										btn.prop('disabled', false);
+										btn.find('.dashicons').removeClass('spin');
+										
+										if (response.success && response.data.models) {
+											var models = response.data.models;
+											var html = '<p style="margin: 0 0 10px 0; font-weight: 500;"><?php _e('可用模型:', 'argon'); ?></p>';
+											html += '<div style="display: grid; gap: 5px;">';
+											
+											models.forEach(function(model) {
+												var modelId = model.id || model;
+												var modelName = model.name || model.id || model;
+												html += '<label style="display: flex; align-items: center; padding: 5px; cursor: pointer; border-radius: 3px;" class="model-option">';
+												html += '<input type="radio" name="model_select_' + provider + '" value="' + modelId + '" style="margin-right: 8px;">';
+												html += '<span style="flex: 1;">' + modelName + '</span>';
+												html += '</label>';
+											});
+											
+											html += '</div>';
+											html += '<p style="margin: 10px 0 0 0;"><button type="button" class="button button-small argon-use-selected-model" data-provider="' + provider + '"><?php _e('使用选中的模型', 'argon'); ?></button></p>';
+											
+											modelsList.html(html);
+											
+											// 高亮当前模型
+											var currentModel = form.find('.argon-api-form-model').val();
+											if (currentModel) {
+												modelsList.find('input[value="' + currentModel + '"]').prop('checked', true).closest('.model-option').css('background', '#e8f4f8');
+											}
+											
+											// 鼠标悬停效果
+											modelsList.find('.model-option').hover(
+												function() { $(this).css('background', '#f0f0f0'); },
+												function() { 
+													if (!$(this).find('input').is(':checked')) {
+														$(this).css('background', '');
+													}
+												}
+											);
+											
+											// 选中模型时高亮
+											modelsList.find('input[type="radio"]').on('change', function() {
+												modelsList.find('.model-option').css('background', '');
+												$(this).closest('.model-option').css('background', '#e8f4f8');
+											});
+										} else {
+											modelsList.html('<p style="margin: 0; color: #d63638;"><?php _e('获取模型列表失败', 'argon'); ?>: ' + (response.data || '<?php _e('未知错误', 'argon'); ?>') + '</p>');
+										}
+									}).fail(function() {
+										btn.prop('disabled', false);
+										btn.find('.dashicons').removeClass('spin');
+										modelsList.html('<p style="margin: 0; color: #d63638;"><?php _e('网络请求失败', 'argon'); ?></p>');
+									});
+								});
+								
+								// 使用选中的模型
+								$(document).on('click', '.argon-use-selected-model', function() {
+									var provider = $(this).data('provider');
+									var form = $('.argon-api-form[data-provider="' + provider + '"]');
+									var selectedModel = form.find('input[name="model_select_' + provider + '"]:checked').val();
+									
+									if (selectedModel) {
+										form.find('.argon-api-form-model').val(selectedModel);
+										form.find('.argon-models-list').slideUp();
+									} else {
+										alert('<?php _e('请先选择一个模型', 'argon'); ?>');
+									}
 								});
 								
 								// 渲染 API 列表
