@@ -8074,7 +8074,7 @@ function argon_call_xiaomi_api($api_key, $prompt, $content, $post_id = 0, $model
 	$config = argon_get_ai_provider_config($provider);
 	
 	if (empty($endpoint)) {
-		$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://api.mimo.xiaomi.com/v1/chat/completions';
+		$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://api.xiaomimimo.com/v1/chat/completions';
 	}
 	if (empty($model)) {
 		$model = !empty($config['model']) ? $config['model'] : 'MiMo-V2-Flash';
@@ -8843,7 +8843,7 @@ function argon_ajax_test_unified_api() {
 		'openai' => 'https://api.openai.com/v1/chat/completions',
 		'anthropic' => 'https://api.anthropic.com/v1/messages',
 		'deepseek' => 'https://api.deepseek.com/v1/chat/completions',
-		'xiaomi' => 'https://api.mimo.xiaomi.com/v1/chat/completions',
+		'xiaomi' => 'https://api.xiaomimimo.com/v1/chat/completions',
 		'qianwen' => 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
 		'wenxin' => 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions',
 		'doubao' => 'https://ark.cn-beijing.volces.com/api/v3/chat/completions',
@@ -9213,7 +9213,7 @@ function argon_get_deepseek_models($api_key, $custom_endpoint = '') {
  * 获取小米 Mimo 模型列表
  */
 function argon_get_xiaomi_models($api_key, $custom_endpoint = '') {
-	$endpoint_source = !empty($custom_endpoint) ? $custom_endpoint : 'https://api.mimo.xiaomi.com/v1/models';
+	$endpoint_source = !empty($custom_endpoint) ? $custom_endpoint : 'https://api.xiaomimimo.com/v1/models';
 	$endpoint = $endpoint_source;
 	$endpoint = preg_replace('#/v1/chat/completions$#', '/v1/models', $endpoint);
 	
