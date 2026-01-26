@@ -2454,10 +2454,14 @@ function themeoptions_page(){
 							if (response.success) {
 								alert('✓ ' + response.data.message);
 							} else {
-								alert('✗ <?php _e('测试失败:', 'argon'); ?> ' + response.data.message);
+								// wp_send_json_error 的错误消息在 response.data 中
+								let errorMsg = response.data || '<?php _e('未知错误', 'argon'); ?>';
+								alert('✗ <?php _e('测试失败:', 'argon'); ?> ' + errorMsg);
 							}
 							$btn.prop('disabled', false).html(originalHtml);
-						}).fail(function() {
+						}).fail(function(xhr, status, error) {
+							// AJAX 请求本身失败
+							console.error('AJAX Error:', status, error);
 							alert('<?php _e('请求失败，请重试', 'argon'); ?>');
 							$btn.prop('disabled', false).html(originalHtml);
 						});
