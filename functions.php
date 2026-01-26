@@ -6972,260 +6972,46 @@ function argon_get_ai_summary($post_id) {
 }
 
 /**
- * 获取指定 AI 提供商的所有 API 配置
- * @param string $provider 提供商名称
- * @return array API 配置数组
- */
-function argon_get_provider_apis($provider) {
-	$apis = get_option("argon_ai_{$provider}_apis", []);
-	
-	// 确保返回的是数组
-	if (!is_array($apis)) {
-		$apis = [];
-	}
-	
-	// 向后兼容：如果没有多 API 配置，尝试从旧配置迁移
-	if (empty($apis)) {
-		$old_api_key = get_option("argon_ai_{$provider}_api_key", '');
-		$old_api_endpoint = get_option("argon_ai_{$provider}_api_endpoint", '');
-		$old_model = get_option("argon_ai_{$provider}_model", '');
-		
-		if (!empty($old_api_key)) {
-			$apis = [[
-				'id' => 'default',
-				'name' => __('默认配置', 'argon'),
-				'api_key' => $old_api_key,
-				'api_endpoint' => $old_api_endpoint,
-				'model' => $old_model,
-				'is_active' => true
-			]];
-			update_option("argon_ai_{$provider}_apis", $apis);
-			update_option("argon_ai_{$provider}_active_api", 'default');
-		}
-	}
-	
-	return $apis;
-}
-
-/**
  * 获取指定 AI 提供商当前激活的 API 配置
- * @param string $provider 提供商名称
+ * @param string $provider 提供商名称（已废弃，保留用于向后兼容）
  * @return array ['api_key' => string, 'api_endpoint' => string, 'model' => string]
  */
 function argon_get_ai_provider_config($provider = '') {
-	if (empty($provider)) {
-		$provider = get_option('argon_ai_summary_provider', 'openai');
-	}
-	
-	// 优先使用新的统一 API 系统
+	// 使用新的统一 API 系统
 	$all_apis = argon_get_all_apis();
 	if (!empty($all_apis)) {
-		// 查找该提供商的第一个 API
-		foreach ($all_apis as $api) {
-			if (isset($api['provider']) && $api['provider'] === $provider) {
-				return [
-					'api_key' => isset($api['api_key']) ? $api['api_key'] : '',
-					'api_endpoint' => isset($api['api_endpoint']) ? $api['api_endpoint'] : '',
-					'model' => isset($api['model']) ? $api['model'] : ''
-				];
-			}
-		}
-	}
-	
-	// 回退到旧的多 API 系统
-	$apis = argon_get_provider_apis($provider);
-	$active_api_id = get_option("argon_ai_{$provider}_active_api", '');
-	
-	// 查找激活的 API
-	if (!empty($apis) && is_array($apis)) {
-		foreach ($apis as $api) {
-			if (isset($api['id']) && ($api['id'] === $active_api_id || (!empty($api['is_active']) && $api['is_active']))) {
-				return [
-					'api_key' => isset($api['api_key']) ? $api['api_key'] : '',
-					'api_endpoint' => isset($api['api_endpoint']) ? $api['api_endpoint'] : '',
-					'model' => isset($api['model']) ? $api['model'] : ''
-				];
+		// 如果指定了提供商，查找该提供商的第一个 API
+		if (!empty($provider)) {
+			foreach ($all_apis as $api) {
+				if (isset($api['provider']) && $api['provider'] === $provider) {
+					return [
+						'api_key' => isset($api['api_key']) ? $api['api_key'] : '',
+						'api_endpoint' => isset($api['api_endpoint']) ? $api['api_endpoint'] : '',
+						'model' => isset($api['model']) ? $api['model'] : ''
+					];
+				}
 			}
 		}
 		
-		// 如果没有找到激活的 API，返回第一个
-		if (isset($apis[0])) {
+		// 如果没有指定提供商或没有找到，返回第一个 API
+		if (isset($all_apis[0])) {
 			return [
-				'api_key' => isset($apis[0]['api_key']) ? $apis[0]['api_key'] : '',
-				'api_endpoint' => isset($apis[0]['api_endpoint']) ? $apis[0]['api_endpoint'] : '',
-				'model' => isset($apis[0]['model']) ? $apis[0]['model'] : ''
+				'api_key' => isset($all_apis[0]['api_key']) ? $all_apis[0]['api_key'] : '',
+				'api_endpoint' => isset($all_apis[0]['api_endpoint']) ? $all_apis[0]['api_endpoint'] : '',
+				'model' => isset($all_apis[0]['model']) ? $all_apis[0]['model'] : ''
 			];
 		}
 	}
 	
-	// 向后兼容：如果没有多 API 配置，使用旧配置
+	// 如果没有任何 API 配置，返回空配置
 	return [
-		'api_key' => get_option("argon_ai_{$provider}_api_key", ''),
-		'api_endpoint' => get_option("argon_ai_{$provider}_api_endpoint", ''),
-		'model' => get_option("argon_ai_{$provider}_model", '')
+		'api_key' => '',
+		'api_endpoint' => '',
+		'model' => ''
 	];
 }
 
-/**
- * 添加 API 配置到指定提供商
- * @param string $provider 提供商名称
- * @param array $config API 配置 ['name', 'api_key', 'api_endpoint', 'model']
- * @return string|false API ID 或 false
- */
-function argon_add_provider_api($provider, $config) {
-	$apis = argon_get_provider_apis($provider);
-	
-	// 生成唯一 ID
-	$api_id = 'api_' . time() . '_' . wp_rand(1000, 9999);
-	
-	// 添加新配置
-	$new_api = [
-		'id' => $api_id,
-		'name' => sanitize_text_field($config['name']),
-		'api_key' => sanitize_text_field($config['api_key']),
-		'api_endpoint' => esc_url_raw($config['api_endpoint']),
-		'model' => sanitize_text_field($config['model']),
-		'is_active' => false
-	];
-	
-	$apis[] = $new_api;
-	update_option("argon_ai_{$provider}_apis", $apis);
-	
-	return $api_id;
-}
-
-/**
- * 更新指定提供商的 API 配置
- * @param string $provider 提供商名称
- * @param string $api_id API ID
- * @param array $config API 配置 ['name', 'api_key', 'api_endpoint', 'model']
- * @return bool 是否成功
- */
-function argon_update_provider_api($provider, $api_id, $config) {
-	$apis = argon_get_provider_apis($provider);
-	$found = false;
-	
-	foreach ($apis as &$api) {
-		if ($api['id'] === $api_id) {
-			$api['name'] = sanitize_text_field($config['name']);
-			$api['api_key'] = sanitize_text_field($config['api_key']);
-			$api['api_endpoint'] = esc_url_raw($config['api_endpoint']);
-			$api['model'] = sanitize_text_field($config['model']);
-			$found = true;
-			break;
-		}
-	}
-	
-	if ($found) {
-		update_option("argon_ai_{$provider}_apis", $apis);
-		return true;
-	}
-	
-	return false;
-}
-
-/**
- * 删除指定提供商的 API 配置
- * @param string $provider 提供商名称
- * @param string $api_id API ID
- * @return bool 是否成功
- */
-function argon_delete_provider_api($provider, $api_id) {
-	$apis = argon_get_provider_apis($provider);
-	$active_api_id = get_option("argon_ai_{$provider}_active_api", '');
-	
-	// 不允许删除当前激活的 API
-	if ($api_id === $active_api_id) {
-		return false;
-	}
-	
-	$new_apis = [];
-	foreach ($apis as $api) {
-		if ($api['id'] !== $api_id) {
-			$new_apis[] = $api;
-		}
-	}
-	
-	update_option("argon_ai_{$provider}_apis", $new_apis);
-	return true;
-}
-
-/**
- * 设置当前使用的 API
- * @param string $provider 提供商名称
- * @param string $api_id API ID
- * @return bool 是否成功
- */
-function argon_set_active_api($provider, $api_id) {
-	$apis = argon_get_provider_apis($provider);
-	
-	// 检查 API 是否存在
-	$found = false;
-	foreach ($apis as &$api) {
-		if ($api['id'] === $api_id) {
-			$api['is_active'] = true;
-			$found = true;
-		} else {
-			$api['is_active'] = false;
-		}
-	}
-	
-	if ($found) {
-		update_option("argon_ai_{$provider}_apis", $apis);
-		update_option("argon_ai_{$provider}_active_api", $api_id);
-		return true;
-	}
-	
-	return false;
-}
-
-// ==================== 统一 API 管理函数（新架构） ====================
-
-/**
- * 数据迁移：将旧的分散 API 数据迁移到新的统一结构
- */
-function argon_migrate_ai_apis() {
-	// 检查是否已经迁移过
-	if (get_option('argon_ai_apis_migrated', 'false') === 'true') {
-		return;
-	}
-	
-	$providers = ['openai', 'anthropic', 'deepseek', 'xiaomi', 'qianwen', 'wenxin', 'doubao', 'kimi', 'zhipu', 'siliconflow'];
-	$unified_apis = [];
-	
-	foreach ($providers as $provider) {
-		$old_apis = get_option("argon_ai_{$provider}_apis", []);
-		if (!empty($old_apis) && is_array($old_apis)) {
-			foreach ($old_apis as $api) {
-				$unified_apis[] = [
-					'id' => isset($api['id']) ? $api['id'] : 'api_' . time() . '_' . wp_rand(1000, 9999),
-					'name' => isset($api['name']) ? $api['name'] : $provider . ' API',
-					'provider' => $provider,
-					'api_key' => isset($api['api_key']) ? $api['api_key'] : '',
-					'api_endpoint' => isset($api['api_endpoint']) ? $api['api_endpoint'] : '',
-					'model' => isset($api['model']) ? $api['model'] : '',
-					'is_active' => isset($api['is_active']) ? $api['is_active'] : false,
-					'created_at' => time()
-				];
-			}
-		}
-	}
-	
-	if (!empty($unified_apis)) {
-		update_option('argon_ai_apis', $unified_apis);
-		
-		// 设置默认的活动 API（如果有的话）
-		foreach ($unified_apis as $api) {
-			if (!empty($api['is_active'])) {
-				update_option('argon_ai_summary_active_api', $api['id']);
-				update_option('argon_ai_spam_active_api', $api['id']);
-				break;
-			}
-		}
-	}
-	
-	update_option('argon_ai_apis_migrated', 'true');
-}
+// ==================== 统一 API 管理函数 ====================
 
 /**
  * 获取所有 API 配置
@@ -7413,13 +7199,14 @@ function argon_get_active_api_config($scenario = 'summary') {
 		}
 	}
 	
-	// 向后兼容：如果新系统没有数据，尝试使用旧系统
-	$provider = get_option('argon_ai_summary_provider', 'openai');
-	return argon_get_ai_provider_config($provider);
+	// 如果没有任何 API 配置，返回空配置
+	return [
+		'api_key' => '',
+		'api_endpoint' => '',
+		'model' => '',
+		'provider' => ''
+	];
 }
-
-// 在主题加载时自动迁移数据
-add_action('after_setup_theme', 'argon_migrate_ai_apis');
 
 /**
  * 记录 AI API 错误
