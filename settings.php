@@ -7724,41 +7724,18 @@ function argon_update_themeoptions(){
 
 	//AI 摘要
 	argon_update_option_checkbox('argon_ai_summary_enable');
-	argon_update_option('argon_ai_summary_provider');
+	argon_update_option('argon_ai_summary_active_api');
 	argon_update_option('argon_ai_summary_prompt');
-	argon_update_option('argon_ai_summary_exclude_ids');
+	argon_update_option('argon_ai_summary_exclude_posts');
 	
-	// 保存所有提供商的多 API 配置
-	$providers = ['openai', 'anthropic', 'deepseek', 'xiaomi', 'qianwen', 'wenxin', 'doubao', 'kimi', 'zhipu', 'siliconflow'];
-	foreach ($providers as $provider) {
-		// 保存 API 配置数组
-		if (isset($_POST["argon_ai_{$provider}_apis"])) {
-			$apis_json = stripslashes($_POST["argon_ai_{$provider}_apis"]);
-			$apis = json_decode($apis_json, true);
-			if (is_array($apis)) {
-				update_option("argon_ai_{$provider}_apis", $apis);
-			}
-		}
-		
-		// 保存当前激活的 API ID
-		if (isset($_POST["argon_ai_{$provider}_active_api"])) {
-			update_option("argon_ai_{$provider}_active_api", sanitize_text_field($_POST["argon_ai_{$provider}_active_api"]));
-		}
-	}
-
 	//AI 垃圾评论识别
 	argon_update_option_checkbox('argon_comment_spam_detection_enable');
-	argon_update_option('argon_comment_spam_detection_prompt_mode');
-	argon_update_option('argon_comment_spam_detection_confidence_threshold');
-	argon_update_option('argon_comment_spam_detection_privacy_level');
-	argon_update_option('argon_comment_spam_detection_prompt');
-	argon_update_option('argon_comment_spam_detection_mode');
-	argon_update_option('argon_comment_spam_detection_sample_rate');
-	argon_update_option('argon_comment_spam_detection_auto_action');
-	argon_update_option('argon_comment_spam_detection_whitelist');
-	argon_update_option_checkbox('argon_comment_spam_detection_exclude_logged_in');
+	argon_update_option('argon_ai_spam_active_api');
+	argon_update_option('argon_comment_spam_detection_realtime_mode');
 	argon_update_option('argon_comment_spam_detection_keywords');
-	argon_update_option_checkbox('argon_comment_spam_detection_ai_learn');
+	argon_update_option('argon_comment_spam_detection_prompt_mode');
+	argon_update_option('argon_comment_spam_detection_custom_prompt');
+	argon_update_option('argon_comment_spam_detection_auto_threshold');
 
 	}
 
