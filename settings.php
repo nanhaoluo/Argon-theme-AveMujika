@@ -76,7 +76,7 @@ function themeoptions_page(){
 
 		</p>
 
-		<h1 style="color: #5e72e4;"><?php _e("Argon 主题设置", 'argon'); ?></h1>
+		<h1 style="color: #5e72e4; margin-top: 30px; font-size: 32px;"><?php _e("Argon 主题设置", 'argon'); ?></h1>
 
 		<p><?php _e("按下", 'argon'); ?> <kbd style="font-family: sans-serif;">Ctrl + F</kbd> <?php _e("或在右侧目录中来查找设置", 'argon'); ?></p>
 
@@ -1984,7 +1984,7 @@ function themeoptions_page(){
 
 										<tr><td colspan="2" style="padding: 0;">
 				<!-- ========== AI 功能 ========== -->
-				<h1 style="color: #5e72e4; margin-top: 50px; font-size: 32px;"><?php _e('AI 功能', 'argon');?></h1>
+				<h1 style="color: #5e72e4; margin-top: 30px; font-size: 32px;"><?php _e('AI 功能', 'argon');?></h1>
 				<p style="margin-bottom: 30px; color: #666;"><?php _e('统一管理所有 AI 服务商的 API 配置，并配置 AI 文章摘要和评论审核功能', 'argon');?></p>
 
 				<!-- ========== API 管理 ========== -->
@@ -2559,6 +2559,9 @@ function themeoptions_page(){
 					</td></tr>
 
 <!-- ========== 12. 文章功能 ========== -->
+
+<tr><th class="subtitle"><h2 id="section-post-features"><?php _e('文章功能', 'argon');?></h2></th></tr>
+
 <tr><th class="subtitle"><h3 id="subsection-footnote"><?php _e('脚注引用', 'argon');?></h3></th></tr>
 
 					<tr>
