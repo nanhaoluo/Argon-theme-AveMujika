@@ -2448,6 +2448,7 @@ function themeoptions_page(){
 						
 						$.post(ajaxurl, {
 							action: 'argon_ajax_test_unified_api',
+							nonce: '<?php echo wp_create_nonce('argon_test_unified_api'); ?>',
 							api_id: apiId
 						}, function(response) {
 							if (response.success) {
