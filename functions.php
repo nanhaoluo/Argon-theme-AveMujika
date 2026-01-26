@@ -8053,6 +8053,7 @@ function argon_call_xiaomi_api($api_key, $prompt, $content, $post_id = 0) {
 	$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://api.mimo.xiaomi.com/v1/chat/completions';
 	$model = !empty($config['model']) ? $config['model'] : 'MiMo-V2-Flash';
 
+	// 小米 Mimo API 请求数据
 	$data = [
 		'model' => $model,
 		'messages' => [
@@ -8060,16 +8061,19 @@ function argon_call_xiaomi_api($api_key, $prompt, $content, $post_id = 0) {
 			['role' => 'user', 'content' => $content]
 		],
 		'temperature' => 0.7,
-		'max_tokens' => 500
+		'max_tokens' => 500,
+		'stream' => false
 	];
 
 	$response = wp_remote_post($endpoint, [
 		'headers' => [
 			'Content-Type' => 'application/json',
-			'Authorization' => 'Bearer ' . $api_key
+			'Authorization' => 'Bearer ' . $api_key,
+			'Accept' => 'application/json'
 		],
-		'body' => json_encode($data),
-		'timeout' => 30
+		'body' => json_encode($data, JSON_UNESCAPED_UNICODE),
+		'timeout' => 30,
+		'sslverify' => true
 	]);
 
 	if (is_wp_error($response)) {
@@ -9014,13 +9018,24 @@ function argon_get_xiaomi_models($api_key, $custom_endpoint = '') {
 	
 	$response = wp_remote_get($endpoint, [
 		'headers' => [
-			'Authorization' => 'Bearer ' . $api_key
+			'Authorization' => 'Bearer ' . $api_key,
+			'Accept' => 'application/json'
 		],
-		'timeout' => 15
+		'timeout' => 15,
+		'sslverify' => true
 	]);
 	
 	if (is_wp_error($response)) {
 		// API 调用失败,返回预设列表
+		error_log('Xiaomi Mimo API 获取模型列表失败: ' . $response->get_error_message());
+		return [
+			['id' => 'MiMo-V2-Flash', 'name' => 'MiMo-V2-Flash (推荐)']
+		];
+	}
+	
+	$status_code = wp_remote_retrieve_response_code($response);
+	if ($status_code !== 200) {
+		error_log('Xiaomi Mimo API 返回错误状态码: ' . $status_code . ', 响应: ' . wp_remote_retrieve_body($response));
 		return [
 			['id' => 'MiMo-V2-Flash', 'name' => 'MiMo-V2-Flash (推荐)']
 		];
@@ -9029,6 +9044,7 @@ function argon_get_xiaomi_models($api_key, $custom_endpoint = '') {
 	$body = json_decode(wp_remote_retrieve_body($response), true);
 	
 	if (!isset($body['data'])) {
+		error_log('Xiaomi Mimo API 响应格式异常: ' . wp_remote_retrieve_body($response));
 		return [
 			['id' => 'MiMo-V2-Flash', 'name' => 'MiMo-V2-Flash (推荐)']
 		];
