@@ -2040,47 +2040,119 @@ function themeoptions_page(){
 						$is_current = ($provider_key === $current_provider);
 						$display_style = $is_current ? '' : 'display:none;';
 						
-						// 获取该提供商的配置
-						$api_key = get_option("argon_ai_{$provider_key}_api_key", '');
-						$api_endpoint = get_option("argon_ai_{$provider_key}_api_endpoint", '');
-						$model = get_option("argon_ai_{$provider_key}_model", '');
+						// 获取该提供商的所有 API 配置
+						$apis = argon_get_provider_apis($provider_key);
+						$active_api_id = get_option("argon_ai_{$provider_key}_active_api", '');
 					?>
 					
 					<tr class="argon-provider-config" data-provider="<?php echo esc_attr($provider_key); ?>" style="<?php echo $display_style; ?>">
-						<th><label><?php echo esc_html($provider_name); ?> - <?php _e('API 密钥', 'argon');?></label></th>
+						<th><label><?php echo esc_html($provider_name); ?> - <?php _e('API 配置', 'argon');?></label></th>
 						<td>
-							<input type="password" class="regular-text" name="argon_ai_<?php echo esc_attr($provider_key); ?>_api_key" value="<?php echo esc_attr($api_key); ?>" placeholder="sk-..."/>
-							<button type="button" class="button argon-toggle-password" style="margin-left: 5px;">
-								<span class="dashicons dashicons-visibility"></span>
-							</button>
-							<p class="description"><?php printf(__('填写 %s 的 API Key', 'argon'), $provider_name); ?></p>
-						</td>
-					</tr>
-
-					<tr class="argon-provider-config" data-provider="<?php echo esc_attr($provider_key); ?>" style="<?php echo $display_style; ?>">
-						<th><label><?php echo esc_html($provider_name); ?> - <?php _e('API 端点', 'argon');?></label></th>
-						<td>
-							<input type="text" class="regular-text" name="argon_ai_<?php echo esc_attr($provider_key); ?>_api_endpoint" value="<?php echo esc_attr($api_endpoint); ?>" placeholder="<?php _e('留空使用默认端点', 'argon');?>"/>
-							<p class="description"><?php _e('自定义 API 端点地址，留空则使用官方默认地址', 'argon');?></p>
-						</td>
-					</tr>
-
-					<tr class="argon-provider-config" data-provider="<?php echo esc_attr($provider_key); ?>" style="<?php echo $display_style; ?>">
-						<th><label><?php echo esc_html($provider_name); ?> - <?php _e('模型', 'argon');?></label></th>
-						<td>
-							<select name="argon_ai_<?php echo esc_attr($provider_key); ?>_model" class="regular-text argon-model-select" data-provider="<?php echo esc_attr($provider_key); ?>">
-								<option value=""><?php _e('使用默认模型', 'argon');?></option>
-								<?php if (!empty($model)): ?>
-									<option value="<?php echo esc_attr($model); ?>" selected><?php echo esc_html($model); ?></option>
+							<div class="argon-api-list" data-provider="<?php echo esc_attr($provider_key); ?>">
+								<?php if (!empty($apis)): ?>
+									<div style="margin-bottom: 15px;">
+										<strong><?php _e('已配置的 API:', 'argon'); ?></strong>
+										<div style="margin-top: 10px;">
+											<?php foreach ($apis as $index => $api): ?>
+												<div class="argon-api-item" style="padding: 10px; background: #f5f5f5; margin-bottom: 8px; border-radius: 4px;">
+													<label style="display: flex; align-items: center;">
+														<input type="radio" 
+															name="argon_ai_<?php echo esc_attr($provider_key); ?>_active_api" 
+															value="<?php echo esc_attr($api['id']); ?>"
+															<?php checked($api['id'], $active_api_id); ?>
+															<?php if (empty($active_api_id) && $index === 0) echo 'checked'; ?>
+															style="margin-right: 8px;" />
+														<span style="flex: 1;">
+															<strong><?php echo esc_html($api['name']); ?></strong>
+															<?php if (!empty($api['model'])): ?>
+																<span style="color: #666; margin-left: 8px;">(<?php echo esc_html($api['model']); ?>)</span>
+															<?php endif; ?>
+															<br>
+															<small style="color: #666;">
+																<?php _e('密钥:', 'argon'); ?> <?php echo esc_html(substr($api['api_key'], 0, 10)); ?>...
+																<?php if (!empty($api['api_endpoint'])): ?>
+																	| <?php _e('端点:', 'argon'); ?> <?php echo esc_html($api['api_endpoint']); ?>
+																<?php endif; ?>
+															</small>
+														</span>
+														<button type="button" class="button button-small argon-edit-api" 
+															data-provider="<?php echo esc_attr($provider_key); ?>"
+															data-index="<?php echo esc_attr($index); ?>"
+															style="margin-left: 10px;">
+															<?php _e('编辑', 'argon'); ?>
+														</button>
+														<button type="button" class="button button-small argon-delete-api" 
+															data-provider="<?php echo esc_attr($provider_key); ?>"
+															data-index="<?php echo esc_attr($index); ?>"
+															style="margin-left: 5px; color: #b32d2e;">
+															<?php _e('删除', 'argon'); ?>
+														</button>
+													</label>
+												</div>
+											<?php endforeach; ?>
+										</div>
+									</div>
+								<?php else: ?>
+									<p style="color: #666; margin-bottom: 15px;"><?php _e('暂无配置的 API', 'argon'); ?></p>
 								<?php endif; ?>
-							</select>
-							<button type="button" class="button argon-refresh-models" data-provider="<?php echo esc_attr($provider_key); ?>" style="margin-left: 10px;">
-								<span class="dashicons dashicons-update" style="margin-top: 3px;"></span> <?php _e('刷新', 'argon');?>
-							</button>
-							<span class="argon-model-loading" data-provider="<?php echo esc_attr($provider_key); ?>" style="display:none;margin-left:10px;color:#666;">
-								<span class="dashicons dashicons-update spin" style="margin-top:3px;"></span> <?php _e('加载中...', 'argon');?>
-							</span>
-							<p class="description"><?php _e('选择要使用的模型，留空使用默认模型', 'argon');?></p>
+								
+								<button type="button" class="button argon-add-api" data-provider="<?php echo esc_attr($provider_key); ?>">
+									<span class="dashicons dashicons-plus-alt" style="margin-top: 3px;"></span>
+									<?php _e('添加新 API 配置', 'argon'); ?>
+								</button>
+								
+								<!-- API 配置表单（隐藏） -->
+								<div class="argon-api-form" data-provider="<?php echo esc_attr($provider_key); ?>" style="display:none; margin-top: 15px; padding: 15px; background: #fff; border: 1px solid #ddd; border-radius: 4px;">
+									<h4 style="margin-top: 0;"><?php _e('API 配置', 'argon'); ?></h4>
+									<input type="hidden" class="argon-api-form-index" value="-1" />
+									
+									<p>
+										<label>
+											<strong><?php _e('配置名称:', 'argon'); ?></strong><br>
+											<input type="text" class="regular-text argon-api-form-name" placeholder="<?php _e('例如: 主 API', 'argon'); ?>" />
+										</label>
+									</p>
+									
+									<p>
+										<label>
+											<strong><?php _e('API 密钥:', 'argon'); ?></strong><br>
+											<input type="password" class="regular-text argon-api-form-key" placeholder="sk-..." />
+											<button type="button" class="button argon-toggle-password-form" style="margin-left: 5px;">
+												<span class="dashicons dashicons-visibility"></span>
+											</button>
+										</label>
+									</p>
+									
+									<p>
+										<label>
+											<strong><?php _e('API 端点:', 'argon'); ?></strong> <small>(<?php _e('可选', 'argon'); ?>)</small><br>
+											<input type="text" class="regular-text argon-api-form-endpoint" placeholder="<?php _e('留空使用默认端点', 'argon'); ?>" />
+										</label>
+									</p>
+									
+									<p>
+										<label>
+											<strong><?php _e('模型:', 'argon'); ?></strong> <small>(<?php _e('可选', 'argon'); ?>)</small><br>
+											<input type="text" class="regular-text argon-api-form-model" placeholder="<?php _e('留空使用默认模型', 'argon'); ?>" />
+										</label>
+									</p>
+									
+									<p>
+										<button type="button" class="button button-primary argon-save-api" data-provider="<?php echo esc_attr($provider_key); ?>">
+											<?php _e('保存', 'argon'); ?>
+										</button>
+										<button type="button" class="button argon-cancel-api" data-provider="<?php echo esc_attr($provider_key); ?>">
+											<?php _e('取消', 'argon'); ?>
+										</button>
+									</p>
+								</div>
+								
+								<!-- 隐藏字段存储 API 配置 JSON -->
+								<input type="hidden" 
+									name="argon_ai_<?php echo esc_attr($provider_key); ?>_apis" 
+									class="argon-apis-data"
+									value="<?php echo esc_attr(json_encode($apis)); ?>" />
+							</div>
 						</td>
 					</tr>
 					
@@ -2091,7 +2163,7 @@ function themeoptions_page(){
 						<td>
 							<p class="description" style="color: #2271b1; font-weight: 500;">
 								<span class="dashicons dashicons-info" style="margin-top: 3px;"></span>
-								<?php _e('提示：每个 AI 服务商都有独立的配置，切换服务商时会自动使用对应的 API 密钥和模型', 'argon');?>
+								<?php _e('提示：每个 AI 服务商都可以配置多个 API，方便实现负载均衡、备用切换等需求', 'argon');?>
 							</p>
 							<style>
 								@keyframes spin {
@@ -2100,6 +2172,12 @@ function themeoptions_page(){
 								}
 								.dashicons.spin {
 									animation: spin 1s linear infinite;
+								}
+								.argon-api-item {
+									transition: background-color 0.2s;
+								}
+								.argon-api-item:hover {
+									background-color: #e8e8e8 !important;
 								}
 							</style>
 							<script>
@@ -2111,8 +2189,8 @@ function themeoptions_page(){
 									$('.argon-provider-config[data-provider="' + selectedProvider + '"]').show();
 								});
 								
-								// 显示/隐藏密码
-								$('.argon-toggle-password').on('click', function() {
+								// 显示/隐藏密码（表单内）
+								$(document).on('click', '.argon-toggle-password-form', function() {
 									var input = $(this).prev('input');
 									var icon = $(this).find('.dashicons');
 									if (input.attr('type') === 'password') {
@@ -2124,56 +2202,168 @@ function themeoptions_page(){
 									}
 								});
 								
-								// 刷新模型列表
-								$('.argon-refresh-models').on('click', function() {
-									var btn = $(this);
-									var provider = btn.data('provider');
-									var loading = $('.argon-model-loading[data-provider="' + provider + '"]');
-									var select = $('.argon-model-select[data-provider="' + provider + '"]');
-									var apiKey = $('input[name="argon_ai_' + provider + '_api_key"]').val();
-									var apiEndpoint = $('input[name="argon_ai_' + provider + '_api_endpoint"]').val();
+								// 添加新 API 配置
+								$('.argon-add-api').on('click', function() {
+									var provider = $(this).data('provider');
+									var form = $('.argon-api-form[data-provider="' + provider + '"]');
 									
-									if (!apiKey) {
-										alert('<?php _e('请先填写 API 密钥', 'argon');?>');
+									// 重置表单
+									form.find('.argon-api-form-index').val('-1');
+									form.find('.argon-api-form-name').val('');
+									form.find('.argon-api-form-key').val('');
+									form.find('.argon-api-form-endpoint').val('');
+									form.find('.argon-api-form-model').val('');
+									
+									form.slideDown();
+								});
+								
+								// 编辑 API 配置
+								$(document).on('click', '.argon-edit-api', function() {
+									var provider = $(this).data('provider');
+									var index = $(this).data('index');
+									var form = $('.argon-api-form[data-provider="' + provider + '"]');
+									var apisData = JSON.parse($('.argon-api-list[data-provider="' + provider + '"] .argon-apis-data').val() || '[]');
+									
+									if (apisData[index]) {
+										var api = apisData[index];
+										form.find('.argon-api-form-index').val(index);
+										form.find('.argon-api-form-name').val(api.name || '');
+										form.find('.argon-api-form-key').val(api.api_key || '');
+										form.find('.argon-api-form-endpoint').val(api.api_endpoint || '');
+										form.find('.argon-api-form-model').val(api.model || '');
+										
+										form.slideDown();
+									}
+								});
+								
+								// 删除 API 配置
+								$(document).on('click', '.argon-delete-api', function() {
+									if (!confirm('<?php _e('确定要删除这个 API 配置吗？', 'argon'); ?>')) {
 										return;
 									}
 									
-									btn.prop('disabled', true);
-									loading.show();
+									var provider = $(this).data('provider');
+									var index = $(this).data('index');
+									var apiList = $('.argon-api-list[data-provider="' + provider + '"]');
+									var apisData = JSON.parse(apiList.find('.argon-apis-data').val() || '[]');
 									
-									$.post(ajaxurl, {
-										action: 'argon_get_ai_models',
-										nonce: '<?php echo wp_create_nonce('argon_get_ai_models'); ?>',
-										provider: provider,
-										api_key: apiKey,
-										api_endpoint: apiEndpoint
-									}, function(response) {
-										btn.prop('disabled', false);
-										loading.hide();
-										
-										if (response.success && response.data.models) {
-											var currentValue = select.val();
-											select.html('<option value=""><?php _e('使用默认模型', 'argon');?></option>');
-											
-											$.each(response.data.models, function(i, model) {
-												var selected = model.id === currentValue ? ' selected' : '';
-												select.append('<option value="' + model.id + '"' + selected + '>' + model.name + '</option>');
-											});
-											
-											if (response.data.models.length > 0) {
-												alert('<?php _e('成功加载', 'argon');?> ' + response.data.models.length + ' <?php _e('个模型', 'argon');?>');
-											} else {
-												alert('<?php _e('未找到可用模型', 'argon');?>');
-											}
-										} else {
-											alert('<?php _e('获取模型列表失败', 'argon');?>: ' + (response.data || '<?php _e('未知错误', 'argon');?>'));
-										}
-									}).fail(function() {
-										btn.prop('disabled', false);
-										loading.hide();
-										alert('<?php _e('请求失败，请检查网络连接', 'argon');?>');
-									});
+									// 删除指定索引的 API
+									apisData.splice(index, 1);
+									
+									// 更新隐藏字段
+									apiList.find('.argon-apis-data').val(JSON.stringify(apisData));
+									
+									// 重新渲染列表
+									renderApiList(provider, apisData);
 								});
+								
+								// 保存 API 配置
+								$('.argon-save-api').on('click', function() {
+									var provider = $(this).data('provider');
+									var form = $('.argon-api-form[data-provider="' + provider + '"]');
+									var apiList = $('.argon-api-list[data-provider="' + provider + '"]');
+									var apisData = JSON.parse(apiList.find('.argon-apis-data').val() || '[]');
+									
+									var index = parseInt(form.find('.argon-api-form-index').val());
+									var name = form.find('.argon-api-form-name').val().trim();
+									var apiKey = form.find('.argon-api-form-key').val().trim();
+									var apiEndpoint = form.find('.argon-api-form-endpoint').val().trim();
+									var model = form.find('.argon-api-form-model').val().trim();
+									
+									if (!name) {
+										alert('<?php _e('请输入配置名称', 'argon'); ?>');
+										return;
+									}
+									
+									if (!apiKey) {
+										alert('<?php _e('请输入 API 密钥', 'argon'); ?>');
+										return;
+									}
+									
+									var apiConfig = {
+										id: index >= 0 ? apisData[index].id : 'api_' + Date.now(),
+										name: name,
+										api_key: apiKey,
+										api_endpoint: apiEndpoint,
+										model: model,
+										is_active: false
+									};
+									
+									if (index >= 0) {
+										// 编辑现有配置
+										apisData[index] = apiConfig;
+									} else {
+										// 添加新配置
+										apisData.push(apiConfig);
+									}
+									
+									// 更新隐藏字段
+									apiList.find('.argon-apis-data').val(JSON.stringify(apisData));
+									
+									// 重新渲染列表
+									renderApiList(provider, apisData);
+									
+									// 隐藏表单
+									form.slideUp();
+								});
+								
+								// 取消编辑
+								$('.argon-cancel-api').on('click', function() {
+									var provider = $(this).data('provider');
+									$('.argon-api-form[data-provider="' + provider + '"]').slideUp();
+								});
+								
+								// 渲染 API 列表
+								function renderApiList(provider, apisData) {
+									var apiList = $('.argon-api-list[data-provider="' + provider + '"]');
+									var activeApiId = $('input[name="argon_ai_' + provider + '_active_api"]:checked').val();
+									
+									// 构建 HTML
+									var html = '';
+									
+									if (apisData.length > 0) {
+										html += '<div style="margin-bottom: 15px;">';
+										html += '<strong><?php _e('已配置的 API:', 'argon'); ?></strong>';
+										html += '<div style="margin-top: 10px;">';
+										
+										apisData.forEach(function(api, index) {
+											var isChecked = api.id === activeApiId || (index === 0 && !activeApiId);
+											html += '<div class="argon-api-item" style="padding: 10px; background: #f5f5f5; margin-bottom: 8px; border-radius: 4px;">';
+											html += '<label style="display: flex; align-items: center;">';
+											html += '<input type="radio" name="argon_ai_' + provider + '_active_api" value="' + api.id + '"' + (isChecked ? ' checked' : '') + ' style="margin-right: 8px;" />';
+											html += '<span style="flex: 1;">';
+											html += '<strong>' + api.name + '</strong>';
+											if (api.model) {
+												html += '<span style="color: #666; margin-left: 8px;">(' + api.model + ')</span>';
+											}
+											html += '<br><small style="color: #666;">';
+											html += '<?php _e('密钥:', 'argon'); ?> ' + api.api_key.substring(0, 10) + '...';
+											if (api.api_endpoint) {
+												html += ' | <?php _e('端点:', 'argon'); ?> ' + api.api_endpoint;
+											}
+											html += '</small>';
+											html += '</span>';
+											html += '<button type="button" class="button button-small argon-edit-api" data-provider="' + provider + '" data-index="' + index + '" style="margin-left: 10px;"><?php _e('编辑', 'argon'); ?></button>';
+											html += '<button type="button" class="button button-small argon-delete-api" data-provider="' + provider + '" data-index="' + index + '" style="margin-left: 5px; color: #b32d2e;"><?php _e('删除', 'argon'); ?></button>';
+											html += '</label>';
+											html += '</div>';
+										});
+										
+										html += '</div></div>';
+									} else {
+										html += '<p style="color: #666; margin-bottom: 15px;"><?php _e('暂无配置的 API', 'argon'); ?></p>';
+									}
+									
+									// 保留添加按钮和表单
+									var addButton = apiList.find('.argon-add-api');
+									var form = apiList.find('.argon-api-form');
+									var hiddenInput = apiList.find('.argon-apis-data');
+									
+									apiList.html(html);
+									apiList.append(addButton);
+									apiList.append(form);
+									apiList.append(hiddenInput);
+								}
 							});
 							</script>
 						</td>
@@ -7395,12 +7585,22 @@ function argon_update_themeoptions(){
 	argon_update_option('argon_ai_summary_prompt');
 	argon_update_option('argon_ai_summary_exclude_ids');
 	
-	// 保存所有提供商的配置
+	// 保存所有提供商的多 API 配置
 	$providers = ['openai', 'anthropic', 'deepseek', 'xiaomi', 'qianwen', 'wenxin', 'doubao', 'kimi', 'zhipu', 'siliconflow'];
 	foreach ($providers as $provider) {
-		argon_update_option("argon_ai_{$provider}_api_key");
-		argon_update_option("argon_ai_{$provider}_api_endpoint");
-		argon_update_option("argon_ai_{$provider}_model");
+		// 保存 API 配置数组
+		if (isset($_POST["argon_ai_{$provider}_apis"])) {
+			$apis_json = stripslashes($_POST["argon_ai_{$provider}_apis"]);
+			$apis = json_decode($apis_json, true);
+			if (is_array($apis)) {
+				update_option("argon_ai_{$provider}_apis", $apis);
+			}
+		}
+		
+		// 保存当前激活的 API ID
+		if (isset($_POST["argon_ai_{$provider}_active_api"])) {
+			update_option("argon_ai_{$provider}_active_api", sanitize_text_field($_POST["argon_ai_{$provider}_active_api"]));
+		}
 	}
 
 	//AI 垃圾评论识别
