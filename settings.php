@@ -2356,9 +2356,10 @@ function themeoptions_page(){
 						let $btn = $(this);
 						$btn.prop('disabled', true).text('<?php _e('保存中...', 'argon'); ?>');
 						
-						let action = apiId ? 'argon_ajax_update_unified_api' : 'argon_ajax_add_unified_api';
+						let action = apiId ? 'argon_update_unified_api' : 'argon_add_unified_api';
 						let data = {
 							action: action,
+							nonce: '<?php echo wp_create_nonce('argon_manage_unified_apis'); ?>',
 							name: name,
 							api_key: apiKey,
 							provider: provider,
@@ -2375,7 +2376,8 @@ function themeoptions_page(){
 								alert(response.data.message);
 								location.reload();
 							} else {
-								alert('<?php _e('错误:', 'argon'); ?> ' + response.data.message);
+								let msg = (response.data && response.data.message) ? response.data.message : response.data;
+								alert('<?php _e('错误:', 'argon'); ?> ' + msg);
 								$btn.prop('disabled', false).text('<?php _e('保存', 'argon'); ?>');
 							}
 						}).fail(function() {
@@ -2389,11 +2391,12 @@ function themeoptions_page(){
 						let apiId = $(this).data('api-id');
 						
 						$.post(ajaxurl, {
-							action: 'argon_ajax_get_unified_api',
+							action: 'argon_get_unified_api',
+							nonce: '<?php echo wp_create_nonce('argon_manage_unified_apis'); ?>',
 							api_id: apiId
 						}, function(response) {
 							if (response.success) {
-								let api = response.data.api;
+								let api = response.data;
 								$('#argon-unified-api-form-id').val(api.id);
 								$('#argon-unified-api-form-name').val(api.name);
 								$('#argon-unified-api-form-key').val(api.api_key);
@@ -2406,7 +2409,8 @@ function themeoptions_page(){
 									scrollTop: $('#argon-unified-api-form').offset().top - 100
 								}, 500);
 							} else {
-								alert('<?php _e('错误:', 'argon'); ?> ' + response.data.message);
+								let msg = (response.data && response.data.message) ? response.data.message : response.data;
+								alert('<?php _e('错误:', 'argon'); ?> ' + msg);
 							}
 						});
 					});
@@ -2422,14 +2426,16 @@ function themeoptions_page(){
 						$btn.prop('disabled', true);
 						
 						$.post(ajaxurl, {
-							action: 'argon_ajax_delete_unified_api',
+							action: 'argon_delete_unified_api',
+							nonce: '<?php echo wp_create_nonce('argon_manage_unified_apis'); ?>',
 							api_id: apiId
 						}, function(response) {
 							if (response.success) {
 								alert(response.data.message);
 								location.reload();
 							} else {
-								alert('<?php _e('错误:', 'argon'); ?> ' + response.data.message);
+								let msg = (response.data && response.data.message) ? response.data.message : response.data;
+								alert('<?php _e('错误:', 'argon'); ?> ' + msg);
 								$btn.prop('disabled', false);
 							}
 						}).fail(function() {
@@ -2443,28 +2449,46 @@ function themeoptions_page(){
 						let apiId = $(this).data('api-id');
 						let $btn = $(this);
 						let originalHtml = $btn.html();
+						let $msg = $btn.next('.argon-test-msg');
+						
+						if ($msg.length === 0) {
+							$msg = $('<div class="argon-test-msg" style="margin-top: 8px; font-size: 13px; line-height: 1.5;"></div>');
+							$btn.after($msg);
+						}
 						
 						$btn.prop('disabled', true).html('<span class="dashicons dashicons-update dashicons-spin"></span> <?php _e('测试中...', 'argon'); ?>');
+						$msg.html('<span style="color: #666;"><?php _e('正在连接 API...', 'argon'); ?></span>');
 						
 						$.post(ajaxurl, {
-							action: 'argon_ajax_test_unified_api',
+							action: 'argon_test_unified_api',
 							nonce: '<?php echo wp_create_nonce('argon_test_unified_api'); ?>',
 							api_id: apiId
 						}, function(response) {
-							console.log('Response:', response);
 							if (response.success) {
-								alert('✓ ' + response.data.message);
+								$msg.html('<span style="color: #4caf50; font-weight: 500;"><span class="dashicons dashicons-yes" style="font-size: 18px; width: 18px; height: 18px; vertical-align: middle;"></span> ' + response.data.message + '</span>');
 							} else {
-								// wp_send_json_error 的错误消息在 response.data.message 中
 								let errorMsg = (response.data && response.data.message) ? response.data.message : '<?php _e('未知错误', 'argon'); ?>';
-								alert('✗ <?php _e('测试失败:', 'argon'); ?> ' + errorMsg);
+								let detailHtml = '';
+								
+								if (response.data && response.data.debug) {
+									let debugInfo = JSON.stringify(response.data.debug, null, 2);
+									detailHtml = '<div style="margin-top: 5px;"><a href="javascript:void(0);" onclick="$(this).next().toggle();" style="font-size: 12px; color: #d63638; text-decoration: underline;"><?php _e('查看详细信息', 'argon'); ?></a><pre style="display: none; background: #fff; padding: 10px; margin-top: 5px; overflow-x: auto; color: #333; border: 1px solid #ddd; border-left: 3px solid #d63638; font-family: monospace; font-size: 12px; white-space: pre-wrap; word-wrap: break-word;">' + debugInfo + '</pre></div>';
+								}
+								
+								$msg.html('<span style="color: #d63638; font-weight: 500;"><span class="dashicons dashicons-no" style="font-size: 18px; width: 18px; height: 18px; vertical-align: middle;"></span> <?php _e('测试失败:', 'argon'); ?> ' + errorMsg + '</span>' + detailHtml);
 							}
 							$btn.prop('disabled', false).html(originalHtml);
 						}).fail(function(xhr, status, error) {
-							// AJAX 请求本身失败
-							console.error('AJAX Error:', xhr, status, error);
-							console.error('Response Text:', xhr.responseText);
-							alert('✗ <?php _e('请求失败:', 'argon'); ?> ' + (xhr.responseText || error || '<?php _e('网络错误', 'argon'); ?>'));
+							let failMsg = xhr.responseText || error || '<?php _e('网络错误', 'argon'); ?>';
+							// 尝试解析 JSON 错误
+							try {
+								let jsonResp = JSON.parse(xhr.responseText);
+								if (jsonResp && jsonResp.data && jsonResp.data.message) {
+									failMsg = jsonResp.data.message;
+								}
+							} catch(e) {}
+							
+							$msg.html('<span style="color: #d63638; font-weight: 500;"><span class="dashicons dashicons-no" style="font-size: 18px; width: 18px; height: 18px; vertical-align: middle;"></span> <?php _e('请求失败:', 'argon'); ?> ' + failMsg + '</span>');
 							$btn.prop('disabled', false).html(originalHtml);
 						});
 					});
@@ -2492,7 +2516,8 @@ function themeoptions_page(){
 						$list.show().html('<p style="margin: 0; color: #666;"><?php _e('加载中...', 'argon'); ?></p>');
 						
 						$.post(ajaxurl, {
-							action: 'argon_ajax_get_ai_models',
+							action: 'argon_get_ai_models',
+							nonce: '<?php echo wp_create_nonce('argon_get_ai_models'); ?>',
 							provider: provider,
 							api_key: apiKey,
 							api_endpoint: endpoint
@@ -2501,7 +2526,21 @@ function themeoptions_page(){
 								let html = '<p style="margin: 0 0 10px 0; font-weight: 600;"><?php _e('可用模型:', 'argon'); ?></p>';
 								html += '<div style="display: flex; flex-wrap: wrap; gap: 5px;">';
 								response.data.models.forEach(function(model) {
-									html += '<button type="button" class="button button-small argon-select-model" data-model="' + model + '" style="margin: 0;">' + model + '</button>';
+									let modelId = '';
+									let modelLabel = '';
+									if (typeof model === 'string') {
+										modelId = model;
+										modelLabel = model;
+									} else if (model && typeof model === 'object') {
+										modelId = model.id || model.name || '';
+										modelLabel = model.name || model.id || '';
+									}
+									
+									if (!modelId) {
+										return;
+									}
+									
+									html += '<button type="button" class="button button-small argon-select-model" data-model="' + modelId + '" style="margin: 0;">' + modelLabel + '</button>';
 								});
 								html += '</div>';
 								$list.html(html);
@@ -2533,12 +2572,15 @@ function themeoptions_page(){
 						$btn.prop('disabled', true).html('<span class="dashicons dashicons-update dashicons-spin"></span> <?php _e('清除中...', 'argon'); ?>');
 						
 						$.post(ajaxurl, {
-							action: 'argon_ajax_clear_ai_summaries'
+							action: 'argon_clear_ai_summaries',
+							nonce: '<?php echo wp_create_nonce('argon_clear_ai_summaries'); ?>'
 						}, function(response) {
 							if (response.success) {
-								alert('✓ ' + response.data.message);
+								let msg = (response.data && response.data.message) ? response.data.message : response.data;
+								alert('✓ ' + msg);
 							} else {
-								alert('✗ <?php _e('清除失败:', 'argon'); ?> ' + response.data.message);
+								let msg = (response.data && response.data.message) ? response.data.message : response.data;
+								alert('✗ <?php _e('清除失败:', 'argon'); ?> ' + msg);
 							}
 							$btn.prop('disabled', false).html(originalHtml);
 						}).fail(function() {

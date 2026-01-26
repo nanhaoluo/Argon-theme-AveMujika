@@ -6527,37 +6527,40 @@ function argon_ai_query($scenario, $prompt, $content, $context = []) {
 	$result = false;
 	$error_message = '';
 	
+	// 获取 API 端点
+	$endpoint = isset($config['api_endpoint']) ? $config['api_endpoint'] : '';
+
 	try {
 		switch ($provider) {
 			case 'openai':
-				$result = argon_call_openai_api($api_key, $prompt, $content, $post_id);
+				$result = argon_call_openai_api($api_key, $prompt, $content, $post_id, $model, $endpoint);
 				break;
 			case 'anthropic':
-				$result = argon_call_anthropic_api($api_key, $prompt, $content, $post_id);
+				$result = argon_call_anthropic_api($api_key, $prompt, $content, $post_id, $model, $endpoint);
 				break;
 			case 'deepseek':
-				$result = argon_call_deepseek_api($api_key, $prompt, $content, $post_id);
+				$result = argon_call_deepseek_api($api_key, $prompt, $content, $post_id, $model, $endpoint);
 				break;
 			case 'xiaomi':
-				$result = argon_call_xiaomi_api($api_key, $prompt, $content, $post_id);
+				$result = argon_call_xiaomi_api($api_key, $prompt, $content, $post_id, $model, $endpoint);
 				break;
 			case 'qianwen':
-				$result = argon_call_qianwen_api($api_key, $prompt, $content, $post_id);
+				$result = argon_call_qianwen_api($api_key, $prompt, $content, $post_id, $model, $endpoint);
 				break;
 			case 'wenxin':
-				$result = argon_call_wenxin_api($api_key, $prompt, $content, $post_id);
+				$result = argon_call_wenxin_api($api_key, $prompt, $content, $post_id, $model, $endpoint);
 				break;
 			case 'doubao':
-				$result = argon_call_doubao_api($api_key, $prompt, $content, $post_id);
+				$result = argon_call_doubao_api($api_key, $prompt, $content, $post_id, $model, $endpoint);
 				break;
 			case 'kimi':
-				$result = argon_call_kimi_api($api_key, $prompt, $content, $post_id);
+				$result = argon_call_kimi_api($api_key, $prompt, $content, $post_id, $model, $endpoint);
 				break;
 			case 'zhipu':
-				$result = argon_call_zhipu_api($api_key, $prompt, $content, $post_id);
+				$result = argon_call_zhipu_api($api_key, $prompt, $content, $post_id, $model, $endpoint);
 				break;
 			case 'siliconflow':
-				$result = argon_call_siliconflow_api($api_key, $prompt, $content, $post_id);
+				$result = argon_call_siliconflow_api($api_key, $prompt, $content, $post_id, $model, $endpoint);
 				break;
 			default:
 				$error_message = "Unsupported provider: {$provider}";
@@ -7281,12 +7284,16 @@ function argon_generate_ai_summary($post) {
 /**
  * 调用 OpenAI API
  */
-function argon_call_openai_api($api_key, $prompt, $content, $post_id = 0) {
+function argon_call_openai_api($api_key, $prompt, $content, $post_id = 0, $model = '', $endpoint = '') {
 	$provider = 'openai';
 	$config = argon_get_ai_provider_config($provider);
 	
-	$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://api.openai.com/v1/chat/completions';
-	$model = !empty($config['model']) ? $config['model'] : 'gpt-4o-mini';
+	if (empty($endpoint)) {
+		$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://api.openai.com/v1/chat/completions';
+	}
+	if (empty($model)) {
+		$model = !empty($config['model']) ? $config['model'] : 'gpt-4o-mini';
+	}
 
 	$data = [
 		'model' => $model,
@@ -7354,12 +7361,16 @@ function argon_call_openai_api($api_key, $prompt, $content, $post_id = 0) {
 /**
  * 调用 Anthropic Claude API
  */
-function argon_call_anthropic_api($api_key, $prompt, $content, $post_id = 0) {
+function argon_call_anthropic_api($api_key, $prompt, $content, $post_id = 0, $model = '', $endpoint = '') {
 	$provider = 'anthropic';
 	$config = argon_get_ai_provider_config($provider);
 	
-	$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://api.anthropic.com/v1/messages';
-	$model = !empty($config['model']) ? $config['model'] : 'claude-3-5-haiku-20241022';
+	if (empty($endpoint)) {
+		$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://api.anthropic.com/v1/messages';
+	}
+	if (empty($model)) {
+		$model = !empty($config['model']) ? $config['model'] : 'claude-3-5-haiku-20241022';
+	}
 
 	$data = [
 		'model' => $model,
@@ -7448,12 +7459,16 @@ function argon_call_anthropic_api($api_key, $prompt, $content, $post_id = 0) {
 /**
  * 调用通义千问 API
  */
-function argon_call_qianwen_api($api_key, $prompt, $content, $post_id = 0) {
+function argon_call_qianwen_api($api_key, $prompt, $content, $post_id = 0, $model = '', $endpoint = '') {
 	$provider = 'qianwen';
 	$config = argon_get_ai_provider_config($provider);
 	
-	$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation';
-	$model = !empty($config['model']) ? $config['model'] : 'qwen-turbo';
+	if (empty($endpoint)) {
+		$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation';
+	}
+	if (empty($model)) {
+		$model = !empty($config['model']) ? $config['model'] : 'qwen-turbo';
+	}
 
 	$data = [
 		'model' => $model,
@@ -7643,12 +7658,16 @@ function argon_call_wenxin_api($api_key, $prompt, $content, $post_id = 0) {
 /**
  * 调用 Kimi (Moonshot) API
  */
-function argon_call_kimi_api($api_key, $prompt, $content, $post_id = 0) {
+function argon_call_kimi_api($api_key, $prompt, $content, $post_id = 0, $model = '', $endpoint = '') {
 	$provider = 'kimi';
 	$config = argon_get_ai_provider_config($provider);
 	
-	$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://api.moonshot.cn/v1/chat/completions';
-	$model = !empty($config['model']) ? $config['model'] : 'moonshot-v1-8k';
+	if (empty($endpoint)) {
+		$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://api.moonshot.cn/v1/chat/completions';
+	}
+	if (empty($model)) {
+		$model = !empty($config['model']) ? $config['model'] : 'moonshot-v1-8k';
+	}
 
 	$data = [
 		'model' => $model,
@@ -7951,12 +7970,16 @@ add_action('wp_ajax_nopriv_argon_check_ai_summary', 'argon_check_ai_summary');
 /**
  * 调用 DeepSeek API
  */
-function argon_call_deepseek_api($api_key, $prompt, $content, $post_id = 0) {
+function argon_call_deepseek_api($api_key, $prompt, $content, $post_id = 0, $model = '', $endpoint = '') {
 	$provider = 'deepseek';
 	$config = argon_get_ai_provider_config($provider);
 	
-	$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://api.deepseek.com/v1/chat/completions';
-	$model = !empty($config['model']) ? $config['model'] : 'deepseek-chat';
+	if (empty($endpoint)) {
+		$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://api.deepseek.com/v1/chat/completions';
+	}
+	if (empty($model)) {
+		$model = !empty($config['model']) ? $config['model'] : 'deepseek-chat';
+	}
 
 	$data = [
 		'model' => $model,
@@ -8046,12 +8069,22 @@ function argon_call_deepseek_api($api_key, $prompt, $content, $post_id = 0) {
 /**
  * 调用小米 Mimo API
  */
-function argon_call_xiaomi_api($api_key, $prompt, $content, $post_id = 0) {
+function argon_call_xiaomi_api($api_key, $prompt, $content, $post_id = 0, $model = '', $endpoint = '') {
 	$provider = 'xiaomi';
 	$config = argon_get_ai_provider_config($provider);
 	
-	$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://api.mimo.xiaomi.com/v1/chat/completions';
-	$model = !empty($config['model']) ? $config['model'] : 'MiMo-V2-Flash';
+	if (empty($endpoint)) {
+		$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://api.mimo.xiaomi.com/v1/chat/completions';
+	}
+	if (empty($model)) {
+		$model = !empty($config['model']) ? $config['model'] : 'MiMo-V2-Flash';
+	}
+	
+	if (strpos($endpoint, 'xiaomimimo.com') !== false && strcasecmp($model, 'MiMo-V2-Flash') === 0) {
+		$model = 'mimo-v2-flash';
+	} elseif (strpos($endpoint, 'api.mimo.xiaomi.com') !== false && strcasecmp($model, 'mimo-v2-flash') === 0) {
+		$model = 'MiMo-V2-Flash';
+	}
 
 	// 小米 Mimo API 请求数据
 	$data = [
@@ -8427,34 +8460,34 @@ function argon_test_api_connection() {
 	try {
 		switch ($provider) {
 			case 'openai':
-				$result = argon_call_openai_api($api_key, $test_prompt, $test_content);
+				$result = argon_call_openai_api($api_key, $test_prompt, $test_content, 0, $model, $api_endpoint);
 				break;
 			case 'anthropic':
-				$result = argon_call_anthropic_api($api_key, $test_prompt, $test_content);
+				$result = argon_call_anthropic_api($api_key, $test_prompt, $test_content, 0, $model, $api_endpoint);
 				break;
 			case 'deepseek':
-				$result = argon_call_deepseek_api($api_key, $test_prompt, $test_content);
+				$result = argon_call_deepseek_api($api_key, $test_prompt, $test_content, 0, $model, $api_endpoint);
 				break;
 			case 'xiaomi':
-				$result = argon_call_xiaomi_api($api_key, $test_prompt, $test_content);
+				$result = argon_call_xiaomi_api($api_key, $test_prompt, $test_content, 0, $model, $api_endpoint);
 				break;
 			case 'qianwen':
-				$result = argon_call_qianwen_api($api_key, $test_prompt, $test_content);
+				$result = argon_call_qianwen_api($api_key, $test_prompt, $test_content, 0, $model, $api_endpoint);
 				break;
 			case 'wenxin':
-				$result = argon_call_wenxin_api($api_key, $test_prompt, $test_content);
+				$result = argon_call_wenxin_api($api_key, $test_prompt, $test_content, 0, $model, $api_endpoint);
 				break;
 			case 'doubao':
-				$result = argon_call_doubao_api($api_key, $test_prompt, $test_content);
+				$result = argon_call_doubao_api($api_key, $test_prompt, $test_content, 0, $model, $api_endpoint);
 				break;
 			case 'kimi':
-				$result = argon_call_kimi_api($api_key, $test_prompt, $test_content);
+				$result = argon_call_kimi_api($api_key, $test_prompt, $test_content, 0, $model, $api_endpoint);
 				break;
 			case 'zhipu':
-				$result = argon_call_zhipu_api($api_key, $test_prompt, $test_content);
+				$result = argon_call_zhipu_api($api_key, $test_prompt, $test_content, 0, $model, $api_endpoint);
 				break;
 			case 'siliconflow':
-				$result = argon_call_siliconflow_api($api_key, $test_prompt, $test_content);
+				$result = argon_call_siliconflow_api($api_key, $test_prompt, $test_content, 0, $model, $api_endpoint);
 				break;
 			default:
 				wp_send_json_error(__('不支持的服务商', 'argon'));
@@ -8810,7 +8843,7 @@ function argon_ajax_test_unified_api() {
 		'openai' => 'https://api.openai.com/v1/chat/completions',
 		'anthropic' => 'https://api.anthropic.com/v1/messages',
 		'deepseek' => 'https://api.deepseek.com/v1/chat/completions',
-		'xiaomi' => 'https://api.xiaomimimo.com/v1/chat/completions',
+		'xiaomi' => 'https://api.mimo.xiaomi.com/v1/chat/completions',
 		'qianwen' => 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
 		'wenxin' => 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions',
 		'doubao' => 'https://ark.cn-beijing.volces.com/api/v3/chat/completions',
@@ -8831,7 +8864,7 @@ function argon_ajax_test_unified_api() {
 		'openai' => 'gpt-4o-mini',
 		'anthropic' => 'claude-3-5-sonnet-20241022',
 		'deepseek' => 'deepseek-chat',
-		'xiaomi' => 'mimo-v2-flash',
+		'xiaomi' => 'MiMo-V2-Flash',
 		'qianwen' => 'qwen-turbo',
 		'wenxin' => 'ernie-4.0-8k',
 		'doubao' => 'doubao-pro-32k',
@@ -8841,6 +8874,21 @@ function argon_ajax_test_unified_api() {
 	];
 	
 	$model = !empty($api['model']) ? $api['model'] : (isset($default_models[$api['provider']]) ? $default_models[$api['provider']] : 'gpt-4o-mini');
+	if (empty($api['model']) && isset($api['provider']) && $api['provider'] === 'xiaomi') {
+		if (strpos($api_endpoint, 'xiaomimimo.com') !== false) {
+			$model = 'mimo-v2-flash';
+		} else {
+			$model = 'MiMo-V2-Flash';
+		}
+	}
+	
+	if (isset($api['provider']) && $api['provider'] === 'xiaomi') {
+		if (strpos($api_endpoint, 'xiaomimimo.com') !== false && strcasecmp($model, 'MiMo-V2-Flash') === 0) {
+			$model = 'mimo-v2-flash';
+		} elseif (strpos($api_endpoint, 'api.mimo.xiaomi.com') !== false && strcasecmp($model, 'mimo-v2-flash') === 0) {
+			$model = 'MiMo-V2-Flash';
+		}
+	}
 	
 	// 构建测试请求
 	$data = [
@@ -8871,32 +8919,145 @@ function argon_ajax_test_unified_api() {
 	$response_time = round((microtime(true) - $start_time) * 1000);
 	
 	if (is_wp_error($response)) {
-		wp_send_json_error(['message' => '连接失败: ' . $response->get_error_message()]);
+		wp_send_json_error([
+			'message' => '连接失败: ' . $response->get_error_message(),
+			'debug' => [
+				'error_code' => $response->get_error_code(),
+				'error_message' => $response->get_error_message()
+			]
+		]);
 		return;
 	}
 	
 	$status_code = wp_remote_retrieve_response_code($response);
 	$body = wp_remote_retrieve_body($response);
 	
-	if ($status_code === 200) {
-		$result = json_decode($body, true);
-		if (isset($result['choices'][0]['message']['content']) || isset($result['content'])) {
-			wp_send_json_success([
-				'message' => '测试成功！响应时间: ' . $response_time . 'ms',
-				'response_time' => $response_time
+	// 安全获取 headers
+	$headers = wp_remote_retrieve_headers($response);
+	$headers_array = [];
+	if (is_object($headers) && method_exists($headers, 'getAll')) {
+		$headers_array = $headers->getAll();
+	} elseif (is_array($headers)) {
+		$headers_array = $headers;
+	}
+
+	$decoded_body = json_decode($body, true);
+	
+	if ($status_code >= 200 && $status_code < 300) {
+		// 检查响应内容是否包含明显的错误字段
+		if (isset($decoded_body['error'])) {
+			$error_msg = '未知 API 错误';
+			if (is_string($decoded_body['error'])) {
+				$error_msg = $decoded_body['error'];
+			} elseif (isset($decoded_body['error']['message'])) {
+				$error_msg = $decoded_body['error']['message'];
+			}
+			
+			wp_send_json_error([
+				'message' => 'API 返回错误: ' . $error_msg,
+				'debug' => [
+					'status' => $status_code,
+					'body' => $decoded_body
+				]
 			]);
-		} else {
-			wp_send_json_error(['message' => 'API 返回格式异常: ' . substr($body, 0, 200)]);
+			return;
 		}
+
+		wp_send_json_success([
+			'message' => '连接成功！耗时 ' . $response_time . 'ms',
+			'data' => [
+				'latency' => $response_time,
+				'model' => $model,
+				'response_preview' => substr($body, 0, 100) . '...'
+			]
+		]);
 	} else {
-		$error_msg = 'HTTP ' . $status_code;
-		$result = json_decode($body, true);
-		if ($result && isset($result['error']['message'])) {
-			$error_msg .= ': ' . $result['error']['message'];
-		} else {
-			$error_msg .= ': ' . substr($body, 0, 200);
+		if (isset($api['provider']) && $api['provider'] === 'xiaomi' && $status_code === 400 && isset($decoded_body['error'])) {
+			$is_model_not_supported = false;
+			if (isset($decoded_body['error']['param']) && is_string($decoded_body['error']['param']) && stripos($decoded_body['error']['param'], 'not supported model') !== false) {
+				$is_model_not_supported = true;
+			} elseif (isset($decoded_body['error']['message']) && is_string($decoded_body['error']['message']) && stripos($decoded_body['error']['message'], 'param incorrect') !== false) {
+				$is_model_not_supported = true;
+			}
+			
+			if ($is_model_not_supported) {
+				$try_models = [
+					'mimo-v2-flash',
+					'MiMo-V2-Flash',
+				];
+				if (!empty($model)) {
+					$try_models[] = strtolower($model);
+				}
+				$try_models = array_values(array_unique(array_filter($try_models)));
+				
+				$tried = [];
+				foreach ($try_models as $try_model) {
+					if ($try_model === $model) {
+						continue;
+					}
+					$tried[] = $try_model;
+					
+					$data['model'] = $try_model;
+					$retry_start = microtime(true);
+					$retry_resp = wp_remote_post($api_endpoint, [
+						'headers' => [
+							'Content-Type' => 'application/json',
+							'Authorization' => 'Bearer ' . $api['api_key'],
+							'Accept' => 'application/json'
+						],
+						'body' => json_encode($data, JSON_UNESCAPED_UNICODE),
+						'timeout' => 30,
+						'sslverify' => true
+					]);
+					$retry_time = round((microtime(true) - $retry_start) * 1000);
+					
+					if (is_wp_error($retry_resp)) {
+						continue;
+					}
+					
+					$retry_status = wp_remote_retrieve_response_code($retry_resp);
+					$retry_body = wp_remote_retrieve_body($retry_resp);
+					$retry_decoded = json_decode($retry_body, true);
+					
+					if ($retry_status >= 200 && $retry_status < 300 && !(is_array($retry_decoded) && isset($retry_decoded['error']))) {
+						wp_send_json_success([
+							'message' => '连接成功（模型自动回退为 ' . $try_model . '）耗时 ' . $retry_time . 'ms',
+							'data' => [
+								'latency' => $retry_time,
+								'model' => $try_model,
+								'response_preview' => substr($retry_body, 0, 100) . '...'
+							]
+						]);
+						return;
+					}
+				}
+				
+				$data['model'] = $model;
+			}
 		}
-		wp_send_json_error(['message' => $error_msg]);
+		
+		// 尝试从响应中解析错误信息
+		$error_message = 'HTTP ' . $status_code;
+		
+		if (isset($decoded_body['error']['message'])) {
+			$error_message .= ': ' . $decoded_body['error']['message'];
+		} elseif (isset($decoded_body['message'])) {
+			$error_message .= ': ' . $decoded_body['message'];
+		} else {
+			$clean_body = strip_tags($body);
+			if (strlen($clean_body) < 100 && !empty($clean_body)) {
+				$error_message .= ': ' . $clean_body;
+			}
+		}
+
+		wp_send_json_error([
+			'message' => '请求失败: ' . $error_message,
+			'debug' => [
+				'status' => $status_code,
+				'body' => $body,
+				'headers' => $headers_array
+			]
+		]);
 	}
 }
 add_action('wp_ajax_argon_test_unified_api', 'argon_ajax_test_unified_api');
@@ -9052,7 +9213,8 @@ function argon_get_deepseek_models($api_key, $custom_endpoint = '') {
  * 获取小米 Mimo 模型列表
  */
 function argon_get_xiaomi_models($api_key, $custom_endpoint = '') {
-	$endpoint = !empty($custom_endpoint) ? $custom_endpoint : 'https://api.mimo.xiaomi.com/v1/models';
+	$endpoint_source = !empty($custom_endpoint) ? $custom_endpoint : 'https://api.mimo.xiaomi.com/v1/models';
+	$endpoint = $endpoint_source;
 	$endpoint = preg_replace('#/v1/chat/completions$#', '/v1/models', $endpoint);
 	
 	$response = wp_remote_get($endpoint, [
@@ -9067,16 +9229,30 @@ function argon_get_xiaomi_models($api_key, $custom_endpoint = '') {
 	if (is_wp_error($response)) {
 		// API 调用失败,返回预设列表
 		error_log('Xiaomi Mimo API 获取模型列表失败: ' . $response->get_error_message());
+		if (strpos($endpoint_source, 'xiaomimimo.com') !== false) {
+			return [
+				['id' => 'mimo-v2-flash', 'name' => 'mimo-v2-flash (推荐)'],
+				['id' => 'MiMo-V2-Flash', 'name' => 'MiMo-V2-Flash']
+			];
+		}
 		return [
-			['id' => 'MiMo-V2-Flash', 'name' => 'MiMo-V2-Flash (推荐)']
+			['id' => 'MiMo-V2-Flash', 'name' => 'MiMo-V2-Flash (推荐)'],
+			['id' => 'mimo-v2-flash', 'name' => 'mimo-v2-flash']
 		];
 	}
 	
 	$status_code = wp_remote_retrieve_response_code($response);
 	if ($status_code !== 200) {
 		error_log('Xiaomi Mimo API 返回错误状态码: ' . $status_code . ', 响应: ' . wp_remote_retrieve_body($response));
+		if (strpos($endpoint_source, 'xiaomimimo.com') !== false) {
+			return [
+				['id' => 'mimo-v2-flash', 'name' => 'mimo-v2-flash (推荐)'],
+				['id' => 'MiMo-V2-Flash', 'name' => 'MiMo-V2-Flash']
+			];
+		}
 		return [
-			['id' => 'MiMo-V2-Flash', 'name' => 'MiMo-V2-Flash (推荐)']
+			['id' => 'MiMo-V2-Flash', 'name' => 'MiMo-V2-Flash (推荐)'],
+			['id' => 'mimo-v2-flash', 'name' => 'mimo-v2-flash']
 		];
 	}
 	
@@ -9084,8 +9260,15 @@ function argon_get_xiaomi_models($api_key, $custom_endpoint = '') {
 	
 	if (!isset($body['data'])) {
 		error_log('Xiaomi Mimo API 响应格式异常: ' . wp_remote_retrieve_body($response));
+		if (strpos($endpoint_source, 'xiaomimimo.com') !== false) {
+			return [
+				['id' => 'mimo-v2-flash', 'name' => 'mimo-v2-flash (推荐)'],
+				['id' => 'MiMo-V2-Flash', 'name' => 'MiMo-V2-Flash']
+			];
+		}
 		return [
-			['id' => 'MiMo-V2-Flash', 'name' => 'MiMo-V2-Flash (推荐)']
+			['id' => 'MiMo-V2-Flash', 'name' => 'MiMo-V2-Flash (推荐)'],
+			['id' => 'mimo-v2-flash', 'name' => 'mimo-v2-flash']
 		];
 	}
 	
@@ -9099,8 +9282,20 @@ function argon_get_xiaomi_models($api_key, $custom_endpoint = '') {
 		}
 	}
 	
-	return !empty($models) ? $models : [
-		['id' => 'MiMo-V2-Flash', 'name' => 'MiMo-V2-Flash (推荐)']
+	if (!empty($models)) {
+		return $models;
+	}
+	
+	if (strpos($endpoint_source, 'xiaomimimo.com') !== false) {
+		return [
+			['id' => 'mimo-v2-flash', 'name' => 'mimo-v2-flash (推荐)'],
+			['id' => 'MiMo-V2-Flash', 'name' => 'MiMo-V2-Flash']
+		];
+	}
+	
+	return [
+		['id' => 'MiMo-V2-Flash', 'name' => 'MiMo-V2-Flash (推荐)'],
+		['id' => 'mimo-v2-flash', 'name' => 'mimo-v2-flash']
 	];
 }
 
@@ -10406,7 +10601,7 @@ function argon_batch_detect_spam_comments($comments_data) {
 	$batch_content .= "\n请返回 JSON 数组格式：[{\"id\": 评论ID, \"is_spam\": true/false, \"reason\": \"理由(25字以内)\", \"confidence\": 0.0-1.0}]";
 	
 	// 使用统一的 AI 查询接口
-	$ai_response = argon_ai_query('spam_detection_batch', $prompt, $batch_content, [
+	$ai_response = argon_ai_query('spam', $prompt, $batch_content, [
 		'user_id' => get_current_user_id()
 	]);
 	
@@ -11993,16 +12188,35 @@ class Argon_Spam_AI_Detector {
 	 * @return array|false API 响应结果
 	 */
 	private function call_ai_api($prompt, $content) {
-		$provider = get_option('argon_ai_summary_api_provider', 'openai');
-		$api_key = get_option('argon_ai_summary_api_key', '');
-		$model = get_option('argon_ai_summary_model', '');
+		// 使用统一的 AI 查询接口
+		$result = argon_ai_query('spam', $prompt, $content);
 		
-		if (empty($api_key)) {
+		if ($result === false) {
 			return false;
 		}
 		
-		// 使用现有的 API 调用函数
-		return argon_call_ai_api_for_spam_detection($provider, $api_key, $model, $prompt, $content);
+		// 解析 JSON 结果
+		$decoded = json_decode($result, true);
+		if (json_last_error() === JSON_ERROR_NONE) {
+			return $decoded;
+		}
+		
+		// 尝试从文本中提取 JSON
+		if (preg_match('/\{.*\}/s', $result, $matches)) {
+			$decoded = json_decode($matches[0], true);
+			if (json_last_error() === JSON_ERROR_NONE) {
+				return $decoded;
+			}
+		}
+		
+		// 如果无法解析 JSON，尝试构建基本的返回结构
+		// 这可能是因为 AI 返回了纯文本
+		return [
+			'content_spam' => false,
+			'reason' => mb_substr($result, 0, 100),
+			'confidence' => 0.5,
+			'suggestion' => 'review'
+		];
 	}
 	
 	/**
