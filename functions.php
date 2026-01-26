@@ -6999,6 +6999,22 @@ function argon_get_ai_provider_config($provider = '') {
 		$provider = get_option('argon_ai_summary_provider', 'openai');
 	}
 	
+	// 优先使用新的统一 API 系统
+	$all_apis = argon_get_all_apis();
+	if (!empty($all_apis)) {
+		// 查找该提供商的第一个 API
+		foreach ($all_apis as $api) {
+			if (isset($api['provider']) && $api['provider'] === $provider) {
+				return [
+					'api_key' => isset($api['api_key']) ? $api['api_key'] : '',
+					'api_endpoint' => isset($api['api_endpoint']) ? $api['api_endpoint'] : '',
+					'model' => isset($api['model']) ? $api['model'] : ''
+				];
+			}
+		}
+	}
+	
+	// 回退到旧的多 API 系统
 	$apis = argon_get_provider_apis($provider);
 	$active_api_id = get_option("argon_ai_{$provider}_active_api", '');
 	
@@ -7144,6 +7160,248 @@ function argon_set_active_api($provider, $api_id) {
 	
 	return false;
 }
+
+// ==================== 统一 API 管理函数（新架构） ====================
+
+/**
+ * 数据迁移：将旧的分散 API 数据迁移到新的统一结构
+ */
+function argon_migrate_ai_apis() {
+	// 检查是否已经迁移过
+	if (get_option('argon_ai_apis_migrated', 'false') === 'true') {
+		return;
+	}
+	
+	$providers = ['openai', 'anthropic', 'deepseek', 'xiaomi', 'qianwen', 'wenxin', 'doubao', 'kimi', 'zhipu', 'siliconflow'];
+	$unified_apis = [];
+	
+	foreach ($providers as $provider) {
+		$old_apis = get_option("argon_ai_{$provider}_apis", []);
+		if (!empty($old_apis) && is_array($old_apis)) {
+			foreach ($old_apis as $api) {
+				$unified_apis[] = [
+					'id' => isset($api['id']) ? $api['id'] : 'api_' . time() . '_' . wp_rand(1000, 9999),
+					'name' => isset($api['name']) ? $api['name'] : $provider . ' API',
+					'provider' => $provider,
+					'api_key' => isset($api['api_key']) ? $api['api_key'] : '',
+					'api_endpoint' => isset($api['api_endpoint']) ? $api['api_endpoint'] : '',
+					'model' => isset($api['model']) ? $api['model'] : '',
+					'is_active' => isset($api['is_active']) ? $api['is_active'] : false,
+					'created_at' => time()
+				];
+			}
+		}
+	}
+	
+	if (!empty($unified_apis)) {
+		update_option('argon_ai_apis', $unified_apis);
+		
+		// 设置默认的活动 API（如果有的话）
+		foreach ($unified_apis as $api) {
+			if (!empty($api['is_active'])) {
+				update_option('argon_ai_summary_active_api', $api['id']);
+				update_option('argon_ai_spam_active_api', $api['id']);
+				break;
+			}
+		}
+	}
+	
+	update_option('argon_ai_apis_migrated', 'true');
+}
+
+/**
+ * 获取所有 API 配置
+ * @return array API 配置数组
+ */
+function argon_get_all_apis() {
+	$apis = get_option('argon_ai_apis', []);
+	
+	// 确保返回的是数组
+	if (!is_array($apis)) {
+		$apis = [];
+	}
+	
+	return $apis;
+}
+
+/**
+ * 根据 ID 获取指定的 API 配置
+ * @param string $api_id API ID
+ * @return array|false API 配置或 false
+ */
+function argon_get_api_by_id($api_id) {
+	$apis = argon_get_all_apis();
+	
+	foreach ($apis as $api) {
+		if (isset($api['id']) && $api['id'] === $api_id) {
+			return $api;
+		}
+	}
+	
+	return false;
+}
+
+/**
+ * 添加新的 API 配置
+ * @param array $config API 配置 ['name', 'provider', 'api_key', 'api_endpoint', 'model']
+ * @return string|false API ID 或 false
+ */
+function argon_add_api($config) {
+	$apis = argon_get_all_apis();
+	
+	// 生成唯一 ID
+	$api_id = 'api_' . time() . '_' . wp_rand(1000, 9999);
+	
+	// 添加新配置
+	$new_api = [
+		'id' => $api_id,
+		'name' => sanitize_text_field($config['name']),
+		'provider' => sanitize_text_field($config['provider']),
+		'api_key' => sanitize_text_field($config['api_key']),
+		'api_endpoint' => esc_url_raw($config['api_endpoint']),
+		'model' => sanitize_text_field($config['model']),
+		'is_active' => false,
+		'created_at' => time()
+	];
+	
+	$apis[] = $new_api;
+	update_option('argon_ai_apis', $apis);
+	
+	return $api_id;
+}
+
+/**
+ * 更新指定的 API 配置
+ * @param string $api_id API ID
+ * @param array $config API 配置 ['name', 'provider', 'api_key', 'api_endpoint', 'model']
+ * @return bool 是否成功
+ */
+function argon_update_api($api_id, $config) {
+	$apis = argon_get_all_apis();
+	$found = false;
+	
+	foreach ($apis as &$api) {
+		if ($api['id'] === $api_id) {
+			$api['name'] = sanitize_text_field($config['name']);
+			$api['provider'] = sanitize_text_field($config['provider']);
+			$api['api_key'] = sanitize_text_field($config['api_key']);
+			$api['api_endpoint'] = esc_url_raw($config['api_endpoint']);
+			$api['model'] = sanitize_text_field($config['model']);
+			$found = true;
+			break;
+		}
+	}
+	
+	if ($found) {
+		update_option('argon_ai_apis', $apis);
+		return true;
+	}
+	
+	return false;
+}
+
+/**
+ * 删除指定的 API 配置
+ * @param string $api_id API ID
+ * @return bool 是否成功
+ */
+function argon_delete_api($api_id) {
+	$apis = argon_get_all_apis();
+	
+	// 检查是否是当前使用的 API
+	$summary_active = get_option('argon_ai_summary_active_api', '');
+	$spam_active = get_option('argon_ai_spam_active_api', '');
+	
+	if ($api_id === $summary_active || $api_id === $spam_active) {
+		return false; // 不允许删除正在使用的 API
+	}
+	
+	$new_apis = [];
+	foreach ($apis as $api) {
+		if ($api['id'] !== $api_id) {
+			$new_apis[] = $api;
+		}
+	}
+	
+	update_option('argon_ai_apis', $new_apis);
+	return true;
+}
+
+/**
+ * 为指定场景设置活动的 API
+ * @param string $scenario 场景 ('summary' 或 'spam')
+ * @param string $api_id API ID
+ * @return bool 是否成功
+ */
+function argon_set_active_api_for_scenario($scenario, $api_id) {
+	$apis = argon_get_all_apis();
+	
+	// 检查 API 是否存在
+	$found = false;
+	foreach ($apis as $api) {
+		if ($api['id'] === $api_id) {
+			$found = true;
+			break;
+		}
+	}
+	
+	if (!$found) {
+		return false;
+	}
+	
+	// 设置活动 API
+	if ($scenario === 'summary') {
+		update_option('argon_ai_summary_active_api', $api_id);
+	} elseif ($scenario === 'spam') {
+		update_option('argon_ai_spam_active_api', $api_id);
+	} else {
+		return false;
+	}
+	
+	return true;
+}
+
+/**
+ * 获取指定场景的活动 API 配置
+ * @param string $scenario 场景 ('summary' 或 'spam')
+ * @return array ['api_key' => string, 'api_endpoint' => string, 'model' => string, 'provider' => string]
+ */
+function argon_get_active_api_config($scenario = 'summary') {
+	$api_id = '';
+	
+	if ($scenario === 'summary') {
+		$api_id = get_option('argon_ai_summary_active_api', '');
+	} elseif ($scenario === 'spam') {
+		$api_id = get_option('argon_ai_spam_active_api', '');
+	}
+	
+	if (empty($api_id)) {
+		// 如果没有设置，尝试获取第一个 API
+		$apis = argon_get_all_apis();
+		if (!empty($apis) && isset($apis[0])) {
+			$api_id = $apis[0]['id'];
+		}
+	}
+	
+	if (!empty($api_id)) {
+		$api = argon_get_api_by_id($api_id);
+		if ($api) {
+			return [
+				'api_key' => isset($api['api_key']) ? $api['api_key'] : '',
+				'api_endpoint' => isset($api['api_endpoint']) ? $api['api_endpoint'] : '',
+				'model' => isset($api['model']) ? $api['model'] : '',
+				'provider' => isset($api['provider']) ? $api['provider'] : ''
+			];
+		}
+	}
+	
+	// 向后兼容：如果新系统没有数据，尝试使用旧系统
+	$provider = get_option('argon_ai_summary_provider', 'openai');
+	return argon_get_ai_provider_config($provider);
+}
+
+// 在主题加载时自动迁移数据
+add_action('after_setup_theme', 'argon_migrate_ai_apis');
 
 /**
  * 记录 AI API 错误
@@ -8538,6 +8796,159 @@ function argon_ajax_set_active_api() {
 	}
 }
 add_action('wp_ajax_argon_set_active_api', 'argon_ajax_set_active_api');
+
+// ==================== 统一 API 管理 AJAX 函数（新架构） ====================
+
+/**
+ * AJAX: 添加新的 API 配置（统一管理）
+ */
+function argon_ajax_add_unified_api() {
+	check_ajax_referer('argon_manage_unified_apis', 'nonce');
+	
+	if (!current_user_can('manage_options')) {
+		wp_send_json_error(__('权限不足', 'argon'));
+	}
+	
+	$name = sanitize_text_field($_POST['name']);
+	$provider = sanitize_text_field($_POST['provider']);
+	$api_key = sanitize_text_field($_POST['api_key']);
+	$api_endpoint = esc_url_raw($_POST['api_endpoint']);
+	$model = sanitize_text_field($_POST['model']);
+	
+	if (empty($name) || empty($provider) || empty($api_key)) {
+		wp_send_json_error(__('请填写必填项', 'argon'));
+	}
+	
+	$api_id = argon_add_api([
+		'name' => $name,
+		'provider' => $provider,
+		'api_key' => $api_key,
+		'api_endpoint' => $api_endpoint,
+		'model' => $model
+	]);
+	
+	if ($api_id) {
+		wp_send_json_success([
+			'message' => __('添加成功', 'argon'),
+			'api_id' => $api_id
+		]);
+	} else {
+		wp_send_json_error(__('添加失败', 'argon'));
+	}
+}
+add_action('wp_ajax_argon_add_unified_api', 'argon_ajax_add_unified_api');
+
+/**
+ * AJAX: 更新 API 配置（统一管理）
+ */
+function argon_ajax_update_unified_api() {
+	check_ajax_referer('argon_manage_unified_apis', 'nonce');
+	
+	if (!current_user_can('manage_options')) {
+		wp_send_json_error(__('权限不足', 'argon'));
+	}
+	
+	$api_id = sanitize_text_field($_POST['api_id']);
+	$name = sanitize_text_field($_POST['name']);
+	$provider = sanitize_text_field($_POST['provider']);
+	$api_key = sanitize_text_field($_POST['api_key']);
+	$api_endpoint = esc_url_raw($_POST['api_endpoint']);
+	$model = sanitize_text_field($_POST['model']);
+	
+	if (empty($api_id) || empty($name) || empty($provider) || empty($api_key)) {
+		wp_send_json_error(__('请填写必填项', 'argon'));
+	}
+	
+	$success = argon_update_api($api_id, [
+		'name' => $name,
+		'provider' => $provider,
+		'api_key' => $api_key,
+		'api_endpoint' => $api_endpoint,
+		'model' => $model
+	]);
+	
+	if ($success) {
+		wp_send_json_success(['message' => __('更新成功', 'argon')]);
+	} else {
+		wp_send_json_error(__('更新失败', 'argon'));
+	}
+}
+add_action('wp_ajax_argon_update_unified_api', 'argon_ajax_update_unified_api');
+
+/**
+ * AJAX: 删除 API 配置（统一管理）
+ */
+function argon_ajax_delete_unified_api() {
+	check_ajax_referer('argon_manage_unified_apis', 'nonce');
+	
+	if (!current_user_can('manage_options')) {
+		wp_send_json_error(__('权限不足', 'argon'));
+	}
+	
+	$api_id = sanitize_text_field($_POST['api_id']);
+	
+	if (empty($api_id)) {
+		wp_send_json_error(__('参数错误', 'argon'));
+	}
+	
+	$success = argon_delete_api($api_id);
+	
+	if ($success) {
+		wp_send_json_success(['message' => __('删除成功', 'argon')]);
+	} else {
+		wp_send_json_error(__('删除失败，无法删除当前使用的 API', 'argon'));
+	}
+}
+add_action('wp_ajax_argon_delete_unified_api', 'argon_ajax_delete_unified_api');
+
+/**
+ * AJAX: 为场景设置活动 API（统一管理）
+ */
+function argon_ajax_set_active_unified_api() {
+	check_ajax_referer('argon_manage_unified_apis', 'nonce');
+	
+	if (!current_user_can('manage_options')) {
+		wp_send_json_error(__('权限不足', 'argon'));
+	}
+	
+	$scenario = sanitize_text_field($_POST['scenario']);
+	$api_id = sanitize_text_field($_POST['api_id']);
+	
+	if (empty($scenario) || empty($api_id)) {
+		wp_send_json_error(__('参数错误', 'argon'));
+	}
+	
+	$success = argon_set_active_api_for_scenario($scenario, $api_id);
+	
+	if ($success) {
+		wp_send_json_success(['message' => __('切换成功', 'argon')]);
+	} else {
+		wp_send_json_error(__('切换失败', 'argon'));
+	}
+}
+add_action('wp_ajax_argon_set_active_unified_api', 'argon_ajax_set_active_unified_api');
+
+/**
+ * AJAX: 获取所有 API 配置（统一管理）
+ */
+function argon_ajax_get_all_unified_apis() {
+	check_ajax_referer('argon_manage_unified_apis', 'nonce');
+	
+	if (!current_user_can('manage_options')) {
+		wp_send_json_error(__('权限不足', 'argon'));
+	}
+	
+	$apis = argon_get_all_apis();
+	$summary_active = get_option('argon_ai_summary_active_api', '');
+	$spam_active = get_option('argon_ai_spam_active_api', '');
+	
+	wp_send_json_success([
+		'apis' => $apis,
+		'summary_active' => $summary_active,
+		'spam_active' => $spam_active
+	]);
+}
+add_action('wp_ajax_argon_get_all_unified_apis', 'argon_ajax_get_all_unified_apis');
 
 /**
  * AJAX: 获取提供商的所有 API 配置
