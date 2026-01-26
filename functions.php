@@ -2824,7 +2824,6 @@ function argon_comment_text_render($text){
     return argon_apply_comment_macros($text);
 }
 add_filter('comment_text', 'argon_comment_text_render', 9);
-add_filter('the_content', 'argon_comment_text_render', 9);
 
 //评论发送处理
 function post_comment_preprocessing($comment){
@@ -4611,6 +4610,19 @@ function shortcode_mermaid($attr,$content=""){
 	$out .= '</div>';
 	
 	return $out;
+}
+
+/**
+ * 从内容中移除 Mermaid shortcode，用于文章预览
+ * 避免在预览中显示原始 Mermaid 代码
+ * 
+ * @param string $content 文章内容
+ * @return string 移除 Mermaid shortcode 后的内容
+ */
+function argon_remove_mermaid_from_preview($content) {
+	// 移除 [mermaid]...[/mermaid] shortcode
+	$content = preg_replace('/\[mermaid[^\]]*\].*?\[\/mermaid\]/is', '[Mermaid 图表]', $content);
+	return $content;
 }
 add_shortcode('hide_reading_time','shortcode_hide_reading_time');
 function shortcode_hide_reading_time($attr,$content=""){
@@ -6422,7 +6434,33 @@ function argon_create_ai_query_log_table() {
 	require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 	dbDelta($sql);
 }
-add_action('after_switch_theme', 'argon_create_ai_query_log_table');
+
+function argon_ai_query_log_table_exists() {
+	global $wpdb;
+	$table_name = $wpdb->prefix . 'argon_ai_query_log';
+	$found = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table_name));
+	return $found === $table_name;
+}
+
+function argon_maybe_create_ai_query_log_table() {
+	static $ran = false;
+	if ($ran) return;
+	$ran = true;
+	
+	$option_key = 'argon_ai_query_log_table_version';
+	$current_version = 1;
+	$saved_version = intval(get_option($option_key, 0));
+	
+	if ($saved_version === $current_version && argon_ai_query_log_table_exists()) {
+		return;
+	}
+	
+	argon_create_ai_query_log_table();
+	update_option($option_key, $current_version);
+}
+
+add_action('after_switch_theme', 'argon_maybe_create_ai_query_log_table');
+add_action('init', 'argon_maybe_create_ai_query_log_table', 5);
 
 /**
  * 记录 AI 查询
@@ -6441,6 +6479,8 @@ add_action('after_switch_theme', 'argon_create_ai_query_log_table');
 function argon_log_ai_query($provider, $model, $scenario, $prompt_length, $content_length, $response_length, $response_time, $status, $error_message = '', $context = []) {
 	global $wpdb;
 	$table_name = $wpdb->prefix . 'argon_ai_query_log';
+	
+	argon_maybe_create_ai_query_log_table();
 	
 	$wpdb->insert(
 		$table_name,
@@ -6490,6 +6530,10 @@ function argon_ai_query($scenario, $prompt, $content, $context = []) {
 	// 优先使用场景化的 API 配置（新系统）
 	$config = null;
 	$provider = '';
+	$config_scenario = $scenario;
+	if ($scenario === 'spam_detection' || $scenario === 'keyword_extraction') {
+		$config_scenario = 'spam';
+	}
 	
 	// 如果 context 中指定了 provider，使用指定的 provider
 	if (isset($context['provider'])) {
@@ -6497,19 +6541,19 @@ function argon_ai_query($scenario, $prompt, $content, $context = []) {
 		$config = argon_get_ai_provider_config($provider);
 	} else {
 		// 否则根据场景获取活动的 API 配置
-		$config = argon_get_active_api_config($scenario);
-		if ($config && isset($config['provider'])) {
+		$config = argon_get_active_api_config($config_scenario);
+		if ($config && !empty($config['provider'])) {
 			$provider = $config['provider'];
 		}
 	}
 	
 	// 如果新系统没有配置，回退到旧系统
-	if (!$config || !isset($config['api_key'])) {
+	if (!$config || empty($provider) || empty($config['api_key'])) {
 		$provider = get_option('argon_ai_summary_provider', 'openai');
 		$config = argon_get_ai_provider_config($provider);
 	}
 	
-	if (!$config || !isset($config['api_key'])) {
+	if (!$config || empty($provider) || empty($config['api_key'])) {
 		error_log("Argon AI Query Error: Provider config not found for {$provider}");
 		return false;
 	}
@@ -6529,6 +6573,31 @@ function argon_ai_query($scenario, $prompt, $content, $context = []) {
 	
 	// 获取 API 端点
 	$endpoint = isset($config['api_endpoint']) ? $config['api_endpoint'] : '';
+
+	if (empty($model) || $provider === 'xiaomi') {
+		$provider_defaults = [
+			'openai' => 'gpt-4o-mini',
+			'anthropic' => 'claude-3-5-haiku-20241022',
+			'deepseek' => 'deepseek-chat',
+			'qianwen' => 'qwen-turbo',
+			'wenxin' => 'ernie-4.0-turbo-8k',
+			'doubao' => 'doubao-pro-32k',
+			'kimi' => 'moonshot-v1-8k',
+			'zhipu' => 'glm-4-flash',
+			'siliconflow' => 'Qwen/Qwen2.5-7B-Instruct',
+			'xiaomi' => 'MiMo-V2-Flash'
+		];
+		if (empty($model) && isset($provider_defaults[$provider])) {
+			$model = $provider_defaults[$provider];
+		}
+		if ($provider === 'xiaomi' && !empty($endpoint) && !empty($model)) {
+			if (strpos($endpoint, 'xiaomimimo.com') !== false && strcasecmp($model, 'MiMo-V2-Flash') === 0) {
+				$model = 'mimo-v2-flash';
+			} elseif (strpos($endpoint, 'api.mimo.xiaomi.com') !== false && strcasecmp($model, 'mimo-v2-flash') === 0) {
+				$model = 'MiMo-V2-Flash';
+			}
+		}
+	}
 
 	try {
 		switch ($provider) {
@@ -6617,6 +6686,91 @@ function argon_ai_query($scenario, $prompt, $content, $context = []) {
 	}
 	
 	return $result;
+}
+
+function argon_resolve_ai_provider_model($scenario, $context = []) {
+	$config = null;
+	$provider = '';
+	$config_scenario = $scenario;
+	if ($scenario === 'spam_detection' || $scenario === 'keyword_extraction') {
+		$config_scenario = 'spam';
+	}
+	
+	if (is_array($context) && isset($context['provider'])) {
+		$provider = $context['provider'];
+		$config = argon_get_ai_provider_config($provider);
+	} else {
+		$config = argon_get_active_api_config($config_scenario);
+		if ($config && !empty($config['provider'])) {
+			$provider = $config['provider'];
+		}
+	}
+	
+	if (!$config || empty($provider) || empty($config['api_key'])) {
+		$provider = get_option('argon_ai_summary_provider', 'openai');
+		$config = argon_get_ai_provider_config($provider);
+	}
+	
+	$endpoint = is_array($config) && isset($config['api_endpoint']) ? $config['api_endpoint'] : '';
+	$model = '';
+	if (is_array($context) && isset($context['model'])) {
+		$model = $context['model'];
+	} elseif (is_array($config) && isset($config['model'])) {
+		$model = $config['model'];
+	}
+	
+	$provider_defaults = [
+		'openai' => 'gpt-4o-mini',
+		'anthropic' => 'claude-3-5-haiku-20241022',
+		'deepseek' => 'deepseek-chat',
+		'qianwen' => 'qwen-turbo',
+		'wenxin' => 'ernie-4.0-turbo-8k',
+		'doubao' => 'doubao-pro-32k',
+		'kimi' => 'moonshot-v1-8k',
+		'zhipu' => 'glm-4-flash',
+		'siliconflow' => 'Qwen/Qwen2.5-7B-Instruct',
+		'xiaomi' => 'MiMo-V2-Flash'
+	];
+	if (empty($model) && isset($provider_defaults[$provider])) {
+		$model = $provider_defaults[$provider];
+	}
+	if ($provider === 'xiaomi' && !empty($endpoint) && !empty($model)) {
+		if (strpos($endpoint, 'xiaomimimo.com') !== false && strcasecmp($model, 'MiMo-V2-Flash') === 0) {
+			$model = 'mimo-v2-flash';
+		} elseif (strpos($endpoint, 'api.mimo.xiaomi.com') !== false && strcasecmp($model, 'mimo-v2-flash') === 0) {
+			$model = 'MiMo-V2-Flash';
+		}
+	}
+	
+	return [
+		'provider' => $provider,
+		'model' => $model
+	];
+}
+
+function argon_get_latest_ai_query_provider_model($scenario, $post_id = 0, $comment_id = 0) {
+	global $wpdb;
+	$table_name = $wpdb->prefix . 'argon_ai_query_log';
+	
+	$where = ['scenario = %s', "status = 'success'"];
+	$params = [$scenario];
+	
+	if (!empty($post_id)) {
+		$where[] = 'post_id = %d';
+		$params[] = intval($post_id);
+	}
+	if (!empty($comment_id)) {
+		$where[] = 'comment_id = %d';
+		$params[] = intval($comment_id);
+	}
+	
+	$sql = "SELECT provider, model FROM {$table_name} WHERE " . implode(' AND ', $where) . " ORDER BY id DESC LIMIT 1";
+	$row = $wpdb->get_row($wpdb->prepare($sql, $params), ARRAY_A);
+	
+	if (is_array($row) && !empty($row['provider']) && isset($row['model'])) {
+		return $row;
+	}
+	return null;
 }
 
 /**
@@ -6960,6 +7114,25 @@ function argon_get_ai_summary($post_id) {
 	
 	// 如果缓存存在且内容未变化，返回缓存
 	if (!empty($cached_summary) && $cached_hash === $current_hash) {
+		$sync_key = 'argon_ai_summary_provider_model_synced_' . $post_id;
+		if (get_transient($sync_key) === false) {
+			$latest = argon_get_latest_ai_query_provider_model('summary', $post_id, 0);
+			if ($latest) {
+				$current_provider = get_post_meta($post_id, '_argon_ai_summary_provider', true);
+				$current_model = get_post_meta($post_id, '_argon_ai_summary_model', true);
+				
+				if (!empty($latest['provider']) && $latest['provider'] !== $current_provider) {
+					update_post_meta($post_id, '_argon_ai_summary_provider', $latest['provider']);
+				}
+				if (isset($latest['model']) && $latest['model'] !== $current_model) {
+					update_post_meta($post_id, '_argon_ai_summary_model', $latest['model']);
+				}
+				
+				set_transient($sync_key, 1, DAY_IN_SECONDS);
+			} else {
+				set_transient($sync_key, 1, 10 * MINUTE_IN_SECONDS);
+			}
+		}
 		return $cached_summary;
 	}
 
@@ -7245,7 +7418,7 @@ function argon_log_ai_error($provider, $error_type, $error_message, $post_id = 0
  * @param WP_Post $post 文章对象
  * @return string|false 摘要内容或 false
  */
-function argon_generate_ai_summary($post) {
+function argon_generate_ai_summary($post, $ai_context = []) {
 	// 准备文章内容
 	$content = wp_strip_all_tags($post->post_content);
 	$content = preg_replace('/\s+/', ' ', $content);
@@ -7265,10 +7438,10 @@ function argon_generate_ai_summary($post) {
 	$prompt = get_option('argon_ai_summary_prompt', '你是一个专业的内容摘要助手。请仔细阅读以下文章内容，用简洁、准确的语言总结文章的核心观点和主要内容。要求：1) 控制在 100-150 字以内；2) 突出文章的关键信息和亮点；3) 使用通俗易懂的语言；4) 保持客观中立的语气。');
 	
 	// 使用统一的 AI 查询接口
-	$result = argon_ai_query('summary', $prompt, $content, [
+	$result = argon_ai_query('summary', $prompt, $content, array_merge([
 		'post_id' => $post->ID,
 		'user_id' => get_current_user_id()
-	]);
+	], is_array($ai_context) ? $ai_context : []));
 	
 	// 检查结果
 	if ($result === false) {
@@ -7892,6 +8065,17 @@ function argon_check_ai_summary() {
 		delete_transient('argon_ai_summary_generating_' . $post_id);
 		$model = get_post_meta($post_id, '_argon_ai_summary_model', true);
 		$provider = get_post_meta($post_id, '_argon_ai_summary_provider', true);
+		$latest = argon_get_latest_ai_query_provider_model('summary', $post_id, 0);
+		if ($latest) {
+			if (!empty($latest['provider']) && $latest['provider'] !== $provider) {
+				$provider = $latest['provider'];
+				update_post_meta($post_id, '_argon_ai_summary_provider', $provider);
+			}
+			if (isset($latest['model']) && $latest['model'] !== $model) {
+				$model = $latest['model'];
+				update_post_meta($post_id, '_argon_ai_summary_model', $model);
+			}
+		}
 		$code = get_post_meta($post_id, '_argon_ai_summary_code', true);
 		
 		// 如果没有识别码，生成一个
@@ -7918,15 +8102,33 @@ function argon_check_ai_summary() {
 		// 触发生成
 		$post = get_post($post_id);
 		if ($post) {
-			$summary = argon_generate_ai_summary($post);
+			$resolved = argon_resolve_ai_provider_model('summary', [
+				'post_id' => $post_id,
+				'user_id' => get_current_user_id()
+			]);
+			$provider = isset($resolved['provider']) ? $resolved['provider'] : '';
+			$model = isset($resolved['model']) ? $resolved['model'] : '';
+			
+			$summary = argon_generate_ai_summary($post, [
+				'provider' => $provider,
+				'model' => $model
+			]);
 			
 			if ($summary !== false) {
 				$current_hash = md5($post->post_content . $post->post_title);
-				$provider = get_option('argon_ai_summary_provider', 'openai');
-				$model = get_option('argon_ai_summary_model', '');
 				
 				// 生成唯一识别码
 				$summary_code = argon_generate_summary_code();
+				
+				$latest = argon_get_latest_ai_query_provider_model('summary', $post_id, 0);
+				if ($latest) {
+					if (!empty($latest['provider'])) {
+						$provider = $latest['provider'];
+					}
+					if (isset($latest['model'])) {
+						$model = $latest['model'];
+					}
+				}
 				
 				// 保存摘要和模型信息
 				update_post_meta($post_id, '_argon_ai_summary', $summary);
@@ -9789,11 +9991,21 @@ function argon_detect_spam_comment_sync($comment) {
 	// 构建评论上下文信息
 	$comment_text = argon_build_comment_context($comment);
 	
+	$resolved = argon_resolve_ai_provider_model('spam_detection', [
+		'comment_id' => $comment->comment_ID,
+		'post_id' => $comment->comment_post_ID,
+		'user_id' => $comment->user_id
+	]);
+	$provider = isset($resolved['provider']) ? $resolved['provider'] : '';
+	$model = isset($resolved['model']) ? $resolved['model'] : '';
+	
 	// 使用统一的 AI 查询接口
 	$result_text = argon_ai_query('spam_detection', $prompt, $comment_text, [
 		'comment_id' => $comment->comment_ID,
 		'post_id' => $comment->comment_post_ID,
-		'user_id' => $comment->user_id
+		'user_id' => $comment->user_id,
+		'provider' => $provider,
+		'model' => $model
 	]);
 	
 	if ($result_text === false) {
@@ -9804,6 +10016,15 @@ function argon_detect_spam_comment_sync($comment) {
 	$result = json_decode($result_text, true);
 	
 	if ($result && isset($result['content_spam'])) {
+		$latest = argon_get_latest_ai_query_provider_model('spam_detection', 0, $comment->comment_ID);
+		if ($latest) {
+			if (!empty($latest['provider'])) {
+				$provider = $latest['provider'];
+			}
+			if (isset($latest['model'])) {
+				$model = $latest['model'];
+			}
+		}
 		// 转换为统一格式
 		$unified_result = [
 			'is_spam' => $result['content_spam'],
@@ -9818,6 +10039,8 @@ function argon_detect_spam_comment_sync($comment) {
 		// 保存检测结果
 		update_comment_meta($comment->comment_ID, '_argon_spam_detection_result', $unified_result);
 		update_comment_meta($comment->comment_ID, '_argon_spam_detection_time', time());
+		update_comment_meta($comment->comment_ID, '_argon_spam_detection_provider', $provider);
+		update_comment_meta($comment->comment_ID, '_argon_spam_detection_model', $model);
 		
 		return $unified_result;
 	}
@@ -10246,6 +10469,17 @@ function argon_async_spam_detection_handler($comment_id) {
 	$detection_code = argon_generate_detection_code($comment_id);
 	update_comment_meta($comment_id, '_argon_spam_detection_code', $detection_code);
 	
+	$config = argon_get_active_api_config('spam');
+	if (!empty($config) && !empty($config['api_key']) && !empty($config['provider'])) {
+		update_comment_meta($comment_id, '_argon_spam_detection_provider', $config['provider']);
+		update_comment_meta($comment_id, '_argon_spam_detection_model', isset($config['model']) ? $config['model'] : '');
+	} else {
+		$provider = get_option('argon_ai_summary_provider', 'openai');
+		$provider_config = argon_get_ai_provider_config($provider);
+		update_comment_meta($comment_id, '_argon_spam_detection_provider', $provider);
+		update_comment_meta($comment_id, '_argon_spam_detection_model', !empty($provider_config['model']) ? $provider_config['model'] : get_option('argon_ai_summary_model', ''));
+	}
+	
 	if ($result && isset($result['is_spam'])) {
 		$content_spam = $result['is_spam'];
 		$username_invalid = isset($result['username_invalid']) ? $result['username_invalid'] : false;
@@ -10501,12 +10735,24 @@ function argon_spam_detection_scan() {
 	$spam_results = [];
 	$checked_ids = [];
 	
+	$config = argon_get_active_api_config('spam');
+	if (!empty($config) && !empty($config['api_key']) && !empty($config['provider'])) {
+		$provider = $config['provider'];
+		$model = isset($config['model']) ? $config['model'] : '';
+	} else {
+		$provider = get_option('argon_ai_summary_provider', 'openai');
+		$provider_config = argon_get_ai_provider_config($provider);
+		$model = !empty($provider_config['model']) ? $provider_config['model'] : get_option('argon_ai_summary_model', '');
+	}
+	
 	foreach ($result as $item) {
 		$comment_id = $item['id'];
 		$checked_ids[] = $comment_id;
 		
 		// 记录检测时间
 		update_comment_meta($comment_id, '_argon_spam_detection_time', time());
+		update_comment_meta($comment_id, '_argon_spam_detection_provider', $provider);
+		update_comment_meta($comment_id, '_argon_spam_detection_model', $model);
 		
 		// 生成识别码
 		$detection_code = argon_generate_detection_code($comment_id);
@@ -10555,6 +10801,8 @@ function argon_spam_detection_scan() {
 	foreach ($comments_data as $comment_data) {
 		if (!in_array($comment_data['id'], $checked_ids)) {
 			update_comment_meta($comment_data['id'], '_argon_spam_detection_time', time());
+			update_comment_meta($comment_data['id'], '_argon_spam_detection_provider', $provider);
+			update_comment_meta($comment_data['id'], '_argon_spam_detection_model', $model);
 			$detection_code = argon_generate_detection_code($comment_data['id']);
 			update_comment_meta($comment_data['id'], '_argon_spam_detection_code', $detection_code);
 		}
@@ -10970,11 +11218,8 @@ function argon_update_mermaid_settings($settings) {
 /**
  * 检测页面内容是否包含 Mermaid 代码块
  * 
- * 支持多种格式：
- * - <div class="mermaid">
- * - <pre><code class="language-mermaid">
- * - <pre data-lang="mermaid">
- * - <code class="mermaid">
+ * 支持 Shortcode 格式：
+ * - [mermaid]...[/mermaid]
  * 
  * @param string $content 页面内容
  * @return bool 是否包含 Mermaid 代码块
@@ -10986,11 +11231,7 @@ function argon_has_mermaid_content($content) {
 	
 	// 检测多种 Mermaid 代码块格式
 	$patterns = [
-		'/<div[^>]*class=["\']([^"\']*\s)?mermaid(\s[^"\']*)?["\'][^>]*>/i',  // <div class="mermaid">
-		'/<code[^>]*class=["\']([^"\']*\s)?language-mermaid(\s[^"\']*)?["\'][^>]*>/i',  // <code class="language-mermaid">
-		'/<pre[^>]*data-lang=["\']mermaid["\'][^>]*>/i',  // <pre data-lang="mermaid">
-		'/<code[^>]*class=["\']([^"\']*\s)?mermaid(\s[^"\']*)?["\'][^>]*>/i',  // <code class="mermaid">
-		'/:::\s*mermaid/i'  // ::: mermaid (Markdown 容器语法)
+		'/\[mermaid[^\]]*\]/i'
 	];
 	
 	foreach ($patterns as $pattern) {
