@@ -8824,7 +8824,21 @@ function argon_ajax_test_unified_api() {
 		return;
 	}
 	
-	$model = !empty($api['model']) ? $api['model'] : 'gpt-4o-mini';
+	// 根据提供商设置默认模型
+	$default_models = [
+		'openai' => 'gpt-4o-mini',
+		'anthropic' => 'claude-3-5-sonnet-20241022',
+		'deepseek' => 'deepseek-chat',
+		'xiaomi' => 'mimo-v2-flash',
+		'qianwen' => 'qwen-turbo',
+		'wenxin' => 'ernie-4.0-8k',
+		'doubao' => 'doubao-pro-32k',
+		'kimi' => 'moonshot-v1-8k',
+		'zhipu' => 'glm-4-flash',
+		'siliconflow' => 'deepseek-ai/DeepSeek-V2.5'
+	];
+	
+	$model = !empty($api['model']) ? $api['model'] : (isset($default_models[$api['provider']]) ? $default_models[$api['provider']] : 'gpt-4o-mini');
 	
 	// 构建测试请求
 	$data = [
