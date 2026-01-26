@@ -9027,17 +9027,9 @@ function argon_detect_spam_comment($comment_id) {
  */
 function argon_detect_spam_comment_sync($comment) {
 	
-	// 获取 AI 配置
-	$provider = get_option('argon_ai_summary_provider', 'openai');
-	$config = argon_get_ai_provider_config($provider);
-	$api_key = $config['api_key'];
-	$model = $config['model'];
+	// 获取配置
 	$prompt_mode = get_option('argon_comment_spam_detection_prompt_mode', 'standard');
 	$custom_prompt = get_option('argon_comment_spam_detection_prompt', '');
-	
-	if (empty($api_key)) {
-		return false;
-	}
 	
 	// 根据模式选择 Prompt
 	if ($prompt_mode === 'custom' && !empty($custom_prompt)) {
@@ -9049,8 +9041,19 @@ function argon_detect_spam_comment_sync($comment) {
 	// 构建评论上下文信息
 	$comment_text = argon_build_comment_context($comment);
 	
-	// 调用 AI API
-	$result = argon_call_ai_api_for_spam_detection($provider, $api_key, $model, $prompt, $comment_text);
+	// 使用统一的 AI 查询接口
+	$result_text = argon_ai_query('spam_detection', $prompt, $comment_text, [
+		'comment_id' => $comment->comment_ID,
+		'post_id' => $comment->comment_post_ID,
+		'user_id' => $comment->user_id
+	]);
+	
+	if ($result_text === false) {
+		return false;
+	}
+	
+	// 解析 AI 返回的 JSON 结果
+	$result = json_decode($result_text, true);
 	
 	if ($result && isset($result['content_spam'])) {
 		// 转换为统一格式
@@ -9065,143 +9068,13 @@ function argon_detect_spam_comment_sync($comment) {
 		];
 		
 		// 保存检测结果
-		update_comment_meta($comment_id, '_argon_spam_detection_result', $unified_result);
-		update_comment_meta($comment_id, '_argon_spam_detection_time', time());
+		update_comment_meta($comment->comment_ID, '_argon_spam_detection_result', $unified_result);
+		update_comment_meta($comment->comment_ID, '_argon_spam_detection_time', time());
 		
 		return $unified_result;
 	}
 	
 	return false;
-}
-
-/**
- * 调用 AI API 进行垃圾评论检测
- */
-function argon_call_ai_api_for_spam_detection($provider, $api_key, $model, $prompt, $content) {
-	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
-	
-	// 根据不同服务商设置默认端点和模型
-	$default_models = [
-		'openai' => 'gpt-4o-mini',
-		'anthropic' => 'claude-3-5-haiku-20241022',
-		'deepseek' => 'deepseek-chat',
-		'xiaomi' => 'MiMo-V2-Flash',
-		'qianwen' => 'qwen-turbo',
-		'wenxin' => 'ernie-4.0-turbo-8k',
-		'doubao' => 'doubao-pro-32k',
-		'kimi' => 'moonshot-v1-8k',
-		'zhipu' => 'glm-4-flash',
-		'siliconflow' => 'Qwen/Qwen2.5-7B-Instruct'
-	];
-	
-	if (empty($model) && isset($default_models[$provider])) {
-		$model = $default_models[$provider];
-	}
-	
-	// 构建请求
-	$messages = [
-		['role' => 'system', 'content' => $prompt],
-		['role' => 'user', 'content' => $content]
-	];
-	
-	$body = [
-		'model' => $model,
-		'messages' => $messages,
-		'temperature' => 0.3,
-		'max_tokens' => 150
-	];
-	
-	// 根据服务商设置端点
-	if (empty($endpoint)) {
-		$endpoints = [
-			'openai' => 'https://api.openai.com/v1/chat/completions',
-			'anthropic' => 'https://api.anthropic.com/v1/messages',
-			'deepseek' => 'https://api.deepseek.com/v1/chat/completions',
-			'xiaomi' => 'https://api.mimo.xiaomi.com/v1/chat/completions',
-			'qianwen' => 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
-			'wenxin' => 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions',
-			'doubao' => 'https://ark.cn-beijing.volces.com/api/v3/chat/completions',
-			'kimi' => 'https://api.moonshot.cn/v1/chat/completions',
-			'zhipu' => 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
-			'siliconflow' => 'https://api.siliconflow.cn/v1/chat/completions'
-		];
-		$endpoint = isset($endpoints[$provider]) ? $endpoints[$provider] : $endpoints['openai'];
-	}
-	
-	// Anthropic 特殊处理
-	if ($provider === 'anthropic') {
-		$body = [
-			'model' => $model,
-			'messages' => [['role' => 'user', 'content' => $prompt . "\n\n" . $content]],
-			'max_tokens' => 150
-		];
-		$headers = [
-			'x-api-key' => $api_key,
-			'anthropic-version' => '2023-06-01',
-			'Content-Type' => 'application/json'
-		];
-	} else {
-		$headers = [
-			'Authorization' => 'Bearer ' . $api_key,
-			'Content-Type' => 'application/json'
-		];
-	}
-	
-	$response = wp_remote_post($endpoint, [
-		'headers' => $headers,
-		'body' => json_encode($body),
-		'timeout' => 30
-	]);
-	
-	if (is_wp_error($response)) {
-		return false;
-	}
-	
-	$response_body = json_decode(wp_remote_retrieve_body($response), true);
-	
-	// 解析响应
-	$ai_content = '';
-	if ($provider === 'anthropic') {
-		if (isset($response_body['content'][0]['text'])) {
-			$ai_content = $response_body['content'][0]['text'];
-		}
-	} else {
-		if (isset($response_body['choices'][0]['message']['content'])) {
-			$ai_content = $response_body['choices'][0]['message']['content'];
-		}
-	}
-	
-	if (empty($ai_content)) {
-		return false;
-	}
-	
-	// 提取 JSON（支持 Markdown 代码块包裹）
-	$ai_content = trim($ai_content);
-	if (preg_match('/```(?:json)?\s*(\{.*?\})\s*```/s', $ai_content, $matches)) {
-		$json_str = $matches[1];
-	} elseif (preg_match('/(\{.*?\})/s', $ai_content, $matches)) {
-		$json_str = $matches[1];
-	} else {
-		return false;
-	}
-	
-	$result = json_decode($json_str, true);
-	if (!is_array($result)) {
-		return false;
-	}
-	
-	// 兼容旧格式和新格式
-	if (isset($result['is_spam'])) {
-		// 旧格式，转换为新格式
-		return [
-			'content_spam' => $result['is_spam'],
-			'content_reason' => isset($result['reason']) ? $result['reason'] : '未知',
-			'username_invalid' => false,
-			'username_reason' => '正常'
-		];
-	}
-	
-	return $result;
 }
 
 /**
@@ -9297,16 +9170,6 @@ function argon_ai_learn_keywords($comment_id, $admin_decision) {
  * @return array 关键词列表
  */
 function argon_extract_keywords_from_comment($comment, $is_spam) {
-	// 获取 AI 配置
-	$provider = get_option('argon_ai_summary_provider', 'openai');
-	$config = argon_get_ai_provider_config($provider);
-	$api_key = $config['api_key'];
-	$model = $config['model'];
-	
-	if (empty($api_key)) {
-		return [];
-	}
-	
 	$spam_label = $is_spam ? '垃圾评论' : '正常评论';
 	
 	$prompt = "你是关键词提取专家。从以下{$spam_label}中提取 1-3 个最具代表性的关键词或短语（每个不超过10个字）。
@@ -9315,116 +9178,37 @@ function argon_extract_keywords_from_comment($comment, $is_spam) {
 1. 提取能够识别此类{$spam_label}的特征词
 2. 关键词应该具有普遍性，能用于识别类似评论
 3. 避免提取过于具体的内容（如具体的人名、地名）
-4. 只输出 JSON 格式：{\"keywords\": [\"关键词1\", \"关键词2\"]}
-
-用户名：{$comment->comment_author}
-评论内容：{$comment->comment_content}";
+4. 只输出 JSON 格式：{\"keywords\": [\"关键词1\", \"关键词2\"]}";
 	
-	$result = argon_call_ai_for_keyword_extraction($provider, $api_key, $model, $prompt);
+	$content = "用户名：{$comment->comment_author}\n评论内容：{$comment->comment_content}";
+	
+	// 使用统一的 AI 查询接口
+	$result_text = argon_ai_query('keyword_extraction', $prompt, $content, [
+		'comment_id' => $comment->comment_ID,
+		'post_id' => $comment->comment_post_ID,
+		'user_id' => $comment->user_id
+	]);
+	
+	if ($result_text === false) {
+		return [];
+	}
+	
+	// 提取 JSON
+	if (preg_match('/```(?:json)?\s*(\{.*?\})\s*```/s', $result_text, $matches)) {
+		$json_str = $matches[1];
+	} elseif (preg_match('/(\{.*?\})/s', $result_text, $matches)) {
+		$json_str = $matches[1];
+	} else {
+		return [];
+	}
+	
+	$result = json_decode($json_str, true);
 	
 	if ($result && isset($result['keywords']) && is_array($result['keywords'])) {
 		return $result['keywords'];
 	}
 	
 	return [];
-}
-
-/**
- * 调用 AI 提取关键词
- */
-function argon_call_ai_for_keyword_extraction($provider, $api_key, $model, $prompt) {
-	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
-	
-	// 使用与垃圾检测相同的 API 调用逻辑
-	$default_models = [
-		'openai' => 'gpt-4o-mini',
-		'anthropic' => 'claude-3-5-haiku-20241022',
-		'deepseek' => 'deepseek-chat',
-		'xiaomi' => 'MiMo-V2-Flash',
-		'siliconflow' => 'Qwen/Qwen2.5-7B-Instruct'
-	];
-	
-	if (empty($model) && isset($default_models[$provider])) {
-		$model = $default_models[$provider];
-	}
-	
-	$messages = [
-		['role' => 'user', 'content' => $prompt]
-	];
-	
-	$body = [
-		'model' => $model,
-		'messages' => $messages,
-		'temperature' => 0.3,
-		'max_tokens' => 100
-	];
-	
-	if (empty($endpoint)) {
-		$endpoints = [
-			'openai' => 'https://api.openai.com/v1/chat/completions',
-			'anthropic' => 'https://api.anthropic.com/v1/messages',
-			'deepseek' => 'https://api.deepseek.com/v1/chat/completions',
-			'xiaomi' => 'https://api.mimo.xiaomi.com/v1/chat/completions',
-			'siliconflow' => 'https://api.siliconflow.cn/v1/chat/completions'
-		];
-		$endpoint = isset($endpoints[$provider]) ? $endpoints[$provider] : $endpoints['openai'];
-	}
-	
-	if ($provider === 'anthropic') {
-		$body = [
-			'model' => $model,
-			'messages' => $messages,
-			'max_tokens' => 100
-		];
-		$headers = [
-			'x-api-key' => $api_key,
-			'anthropic-version' => '2023-06-01',
-			'Content-Type' => 'application/json'
-		];
-	} else {
-		$headers = [
-			'Authorization' => 'Bearer ' . $api_key,
-			'Content-Type' => 'application/json'
-		];
-	}
-	
-	$response = wp_remote_post($endpoint, [
-		'headers' => $headers,
-		'body' => json_encode($body),
-		'timeout' => 15
-	]);
-	
-	if (is_wp_error($response)) {
-		return false;
-	}
-	
-	$response_body = json_decode(wp_remote_retrieve_body($response), true);
-	
-	$ai_content = '';
-	if ($provider === 'anthropic') {
-		if (isset($response_body['content'][0]['text'])) {
-			$ai_content = $response_body['content'][0]['text'];
-		}
-	} else {
-		if (isset($response_body['choices'][0]['message']['content'])) {
-			$ai_content = $response_body['choices'][0]['message']['content'];
-		}
-	}
-	
-	if (empty($ai_content)) {
-		return false;
-	}
-	
-	// 提取 JSON
-	if (preg_match('/```(?:json)?\s*(\{.*?\})\s*```/s', $ai_content, $matches)) {
-		$json_str = $matches[1];
-	} elseif (preg_match('/(\{.*?\})/s', $ai_content, $matches)) {
-		$json_str = $matches[1];
-	} else {
-		return false;
-	}
-	
-	return json_decode($json_str, true);
 }
 
 /**
