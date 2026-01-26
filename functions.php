@@ -8804,7 +8804,7 @@ function argon_ajax_test_unified_api() {
 		'openai' => 'https://api.openai.com/v1/chat/completions',
 		'anthropic' => 'https://api.anthropic.com/v1/messages',
 		'deepseek' => 'https://api.deepseek.com/v1/chat/completions',
-		'xiaomi' => 'https://api.mimo.xiaomi.com/v1/chat/completions',
+		'xiaomi' => '', // 小米 Mimo 需要在平台获取自定义端点
 		'qianwen' => 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
 		'wenxin' => 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions',
 		'doubao' => 'https://ark.cn-beijing.volces.com/api/v3/chat/completions',
@@ -8816,7 +8816,11 @@ function argon_ajax_test_unified_api() {
 	$api_endpoint = !empty($api['api_endpoint']) ? $api['api_endpoint'] : (isset($default_endpoints[$api['provider']]) ? $default_endpoints[$api['provider']] : '');
 	
 	if (empty($api_endpoint)) {
-		wp_send_json_error('未配置 API 端点');
+		if ($api['provider'] === 'xiaomi') {
+			wp_send_json_error('小米 Mimo 需要配置自定义 API 端点。请访问 https://platform.xiaomimimo.com 获取您的专属端点地址');
+		} else {
+			wp_send_json_error('未配置 API 端点');
+		}
 		return;
 	}
 	

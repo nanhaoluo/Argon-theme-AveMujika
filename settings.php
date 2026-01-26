@@ -2451,6 +2451,7 @@ function themeoptions_page(){
 							nonce: '<?php echo wp_create_nonce('argon_test_unified_api'); ?>',
 							api_id: apiId
 						}, function(response) {
+							console.log('Response:', response);
 							if (response.success) {
 								alert('✓ ' + response.data.message);
 							} else {
@@ -2461,7 +2462,8 @@ function themeoptions_page(){
 							$btn.prop('disabled', false).html(originalHtml);
 						}).fail(function(xhr, status, error) {
 							// AJAX 请求本身失败
-							console.error('AJAX Error:', status, error);
+							console.error('AJAX Error:', xhr, status, error);
+							console.error('Response Text:', xhr.responseText);
 							alert('<?php _e('请求失败，请重试', 'argon'); ?>');
 							$btn.prop('disabled', false).html(originalHtml);
 						});
