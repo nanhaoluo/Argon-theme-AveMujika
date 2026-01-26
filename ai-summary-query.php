@@ -494,7 +494,7 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 			</div>
 			<div class="ai-info-item">
 				<span class="ai-info-label"><?php _e('生成时间', 'argon'); ?></span>
-				<span class="ai-info-value"><?php echo esc_html(date('Y-m-d H:i:s', $result['generated_time'])); ?></span>
+				<span class="ai-info-value"><?php echo esc_html(date('Y-m-d H:i:s', intval($result['generated_time']))); ?></span>
 			</div>
 		</div>
 		
@@ -628,7 +628,7 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 			</div>
 			<div class="ai-info-item">
 				<span class="ai-info-label"><?php _e('检测时间', 'argon'); ?></span>
-				<span class="ai-info-value"><?php echo esc_html(date('Y-m-d H:i:s', $result['detection_time'])); ?></span>
+				<span class="ai-info-value"><?php echo esc_html(date('Y-m-d H:i:s', intval($result['detection_time']))); ?></span>
 			</div>
 		</div>
 		
@@ -836,7 +836,7 @@ if (current_user_can('manage_options')):
 					<td><span class="ai-record-code"><?php echo esc_html($record['code']); ?></span></td>
 					<td><span class="ai-record-title"><?php echo esc_html($record['title']); ?></span></td>
 					<td class="ai-record-time">
-						<?php echo $record['time'] ? date('Y-m-d H:i', $record['time']) : __('未知', 'argon'); ?>
+						<?php echo $record['time'] ? date('Y-m-d H:i', intval($record['time'])) : __('未知', 'argon'); ?>
 					</td>
 				</tr>
 				<?php endforeach; ?>
