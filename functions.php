@@ -6487,9 +6487,27 @@ function argon_log_ai_query($provider, $model, $scenario, $prompt_length, $conte
  * @return string|false 返回 AI 响应内容或 false
  */
 function argon_ai_query($scenario, $prompt, $content, $context = []) {
-	// 获取服务商配置
-	$provider = isset($context['provider']) ? $context['provider'] : get_option('argon_ai_summary_provider', 'openai');
-	$config = argon_get_ai_provider_config($provider);
+	// 优先使用场景化的 API 配置（新系统）
+	$config = null;
+	$provider = '';
+	
+	// 如果 context 中指定了 provider，使用指定的 provider
+	if (isset($context['provider'])) {
+		$provider = $context['provider'];
+		$config = argon_get_ai_provider_config($provider);
+	} else {
+		// 否则根据场景获取活动的 API 配置
+		$config = argon_get_active_api_config($scenario);
+		if ($config && isset($config['provider'])) {
+			$provider = $config['provider'];
+		}
+	}
+	
+	// 如果新系统没有配置，回退到旧系统
+	if (!$config || !isset($config['api_key'])) {
+		$provider = get_option('argon_ai_summary_provider', 'openai');
+		$config = argon_get_ai_provider_config($provider);
+	}
 	
 	if (!$config || !isset($config['api_key'])) {
 		error_log("Argon AI Query Error: Provider config not found for {$provider}");
