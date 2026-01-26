@@ -6869,11 +6869,11 @@ function argon_call_wenxin_api($api_key, $prompt, $content) {
  * 调用 Kimi (Moonshot) API
  */
 function argon_call_kimi_api($api_key, $prompt, $content) {
-	$provider = \'kimi\';
+	$provider = 'kimi';
 	$config = argon_get_ai_provider_config($provider);
 	
-	$endpoint = !empty($config[\'api_endpoint\']) ? $config[\'api_endpoint\'] : \'https://api.moonshot.cn/v1/chat/completions\';
-	$model = !empty($config[\'model\']) ? $config[\'model\'] : \'moonshot-v1-8k\';
+	$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://api.moonshot.cn/v1/chat/completions';
+	$model = !empty($config['model']) ? $config['model'] : 'moonshot-v1-8k';
 
 	$data = [
 		'model' => $model,
@@ -6911,11 +6911,11 @@ function argon_call_kimi_api($api_key, $prompt, $content) {
  * 调用智谱 AI API
  */
 function argon_call_zhipu_api($api_key, $prompt, $content) {
-	$provider = \'zhipu\';
+	$provider = 'zhipu';
 	$config = argon_get_ai_provider_config($provider);
 	
-	$endpoint = !empty($config[\'api_endpoint\']) ? $config[\'api_endpoint\'] : \'https://open.bigmodel.cn/api/paas/v4/chat/completions\';
-	$model = !empty($config[\'model\']) ? $config[\'model\'] : \'glm-4-flash\';
+	$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+	$model = !empty($config['model']) ? $config['model'] : 'glm-4-flash';
 
 	$data = [
 		'model' => $model,
@@ -7073,11 +7073,11 @@ add_action('wp_ajax_nopriv_argon_check_ai_summary', 'argon_check_ai_summary');
  * 调用 DeepSeek API
  */
 function argon_call_deepseek_api($api_key, $prompt, $content) {
-	$provider = \'deepseek\';
+	$provider = 'deepseek';
 	$config = argon_get_ai_provider_config($provider);
 	
-	$endpoint = !empty($config[\'api_endpoint\']) ? $config[\'api_endpoint\'] : \'https://api.deepseek.com/v1/chat/completions\';
-	$model = !empty($config[\'model\']) ? $config[\'model\'] : \'deepseek-chat\';
+	$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://api.deepseek.com/v1/chat/completions';
+	$model = !empty($config['model']) ? $config['model'] : 'deepseek-chat';
 
 	$data = [
 		'model' => $model,
@@ -7116,11 +7116,11 @@ function argon_call_deepseek_api($api_key, $prompt, $content) {
  * 调用小米 Mimo API
  */
 function argon_call_xiaomi_api($api_key, $prompt, $content) {
-	$provider = \'xiaomi\';
+	$provider = 'xiaomi';
 	$config = argon_get_ai_provider_config($provider);
 	
-	$endpoint = !empty($config[\'api_endpoint\']) ? $config[\'api_endpoint\'] : \'https://api.mimo.xiaomi.com/v1/chat/completions\';
-	$model = !empty($config[\'model\']) ? $config[\'model\'] : \'MiMo-V2-Flash\';
+	$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://api.mimo.xiaomi.com/v1/chat/completions';
+	$model = !empty($config['model']) ? $config['model'] : 'MiMo-V2-Flash';
 
 	$data = [
 		'model' => $model,
@@ -7159,11 +7159,11 @@ function argon_call_xiaomi_api($api_key, $prompt, $content) {
  * 调用豆包 (火山引擎) API
  */
 function argon_call_doubao_api($api_key, $prompt, $content) {
-	$provider = \'doubao\';
+	$provider = 'doubao';
 	$config = argon_get_ai_provider_config($provider);
 	
-	$endpoint = !empty($config[\'api_endpoint\']) ? $config[\'api_endpoint\'] : \'https://ark.cn-beijing.volces.com/api/v3/chat/completions\';
-	$model = !empty($config[\'model\']) ? $config[\'model\'] : \'doubao-pro-32k\';
+	$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
+	$model = !empty($config['model']) ? $config['model'] : 'doubao-pro-32k';
 
 	$data = [
 		'model' => $model,
@@ -7202,11 +7202,11 @@ function argon_call_doubao_api($api_key, $prompt, $content) {
  * 调用硅基流动 (SiliconFlow) API
  */
 function argon_call_siliconflow_api($api_key, $prompt, $content) {
-	$provider = \'siliconflow\';
+	$provider = 'siliconflow';
 	$config = argon_get_ai_provider_config($provider);
 	
-	$endpoint = !empty($config[\'api_endpoint\']) ? $config[\'api_endpoint\'] : \'https://api.siliconflow.cn/v1/chat/completions\';
-	$model = !empty($config[\'model\']) ? $config[\'model\'] : \'Qwen/Qwen2.5-7B-Instruct\';
+	$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://api.siliconflow.cn/v1/chat/completions';
+	$model = !empty($config['model']) ? $config['model'] : 'Qwen/Qwen2.5-7B-Instruct';
 
 	$data = [
 		'model' => $model,
