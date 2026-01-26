@@ -8788,6 +8788,7 @@ function argon_ajax_test_unified_api() {
 	
 	if (!current_user_can('manage_options')) {
 		wp_send_json_error('权限不足');
+		return;
 	}
 	
 	$api_id = sanitize_text_field($_POST['api_id']);
@@ -8795,6 +8796,7 @@ function argon_ajax_test_unified_api() {
 	
 	if (!$api) {
 		wp_send_json_error('API 不存在');
+		return;
 	}
 	
 	// 获取默认端点
@@ -8811,7 +8813,13 @@ function argon_ajax_test_unified_api() {
 		'siliconflow' => 'https://api.siliconflow.cn/v1/chat/completions'
 	];
 	
-	$api_endpoint = !empty($api['api_endpoint']) ? $api['api_endpoint'] : $default_endpoints[$api['provider']];
+	$api_endpoint = !empty($api['api_endpoint']) ? $api['api_endpoint'] : (isset($default_endpoints[$api['provider']]) ? $default_endpoints[$api['provider']] : '');
+	
+	if (empty($api_endpoint)) {
+		wp_send_json_error('未配置 API 端点');
+		return;
+	}
+	
 	$model = !empty($api['model']) ? $api['model'] : 'gpt-4o-mini';
 	
 	// 构建测试请求
@@ -8823,7 +8831,8 @@ function argon_ajax_test_unified_api() {
 				'content' => '你好，这是一个测试。请回复"测试成功"。'
 			]
 		],
-		'max_tokens' => 50
+		'max_tokens' => 50,
+		'stream' => false
 	];
 	
 	$start_time = microtime(true);
@@ -8831,16 +8840,19 @@ function argon_ajax_test_unified_api() {
 	$response = wp_remote_post($api_endpoint, [
 		'headers' => [
 			'Content-Type' => 'application/json',
-			'Authorization' => 'Bearer ' . $api['api_key']
+			'Authorization' => 'Bearer ' . $api['api_key'],
+			'Accept' => 'application/json'
 		],
-		'body' => json_encode($data),
-		'timeout' => 30
+		'body' => json_encode($data, JSON_UNESCAPED_UNICODE),
+		'timeout' => 30,
+		'sslverify' => true
 	]);
 	
 	$response_time = round((microtime(true) - $start_time) * 1000);
 	
 	if (is_wp_error($response)) {
-		wp_send_json_error($response->get_error_message());
+		wp_send_json_error('连接失败: ' . $response->get_error_message());
+		return;
 	}
 	
 	$status_code = wp_remote_retrieve_response_code($response);
@@ -8850,14 +8862,21 @@ function argon_ajax_test_unified_api() {
 		$result = json_decode($body, true);
 		if (isset($result['choices'][0]['message']['content']) || isset($result['content'])) {
 			wp_send_json_success([
-				'message' => '响应时间: ' . $response_time . 'ms',
+				'message' => '测试成功！响应时间: ' . $response_time . 'ms',
 				'response_time' => $response_time
 			]);
 		} else {
-			wp_send_json_error('API 返回格式异常: ' . $body);
+			wp_send_json_error('API 返回格式异常: ' . substr($body, 0, 200));
 		}
 	} else {
-		wp_send_json_error('HTTP ' . $status_code . ': ' . $body);
+		$error_msg = 'HTTP ' . $status_code;
+		$result = json_decode($body, true);
+		if ($result && isset($result['error']['message'])) {
+			$error_msg .= ': ' . $result['error']['message'];
+		} else {
+			$error_msg .= ': ' . substr($body, 0, 200);
+		}
+		wp_send_json_error($error_msg);
 	}
 }
 add_action('wp_ajax_argon_test_unified_api', 'argon_ajax_test_unified_api');
