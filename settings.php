@@ -2587,6 +2587,16 @@ function themeoptions_page(){
 						</td>
 					</tr>
 
+					<tr>
+						<th><label><?php _e('AI 查询统计', 'argon');?></label></th>
+						<td>
+							<a href="<?php echo admin_url('admin.php?page=argon-ai-query-stats'); ?>" class="button" target="_blank">
+								<?php _e('查看 AI 查询统计', 'argon');?>
+							</a>
+							<p class="description"><?php _e('查看所有 AI 查询的统计信息，包括查询次数、成功率、响应时间等', 'argon');?></p>
+						</td>
+					</tr>
+
 					<tr><th class="subtitle"><h3 id="subsection-footnote"><?php _e('脚注引用', 'argon');?></h3></th></tr>
 
 					<tr>

@@ -6702,6 +6702,185 @@ function argon_ajax_get_ai_query_stats() {
 }
 add_action('wp_ajax_argon_get_ai_query_stats', 'argon_ajax_get_ai_query_stats');
 
+/**
+ * 注册 AI 查询统计页面
+ */
+function argon_register_ai_query_stats_page() {
+	add_submenu_page(
+		null, // 不在菜单中显示，通过其他方式访问
+		__('AI 查询统计', 'argon'),
+		__('AI 查询统计', 'argon'),
+		'manage_options',
+		'argon-ai-query-stats',
+		'argon_render_ai_query_stats_page'
+	);
+}
+add_action('admin_menu', 'argon_register_ai_query_stats_page');
+
+/**
+ * 渲染 AI 查询统计页面
+ */
+function argon_render_ai_query_stats_page() {
+	if (!current_user_can('manage_options')) {
+		wp_die(__('权限不足', 'argon'));
+	}
+	
+	global $wpdb;
+	$table_name = $wpdb->prefix . 'argon_ai_query_log';
+	
+	// 获取统计数据
+	$stats = argon_get_ai_query_stats();
+	
+	// 获取最近30天的查询趋势
+	$trend_data = $wpdb->get_results("
+		SELECT 
+			DATE(query_time) as date,
+			COUNT(*) as total,
+			SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success,
+			AVG(response_time) as avg_time
+		FROM $table_name
+		WHERE query_time >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+		GROUP BY DATE(query_time)
+		ORDER BY date DESC
+		LIMIT 30
+	", ARRAY_A);
+	
+	?>
+	<div class="wrap">
+		<h1><?php _e('AI 查询统计', 'argon'); ?></h1>
+		
+		<div class="argon-ai-stats-container" style="margin-top: 20px;">
+			<!-- 总览卡片 -->
+			<div class="argon-stats-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+				<div class="argon-stat-card" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+					<h3 style="margin: 0 0 10px 0; color: #666; font-size: 14px;"><?php _e('总查询次数', 'argon'); ?></h3>
+					<p style="margin: 0; font-size: 32px; font-weight: bold; color: #0073aa;"><?php echo number_format($stats['total_queries']); ?></p>
+				</div>
+				
+				<div class="argon-stat-card" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+					<h3 style="margin: 0 0 10px 0; color: #666; font-size: 14px;"><?php _e('成功率', 'argon'); ?></h3>
+					<p style="margin: 0; font-size: 32px; font-weight: bold; color: #46b450;"><?php echo $stats['success_rate']; ?>%</p>
+				</div>
+				
+				<div class="argon-stat-card" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+					<h3 style="margin: 0 0 10px 0; color: #666; font-size: 14px;"><?php _e('平均响应时间', 'argon'); ?></h3>
+					<p style="margin: 0; font-size: 32px; font-weight: bold; color: #f0b849;"><?php echo round($stats['avg_response_time']); ?>ms</p>
+				</div>
+				
+				<div class="argon-stat-card" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+					<h3 style="margin: 0 0 10px 0; color: #666; font-size: 14px;"><?php _e('失败次数', 'argon'); ?></h3>
+					<p style="margin: 0; font-size: 32px; font-weight: bold; color: #dc3232;"><?php echo number_format($stats['error_queries']); ?></p>
+				</div>
+			</div>
+			
+			<!-- 按场景统计 -->
+			<div class="argon-stats-section" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px;">
+				<h2 style="margin-top: 0;"><?php _e('按场景统计', 'argon'); ?></h2>
+				<table class="wp-list-table widefat fixed striped">
+					<thead>
+						<tr>
+							<th><?php _e('场景', 'argon'); ?></th>
+							<th><?php _e('查询次数', 'argon'); ?></th>
+							<th><?php _e('平均响应时间', 'argon'); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php
+						$scenario_names = [
+							'summary' => __('文章摘要', 'argon'),
+							'spam_detection' => __('垃圾评论检测', 'argon'),
+							'spam_detection_batch' => __('批量垃圾评论检测', 'argon'),
+							'keyword_extraction' => __('关键词提取', 'argon'),
+							'test' => __('测试', 'argon')
+						];
+						
+						foreach ($stats['by_scenario'] as $row):
+							$scenario_name = isset($scenario_names[$row['scenario']]) ? $scenario_names[$row['scenario']] : $row['scenario'];
+						?>
+						<tr>
+							<td><?php echo esc_html($scenario_name); ?></td>
+							<td><?php echo number_format($row['count']); ?></td>
+							<td><?php echo round($row['avg_time'], 2); ?>ms</td>
+						</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+			
+			<!-- 按服务商统计 -->
+			<div class="argon-stats-section" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px;">
+				<h2 style="margin-top: 0;"><?php _e('按服务商统计', 'argon'); ?></h2>
+				<table class="wp-list-table widefat fixed striped">
+					<thead>
+						<tr>
+							<th><?php _e('服务商', 'argon'); ?></th>
+							<th><?php _e('查询次数', 'argon'); ?></th>
+							<th><?php _e('平均响应时间', 'argon'); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php
+						$provider_names = [
+							'openai' => 'OpenAI',
+							'anthropic' => 'Anthropic Claude',
+							'deepseek' => 'DeepSeek',
+							'xiaomi' => __('小米 Mimo', 'argon'),
+							'qianwen' => __('通义千问', 'argon'),
+							'wenxin' => __('文心一言', 'argon'),
+							'doubao' => __('豆包', 'argon'),
+							'kimi' => 'Kimi',
+							'zhipu' => __('智谱 AI', 'argon'),
+							'siliconflow' => __('硅基流动', 'argon')
+						];
+						
+						foreach ($stats['by_provider'] as $row):
+							$provider_name = isset($provider_names[$row['provider']]) ? $provider_names[$row['provider']] : $row['provider'];
+						?>
+						<tr>
+							<td><?php echo esc_html($provider_name); ?></td>
+							<td><?php echo number_format($row['count']); ?></td>
+							<td><?php echo round($row['avg_time'], 2); ?>ms</td>
+						</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+			
+			<!-- 查询趋势 -->
+			<div class="argon-stats-section" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+				<h2 style="margin-top: 0;"><?php _e('最近30天查询趋势', 'argon'); ?></h2>
+				<table class="wp-list-table widefat fixed striped">
+					<thead>
+						<tr>
+							<th><?php _e('日期', 'argon'); ?></th>
+							<th><?php _e('总查询', 'argon'); ?></th>
+							<th><?php _e('成功', 'argon'); ?></th>
+							<th><?php _e('平均响应时间', 'argon'); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ($trend_data as $row): ?>
+						<tr>
+							<td><?php echo esc_html($row['date']); ?></td>
+							<td><?php echo number_format($row['total']); ?></td>
+							<td><?php echo number_format($row['success']); ?></td>
+							<td><?php echo round($row['avg_time'], 2); ?>ms</td>
+						</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+		</div>
+		
+		<p style="margin-top: 30px;">
+			<a href="<?php echo admin_url('themes.php?page=argon-theme-options'); ?>" class="button">
+				<?php _e('返回主题设置', 'argon'); ?>
+			</a>
+		</p>
+	</div>
+	<?php
+}
+
 // ==================== AI 文章摘要功能 ====================
 
 /**
@@ -9826,23 +10005,15 @@ add_action('wp_ajax_argon_spam_detection_scan', 'argon_spam_detection_scan');
  * @return array|false 检测结果或 false
  */
 function argon_batch_detect_spam_comments($comments_data) {
-	// 获取 AI 配置
-	$provider = get_option('argon_ai_summary_provider', 'openai');
-	$config = argon_get_ai_provider_config($provider);
-	$api_key = $config['api_key'];
-	$model = $config['model'];
-	$prompt = get_option('argon_comment_spam_detection_prompt', '');
+	// 获取配置
+	$prompt_mode = get_option('argon_comment_spam_detection_prompt_mode', 'standard');
+	$custom_prompt = get_option('argon_comment_spam_detection_prompt', '');
 	
-	if (empty($api_key)) {
-		return false;
-	}
-	
-	if (empty($prompt)) {
-		$prompt = '你是一个专业的内容审核助手。请判断以下评论是否为垃圾评论。垃圾评论包括但不限于：广告推广、反动言论、错误政治观点、时政敏感内容、违法信息、色情暴力、恶意攻击等。
-
-请仅返回 JSON 格式：{"is_spam": true/false, "reason": "理由(25字以内)"}
-
-如果是正常评论，reason 填写 "正常"。如果是垃圾评论，简要说明原因。';
+	// 根据模式选择 Prompt
+	if ($prompt_mode === 'custom' && !empty($custom_prompt)) {
+		$prompt = $custom_prompt . "\n\n请对每条评论返回检测结果。";
+	} else {
+		$prompt = argon_get_spam_detection_prompt($prompt_mode);
 	}
 	
 	// 构建批量检测内容
@@ -9858,10 +10029,12 @@ function argon_batch_detect_spam_comments($comments_data) {
 		);
 	}
 	
-	$batch_content .= "\n请返回 JSON 数组格式：[{\"id\": 评论ID, \"is_spam\": true/false, \"reason\": \"理由(25字以内)\"}]";
+	$batch_content .= "\n请返回 JSON 数组格式：[{\"id\": 评论ID, \"is_spam\": true/false, \"reason\": \"理由(25字以内)\", \"confidence\": 0.0-1.0}]";
 	
-	// 调用 AI API
-	$ai_response = argon_call_ai_api_for_batch_spam_detection($provider, $api_key, $model, $prompt, $batch_content);
+	// 使用统一的 AI 查询接口
+	$ai_response = argon_ai_query('spam_detection_batch', $prompt, $batch_content, [
+		'user_id' => get_current_user_id()
+	]);
 	
 	if (!$ai_response) {
 		return false;
@@ -9883,105 +10056,6 @@ function argon_batch_detect_spam_comments($comments_data) {
 	return $result;
 }
 
-/**
- * 调用 AI API 进行批量垃圾评论检测
- */
-function argon_call_ai_api_for_batch_spam_detection($provider, $api_key, $model, $prompt, $content) {
-	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
-	
-	// 根据不同服务商设置默认端点和模型
-	$default_models = [
-		'openai' => 'gpt-4o-mini',
-		'anthropic' => 'claude-3-5-haiku-20241022',
-		'deepseek' => 'deepseek-chat',
-		'xiaomi' => 'MiMo-V2-Flash',
-		'qianwen' => 'qwen-turbo',
-		'wenxin' => 'ernie-4.0-turbo-8k',
-		'doubao' => 'doubao-pro-32k',
-		'kimi' => 'moonshot-v1-8k',
-		'zhipu' => 'glm-4-flash',
-		'siliconflow' => 'Qwen/Qwen2.5-7B-Instruct'
-	];
-	
-	if (empty($model) && isset($default_models[$provider])) {
-		$model = $default_models[$provider];
-	}
-	
-	// 构建请求
-	$messages = [
-		['role' => 'system', 'content' => $prompt],
-		['role' => 'user', 'content' => $content]
-	];
-	
-	$body = [
-		'model' => $model,
-		'messages' => $messages,
-		'temperature' => 0.3,
-		'max_tokens' => 4000 // 批量检测需要更多 token
-	];
-	
-	// 根据服务商设置端点
-	if (empty($endpoint)) {
-		$endpoints = [
-			'openai' => 'https://api.openai.com/v1/chat/completions',
-			'anthropic' => 'https://api.anthropic.com/v1/messages',
-			'deepseek' => 'https://api.deepseek.com/v1/chat/completions',
-			'xiaomi' => 'https://api.mimo.xiaomi.com/v1/chat/completions',
-			'qianwen' => 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
-			'wenxin' => 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions',
-			'doubao' => 'https://ark.cn-beijing.volces.com/api/v3/chat/completions',
-			'kimi' => 'https://api.moonshot.cn/v1/chat/completions',
-			'zhipu' => 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
-			'siliconflow' => 'https://api.siliconflow.cn/v1/chat/completions'
-		];
-		$endpoint = isset($endpoints[$provider]) ? $endpoints[$provider] : $endpoints['openai'];
-	}
-	
-	// Anthropic 特殊处理
-	if ($provider === 'anthropic') {
-		$body = [
-			'model' => $model,
-			'messages' => [['role' => 'user', 'content' => $prompt . "\n\n" . $content]],
-			'max_tokens' => 4000
-		];
-		$headers = [
-			'x-api-key' => $api_key,
-			'anthropic-version' => '2023-06-01',
-			'Content-Type' => 'application/json'
-		];
-	} else {
-		$headers = [
-			'Authorization' => 'Bearer ' . $api_key,
-			'Content-Type' => 'application/json'
-		];
-	}
-	
-	$response = wp_remote_post($endpoint, [
-		'headers' => $headers,
-		'body' => json_encode($body),
-		'timeout' => 60 // 批量检测需要更长超时时间
-	]);
-	
-	if (is_wp_error($response)) {
-		return false;
-	}
-	
-	$response_body = json_decode(wp_remote_retrieve_body($response), true);
-	
-	// 解析响应
-	$ai_response = '';
-	if ($provider === 'anthropic') {
-		if (isset($response_body['content'][0]['text'])) {
-			$ai_response = $response_body['content'][0]['text'];
-		}
-	} else {
-		if (isset($response_body['choices'][0]['message']['content'])) {
-			$ai_response = $response_body['choices'][0]['message']['content'];
-		}
-	}
-	
-	return $ai_response;
-}
 
 /**
  * 后台处理扫描任务（已废弃，保留以兼容旧代码）
