@@ -7897,6 +7897,88 @@ function argon_get_ai_models() {
 add_action('wp_ajax_argon_get_ai_models', 'argon_get_ai_models');
 
 /**
+ * AJAX: 测试 API 连通性
+ */
+function argon_test_api_connection() {
+	check_ajax_referer('argon_test_api_connection', 'nonce');
+	
+	if (!current_user_can('manage_options')) {
+		wp_send_json_error(__('权限不足', 'argon'));
+	}
+	
+	$provider = sanitize_text_field($_POST['provider']);
+	$api_key = sanitize_text_field($_POST['api_key']);
+	$api_endpoint = sanitize_text_field($_POST['api_endpoint']);
+	$model = sanitize_text_field($_POST['model']);
+	
+	if (empty($api_key)) {
+		wp_send_json_error(__('API 密钥不能为空', 'argon'));
+	}
+	
+	// 记录开始时间
+	$start_time = microtime(true);
+	
+	// 测试提示词
+	$test_prompt = __('请回复"连接成功"', 'argon');
+	$test_content = __('测试', 'argon');
+	
+	// 根据不同服务商调用 API
+	$result = false;
+	try {
+		switch ($provider) {
+			case 'openai':
+				$result = argon_call_openai_api($api_key, $test_prompt, $test_content);
+				break;
+			case 'anthropic':
+				$result = argon_call_anthropic_api($api_key, $test_prompt, $test_content);
+				break;
+			case 'deepseek':
+				$result = argon_call_deepseek_api($api_key, $test_prompt, $test_content);
+				break;
+			case 'xiaomi':
+				$result = argon_call_xiaomi_api($api_key, $test_prompt, $test_content);
+				break;
+			case 'qianwen':
+				$result = argon_call_qianwen_api($api_key, $test_prompt, $test_content);
+				break;
+			case 'wenxin':
+				$result = argon_call_wenxin_api($api_key, $test_prompt, $test_content);
+				break;
+			case 'doubao':
+				$result = argon_call_doubao_api($api_key, $test_prompt, $test_content);
+				break;
+			case 'kimi':
+				$result = argon_call_kimi_api($api_key, $test_prompt, $test_content);
+				break;
+			case 'zhipu':
+				$result = argon_call_zhipu_api($api_key, $test_prompt, $test_content);
+				break;
+			case 'siliconflow':
+				$result = argon_call_siliconflow_api($api_key, $test_prompt, $test_content);
+				break;
+			default:
+				wp_send_json_error(__('不支持的服务商', 'argon'));
+		}
+	} catch (Exception $e) {
+		wp_send_json_error($e->getMessage());
+	}
+	
+	// 计算响应时间
+	$response_time = round((microtime(true) - $start_time) * 1000);
+	
+	if ($result !== false) {
+		wp_send_json_success([
+			'message' => __('连接成功', 'argon'),
+			'response_time' => $response_time,
+			'model' => $model
+		]);
+	} else {
+		wp_send_json_error(__('连接失败，请检查 API 密钥和网络连接', 'argon'));
+	}
+}
+add_action('wp_ajax_argon_test_api_connection', 'argon_test_api_connection');
+
+/**
  * AJAX: 添加 API 配置
  */
 function argon_ajax_add_provider_api() {
