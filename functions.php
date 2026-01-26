@@ -6858,7 +6858,7 @@ function argon_call_openai_api($api_key, $prompt, $content, $post_id = 0) {
 /**
  * 调用 Anthropic Claude API
  */
-function argon_call_anthropic_api($api_key, $prompt, $content) {
+function argon_call_anthropic_api($api_key, $prompt, $content, $post_id = 0) {
 	$provider = 'anthropic';
 	$config = argon_get_ai_provider_config($provider);
 	
@@ -6884,23 +6884,75 @@ function argon_call_anthropic_api($api_key, $prompt, $content) {
 	]);
 
 	if (is_wp_error($response)) {
-		error_log('Argon AI Summary Error: ' . $response->get_error_message());
+		argon_log_ai_error('网络请求失败', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'error' => $response->get_error_message()
+		]);
+		return false;
+	}
+
+	$status_code = wp_remote_retrieve_response_code($response);
+	if ($status_code !== 200) {
+		argon_log_ai_error('API 返回错误状态码', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'status_code' => $status_code,
+			'response' => wp_remote_retrieve_body($response)
+		]);
 		return false;
 	}
 
 	$body = json_decode(wp_remote_retrieve_body($response), true);
 	
-	if (isset($body['content'][0]['text'])) {
-		return trim($body['content'][0]['text']);
+	if (!is_array($body)) {
+		argon_log_ai_error('API 返回的响应格式无效', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'response' => wp_remote_retrieve_body($response)
+		]);
+		return false;
 	}
 
+	if (isset($body['error'])) {
+		argon_log_ai_error('API 返回错误', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'error' => $body['error']
+		]);
+		return false;
+	}
+	
+	if (isset($body['content'][0]['text'])) {
+		$result = trim($body['content'][0]['text']);
+		if (empty($result)) {
+			argon_log_ai_error('API 返回空内容', $post_id, [
+				'provider' => $provider,
+				'endpoint' => $endpoint,
+				'model' => $model
+			]);
+			return false;
+		}
+		return $result;
+	}
+
+	argon_log_ai_error('API 响应中缺少预期的内容字段', $post_id, [
+		'provider' => $provider,
+		'endpoint' => $endpoint,
+		'model' => $model,
+		'response_keys' => array_keys($body)
+	]);
 	return false;
 }
 
 /**
  * 调用通义千问 API
  */
-function argon_call_qianwen_api($api_key, $prompt, $content) {
+function argon_call_qianwen_api($api_key, $prompt, $content, $post_id = 0) {
 	$provider = 'qianwen';
 	$config = argon_get_ai_provider_config($provider);
 	
@@ -6930,23 +6982,76 @@ function argon_call_qianwen_api($api_key, $prompt, $content) {
 	]);
 
 	if (is_wp_error($response)) {
-		error_log('Argon AI Summary Error: ' . $response->get_error_message());
+		argon_log_ai_error('网络请求失败', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'error' => $response->get_error_message()
+		]);
+		return false;
+	}
+
+	$status_code = wp_remote_retrieve_response_code($response);
+	if ($status_code !== 200) {
+		argon_log_ai_error('API 返回错误状态码', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'status_code' => $status_code,
+			'response' => wp_remote_retrieve_body($response)
+		]);
 		return false;
 	}
 
 	$body = json_decode(wp_remote_retrieve_body($response), true);
 	
-	if (isset($body['output']['choices'][0]['message']['content'])) {
-		return trim($body['output']['choices'][0]['message']['content']);
+	if (!is_array($body)) {
+		argon_log_ai_error('API 返回的响应格式无效', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'response' => wp_remote_retrieve_body($response)
+		]);
+		return false;
 	}
 
+	if (isset($body['code']) && $body['code'] !== '200') {
+		argon_log_ai_error('API 返回错误', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'error_code' => $body['code'],
+			'error_message' => isset($body['message']) ? $body['message'] : 'Unknown error'
+		]);
+		return false;
+	}
+	
+	if (isset($body['output']['choices'][0]['message']['content'])) {
+		$result = trim($body['output']['choices'][0]['message']['content']);
+		if (empty($result)) {
+			argon_log_ai_error('API 返回空内容', $post_id, [
+				'provider' => $provider,
+				'endpoint' => $endpoint,
+				'model' => $model
+			]);
+			return false;
+		}
+		return $result;
+	}
+
+	argon_log_ai_error('API 响应中缺少预期的内容字段', $post_id, [
+		'provider' => $provider,
+		'endpoint' => $endpoint,
+		'model' => $model,
+		'response_keys' => array_keys($body)
+	]);
 	return false;
 }
 
 /**
  * 调用文心一言 API
  */
-function argon_call_wenxin_api($api_key, $prompt, $content) {
+function argon_call_wenxin_api($api_key, $prompt, $content, $post_id = 0) {
 	$provider = 'wenxin';
 	$config = argon_get_ai_provider_config($provider);
 	
@@ -6973,23 +7078,76 @@ function argon_call_wenxin_api($api_key, $prompt, $content) {
 	]);
 
 	if (is_wp_error($response)) {
-		error_log('Argon AI Summary Error: ' . $response->get_error_message());
+		argon_log_ai_error('网络请求失败', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'error' => $response->get_error_message()
+		]);
+		return false;
+	}
+
+	$status_code = wp_remote_retrieve_response_code($response);
+	if ($status_code !== 200) {
+		argon_log_ai_error('API 返回错误状态码', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'status_code' => $status_code,
+			'response' => wp_remote_retrieve_body($response)
+		]);
 		return false;
 	}
 
 	$body = json_decode(wp_remote_retrieve_body($response), true);
 	
-	if (isset($body['result'])) {
-		return trim($body['result']);
+	if (!is_array($body)) {
+		argon_log_ai_error('API 返回的响应格式无效', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'response' => wp_remote_retrieve_body($response)
+		]);
+		return false;
 	}
 
+	if (isset($body['error_code'])) {
+		argon_log_ai_error('API 返回错误', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'error_code' => $body['error_code'],
+			'error_msg' => isset($body['error_msg']) ? $body['error_msg'] : 'Unknown error'
+		]);
+		return false;
+	}
+	
+	if (isset($body['result'])) {
+		$result = trim($body['result']);
+		if (empty($result)) {
+			argon_log_ai_error('API 返回空内容', $post_id, [
+				'provider' => $provider,
+				'endpoint' => $endpoint,
+				'model' => $model
+			]);
+			return false;
+		}
+		return $result;
+	}
+
+	argon_log_ai_error('API 响应中缺少预期的内容字段', $post_id, [
+		'provider' => $provider,
+		'endpoint' => $endpoint,
+		'model' => $model,
+		'response_keys' => array_keys($body)
+	]);
 	return false;
 }
 
 /**
  * 调用 Kimi (Moonshot) API
  */
-function argon_call_kimi_api($api_key, $prompt, $content) {
+function argon_call_kimi_api($api_key, $prompt, $content, $post_id = 0) {
 	$provider = 'kimi';
 	$config = argon_get_ai_provider_config($provider);
 	
@@ -7015,23 +7173,75 @@ function argon_call_kimi_api($api_key, $prompt, $content) {
 	]);
 
 	if (is_wp_error($response)) {
-		error_log('Argon AI Summary Error: ' . $response->get_error_message());
+		argon_log_ai_error('网络请求失败', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'error' => $response->get_error_message()
+		]);
+		return false;
+	}
+
+	$status_code = wp_remote_retrieve_response_code($response);
+	if ($status_code !== 200) {
+		argon_log_ai_error('API 返回错误状态码', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'status_code' => $status_code,
+			'response' => wp_remote_retrieve_body($response)
+		]);
 		return false;
 	}
 
 	$body = json_decode(wp_remote_retrieve_body($response), true);
 	
-	if (isset($body['choices'][0]['message']['content'])) {
-		return trim($body['choices'][0]['message']['content']);
+	if (!is_array($body)) {
+		argon_log_ai_error('API 返回的响应格式无效', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'response' => wp_remote_retrieve_body($response)
+		]);
+		return false;
 	}
 
+	if (isset($body['error'])) {
+		argon_log_ai_error('API 返回错误', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'error' => $body['error']
+		]);
+		return false;
+	}
+	
+	if (isset($body['choices'][0]['message']['content'])) {
+		$result = trim($body['choices'][0]['message']['content']);
+		if (empty($result)) {
+			argon_log_ai_error('API 返回空内容', $post_id, [
+				'provider' => $provider,
+				'endpoint' => $endpoint,
+				'model' => $model
+			]);
+			return false;
+		}
+		return $result;
+	}
+
+	argon_log_ai_error('API 响应中缺少预期的内容字段', $post_id, [
+		'provider' => $provider,
+		'endpoint' => $endpoint,
+		'model' => $model,
+		'response_keys' => array_keys($body)
+	]);
 	return false;
 }
 
 /**
  * 调用智谱 AI API
  */
-function argon_call_zhipu_api($api_key, $prompt, $content) {
+function argon_call_zhipu_api($api_key, $prompt, $content, $post_id = 0) {
 	$provider = 'zhipu';
 	$config = argon_get_ai_provider_config($provider);
 	
@@ -7056,16 +7266,68 @@ function argon_call_zhipu_api($api_key, $prompt, $content) {
 	]);
 
 	if (is_wp_error($response)) {
-		error_log('Argon AI Summary Error: ' . $response->get_error_message());
+		argon_log_ai_error('网络请求失败', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'error' => $response->get_error_message()
+		]);
+		return false;
+	}
+
+	$status_code = wp_remote_retrieve_response_code($response);
+	if ($status_code !== 200) {
+		argon_log_ai_error('API 返回错误状态码', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'status_code' => $status_code,
+			'response' => wp_remote_retrieve_body($response)
+		]);
 		return false;
 	}
 
 	$body = json_decode(wp_remote_retrieve_body($response), true);
 	
-	if (isset($body['choices'][0]['message']['content'])) {
-		return trim($body['choices'][0]['message']['content']);
+	if (!is_array($body)) {
+		argon_log_ai_error('API 返回的响应格式无效', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'response' => wp_remote_retrieve_body($response)
+		]);
+		return false;
 	}
 
+	if (isset($body['error'])) {
+		argon_log_ai_error('API 返回错误', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'error' => $body['error']
+		]);
+		return false;
+	}
+	
+	if (isset($body['choices'][0]['message']['content'])) {
+		$result = trim($body['choices'][0]['message']['content']);
+		if (empty($result)) {
+			argon_log_ai_error('API 返回空内容', $post_id, [
+				'provider' => $provider,
+				'endpoint' => $endpoint,
+				'model' => $model
+			]);
+			return false;
+		}
+		return $result;
+	}
+
+	argon_log_ai_error('API 响应中缺少预期的内容字段', $post_id, [
+		'provider' => $provider,
+		'endpoint' => $endpoint,
+		'model' => $model,
+		'response_keys' => array_keys($body)
+	]);
 	return false;
 }
 
@@ -7193,7 +7455,7 @@ add_action('wp_ajax_nopriv_argon_check_ai_summary', 'argon_check_ai_summary');
 /**
  * 调用 DeepSeek API
  */
-function argon_call_deepseek_api($api_key, $prompt, $content) {
+function argon_call_deepseek_api($api_key, $prompt, $content, $post_id = 0) {
 	$provider = 'deepseek';
 	$config = argon_get_ai_provider_config($provider);
 	
@@ -7220,23 +7482,75 @@ function argon_call_deepseek_api($api_key, $prompt, $content) {
 	]);
 
 	if (is_wp_error($response)) {
-		error_log('Argon AI Summary Error: ' . $response->get_error_message());
+		argon_log_ai_error('网络请求失败', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'error' => $response->get_error_message()
+		]);
+		return false;
+	}
+
+	$status_code = wp_remote_retrieve_response_code($response);
+	if ($status_code !== 200) {
+		argon_log_ai_error('API 返回错误状态码', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'status_code' => $status_code,
+			'response' => wp_remote_retrieve_body($response)
+		]);
 		return false;
 	}
 
 	$body = json_decode(wp_remote_retrieve_body($response), true);
 	
-	if (isset($body['choices'][0]['message']['content'])) {
-		return trim($body['choices'][0]['message']['content']);
+	if (!is_array($body)) {
+		argon_log_ai_error('API 返回的响应格式无效', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'response' => wp_remote_retrieve_body($response)
+		]);
+		return false;
 	}
 
+	if (isset($body['error'])) {
+		argon_log_ai_error('API 返回错误', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'error' => $body['error']
+		]);
+		return false;
+	}
+	
+	if (isset($body['choices'][0]['message']['content'])) {
+		$result = trim($body['choices'][0]['message']['content']);
+		if (empty($result)) {
+			argon_log_ai_error('API 返回空内容', $post_id, [
+				'provider' => $provider,
+				'endpoint' => $endpoint,
+				'model' => $model
+			]);
+			return false;
+		}
+		return $result;
+	}
+
+	argon_log_ai_error('API 响应中缺少预期的内容字段', $post_id, [
+		'provider' => $provider,
+		'endpoint' => $endpoint,
+		'model' => $model,
+		'response_keys' => array_keys($body)
+	]);
 	return false;
 }
 
 /**
  * 调用小米 Mimo API
  */
-function argon_call_xiaomi_api($api_key, $prompt, $content) {
+function argon_call_xiaomi_api($api_key, $prompt, $content, $post_id = 0) {
 	$provider = 'xiaomi';
 	$config = argon_get_ai_provider_config($provider);
 	
@@ -7263,23 +7577,75 @@ function argon_call_xiaomi_api($api_key, $prompt, $content) {
 	]);
 
 	if (is_wp_error($response)) {
-		error_log('Argon AI Summary Error: ' . $response->get_error_message());
+		argon_log_ai_error('网络请求失败', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'error' => $response->get_error_message()
+		]);
+		return false;
+	}
+
+	$status_code = wp_remote_retrieve_response_code($response);
+	if ($status_code !== 200) {
+		argon_log_ai_error('API 返回错误状态码', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'status_code' => $status_code,
+			'response' => wp_remote_retrieve_body($response)
+		]);
 		return false;
 	}
 
 	$body = json_decode(wp_remote_retrieve_body($response), true);
 	
-	if (isset($body['choices'][0]['message']['content'])) {
-		return trim($body['choices'][0]['message']['content']);
+	if (!is_array($body)) {
+		argon_log_ai_error('API 返回的响应格式无效', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'response' => wp_remote_retrieve_body($response)
+		]);
+		return false;
 	}
 
+	if (isset($body['error'])) {
+		argon_log_ai_error('API 返回错误', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'error' => $body['error']
+		]);
+		return false;
+	}
+	
+	if (isset($body['choices'][0]['message']['content'])) {
+		$result = trim($body['choices'][0]['message']['content']);
+		if (empty($result)) {
+			argon_log_ai_error('API 返回空内容', $post_id, [
+				'provider' => $provider,
+				'endpoint' => $endpoint,
+				'model' => $model
+			]);
+			return false;
+		}
+		return $result;
+	}
+
+	argon_log_ai_error('API 响应中缺少预期的内容字段', $post_id, [
+		'provider' => $provider,
+		'endpoint' => $endpoint,
+		'model' => $model,
+		'response_keys' => array_keys($body)
+	]);
 	return false;
 }
 
 /**
  * 调用豆包 (火山引擎) API
  */
-function argon_call_doubao_api($api_key, $prompt, $content) {
+function argon_call_doubao_api($api_key, $prompt, $content, $post_id = 0) {
 	$provider = 'doubao';
 	$config = argon_get_ai_provider_config($provider);
 	
@@ -7306,23 +7672,75 @@ function argon_call_doubao_api($api_key, $prompt, $content) {
 	]);
 
 	if (is_wp_error($response)) {
-		error_log('Argon AI Summary Error: ' . $response->get_error_message());
+		argon_log_ai_error('网络请求失败', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'error' => $response->get_error_message()
+		]);
+		return false;
+	}
+
+	$status_code = wp_remote_retrieve_response_code($response);
+	if ($status_code !== 200) {
+		argon_log_ai_error('API 返回错误状态码', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'status_code' => $status_code,
+			'response' => wp_remote_retrieve_body($response)
+		]);
 		return false;
 	}
 
 	$body = json_decode(wp_remote_retrieve_body($response), true);
 	
-	if (isset($body['choices'][0]['message']['content'])) {
-		return trim($body['choices'][0]['message']['content']);
+	if (!is_array($body)) {
+		argon_log_ai_error('API 返回的响应格式无效', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'response' => wp_remote_retrieve_body($response)
+		]);
+		return false;
 	}
 
+	if (isset($body['error'])) {
+		argon_log_ai_error('API 返回错误', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'error' => $body['error']
+		]);
+		return false;
+	}
+	
+	if (isset($body['choices'][0]['message']['content'])) {
+		$result = trim($body['choices'][0]['message']['content']);
+		if (empty($result)) {
+			argon_log_ai_error('API 返回空内容', $post_id, [
+				'provider' => $provider,
+				'endpoint' => $endpoint,
+				'model' => $model
+			]);
+			return false;
+		}
+		return $result;
+	}
+
+	argon_log_ai_error('API 响应中缺少预期的内容字段', $post_id, [
+		'provider' => $provider,
+		'endpoint' => $endpoint,
+		'model' => $model,
+		'response_keys' => array_keys($body)
+	]);
 	return false;
 }
 
 /**
  * 调用硅基流动 (SiliconFlow) API
  */
-function argon_call_siliconflow_api($api_key, $prompt, $content) {
+function argon_call_siliconflow_api($api_key, $prompt, $content, $post_id = 0) {
 	$provider = 'siliconflow';
 	$config = argon_get_ai_provider_config($provider);
 	
@@ -7349,16 +7767,68 @@ function argon_call_siliconflow_api($api_key, $prompt, $content) {
 	]);
 
 	if (is_wp_error($response)) {
-		error_log('Argon AI Summary Error: ' . $response->get_error_message());
+		argon_log_ai_error('网络请求失败', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'error' => $response->get_error_message()
+		]);
+		return false;
+	}
+
+	$status_code = wp_remote_retrieve_response_code($response);
+	if ($status_code !== 200) {
+		argon_log_ai_error('API 返回错误状态码', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'status_code' => $status_code,
+			'response' => wp_remote_retrieve_body($response)
+		]);
 		return false;
 	}
 
 	$body = json_decode(wp_remote_retrieve_body($response), true);
 	
-	if (isset($body['choices'][0]['message']['content'])) {
-		return trim($body['choices'][0]['message']['content']);
+	if (!is_array($body)) {
+		argon_log_ai_error('API 返回的响应格式无效', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'response' => wp_remote_retrieve_body($response)
+		]);
+		return false;
 	}
 
+	if (isset($body['error'])) {
+		argon_log_ai_error('API 返回错误', $post_id, [
+			'provider' => $provider,
+			'endpoint' => $endpoint,
+			'model' => $model,
+			'error' => $body['error']
+		]);
+		return false;
+	}
+	
+	if (isset($body['choices'][0]['message']['content'])) {
+		$result = trim($body['choices'][0]['message']['content']);
+		if (empty($result)) {
+			argon_log_ai_error('API 返回空内容', $post_id, [
+				'provider' => $provider,
+				'endpoint' => $endpoint,
+				'model' => $model
+			]);
+			return false;
+		}
+		return $result;
+	}
+
+	argon_log_ai_error('API 响应中缺少预期的内容字段', $post_id, [
+		'provider' => $provider,
+		'endpoint' => $endpoint,
+		'model' => $model,
+		'response_keys' => array_keys($body)
+	]);
 	return false;
 }
 
