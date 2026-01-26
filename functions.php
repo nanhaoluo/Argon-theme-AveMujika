@@ -8787,15 +8787,21 @@ function argon_ajax_test_unified_api() {
 	check_ajax_referer('argon_test_unified_api', 'nonce');
 	
 	if (!current_user_can('manage_options')) {
-		wp_send_json_error('权限不足');
+		wp_send_json_error(['message' => '权限不足']);
 		return;
 	}
 	
-	$api_id = sanitize_text_field($_POST['api_id']);
+	$api_id = isset($_POST['api_id']) ? sanitize_text_field($_POST['api_id']) : '';
+	
+	if (empty($api_id)) {
+		wp_send_json_error(['message' => '缺少 API ID 参数']);
+		return;
+	}
+	
 	$api = argon_get_api_by_id($api_id);
 	
 	if (!$api) {
-		wp_send_json_error('API 不存在');
+		wp_send_json_error(['message' => 'API 不存在']);
 		return;
 	}
 	
@@ -8816,7 +8822,7 @@ function argon_ajax_test_unified_api() {
 	$api_endpoint = !empty($api['api_endpoint']) ? $api['api_endpoint'] : (isset($default_endpoints[$api['provider']]) ? $default_endpoints[$api['provider']] : '');
 	
 	if (empty($api_endpoint)) {
-		wp_send_json_error('未配置 API 端点');
+		wp_send_json_error(['message' => '未配置 API 端点']);
 		return;
 	}
 	
@@ -8865,7 +8871,7 @@ function argon_ajax_test_unified_api() {
 	$response_time = round((microtime(true) - $start_time) * 1000);
 	
 	if (is_wp_error($response)) {
-		wp_send_json_error('连接失败: ' . $response->get_error_message());
+		wp_send_json_error(['message' => '连接失败: ' . $response->get_error_message()]);
 		return;
 	}
 	
@@ -8880,7 +8886,7 @@ function argon_ajax_test_unified_api() {
 				'response_time' => $response_time
 			]);
 		} else {
-			wp_send_json_error('API 返回格式异常: ' . substr($body, 0, 200));
+			wp_send_json_error(['message' => 'API 返回格式异常: ' . substr($body, 0, 200)]);
 		}
 	} else {
 		$error_msg = 'HTTP ' . $status_code;
@@ -8890,7 +8896,7 @@ function argon_ajax_test_unified_api() {
 		} else {
 			$error_msg .= ': ' . substr($body, 0, 200);
 		}
-		wp_send_json_error($error_msg);
+		wp_send_json_error(['message' => $error_msg]);
 	}
 }
 add_action('wp_ajax_argon_test_unified_api', 'argon_ajax_test_unified_api');

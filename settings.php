@@ -2455,8 +2455,8 @@ function themeoptions_page(){
 							if (response.success) {
 								alert('✓ ' + response.data.message);
 							} else {
-								// wp_send_json_error 的错误消息在 response.data 中
-								let errorMsg = response.data || '<?php _e('未知错误', 'argon'); ?>';
+								// wp_send_json_error 的错误消息在 response.data.message 中
+								let errorMsg = (response.data && response.data.message) ? response.data.message : '<?php _e('未知错误', 'argon'); ?>';
 								alert('✗ <?php _e('测试失败:', 'argon'); ?> ' + errorMsg);
 							}
 							$btn.prop('disabled', false).html(originalHtml);
@@ -2464,7 +2464,7 @@ function themeoptions_page(){
 							// AJAX 请求本身失败
 							console.error('AJAX Error:', xhr, status, error);
 							console.error('Response Text:', xhr.responseText);
-							alert('<?php _e('请求失败，请重试', 'argon'); ?>');
+							alert('✗ <?php _e('请求失败:', 'argon'); ?> ' + (xhr.responseText || error || '<?php _e('网络错误', 'argon'); ?>'));
 							$btn.prop('disabled', false).html(originalHtml);
 						});
 					});
