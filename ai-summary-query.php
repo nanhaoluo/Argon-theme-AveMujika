@@ -494,7 +494,7 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 			</div>
 			<div class="ai-info-item">
 				<span class="ai-info-label"><?php _e('生成时间', 'argon'); ?></span>
-				<span class="ai-info-value"><?php echo esc_html(date('Y-m-d H:i:s', intval($result['generated_time']))); ?></span>
+				<span class="ai-info-value"><?php echo $result['generated_time'] ? esc_html(date('Y-m-d H:i:s', intval($result['generated_time']))) : __('未知', 'argon'); ?></span>
 			</div>
 		</div>
 		
@@ -628,7 +628,7 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 			</div>
 			<div class="ai-info-item">
 				<span class="ai-info-label"><?php _e('检测时间', 'argon'); ?></span>
-				<span class="ai-info-value"><?php echo esc_html(date('Y-m-d H:i:s', intval($result['detection_time']))); ?></span>
+				<span class="ai-info-value"><?php echo $result['detection_time'] ? esc_html(date('Y-m-d H:i:s', intval($result['detection_time']))) : __('未知', 'argon'); ?></span>
 			</div>
 		</div>
 		
