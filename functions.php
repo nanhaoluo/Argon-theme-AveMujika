@@ -6467,6 +6467,11 @@ function argon_get_ai_summary($post_id) {
 function argon_get_provider_apis($provider) {
 	$apis = get_option("argon_ai_{$provider}_apis", []);
 	
+	// 确保返回的是数组
+	if (!is_array($apis)) {
+		$apis = [];
+	}
+	
 	// 向后兼容：如果没有多 API 配置，尝试从旧配置迁移
 	if (empty($apis)) {
 		$old_api_key = get_option("argon_ai_{$provider}_api_key", '');
@@ -6504,23 +6509,25 @@ function argon_get_ai_provider_config($provider = '') {
 	$active_api_id = get_option("argon_ai_{$provider}_active_api", '');
 	
 	// 查找激活的 API
-	foreach ($apis as $api) {
-		if ($api['id'] === $active_api_id || (!empty($api['is_active']) && $api['is_active'])) {
+	if (!empty($apis) && is_array($apis)) {
+		foreach ($apis as $api) {
+			if (isset($api['id']) && ($api['id'] === $active_api_id || (!empty($api['is_active']) && $api['is_active']))) {
+				return [
+					'api_key' => isset($api['api_key']) ? $api['api_key'] : '',
+					'api_endpoint' => isset($api['api_endpoint']) ? $api['api_endpoint'] : '',
+					'model' => isset($api['model']) ? $api['model'] : ''
+				];
+			}
+		}
+		
+		// 如果没有找到激活的 API，返回第一个
+		if (isset($apis[0])) {
 			return [
-				'api_key' => $api['api_key'],
-				'api_endpoint' => $api['api_endpoint'],
-				'model' => $api['model']
+				'api_key' => isset($apis[0]['api_key']) ? $apis[0]['api_key'] : '',
+				'api_endpoint' => isset($apis[0]['api_endpoint']) ? $apis[0]['api_endpoint'] : '',
+				'model' => isset($apis[0]['model']) ? $apis[0]['model'] : ''
 			];
 		}
-	}
-	
-	// 如果没有找到激活的 API，返回第一个
-	if (!empty($apis)) {
-		return [
-			'api_key' => $apis[0]['api_key'],
-			'api_endpoint' => $apis[0]['api_endpoint'],
-			'model' => $apis[0]['model']
-		];
 	}
 	
 	// 向后兼容：如果没有多 API 配置，使用旧配置
