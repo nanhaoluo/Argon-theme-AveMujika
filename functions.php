@@ -6460,13 +6460,31 @@ function argon_get_ai_summary($post_id) {
 }
 
 /**
+ * 获取指定 AI 提供商的配置
+ * @param string $provider 提供商名称
+ * @return array ['api_key' => string, 'api_endpoint' => string, 'model' => string]
+ */
+function argon_get_ai_provider_config($provider = '') {
+	if (empty($provider)) {
+		$provider = get_option('argon_ai_summary_provider', 'openai');
+	}
+	
+	return [
+		'api_key' => get_option("argon_ai_{$provider}_api_key", ''),
+		'api_endpoint' => get_option("argon_ai_{$provider}_api_endpoint", ''),
+		'model' => get_option("argon_ai_{$provider}_model", '')
+	];
+}
+
+/**
  * 生成 AI 摘要
  * @param WP_Post $post 文章对象
  * @return string|false 摘要内容或 false
  */
 function argon_generate_ai_summary($post) {
 	$provider = get_option('argon_ai_summary_provider', 'openai');
-	$api_key = get_option('argon_ai_summary_api_key', '');
+	$config = argon_get_ai_provider_config($provider);
+	$api_key = $config['api_key'];
 	
 	if (empty($api_key)) {
 		return false;
@@ -6510,15 +6528,11 @@ function argon_generate_ai_summary($post) {
  * 调用 OpenAI API
  */
 function argon_call_openai_api($api_key, $prompt, $content) {
-	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
-	if (empty($endpoint)) {
-		$endpoint = 'https://api.openai.com/v1/chat/completions';
-	}
+	$provider = 'openai';
+	$config = argon_get_ai_provider_config($provider);
 	
-	$model = get_option('argon_ai_summary_model', '');
-	if (empty($model)) {
-		$model = 'gpt-4o-mini';
-	}
+	$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://api.openai.com/v1/chat/completions';
+	$model = !empty($config['model']) ? $config['model'] : 'gpt-4o-mini';
 
 	$data = [
 		'model' => $model,
@@ -6556,15 +6570,11 @@ function argon_call_openai_api($api_key, $prompt, $content) {
  * 调用 Anthropic Claude API
  */
 function argon_call_anthropic_api($api_key, $prompt, $content) {
-	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
-	if (empty($endpoint)) {
-		$endpoint = 'https://api.anthropic.com/v1/messages';
-	}
+	$provider = 'anthropic';
+	$config = argon_get_ai_provider_config($provider);
 	
-	$model = get_option('argon_ai_summary_model', '');
-	if (empty($model)) {
-		$model = 'claude-3-5-haiku-20241022';
-	}
+	$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://api.anthropic.com/v1/messages';
+	$model = !empty($config['model']) ? $config['model'] : 'claude-3-5-haiku-20241022';
 
 	$data = [
 		'model' => $model,
@@ -6602,15 +6612,11 @@ function argon_call_anthropic_api($api_key, $prompt, $content) {
  * 调用通义千问 API
  */
 function argon_call_qianwen_api($api_key, $prompt, $content) {
-	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
-	if (empty($endpoint)) {
-		$endpoint = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation';
-	}
+	$provider = \'qianwen\';
+	$config = argon_get_ai_provider_config($provider);
 	
-	$model = get_option('argon_ai_summary_model', '');
-	if (empty($model)) {
-		$model = 'qwen-turbo';
-	}
+	$endpoint = !empty($config[\'api_endpoint\']) ? $config[\'api_endpoint\'] : \'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation\';
+	$model = !empty($config[\'model\']) ? $config[\'model\'] : \'qwen-turbo\';
 
 	$data = [
 		'model' => $model,
@@ -6652,11 +6658,11 @@ function argon_call_qianwen_api($api_key, $prompt, $content) {
  * 调用文心一言 API
  */
 function argon_call_wenxin_api($api_key, $prompt, $content) {
-	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
-	$model = get_option('argon_ai_summary_model', '');
-	if (empty($model)) {
-		$model = 'ernie-4.0-turbo-8k';
-	}
+	$provider = 'wenxin';
+	$config = argon_get_ai_provider_config($provider);
+	
+	$model = !empty($config['model']) ? $config['model'] : 'ernie-4.0-turbo-8k';
+	$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : '';
 	
 	if (empty($endpoint)) {
 		// 文心一言需要先获取 access_token
@@ -6695,15 +6701,11 @@ function argon_call_wenxin_api($api_key, $prompt, $content) {
  * 调用 Kimi (Moonshot) API
  */
 function argon_call_kimi_api($api_key, $prompt, $content) {
-	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
-	if (empty($endpoint)) {
-		$endpoint = 'https://api.moonshot.cn/v1/chat/completions';
-	}
+	$provider = \'kimi\';
+	$config = argon_get_ai_provider_config($provider);
 	
-	$model = get_option('argon_ai_summary_model', '');
-	if (empty($model)) {
-		$model = 'moonshot-v1-8k';
-	}
+	$endpoint = !empty($config[\'api_endpoint\']) ? $config[\'api_endpoint\'] : \'https://api.moonshot.cn/v1/chat/completions\';
+	$model = !empty($config[\'model\']) ? $config[\'model\'] : \'moonshot-v1-8k\';
 
 	$data = [
 		'model' => $model,
@@ -6741,15 +6743,11 @@ function argon_call_kimi_api($api_key, $prompt, $content) {
  * 调用智谱 AI API
  */
 function argon_call_zhipu_api($api_key, $prompt, $content) {
-	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
-	if (empty($endpoint)) {
-		$endpoint = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
-	}
+	$provider = \'zhipu\';
+	$config = argon_get_ai_provider_config($provider);
 	
-	$model = get_option('argon_ai_summary_model', '');
-	if (empty($model)) {
-		$model = 'glm-4-flash';
-	}
+	$endpoint = !empty($config[\'api_endpoint\']) ? $config[\'api_endpoint\'] : \'https://open.bigmodel.cn/api/paas/v4/chat/completions\';
+	$model = !empty($config[\'model\']) ? $config[\'model\'] : \'glm-4-flash\';
 
 	$data = [
 		'model' => $model,
@@ -6907,15 +6905,11 @@ add_action('wp_ajax_nopriv_argon_check_ai_summary', 'argon_check_ai_summary');
  * 调用 DeepSeek API
  */
 function argon_call_deepseek_api($api_key, $prompt, $content) {
-	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
-	if (empty($endpoint)) {
-		$endpoint = 'https://api.deepseek.com/v1/chat/completions';
-	}
+	$provider = \'deepseek\';
+	$config = argon_get_ai_provider_config($provider);
 	
-	$model = get_option('argon_ai_summary_model', '');
-	if (empty($model)) {
-		$model = 'deepseek-chat';
-	}
+	$endpoint = !empty($config[\'api_endpoint\']) ? $config[\'api_endpoint\'] : \'https://api.deepseek.com/v1/chat/completions\';
+	$model = !empty($config[\'model\']) ? $config[\'model\'] : \'deepseek-chat\';
 
 	$data = [
 		'model' => $model,
@@ -6954,15 +6948,11 @@ function argon_call_deepseek_api($api_key, $prompt, $content) {
  * 调用小米 Mimo API
  */
 function argon_call_xiaomi_api($api_key, $prompt, $content) {
-	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
-	if (empty($endpoint)) {
-		$endpoint = 'https://api.mimo.xiaomi.com/v1/chat/completions';
-	}
+	$provider = \'xiaomi\';
+	$config = argon_get_ai_provider_config($provider);
 	
-	$model = get_option('argon_ai_summary_model', '');
-	if (empty($model)) {
-		$model = 'MiMo-V2-Flash';
-	}
+	$endpoint = !empty($config[\'api_endpoint\']) ? $config[\'api_endpoint\'] : \'https://api.mimo.xiaomi.com/v1/chat/completions\';
+	$model = !empty($config[\'model\']) ? $config[\'model\'] : \'MiMo-V2-Flash\';
 
 	$data = [
 		'model' => $model,
@@ -7001,15 +6991,11 @@ function argon_call_xiaomi_api($api_key, $prompt, $content) {
  * 调用豆包 (火山引擎) API
  */
 function argon_call_doubao_api($api_key, $prompt, $content) {
-	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
-	if (empty($endpoint)) {
-		$endpoint = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
-	}
+	$provider = \'doubao\';
+	$config = argon_get_ai_provider_config($provider);
 	
-	$model = get_option('argon_ai_summary_model', '');
-	if (empty($model)) {
-		$model = 'doubao-pro-32k';
-	}
+	$endpoint = !empty($config[\'api_endpoint\']) ? $config[\'api_endpoint\'] : \'https://ark.cn-beijing.volces.com/api/v3/chat/completions\';
+	$model = !empty($config[\'model\']) ? $config[\'model\'] : \'doubao-pro-32k\';
 
 	$data = [
 		'model' => $model,
@@ -7048,15 +7034,11 @@ function argon_call_doubao_api($api_key, $prompt, $content) {
  * 调用硅基流动 (SiliconFlow) API
  */
 function argon_call_siliconflow_api($api_key, $prompt, $content) {
-	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
-	if (empty($endpoint)) {
-		$endpoint = 'https://api.siliconflow.cn/v1/chat/completions';
-	}
+	$provider = \'siliconflow\';
+	$config = argon_get_ai_provider_config($provider);
 	
-	$model = get_option('argon_ai_summary_model', '');
-	if (empty($model)) {
-		$model = 'Qwen/Qwen2.5-7B-Instruct';
-	}
+	$endpoint = !empty($config[\'api_endpoint\']) ? $config[\'api_endpoint\'] : \'https://api.siliconflow.cn/v1/chat/completions\';
+	$model = !empty($config[\'model\']) ? $config[\'model\'] : \'Qwen/Qwen2.5-7B-Instruct\';
 
 	$data = [
 		'model' => $model,
@@ -7798,8 +7780,9 @@ function argon_detect_spam_comment_sync($comment) {
 	
 	// 获取 AI 配置
 	$provider = get_option('argon_ai_summary_provider', 'openai');
-	$api_key = get_option('argon_ai_summary_api_key', '');
-	$model = get_option('argon_ai_summary_model', '');
+	$config = argon_get_ai_provider_config($provider);
+	$api_key = $config['api_key'];
+	$model = $config['model'];
 	$prompt_mode = get_option('argon_comment_spam_detection_prompt_mode', 'standard');
 	$custom_prompt = get_option('argon_comment_spam_detection_prompt', '');
 	
@@ -8067,8 +8050,9 @@ function argon_ai_learn_keywords($comment_id, $admin_decision) {
 function argon_extract_keywords_from_comment($comment, $is_spam) {
 	// 获取 AI 配置
 	$provider = get_option('argon_ai_summary_provider', 'openai');
-	$api_key = get_option('argon_ai_summary_api_key', '');
-	$model = get_option('argon_ai_summary_model', '');
+	$config = argon_get_ai_provider_config($provider);
+	$api_key = $config['api_key'];
+	$model = $config['model'];
 	
 	if (empty($api_key)) {
 		return [];
@@ -8811,8 +8795,9 @@ add_action('wp_ajax_argon_spam_detection_scan', 'argon_spam_detection_scan');
 function argon_batch_detect_spam_comments($comments_data) {
 	// 获取 AI 配置
 	$provider = get_option('argon_ai_summary_provider', 'openai');
-	$api_key = get_option('argon_ai_summary_api_key', '');
-	$model = get_option('argon_ai_summary_model', '');
+	$config = argon_get_ai_provider_config($provider);
+	$api_key = $config['api_key'];
+	$model = $config['model'];
 	$prompt = get_option('argon_comment_spam_detection_prompt', '');
 	
 	if (empty($api_key)) {
