@@ -764,25 +764,18 @@ if (current_user_can('manage_options')):
 	if (!empty($all_records)):
 ?>
 
-<article class="post card shadow-sm bg-white border-0 ai-verify-card" style="margin-top: 16px;">
-	<h3 class="ai-verify-section-title">
-		<i class="fa fa-database"></i><?php _e('AI 请求记录', 'argon'); ?>
-	</h3>
-	
-	<div class="ai-alert ai-alert-info" style="margin-bottom: 20px;">
-		<span class="ai-alert-icon">ℹ</span>
-		<div>
-			<strong><?php _e('管理员专属', 'argon'); ?></strong><br>
-			<?php _e('显示最近 50 条 AI 生成记录，点击行可查看详细信息', 'argon'); ?>
-		</div>
-	</div>
-	
+<h2 style="font-size: 28px; font-weight: 700; margin: 40px 0 24px; color: var(--color-text-deeper); display: flex; align-items: center; gap: 12px;">
+	<i class="fa fa-database" style="color: var(--themecolor);"></i>
+	<?php _e('AI 请求记录', 'argon'); ?>
+</h2>
+
+<article class="post card shadow-sm bg-white border-0 ai-verify-card">
 	<style>
-	.ai-records-table { width: 100%; border-collapse: separate; border-spacing: 0; overflow: hidden; }
-	.ai-records-table th { background: linear-gradient(135deg, rgba(var(--themecolor-rgbstr), 0.08) 0%, rgba(var(--themecolor-rgbstr), 0.04) 100%); padding: 14px 16px; text-align: left; font-size: 13px; font-weight: 600; color: var(--color-text-deeper); }
-	.ai-records-table td { padding: 14px 16px; font-size: 14px; color: var(--color-text); vertical-align: middle; }
-	.ai-records-table tbody tr { cursor: pointer; transition: all var(--animation-fast) var(--ease-standard); border-radius: var(--card-radius); }
-	.ai-records-table tbody tr:hover { background: rgba(var(--themecolor-rgbstr), 0.05); transform: translateX(2px); }
+	.ai-records-table { width: 100%; border-collapse: collapse; }
+	.ai-records-table th { background: linear-gradient(135deg, rgba(var(--themecolor-rgbstr), 0.08) 0%, rgba(var(--themecolor-rgbstr), 0.04) 100%); padding: 14px 16px; text-align: left; font-size: 13px; font-weight: 600; color: var(--color-text-deeper); border: none; }
+	.ai-records-table td { padding: 14px 16px; font-size: 14px; color: var(--color-text); vertical-align: middle; border: none; }
+	.ai-records-table tbody tr { cursor: pointer; transition: all var(--animation-fast) var(--ease-standard); }
+	.ai-records-table tbody tr:hover { background: rgba(var(--themecolor-rgbstr), 0.05); }
 	.ai-record-type-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 	.ai-record-type-summary { background: rgba(59, 130, 246, 0.12); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.25); }
 	.ai-record-type-spam { background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.25); }
@@ -1070,19 +1063,12 @@ if (current_user_can('manage_options')):
 	// ==========================================================================
 	?>
 	
-	<article class="post card shadow-sm bg-white border-0 ai-verify-card" style="margin-top: 16px;">
-		<h3 class="ai-verify-section-title">
-			<i class="fa fa-bar-chart"></i><?php _e('AI 查询统计', 'argon'); ?>
-		</h3>
-		
-		<div class="ai-alert ai-alert-info" style="margin-bottom: 20px;">
-			<span class="ai-alert-icon">ℹ</span>
-			<div>
-				<strong><?php _e('管理员专属', 'argon'); ?></strong><br>
-				<?php _e('显示 AI 查询的统计信息，包括总查询次数、成功率、平均响应时间等', 'argon'); ?>
-			</div>
-		</div>
-		
+	<h2 style="font-size: 28px; font-weight: 700; margin: 40px 0 24px; color: var(--color-text-deeper); display: flex; align-items: center; gap: 12px;">
+		<i class="fa fa-bar-chart" style="color: var(--themecolor);"></i>
+		<?php _e('AI 查询统计', 'argon'); ?>
+	</h2>
+	
+	<article class="post card shadow-sm bg-white border-0 ai-verify-card">
 		<div id="aiStatsContainer">
 			<div style="text-align: center; padding: 40px; color: var(--color-text-muted);">
 				<i class="fa fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 12px;"></i>
@@ -1097,10 +1083,9 @@ if (current_user_can('manage_options')):
 		.ai-stat-value { font-size: 32px; font-weight: 700; color: var(--themecolor); margin-bottom: 8px; font-family: 'Consolas', 'Monaco', monospace; }
 		.ai-stat-label { font-size: 13px; color: var(--color-text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
 		
-		.ai-stats-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 20px; }
-		.ai-stats-table th { background: linear-gradient(135deg, rgba(var(--themecolor-rgbstr), 0.08) 0%, rgba(var(--themecolor-rgbstr), 0.04) 100%); padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: var(--color-text-deeper); }
-		.ai-stats-table td { padding: 12px 16px; font-size: 14px; color: var(--color-text); border-bottom: 1px solid var(--color-border-on-foreground); }
-		.ai-stats-table tbody tr:last-child td { border-bottom: none; }
+		.ai-stats-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+		.ai-stats-table th { background: linear-gradient(135deg, rgba(var(--themecolor-rgbstr), 0.08) 0%, rgba(var(--themecolor-rgbstr), 0.04) 100%); padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: var(--color-text-deeper); border: none; }
+		.ai-stats-table td { padding: 12px 16px; font-size: 14px; color: var(--color-text); border: none; }
 		.ai-stats-table tbody tr:hover { background: rgba(var(--themecolor-rgbstr), 0.05); }
 		
 		@media (max-width: 768px) {
