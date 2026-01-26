@@ -8969,6 +8969,109 @@ function argon_ajax_get_all_unified_apis() {
 add_action('wp_ajax_argon_get_all_unified_apis', 'argon_ajax_get_all_unified_apis');
 
 /**
+ * AJAX: 获取单个 API 配置
+ */
+function argon_ajax_get_unified_api() {
+	check_ajax_referer('argon_manage_unified_apis', 'nonce');
+	
+	if (!current_user_can('manage_options')) {
+		wp_send_json_error('权限不足');
+	}
+	
+	$api_id = sanitize_text_field($_POST['api_id']);
+	$api = argon_get_api_by_id($api_id);
+	
+	if ($api) {
+		wp_send_json_success($api);
+	} else {
+		wp_send_json_error('API 不存在');
+	}
+}
+add_action('wp_ajax_argon_get_unified_api', 'argon_ajax_get_unified_api');
+
+/**
+ * AJAX: 测试统一 API 连通性
+ */
+function argon_ajax_test_unified_api() {
+	check_ajax_referer('argon_test_unified_api', 'nonce');
+	
+	if (!current_user_can('manage_options')) {
+		wp_send_json_error('权限不足');
+	}
+	
+	$api_id = sanitize_text_field($_POST['api_id']);
+	$api = argon_get_api_by_id($api_id);
+	
+	if (!$api) {
+		wp_send_json_error('API 不存在');
+	}
+	
+	// 获取默认端点
+	$default_endpoints = [
+		'openai' => 'https://api.openai.com/v1/chat/completions',
+		'anthropic' => 'https://api.anthropic.com/v1/messages',
+		'deepseek' => 'https://api.deepseek.com/v1/chat/completions',
+		'xiaomi' => 'https://api.mimo.xiaomi.com/v1/chat/completions',
+		'qianwen' => 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+		'wenxin' => 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions',
+		'doubao' => 'https://ark.cn-beijing.volces.com/api/v3/chat/completions',
+		'kimi' => 'https://api.moonshot.cn/v1/chat/completions',
+		'zhipu' => 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+		'siliconflow' => 'https://api.siliconflow.cn/v1/chat/completions'
+	];
+	
+	$api_endpoint = !empty($api['api_endpoint']) ? $api['api_endpoint'] : $default_endpoints[$api['provider']];
+	$model = !empty($api['model']) ? $api['model'] : 'gpt-4o-mini';
+	
+	// 构建测试请求
+	$data = [
+		'model' => $model,
+		'messages' => [
+			[
+				'role' => 'user',
+				'content' => '你好，这是一个测试。请回复"测试成功"。'
+			]
+		],
+		'max_tokens' => 50
+	];
+	
+	$start_time = microtime(true);
+	
+	$response = wp_remote_post($api_endpoint, [
+		'headers' => [
+			'Content-Type' => 'application/json',
+			'Authorization' => 'Bearer ' . $api['api_key']
+		],
+		'body' => json_encode($data),
+		'timeout' => 30
+	]);
+	
+	$response_time = round((microtime(true) - $start_time) * 1000);
+	
+	if (is_wp_error($response)) {
+		wp_send_json_error($response->get_error_message());
+	}
+	
+	$status_code = wp_remote_retrieve_response_code($response);
+	$body = wp_remote_retrieve_body($response);
+	
+	if ($status_code === 200) {
+		$result = json_decode($body, true);
+		if (isset($result['choices'][0]['message']['content']) || isset($result['content'])) {
+			wp_send_json_success([
+				'message' => '响应时间: ' . $response_time . 'ms',
+				'response_time' => $response_time
+			]);
+		} else {
+			wp_send_json_error('API 返回格式异常: ' . $body);
+		}
+	} else {
+		wp_send_json_error('HTTP ' . $status_code . ': ' . $body);
+	}
+}
+add_action('wp_ajax_argon_test_unified_api', 'argon_ajax_test_unified_api');
+
+/**
  * AJAX: 获取提供商的所有 API 配置
  */
 function argon_ajax_get_provider_apis() {
