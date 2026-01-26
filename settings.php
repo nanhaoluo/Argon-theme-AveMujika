@@ -2007,6 +2007,7 @@ function themeoptions_page(){
 								<option value="openai" <?php if ($argon_ai_summary_provider=='openai'){echo 'selected';} ?>>OpenAI (ChatGPT)</option>
 								<option value="anthropic" <?php if ($argon_ai_summary_provider=='anthropic'){echo 'selected';} ?>>Anthropic (Claude)</option>
 								<option value="deepseek" <?php if ($argon_ai_summary_provider=='deepseek'){echo 'selected';} ?>>DeepSeek</option>
+								<option value="xiaomi" <?php if ($argon_ai_summary_provider=='xiaomi'){echo 'selected';} ?>><?php _e('小米 Mimo', 'argon');?></option>
 								<option value="qianwen" <?php if ($argon_ai_summary_provider=='qianwen'){echo 'selected';} ?>><?php _e('通义千问', 'argon');?></option>
 								<option value="wenxin" <?php if ($argon_ai_summary_provider=='wenxin'){echo 'selected';} ?>><?php _e('文心一言', 'argon');?></option>
 								<option value="doubao" <?php if ($argon_ai_summary_provider=='doubao'){echo 'selected';} ?>><?php _e('豆包 (火山引擎)', 'argon');?></option>

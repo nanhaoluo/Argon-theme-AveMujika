@@ -6487,6 +6487,8 @@ function argon_generate_ai_summary($post) {
 			return argon_call_anthropic_api($api_key, $prompt, $content);
 		case 'deepseek':
 			return argon_call_deepseek_api($api_key, $prompt, $content);
+		case 'xiaomi':
+			return argon_call_xiaomi_api($api_key, $prompt, $content);
 		case 'qianwen':
 			return argon_call_qianwen_api($api_key, $prompt, $content);
 		case 'wenxin':
@@ -6949,6 +6951,53 @@ function argon_call_deepseek_api($api_key, $prompt, $content) {
 }
 
 /**
+ * 调用小米 Mimo API
+ */
+function argon_call_xiaomi_api($api_key, $prompt, $content) {
+	$endpoint = get_option('argon_ai_summary_api_endpoint', '');
+	if (empty($endpoint)) {
+		$endpoint = 'https://api.mimo.xiaomi.com/v1/chat/completions';
+	}
+	
+	$model = get_option('argon_ai_summary_model', '');
+	if (empty($model)) {
+		$model = 'MiMo-V2-Flash';
+	}
+
+	$data = [
+		'model' => $model,
+		'messages' => [
+			['role' => 'system', 'content' => $prompt],
+			['role' => 'user', 'content' => $content]
+		],
+		'temperature' => 0.7,
+		'max_tokens' => 500
+	];
+
+	$response = wp_remote_post($endpoint, [
+		'headers' => [
+			'Content-Type' => 'application/json',
+			'Authorization' => 'Bearer ' . $api_key
+		],
+		'body' => json_encode($data),
+		'timeout' => 30
+	]);
+
+	if (is_wp_error($response)) {
+		error_log('Argon AI Summary Error: ' . $response->get_error_message());
+		return false;
+	}
+
+	$body = json_decode(wp_remote_retrieve_body($response), true);
+	
+	if (isset($body['choices'][0]['message']['content'])) {
+		return trim($body['choices'][0]['message']['content']);
+	}
+
+	return false;
+}
+
+/**
  * 调用豆包 (火山引擎) API
  */
 function argon_call_doubao_api($api_key, $prompt, $content) {
@@ -7072,6 +7121,9 @@ function argon_get_ai_models() {
 			break;
 		case 'deepseek':
 			$models = argon_get_deepseek_models($api_key, $api_endpoint);
+			break;
+		case 'xiaomi':
+			$models = argon_get_xiaomi_models($api_key, $api_endpoint);
 			break;
 		case 'qianwen':
 			$models = argon_get_qianwen_models($api_key, $api_endpoint);
@@ -7221,6 +7273,50 @@ function argon_get_deepseek_models($api_key, $custom_endpoint = '') {
 	return !empty($models) ? $models : [
 		['id' => 'deepseek-chat', 'name' => 'DeepSeek Chat (推荐)'],
 		['id' => 'deepseek-reasoner', 'name' => 'DeepSeek Reasoner (R1)']
+	];
+}
+
+/**
+ * 获取小米 Mimo 模型列表
+ */
+function argon_get_xiaomi_models($api_key, $custom_endpoint = '') {
+	$endpoint = !empty($custom_endpoint) ? $custom_endpoint : 'https://api.mimo.xiaomi.com/v1/models';
+	$endpoint = preg_replace('#/v1/chat/completions$#', '/v1/models', $endpoint);
+	
+	$response = wp_remote_get($endpoint, [
+		'headers' => [
+			'Authorization' => 'Bearer ' . $api_key
+		],
+		'timeout' => 15
+	]);
+	
+	if (is_wp_error($response)) {
+		// API 调用失败,返回预设列表
+		return [
+			['id' => 'MiMo-V2-Flash', 'name' => 'MiMo-V2-Flash (推荐)']
+		];
+	}
+	
+	$body = json_decode(wp_remote_retrieve_body($response), true);
+	
+	if (!isset($body['data'])) {
+		return [
+			['id' => 'MiMo-V2-Flash', 'name' => 'MiMo-V2-Flash (推荐)']
+		];
+	}
+	
+	$models = [];
+	foreach ($body['data'] as $model) {
+		if (isset($model['id'])) {
+			$models[] = [
+				'id' => $model['id'],
+				'name' => $model['id']
+			];
+		}
+	}
+	
+	return !empty($models) ? $models : [
+		['id' => 'MiMo-V2-Flash', 'name' => 'MiMo-V2-Flash (推荐)']
 	];
 }
 
@@ -7757,6 +7853,7 @@ function argon_call_ai_api_for_spam_detection($provider, $api_key, $model, $prom
 		'openai' => 'gpt-4o-mini',
 		'anthropic' => 'claude-3-5-haiku-20241022',
 		'deepseek' => 'deepseek-chat',
+		'xiaomi' => 'MiMo-V2-Flash',
 		'qianwen' => 'qwen-turbo',
 		'wenxin' => 'ernie-4.0-turbo-8k',
 		'doubao' => 'doubao-pro-32k',
@@ -7788,6 +7885,7 @@ function argon_call_ai_api_for_spam_detection($provider, $api_key, $model, $prom
 			'openai' => 'https://api.openai.com/v1/chat/completions',
 			'anthropic' => 'https://api.anthropic.com/v1/messages',
 			'deepseek' => 'https://api.deepseek.com/v1/chat/completions',
+			'xiaomi' => 'https://api.mimo.xiaomi.com/v1/chat/completions',
 			'qianwen' => 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
 			'wenxin' => 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions',
 			'doubao' => 'https://ark.cn-beijing.volces.com/api/v3/chat/completions',
@@ -8009,6 +8107,7 @@ function argon_call_ai_for_keyword_extraction($provider, $api_key, $model, $prom
 		'openai' => 'gpt-4o-mini',
 		'anthropic' => 'claude-3-5-haiku-20241022',
 		'deepseek' => 'deepseek-chat',
+		'xiaomi' => 'MiMo-V2-Flash',
 		'siliconflow' => 'Qwen/Qwen2.5-7B-Instruct'
 	];
 	
@@ -8032,6 +8131,7 @@ function argon_call_ai_for_keyword_extraction($provider, $api_key, $model, $prom
 			'openai' => 'https://api.openai.com/v1/chat/completions',
 			'anthropic' => 'https://api.anthropic.com/v1/messages',
 			'deepseek' => 'https://api.deepseek.com/v1/chat/completions',
+			'xiaomi' => 'https://api.mimo.xiaomi.com/v1/chat/completions',
 			'siliconflow' => 'https://api.siliconflow.cn/v1/chat/completions'
 		];
 		$endpoint = isset($endpoints[$provider]) ? $endpoints[$provider] : $endpoints['openai'];
@@ -8776,6 +8876,7 @@ function argon_call_ai_api_for_batch_spam_detection($provider, $api_key, $model,
 		'openai' => 'gpt-4o-mini',
 		'anthropic' => 'claude-3-5-haiku-20241022',
 		'deepseek' => 'deepseek-chat',
+		'xiaomi' => 'MiMo-V2-Flash',
 		'qianwen' => 'qwen-turbo',
 		'wenxin' => 'ernie-4.0-turbo-8k',
 		'doubao' => 'doubao-pro-32k',
@@ -8807,6 +8908,7 @@ function argon_call_ai_api_for_batch_spam_detection($provider, $api_key, $model,
 			'openai' => 'https://api.openai.com/v1/chat/completions',
 			'anthropic' => 'https://api.anthropic.com/v1/messages',
 			'deepseek' => 'https://api.deepseek.com/v1/chat/completions',
+			'xiaomi' => 'https://api.mimo.xiaomi.com/v1/chat/completions',
 			'qianwen' => 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
 			'wenxin' => 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions',
 			'doubao' => 'https://ark.cn-beijing.volces.com/api/v3/chat/completions',
