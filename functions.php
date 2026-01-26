@@ -6652,6 +6652,35 @@ function argon_set_active_api($provider, $api_id) {
 }
 
 /**
+ * 记录 AI API 错误
+ * @param string $provider 提供商名称
+ * @param string $error_type 错误类型
+ * @param string $error_message 错误信息
+ * @param int $post_id 文章ID
+ * @param array $extra_data 额外数据
+ */
+function argon_log_ai_error($provider, $error_type, $error_message, $post_id = 0, $extra_data = []) {
+	$log_message = sprintf(
+		'Argon AI Summary Error (%s): %s - %s',
+		$provider,
+		$error_type,
+		$error_message
+	);
+	
+	if (!empty($extra_data)) {
+		$log_message .= ' | 额外信息: ' . json_encode($extra_data, JSON_UNESCAPED_UNICODE);
+	}
+	
+	error_log($log_message);
+	
+	if ($post_id > 0) {
+		$user_message = sprintf('%s %s: %s', $provider, $error_type, $error_message);
+		update_post_meta($post_id, '_argon_ai_summary_error', $user_message);
+		update_post_meta($post_id, '_argon_ai_summary_error_time', current_time('mysql'));
+	}
+}
+
+/**
  * 生成 AI 摘要
  * @param WP_Post $post 文章对象
  * @return string|false 摘要内容或 false
@@ -6661,7 +6690,15 @@ function argon_generate_ai_summary($post) {
 	$config = argon_get_ai_provider_config($provider);
 	$api_key = $config['api_key'];
 	
+	// 错误检查：API 密钥
 	if (empty($api_key)) {
+		argon_log_ai_error($provider, '配置错误', 'API 密钥未配置', $post->ID);
+		return false;
+	}
+	
+	// 错误检查：配置完整性
+	if (!isset($config['api_endpoint']) || !isset($config['model'])) {
+		argon_log_ai_error($provider, '配置错误', 'API 配置不完整', $post->ID, $config);
 		return false;
 	}
 
@@ -6670,39 +6707,85 @@ function argon_generate_ai_summary($post) {
 	$content = preg_replace('/\s+/', ' ', $content);
 	$content = mb_substr($content, 0, 8000); // 限制长度
 	
+	// 错误检查：文章内容
+	if (empty($content) || mb_strlen($content) < 50) {
+		argon_log_ai_error($provider, '内容错误', '文章内容过短（至少需要50字）', $post->ID, [
+			'content_length' => mb_strlen($content)
+		]);
+		return false;
+	}
+	
 	$prompt = get_option('argon_ai_summary_prompt', '你是一个专业的内容摘要助手。请仔细阅读以下文章内容，用简洁、准确的语言总结文章的核心观点和主要内容。要求：1) 控制在 100-150 字以内；2) 突出文章的关键信息和亮点；3) 使用通俗易懂的语言；4) 保持客观中立的语气。');
 	
+	// 记录调用信息
+	error_log(sprintf(
+		'Argon AI Summary: 开始生成摘要 (文章ID: %d, 标题: %s, 提供商: %s, 模型: %s, 内容长度: %d)',
+		$post->ID,
+		$post->post_title,
+		$provider,
+		$config['model'],
+		mb_strlen($content)
+	));
+	
 	// 根据不同服务商调用 API
+	$result = false;
 	switch ($provider) {
 		case 'openai':
-			return argon_call_openai_api($api_key, $prompt, $content);
+			$result = argon_call_openai_api($api_key, $prompt, $content, $post->ID);
+			break;
 		case 'anthropic':
-			return argon_call_anthropic_api($api_key, $prompt, $content);
+			$result = argon_call_anthropic_api($api_key, $prompt, $content, $post->ID);
+			break;
 		case 'deepseek':
-			return argon_call_deepseek_api($api_key, $prompt, $content);
+			$result = argon_call_deepseek_api($api_key, $prompt, $content, $post->ID);
+			break;
 		case 'xiaomi':
-			return argon_call_xiaomi_api($api_key, $prompt, $content);
+			$result = argon_call_xiaomi_api($api_key, $prompt, $content, $post->ID);
+			break;
 		case 'qianwen':
-			return argon_call_qianwen_api($api_key, $prompt, $content);
+			$result = argon_call_qianwen_api($api_key, $prompt, $content, $post->ID);
+			break;
 		case 'wenxin':
-			return argon_call_wenxin_api($api_key, $prompt, $content);
+			$result = argon_call_wenxin_api($api_key, $prompt, $content, $post->ID);
+			break;
 		case 'doubao':
-			return argon_call_doubao_api($api_key, $prompt, $content);
+			$result = argon_call_doubao_api($api_key, $prompt, $content, $post->ID);
+			break;
 		case 'kimi':
-			return argon_call_kimi_api($api_key, $prompt, $content);
+			$result = argon_call_kimi_api($api_key, $prompt, $content, $post->ID);
+			break;
 		case 'zhipu':
-			return argon_call_zhipu_api($api_key, $prompt, $content);
+			$result = argon_call_zhipu_api($api_key, $prompt, $content, $post->ID);
+			break;
 		case 'siliconflow':
-			return argon_call_siliconflow_api($api_key, $prompt, $content);
+			$result = argon_call_siliconflow_api($api_key, $prompt, $content, $post->ID);
+			break;
 		default:
+			argon_log_ai_error($provider, '配置错误', '不支持的服务商', $post->ID);
 			return false;
 	}
+	
+	// 检查结果
+	if ($result === false) {
+		error_log('Argon AI Summary: API 调用失败 (文章ID: ' . $post->ID . ', 提供商: ' . $provider . ')');
+		// 错误信息已在具体的 API 调用函数中记录
+	} else {
+		error_log(sprintf(
+			'Argon AI Summary: 摘要生成成功 (文章ID: %d, 摘要长度: %d字)',
+			$post->ID,
+			mb_strlen($result)
+		));
+		delete_post_meta($post->ID, '_argon_ai_summary_error');
+		delete_post_meta($post->ID, '_argon_ai_summary_error_time');
+	}
+	
+	return $result;
 }
 
 /**
  * 调用 OpenAI API
  */
-function argon_call_openai_api($api_key, $prompt, $content) {
+function argon_call_openai_api($api_key, $prompt, $content, $post_id = 0) {
 	$provider = 'openai';
 	$config = argon_get_ai_provider_config($provider);
 	
@@ -6729,16 +6812,47 @@ function argon_call_openai_api($api_key, $prompt, $content) {
 	]);
 
 	if (is_wp_error($response)) {
+		argon_log_ai_error('OpenAI', '网络错误', $response->get_error_message(), $post_id, [
+			'endpoint' => $endpoint
+		]);
 		return false;
 	}
 
+	$status_code = wp_remote_retrieve_response_code($response);
 	$body = json_decode(wp_remote_retrieve_body($response), true);
 	
-	if (isset($body['choices'][0]['message']['content'])) {
-		return trim($body['choices'][0]['message']['content']);
+	// 检查 HTTP 状态码
+	if ($status_code !== 200) {
+		$error_msg = isset($body['error']['message']) ? $body['error']['message'] : '未知错误';
+		$error_type = isset($body['error']['type']) ? $body['error']['type'] : 'unknown';
+		argon_log_ai_error('OpenAI', 'API 错误 (HTTP ' . $status_code . ')', $error_msg, $post_id, [
+			'error_type' => $error_type,
+			'model' => $model,
+			'endpoint' => $endpoint
+		]);
+		return false;
 	}
-
-	return false;
+	
+	// 检查响应格式
+	if (!isset($body['choices'][0]['message']['content'])) {
+		argon_log_ai_error('OpenAI', '响应格式错误', '未找到预期的响应字段', $post_id, [
+			'response_keys' => array_keys($body),
+			'model' => $model
+		]);
+		return false;
+	}
+	
+	$summary = trim($body['choices'][0]['message']['content']);
+	
+	// 检查摘要内容
+	if (empty($summary)) {
+		argon_log_ai_error('OpenAI', '内容错误', '返回的摘要为空', $post_id, [
+			'model' => $model
+		]);
+		return false;
+	}
+	
+	return $summary;
 }
 
 /**
