@@ -17048,10 +17048,10 @@ article img.loaded, .post-thumbnail img.loaded, article img:not([loading="lazy"]
 @keyframes modernSkeletonPulse { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 .skeleton { background: linear-gradient(90deg, var(--color-border-on-foreground) 25%, var(--color-border-on-foreground-deeper) 50%, var(--color-border-on-foreground) 75%); background-size: 200% 100%; animation: modernSkeletonPulse 1.5s ease-in-out infinite; border-radius: var(--card-radius); }
 /* ==========================================================================
-   页面加载动画
+   现代化页面加载系统
    ========================================================================== */
 
-/* ---------- 基础旋转器 ---------- */
+/* ---------- 基础旋转器（保留用于其他地方） ---------- */
 @keyframes modernSpinnerRotate {
 	to {
 		transform: rotate(360deg);
@@ -17078,90 +17078,220 @@ article img.loaded, .post-thumbnail img.loaded, article img:not([loading="lazy"]
 	box-shadow: 0 0 10px rgba(var(--themecolor-rgbstr), 0.5);
 }
 
-/* ---------- 加载遮罩层 ---------- */
-.loading-overlay {
+/* ---------- 页面加载器容器 ---------- */
+.page-loader {
 	position: fixed;
 	inset: 0;
 	z-index: 9998;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: rgba(255, 255, 255, 0.3);
 	opacity: 0;
 	visibility: hidden;
 	pointer-events: none;
-	transition: opacity var(--animation-normal) var(--ease-standard), visibility 0s linear var(--animation-normal);
-	-webkit-backdrop-filter: blur(var(--card-blur, 20px)) saturate(var(--card-saturate, 180%));
-	backdrop-filter: blur(var(--card-blur, 20px)) saturate(var(--card-saturate, 180%));
+	transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s linear 0.35s;
 }
-html.darkmode .loading-overlay {
-	background: rgba(0, 0, 0, 0.5);
-}
-.loading-overlay.is-visible {
+.page-loader.is-visible {
 	opacity: 1;
 	visibility: visible;
 	pointer-events: auto;
-	transition: opacity var(--animation-normal) var(--ease-standard), visibility 0s;
+	transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s;
 }
-.loading-overlay.is-hiding {
+.page-loader.is-hiding {
 	opacity: 0;
-	visibility: visible;
-	pointer-events: none;
-	transition: opacity var(--animation-normal) var(--ease-standard);
+	transition: opacity 0.35s cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+/* ---------- 背景遮罩 ---------- */
+.page-loader-backdrop {
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(135deg, rgba(var(--themecolor-rgbstr), 0.03) 0%, rgba(var(--themecolor-rgbstr), 0.08) 100%);
+	-webkit-backdrop-filter: blur(24px) saturate(180%);
+	backdrop-filter: blur(24px) saturate(180%);
+}
+html.darkmode .page-loader-backdrop {
+	background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.6) 100%);
 }
 
 /* ---------- 内容容器 ---------- */
-.loading-overlay-content {
-	width: min(720px, 90vw);
+.page-loader-content {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 32px;
+	transform: translateY(20px) scale(0.95);
 	opacity: 0;
-	transform: translate3d(0, 12px, 0) scale(0.98);
-	transition: opacity var(--animation-normal) var(--ease-standard), transform var(--animation-normal) var(--ease-emphasized-decelerate);
+	transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease;
 }
-.loading-overlay.is-visible .loading-overlay-content {
+.page-loader.is-visible .page-loader-content {
+	transform: translateY(0) scale(1);
 	opacity: 1;
-	transform: translate3d(0, 0, 0) scale(1);
+	transition-delay: 0.1s;
 }
 
-/* ---------- 卡片容器 ---------- */
-.loading-card {
+/* ---------- 进度环容器 ---------- */
+.loader-ring-container {
+	position: relative;
+	width: 120px;
+	height: 120px;
+}
+
+/* ---------- SVG 进度环 ---------- */
+.loader-ring {
+	width: 100%;
+	height: 100%;
+	transform: rotate(-90deg);
+	filter: drop-shadow(0 4px 12px rgba(var(--themecolor-rgbstr), 0.2));
+}
+.loader-ring-bg {
+	fill: none;
+	stroke: var(--color-border);
+	stroke-width: 3;
+	opacity: 0.2;
+}
+.loader-ring-progress {
+	fill: none;
+	stroke: url(#loaderGradient);
+	stroke-width: 3;
+	stroke-linecap: round;
+	stroke-dasharray: 283;
+	stroke-dashoffset: 283;
+	transition: stroke-dashoffset 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 渐变定义（通过 JS 动态添加或使用内联 SVG） */
+.loader-ring::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border-radius: 50%;
+	background: conic-gradient(from 0deg, var(--themecolor), transparent);
+	opacity: 0.1;
+	animation: ringGlow 2s ease-in-out infinite;
+}
+@keyframes ringGlow {
+	0%, 100% {
+		opacity: 0.1;
+	}
+	50% {
+		opacity: 0.3;
+	}
+}
+
+/* ---------- 中心图标 ---------- */
+.loader-icon {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: 48px;
+	height: 48px;
+	color: var(--themecolor);
+	animation: iconPulse 2s ease-in-out infinite;
+}
+.loader-icon svg {
+	width: 100%;
+	height: 100%;
+	animation: iconRotate 3s linear infinite;
+}
+@keyframes iconPulse {
+	0%, 100% {
+		opacity: 0.6;
+		transform: translate(-50%, -50%) scale(1);
+	}
+	50% {
+		opacity: 1;
+		transform: translate(-50%, -50%) scale(1.1);
+	}
+}
+@keyframes iconRotate {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* ---------- 加载文字 ---------- */
+.loader-text {
+	text-align: center;
+	opacity: 0;
+	transform: translateY(10px);
+	animation: textFadeIn 0.5s ease forwards;
+	animation-delay: 0.3s;
+}
+@keyframes textFadeIn {
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+.loader-title {
+	font-size: 20px;
+	font-weight: 600;
+	color: var(--color-font);
+	margin-bottom: 8px;
+	letter-spacing: 0.5px;
+}
+.loader-subtitle {
+	font-size: 14px;
+	color: var(--color-font-sub);
+	font-weight: 400;
+}
+
+/* ---------- 骨架屏（延迟显示） ---------- */
+.loader-skeleton {
+	opacity: 0;
+	transform: translateY(20px);
+	transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+	pointer-events: none;
+}
+.page-loader.show-skeleton .loader-skeleton {
+	opacity: 1;
+	transform: translateY(0);
+}
+
+/* ---------- 骨架卡片 ---------- */
+.skeleton-card {
+	width: min(480px, 85vw);
 	background: var(--color-foreground);
-	border-radius: var(--card-radius);
+	border-radius: 16px;
 	overflow: hidden;
 	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-	margin-bottom: 24px;
 }
-html.darkmode .loading-card {
-	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+html.darkmode .skeleton-card {
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
-/* ---------- 缩略图骨架 ---------- */
-.loading-thumb {
-	position: relative;
+/* ---------- 骨架图片 ---------- */
+.skeleton-image {
 	width: 100%;
-	height: 240px;
-	overflow: hidden;
-	background: linear-gradient(90deg, var(--color-border-on-foreground) 25%, var(--color-border-on-foreground-deeper) 50%, var(--color-border-on-foreground) 75%);
+	height: 200px;
+	background: linear-gradient(90deg, var(--color-border-on-foreground) 0%, var(--color-border-on-foreground-deeper) 50%, var(--color-border-on-foreground) 100%);
 	background-size: 200% 100%;
-	animation: skeletonPulse 1.8s ease-in-out infinite;
+	animation: skeletonShimmer 1.5s ease-in-out infinite;
+	position: relative;
+	overflow: hidden;
 }
-.loading-shimmer {
+.skeleton-image::after {
+	content: '';
 	position: absolute;
 	top: 0;
 	left: -100%;
 	width: 100%;
 	height: 100%;
-	background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-	animation: shimmerMove 2s infinite;
+	background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+	animation: shimmerSlide 2s infinite;
 }
-html.darkmode .loading-shimmer {
-	background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+html.darkmode .skeleton-image::after {
+	background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
 }
-@keyframes shimmerMove {
+@keyframes shimmerSlide {
 	to {
 		left: 100%;
 	}
 }
-@keyframes skeletonPulse {
+@keyframes skeletonShimmer {
 	0%, 100% {
 		background-position: 0% 0%;
 	}
@@ -17170,192 +17300,91 @@ html.darkmode .loading-shimmer {
 	}
 }
 
-/* ---------- 卡片主体 ---------- */
-.loading-body {
-	padding: 24px;
-}
-
-/* ---------- 元信息区域 ---------- */
-.loading-meta {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	margin-bottom: 16px;
-}
-.loading-avatar {
-	width: 40px;
-	height: 40px;
-	border-radius: 50%;
-	flex-shrink: 0;
-	background: linear-gradient(90deg, var(--color-border-on-foreground) 25%, var(--color-border-on-foreground-deeper) 50%, var(--color-border-on-foreground) 75%);
-	background-size: 200% 100%;
-	animation: skeletonPulse 1.8s ease-in-out infinite;
-}
-.loading-meta-text {
-	flex: 1;
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
-}
-.loading-meta-line {
-	height: 12px;
-	border-radius: 6px;
-	background: linear-gradient(90deg, var(--color-border-on-foreground) 25%, var(--color-border-on-foreground-deeper) 50%, var(--color-border-on-foreground) 75%);
-	background-size: 200% 100%;
-	animation: skeletonPulse 1.8s ease-in-out infinite;
-}
-
-/* ---------- 标题骨架 ---------- */
-.loading-title {
-	height: 28px;
-	margin-bottom: 16px;
-	border-radius: 14px;
-	width: 85%;
-	background: linear-gradient(90deg, var(--color-border-on-foreground) 25%, var(--color-border-on-foreground-deeper) 50%, var(--color-border-on-foreground) 75%);
-	background-size: 200% 100%;
-	animation: skeletonPulse 1.8s ease-in-out infinite;
-}
-
-/* ---------- 文本行骨架 ---------- */
-.loading-text {
-	margin-bottom: 16px;
-}
-.loading-line {
-	height: 14px;
-	margin: 8px 0;
-	border-radius: 7px;
-	background: linear-gradient(90deg, var(--color-border-on-foreground) 25%, var(--color-border-on-foreground-deeper) 50%, var(--color-border-on-foreground) 75%);
-	background-size: 200% 100%;
-	animation: skeletonPulse 1.8s ease-in-out infinite;
-}
-
-/* ---------- 标签骨架 ---------- */
-.loading-tags {
-	display: flex;
-	gap: 8px;
-	flex-wrap: wrap;
-}
-.loading-tag {
-	width: 60px;
-	height: 24px;
-	border-radius: 12px;
-	background: linear-gradient(90deg, var(--color-border-on-foreground) 25%, var(--color-border-on-foreground-deeper) 50%, var(--color-border-on-foreground) 75%);
-	background-size: 200% 100%;
-	animation: skeletonPulse 1.8s ease-in-out infinite;
-}
-
-/* ---------- 加载旋转器 ---------- */
-.loading-spinner-wrapper {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 16px;
+/* ---------- 骨架内容 ---------- */
+.skeleton-content {
 	padding: 20px;
 }
-.loading-spinner {
-	position: relative;
-	width: 56px;
-	height: 56px;
+.skeleton-title {
+	height: 24px;
+	width: 70%;
+	border-radius: 12px;
+	background: linear-gradient(90deg, var(--color-border-on-foreground) 0%, var(--color-border-on-foreground-deeper) 50%, var(--color-border-on-foreground) 100%);
+	background-size: 200% 100%;
+	animation: skeletonShimmer 1.5s ease-in-out infinite;
+	margin-bottom: 16px;
 }
-.loading-spinner::before {
-	content: '';
-	position: absolute;
-	inset: 0;
-	border-radius: 50%;
-	border: 3px solid var(--color-border);
-	opacity: 0.2;
+.skeleton-line {
+	height: 14px;
+	border-radius: 7px;
+	background: linear-gradient(90deg, var(--color-border-on-foreground) 0%, var(--color-border-on-foreground-deeper) 50%, var(--color-border-on-foreground) 100%);
+	background-size: 200% 100%;
+	animation: skeletonShimmer 1.5s ease-in-out infinite;
+	margin-bottom: 10px;
 }
-.loading-spinner-ring {
-	position: absolute;
-	inset: 0;
-	border-radius: 50%;
-	border: 3px solid transparent;
-	border-top-color: var(--themecolor);
-	border-right-color: var(--themecolor);
-	animation: spinnerRotate 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
-}
-@keyframes spinnerRotate {
-	0% {
-		transform: rotate(0deg);
-	}
-	100% {
-		transform: rotate(360deg);
-	}
-}
-
-/* ---------- 加载文字 ---------- */
-.loading-text-hint {
-	color: var(--color-font);
-	font-size: 15px;
-	font-weight: 500;
-	letter-spacing: 0.3px;
-}
-
-/* ---------- 加载点动画 ---------- */
-.loading-dots {
-	display: flex;
-	gap: 6px;
-}
-.loading-dot {
-	width: 6px;
-	height: 6px;
-	border-radius: 50%;
-	background: var(--themecolor);
-	animation: dotBounce 1.4s infinite ease-in-out both;
-}
-.loading-dot:nth-child(1) {
-	animation-delay: -0.32s;
-}
-.loading-dot:nth-child(2) {
-	animation-delay: -0.16s;
-}
-@keyframes dotBounce {
-	0%, 80%, 100% {
-		transform: scale(0.6);
-		opacity: 0.5;
-	}
-	40% {
-		transform: scale(1);
-		opacity: 1;
-	}
+.skeleton-line.short {
+	width: 60%;
 }
 
 /* ---------- 响应式适配 ---------- */
 @media (max-width: 768px) {
-	.loading-thumb {
-		height: 180px;
+	.loader-ring-container {
+		width: 100px;
+		height: 100px;
 	}
-	.loading-body {
-		padding: 20px;
+	.loader-icon {
+		width: 40px;
+		height: 40px;
 	}
-	.loading-title {
-		height: 24px;
-		width: 90%;
+	.loader-title {
+		font-size: 18px;
 	}
-	.loading-spinner {
-		width: 48px;
-		height: 48px;
+	.loader-subtitle {
+		font-size: 13px;
 	}
-	.loading-text-hint {
-		font-size: 14px;
+	.skeleton-image {
+		height: 160px;
+	}
+	.skeleton-content {
+		padding: 16px;
 	}
 }
 @media (max-width: 480px) {
-	.loading-overlay-content {
-		width: 95vw;
+	.page-loader-content {
+		gap: 24px;
 	}
-	.loading-thumb {
-		height: 160px;
+	.loader-ring-container {
+		width: 90px;
+		height: 90px;
 	}
-	.loading-body {
-		padding: 16px;
-	}
-	.loading-meta {
-		gap: 10px;
-	}
-	.loading-avatar {
+	.loader-icon {
 		width: 36px;
 		height: 36px;
+	}
+	.skeleton-card {
+		width: 92vw;
+	}
+	.skeleton-image {
+		height: 140px;
+	}
+}
+
+/* ---------- 减少动画（无障碍） ---------- */
+@media (prefers-reduced-motion: reduce) {
+	.page-loader,
+	.page-loader-content,
+	.loader-ring-progress,
+	.loader-icon,
+	.loader-text,
+	.loader-skeleton,
+	.skeleton-image,
+	.skeleton-title,
+	.skeleton-line {
+		animation: none !important;
+		transition: none !important;
+	}
+	.page-loader.is-visible .page-loader-content {
+		transform: none;
+		opacity: 1;
 	}
 }
 

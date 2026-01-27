@@ -3200,64 +3200,69 @@ var pjaxContainers = pjaxContainerSelectors.filter(function(selector) {
 });
 
 // ==========================================================================
-// 页面加载动画管理器
+// 现代化页面加载系统
 // ==========================================================================
 
 /**
- * 加载动画管理器
- * 负责创建、显示和隐藏页面加载动画
+ * 页面加载管理器 - 提供智能加载动画和进度追踪
  */
-const LoadingOverlay = (function() {
-	const OVERLAY_ID = 'article-loading-overlay';
-	const ANIMATION_DURATION = 300;
-	const CLASS_VISIBLE = 'is-visible';
-	const CLASS_HIDING = 'is-hiding';
+const PageLoader = (function() {
+	// 配置常量
+	const CONFIG = {
+		OVERLAY_ID: 'page-loader',
+		MIN_DISPLAY_TIME: 400,        // 最小显示时间（避免闪烁）
+		FADE_DURATION: 350,            // 淡出动画时长
+		PROGRESS_STEP: 0.1,            // 进度条步进
+		PROGRESS_INTERVAL: 200,        // 进度更新间隔
+		SKELETON_DELAY: 150            // 骨架屏延迟显示
+	};
 	
-	let overlayElement = null;
-	let hideTimer = null;
+	// 状态管理
+	let state = {
+		element: null,
+		isVisible: false,
+		startTime: 0,
+		progress: 0,
+		progressTimer: null,
+		hideTimer: null,
+		skeletonTimer: null
+	};
 	
 	/**
-	 * 创建骨架屏 HTML 结构
-	 * @returns {string} HTML 字符串
+	 * 创建加载动画 HTML
 	 */
-	function createSkeletonHTML() {
+	function createHTML() {
 		return `
-			<div class="loading-overlay-content">
-				<div class="loading-card">
-					<div class="loading-thumb">
-						<div class="loading-shimmer"></div>
-					</div>
-					<div class="loading-body">
-						<div class="loading-meta">
-							<div class="loading-avatar"></div>
-							<div class="loading-meta-text">
-								<div class="loading-meta-line" style="width: 120px"></div>
-								<div class="loading-meta-line" style="width: 80px"></div>
-							</div>
-						</div>
-						<div class="loading-title"></div>
-						<div class="loading-text">
-							<div class="loading-line" style="width: 95%"></div>
-							<div class="loading-line" style="width: 88%"></div>
-							<div class="loading-line" style="width: 92%"></div>
-							<div class="loading-line" style="width: 78%"></div>
-						</div>
-						<div class="loading-tags">
-							<div class="loading-tag"></div>
-							<div class="loading-tag"></div>
-							<div class="loading-tag"></div>
-						</div>
+			<div class="page-loader-backdrop"></div>
+			<div class="page-loader-content">
+				<!-- 进度环 -->
+				<div class="loader-ring-container">
+					<svg class="loader-ring" viewBox="0 0 100 100">
+						<circle class="loader-ring-bg" cx="50" cy="50" r="45"></circle>
+						<circle class="loader-ring-progress" cx="50" cy="50" r="45"></circle>
+					</svg>
+					<div class="loader-icon">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+						</svg>
 					</div>
 				</div>
-				<div class="loading-spinner-wrapper">
-					<div class="loading-spinner">
-						<div class="loading-spinner-ring"></div>
-					</div>
-					<div class="loading-text-hint">正在加载精彩内容</div>
-					<div class="loading-dots">
-						<span class="loading-dot"></span>
-						<span class="loading-dot"></span>
-						<span class="loading-dot"></span>
+				
+				<!-- 加载文字 -->
+				<div class="loader-text">
+					<div class="loader-title">加载中</div>
+					<div class="loader-subtitle">正在为您准备内容</div>
+				</div>
+				
+				<!-- 骨架屏（延迟显示） -->
+				<div class="loader-skeleton">
+					<div class="skeleton-card">
+						<div class="skeleton-image"></div>
+						<div class="skeleton-content">
+							<div class="skeleton-title"></div>
+							<div class="skeleton-line"></div>
+							<div class="skeleton-line short"></div>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -3265,101 +3270,198 @@ const LoadingOverlay = (function() {
 	}
 	
 	/**
-	 * 创建加载动画元素
-	 * @returns {HTMLElement} 创建的元素
+	 * 创建加载器元素
 	 */
 	function createElement() {
 		const el = document.createElement('div');
-		el.id = OVERLAY_ID;
-		el.className = 'loading-overlay';
-		el.innerHTML = createSkeletonHTML();
+		el.id = CONFIG.OVERLAY_ID;
+		el.className = 'page-loader';
+		el.innerHTML = createHTML();
 		return el;
 	}
 	
 	/**
-	 * 获取或创建加载动画元素
-	 * @returns {HTMLElement} 加载动画元素
+	 * 获取或创建元素
 	 */
 	function getElement() {
-		if (!overlayElement) {
-			overlayElement = document.getElementById(OVERLAY_ID);
+		if (!state.element) {
+			state.element = document.getElementById(CONFIG.OVERLAY_ID);
+			if (!state.element) {
+				state.element = createElement();
+				document.body.appendChild(state.element);
+			}
 		}
-		if (!overlayElement) {
-			overlayElement = createElement();
-			document.body.appendChild(overlayElement);
-		}
-		return overlayElement;
+		return state.element;
 	}
 	
 	/**
-	 * 显示加载动画
+	 * 更新进度环
+	 */
+	function updateProgress(progress) {
+		const el = state.element;
+		if (!el) return;
+		
+		const circle = el.querySelector('.loader-ring-progress');
+		if (circle) {
+			const circumference = 2 * Math.PI * 45;
+			const offset = circumference - (progress / 100) * circumference;
+			circle.style.strokeDashoffset = offset;
+		}
+		
+		state.progress = progress;
+	}
+	
+	/**
+	 * 自动递增进度
+	 */
+	function startProgressAnimation() {
+		stopProgressAnimation();
+		
+		state.progress = 0;
+		updateProgress(0);
+		
+		state.progressTimer = setInterval(function() {
+			if (state.progress < 90) {
+				// 使用缓动函数，越接近 90% 越慢
+				const increment = CONFIG.PROGRESS_STEP * (1 - state.progress / 100);
+				state.progress = Math.min(90, state.progress + increment * 10);
+				updateProgress(state.progress);
+			}
+		}, CONFIG.PROGRESS_INTERVAL);
+	}
+	
+	/**
+	 * 停止进度动画
+	 */
+	function stopProgressAnimation() {
+		if (state.progressTimer) {
+			clearInterval(state.progressTimer);
+			state.progressTimer = null;
+		}
+	}
+	
+	/**
+	 * 完成进度到 100%
+	 */
+	function completeProgress() {
+		stopProgressAnimation();
+		updateProgress(100);
+	}
+	
+	/**
+	 * 显示加载器
 	 */
 	function show() {
-		// 清除可能存在的隐藏定时器
-		if (hideTimer) {
-			clearTimeout(hideTimer);
-			hideTimer = null;
+		// 清理之前的定时器
+		if (state.hideTimer) {
+			clearTimeout(state.hideTimer);
+			state.hideTimer = null;
+		}
+		if (state.skeletonTimer) {
+			clearTimeout(state.skeletonTimer);
+			state.skeletonTimer = null;
 		}
 		
 		const el = getElement();
-		el.classList.remove(CLASS_HIDING);
+		state.startTime = Date.now();
+		state.isVisible = true;
 		
-		// 强制重排以确保动画生效
-		void el.offsetWidth;
+		// 移除隐藏类，添加显示类
+		el.classList.remove('is-hiding');
+		void el.offsetWidth; // 强制重排
+		el.classList.add('is-visible');
 		
-		el.classList.add(CLASS_VISIBLE);
+		// 启动进度动画
+		startProgressAnimation();
+		
+		// 延迟显示骨架屏（避免快速加载时闪烁）
+		state.skeletonTimer = setTimeout(function() {
+			if (state.isVisible && el) {
+				el.classList.add('show-skeleton');
+			}
+		}, CONFIG.SKELETON_DELAY);
 	}
 	
 	/**
-	 * 隐藏加载动画
+	 * 隐藏加载器
 	 */
 	function hide() {
-		const el = document.getElementById(OVERLAY_ID);
+		if (!state.isVisible) return;
+		
+		const el = state.element;
 		if (!el) return;
 		
-		el.classList.add(CLASS_HIDING);
+		// 完成进度
+		completeProgress();
 		
-		// 动画结束后清理状态
-		hideTimer = setTimeout(function() {
-			el.classList.remove(CLASS_VISIBLE, CLASS_HIDING);
-			hideTimer = null;
-		}, ANIMATION_DURATION);
+		// 计算已显示时间
+		const elapsedTime = Date.now() - state.startTime;
+		const remainingTime = Math.max(0, CONFIG.MIN_DISPLAY_TIME - elapsedTime);
+		
+		// 确保最小显示时间后再隐藏
+		state.hideTimer = setTimeout(function() {
+			el.classList.add('is-hiding');
+			el.classList.remove('show-skeleton');
+			
+			// 动画结束后清理
+			setTimeout(function() {
+				el.classList.remove('is-visible', 'is-hiding');
+				state.isVisible = false;
+				stopProgressAnimation();
+			}, CONFIG.FADE_DURATION);
+		}, remainingTime);
 	}
 	
 	/**
-	 * 销毁加载动画元素
+	 * 设置进度（手动控制）
+	 */
+	function setProgress(progress) {
+		progress = Math.max(0, Math.min(100, progress));
+		stopProgressAnimation();
+		updateProgress(progress);
+	}
+	
+	/**
+	 * 销毁加载器
 	 */
 	function destroy() {
-		if (hideTimer) {
-			clearTimeout(hideTimer);
-			hideTimer = null;
+		stopProgressAnimation();
+		
+		if (state.hideTimer) {
+			clearTimeout(state.hideTimer);
+			state.hideTimer = null;
 		}
-		if (overlayElement && overlayElement.parentNode) {
-			overlayElement.parentNode.removeChild(overlayElement);
-			overlayElement = null;
+		if (state.skeletonTimer) {
+			clearTimeout(state.skeletonTimer);
+			state.skeletonTimer = null;
 		}
+		
+		if (state.element && state.element.parentNode) {
+			state.element.parentNode.removeChild(state.element);
+		}
+		
+		state.element = null;
+		state.isVisible = false;
 	}
 	
 	// 公开 API
 	return {
 		show: show,
 		hide: hide,
+		setProgress: setProgress,
 		destroy: destroy
 	};
 })();
 
 /**
- * 显示页面加载动画（向后兼容）
+ * 向后兼容的函数
  */
 function showLoadingOverlay() {
-	LoadingOverlay.show();
+	PageLoader.show();
 }
 
-/**
- * 隐藏页面加载动画（向后兼容）
- */
 function hideLoadingOverlay() {
-	LoadingOverlay.hide();
+	PageLoader.hide();
 }
 function startPageTransition() {
 	document.documentElement.classList.add('page-transition-enter');
