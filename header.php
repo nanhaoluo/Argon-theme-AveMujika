@@ -329,59 +329,47 @@
 	<script>
 	(function() {
 		var forceRefreshKey = 'argon_force_refresh_version';
+		var pendingKey = 'argon_force_refresh_pending';
 		var currentVersion = '<?php echo get_option('argon_force_refresh_enabled_time', 0); ?>';
 		var lastVersion = localStorage.getItem(forceRefreshKey);
 		
-		// 版本变化时清除所有缓存
 		if (lastVersion !== currentVersion) {
-			// 如果不是首次访问且需要刷新，先标记再刷新
-			if (lastVersion !== null) {
-				// 设置刷新标记
-				sessionStorage.setItem('argon_needs_refresh', '1');
-				
-				// 清除 sessionStorage 中的其他数据
-				var needsRefresh = sessionStorage.getItem('argon_needs_refresh');
-				try { 
-					var keys = Object.keys(sessionStorage);
-					keys.forEach(function(key) {
-						if (key !== 'argon_needs_refresh') {
-							sessionStorage.removeItem(key);
-						}
-					});
-				} catch(e) {}
-				
-				// 更新版本号
-				localStorage.setItem(forceRefreshKey, currentVersion);
-				
-				// 强制硬刷新（绕过缓存）
-				window.location.reload(true);
-				return; // 阻止后续代码执行
-			}
-			
-			// 首次访问，只更新版本号
 			localStorage.setItem(forceRefreshKey, currentVersion);
+			if (lastVersion !== null) {
+				sessionStorage.setItem(pendingKey, '1');
+			}
 		}
 		
-		// 检查是否是刷新后的页面
-		if (sessionStorage.getItem('argon_needs_refresh') === '1') {
-			sessionStorage.removeItem('argon_needs_refresh');
-			
-			// 清除 Service Worker 缓存
-			if ('caches' in window) {
-				caches.keys().then(function(names) {
-					names.forEach(function(name) {
-						caches.delete(name);
-					});
+		if (sessionStorage.getItem(pendingKey) === '1') {
+			var performRefresh = function() {
+				sessionStorage.removeItem(pendingKey);
+				var tasks = [];
+				if ('caches' in window) {
+					tasks.push(
+						caches.keys().then(function(names) {
+							return Promise.all(names.map(function(name) {
+								return caches.delete(name);
+							}));
+						})
+					);
+				}
+				if ('serviceWorker' in navigator) {
+					tasks.push(
+						navigator.serviceWorker.getRegistrations().then(function(registrations) {
+							return Promise.all(registrations.map(function(registration) {
+								return registration.unregister();
+							}));
+						})
+					);
+				}
+				Promise.all(tasks).finally(function() {
+					window.location.reload();
 				});
-			}
-			
-			// 注销所有 Service Worker
-			if ('serviceWorker' in navigator) {
-				navigator.serviceWorker.getRegistrations().then(function(registrations) {
-					registrations.forEach(function(registration) {
-						registration.unregister();
-					});
-				});
+			};
+			if (document.readyState === 'complete') {
+				performRefresh();
+			} else {
+				window.addEventListener('load', performRefresh);
 			}
 		}
 	})();
@@ -1261,6 +1249,14 @@ if ($card_opacity == '' || $card_opacity == '1') {
 			background-color: rgba(255, 255, 255, <?php echo $post_bg_opacity_inline; ?>) !important;
 			backdrop-filter: blur(<?php echo $card_blur_inline; ?>px) saturate(<?php echo $card_saturate_inline; ?>%);
 			-webkit-backdrop-filter: blur(<?php echo $card_blur_inline; ?>px) saturate(<?php echo $card_saturate_inline; ?>%);
+			background-clip: padding-box;
+			-webkit-transform: translateZ(0);
+			transform: translateZ(0);
+			position: relative;
+			z-index: 0;
+		}
+		article.post.card .post-content {
+			background-color: transparent;
 		}
 		html.darkmode article.post.card,
 		html.darkmode #comments.card,
@@ -1305,6 +1301,14 @@ if (apply_filters('argon_page_background_url', get_option('argon_page_background
 		background-color: rgba(255, 255, 255, <?php echo $post_bg_opacity_standalone; ?>) !important;
 		backdrop-filter: blur(<?php echo $card_blur_standalone; ?>px) saturate(<?php echo $card_saturate_standalone; ?>%);
 		-webkit-backdrop-filter: blur(<?php echo $card_blur_standalone; ?>px) saturate(<?php echo $card_saturate_standalone; ?>%);
+		background-clip: padding-box;
+		-webkit-transform: translateZ(0);
+		transform: translateZ(0);
+		position: relative;
+		z-index: 0;
+	}
+	article.post.card .post-content {
+		background-color: transparent;
 	}
 	html.darkmode article.post.card,
 	html.darkmode #comments.card,

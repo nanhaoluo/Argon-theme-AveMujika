@@ -696,22 +696,57 @@ class ArgonResourceLoader {
 			return this.loading.get(name);
 		}
 		
-		// 创建新的加载 Promise
+		const timeoutValue = (typeof argonConfig !== 'undefined' && argonConfig.resource_load_timeout) ? parseInt(argonConfig.resource_load_timeout, 10) : 8000;
+		const timeout = Number.isFinite(timeoutValue) ? timeoutValue : 8000;
+		
 		const promise = new Promise((resolve, reject) => {
 			const script = document.createElement('script');
 			script.src = url;
 			script.async = true;
 			
-			script.onload = () => {
+			let finished = false;
+			let timeoutId = null;
+			
+			const clearState = () => {
+				if (timeoutId) {
+					clearTimeout(timeoutId);
+					timeoutId = null;
+				}
+				script.onload = null;
+				script.onerror = null;
+			};
+			
+			const resolveSuccess = () => {
+				if (finished) return;
+				finished = true;
+				clearState();
 				this.loaded.add(name);
 				this.loading.delete(name);
 				resolve();
 			};
 			
-			script.onerror = () => {
+			const rejectFailure = (error) => {
+				if (finished) return;
+				finished = true;
+				clearState();
+				if (script.parentNode) {
+					script.parentNode.removeChild(script);
+				}
 				this.loading.delete(name);
-				reject(new Error(`Failed to load ${name} from ${url}`));
+				reject(error);
 			};
+			
+			script.onload = () => {
+				resolveSuccess();
+			};
+			
+			script.onerror = () => {
+				rejectFailure(new Error(`Failed to load ${name} from ${url}`));
+			};
+			
+			timeoutId = setTimeout(() => {
+				rejectFailure(new Error(`Timeout loading ${name} from ${url}`));
+			}, timeout);
 			
 			document.head.appendChild(script);
 		});

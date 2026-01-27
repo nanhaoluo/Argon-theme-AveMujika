@@ -91,18 +91,13 @@
 		<div class="post-content">
 
 			<?php
-
-				$content_for_preview = get_the_content('...');
-				// 移除 Mermaid shortcode，避免在预览中显示原始代码
-				$content_for_preview = argon_remove_mermaid_from_preview($content_for_preview);
-
 				if (get_option("argon_hide_shortcode_in_preview") == 'true'){
 
-					$preview = wp_trim_words(do_shortcode($content_for_preview), $trim_words_count);
+					$preview = wp_trim_words(do_shortcode(get_the_content('...')), $trim_words_count);
 
 				}else{
 
-					$preview = wp_trim_words($content_for_preview, $trim_words_count);
+					$preview = wp_trim_words(get_the_content('...'), $trim_words_count);
 
 				}
 

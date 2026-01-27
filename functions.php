@@ -4585,45 +4585,7 @@ function shortcode_video($attr,$content=""){
 	$out .= "</video>";
 	return $out;
 }
-add_shortcode('mermaid','shortcode_mermaid');
-function shortcode_mermaid($attr,$content=""){
-	// 预处理内容：移除 WordPress 自动添加的 <p> 和 <br> 标签
-	$content = shortcode_content_preprocess($attr, $content);
-	
-	// 获取参数
-	$theme = isset( $attr['theme'] ) ? $attr['theme'] : 'default';
-	$width = isset( $attr['width'] ) ? $attr['width'] : '100%';
-	$height = isset( $attr['height'] ) ? $attr['height'] : 'auto';
-	$align = isset( $attr['align'] ) ? $attr['align'] : 'center';
-	
-	// 生成唯一 ID
-	$chart_id = 'mermaid-' . mt_rand(1000000000, 9999999999);
-	
-	// 构建输出
-	$out = '<div class="mermaid-shortcode-container" style="text-align: ' . esc_attr($align) . ';">';
-	$out .= '<div class="mermaid-shortcode" ';
-	$out .= 'id="' . esc_attr($chart_id) . '" ';
-	$out .= 'data-theme="' . esc_attr($theme) . '" ';
-	$out .= 'style="width: ' . esc_attr($width) . '; height: ' . esc_attr($height) . ';">';
-	$out .= esc_html($content);
-	$out .= '</div>';
-	$out .= '</div>';
-	
-	return $out;
-}
 
-/**
- * 从内容中移除 Mermaid shortcode，用于文章预览
- * 避免在预览中显示原始 Mermaid 代码
- * 
- * @param string $content 文章内容
- * @return string 移除 Mermaid shortcode 后的内容
- */
-function argon_remove_mermaid_from_preview($content) {
-	// 移除 [mermaid]...[/mermaid] shortcode
-	$content = preg_replace('/\[mermaid[^\]]*\].*?\[\/mermaid\]/is', '[Mermaid 图表]', $content);
-	return $content;
-}
 add_shortcode('hide_reading_time','shortcode_hide_reading_time');
 function shortcode_hide_reading_time($attr,$content=""){
 	return "";
@@ -10976,8 +10938,6 @@ function argon_normalize_social_url($platform, $input) {
 }
 
 // ==========================================================================
-// Mermaid 图表支持 - 配置管理
-// ==========================================================================
 
 /**
  * 获取 Mermaid 配置选项
@@ -11211,8 +11171,6 @@ function argon_update_mermaid_settings($settings) {
 	];
 }
 
-// ==========================================================================
-// Mermaid 图表支持 - 库加载器
 // ==========================================================================
 
 /**

@@ -178,6 +178,23 @@ if (!empty($query_code)) {
 						'code' => $query_code
 					];
 					
+					$log_table = $wpdb->prefix . 'argon_ai_query_log';
+					$latest = $wpdb->get_row($wpdb->prepare(
+						"SELECT provider, model FROM {$log_table} WHERE scenario = %s AND status = 'success' AND post_id = %d ORDER BY id DESC LIMIT 1",
+						'summary',
+						$post_id
+					), ARRAY_A);
+					if (is_array($latest)) {
+						if (!empty($latest['provider']) && $latest['provider'] !== $result['provider']) {
+							$result['provider'] = $latest['provider'];
+							update_post_meta($post_id, '_argon_ai_summary_provider', $result['provider']);
+						}
+						if (isset($latest['model']) && $latest['model'] !== $result['model']) {
+							$result['model'] = $latest['model'];
+							update_post_meta($post_id, '_argon_ai_summary_model', $result['model']);
+						}
+					}
+					
 					$provider_names = [
 						'openai' => 'OpenAI',
 						'anthropic' => 'Anthropic',
@@ -236,8 +253,30 @@ if (!empty($query_code)) {
 						];
 						
 						// 获取 AI 配置信息
-						$result['provider'] = get_option('argon_ai_summary_provider', 'openai');
-						$result['model'] = get_option('argon_ai_summary_model', '');
+						$result['provider'] = get_comment_meta($comment_id, '_argon_spam_detection_provider', true);
+						$result['model'] = get_comment_meta($comment_id, '_argon_spam_detection_model', true);
+						$log_table = $wpdb->prefix . 'argon_ai_query_log';
+						$latest = $wpdb->get_row($wpdb->prepare(
+							"SELECT provider, model FROM {$log_table} WHERE scenario = %s AND status = 'success' AND comment_id = %d ORDER BY id DESC LIMIT 1",
+							'spam_detection',
+							$comment_id
+						), ARRAY_A);
+						if (is_array($latest)) {
+							if (!empty($latest['provider']) && $latest['provider'] !== $result['provider']) {
+								$result['provider'] = $latest['provider'];
+								update_comment_meta($comment_id, '_argon_spam_detection_provider', $result['provider']);
+							}
+							if (isset($latest['model']) && $latest['model'] !== $result['model']) {
+								$result['model'] = $latest['model'];
+								update_comment_meta($comment_id, '_argon_spam_detection_model', $result['model']);
+							}
+						}
+						if (empty($result['provider'])) {
+							$result['provider'] = get_option('argon_ai_summary_provider', 'openai');
+						}
+						if (empty($result['model'])) {
+							$result['model'] = get_option('argon_ai_summary_model', '');
+						}
 						
 						$provider_names = [
 							'openai' => 'OpenAI',
@@ -702,6 +741,24 @@ if (current_user_can('manage_options')):
 	foreach ($summaries as $summary) {
 		$post = get_post($summary->post_id);
 		if ($post) {
+			$summary_provider = get_post_meta($summary->post_id, '_argon_ai_summary_provider', true);
+			$summary_model = get_post_meta($summary->post_id, '_argon_ai_summary_model', true);
+			$log_table = $wpdb->prefix . 'argon_ai_query_log';
+			$latest = $wpdb->get_row($wpdb->prepare(
+				"SELECT provider, model FROM {$log_table} WHERE scenario = %s AND status = 'success' AND post_id = %d ORDER BY id DESC LIMIT 1",
+				'summary',
+				$summary->post_id
+			), ARRAY_A);
+			if (is_array($latest)) {
+				if (!empty($latest['provider']) && $latest['provider'] !== $summary_provider) {
+					$summary_provider = $latest['provider'];
+					update_post_meta($summary->post_id, '_argon_ai_summary_provider', $summary_provider);
+				}
+				if (isset($latest['model']) && $latest['model'] !== $summary_model) {
+					$summary_model = $latest['model'];
+					update_post_meta($summary->post_id, '_argon_ai_summary_model', $summary_model);
+				}
+			}
 			$all_records[] = [
 				'type' => 'summary',
 				'code' => $summary->code,
@@ -714,8 +771,8 @@ if (current_user_can('manage_options')):
 					'post_title' => get_the_title($summary->post_id),
 					'post_url' => get_permalink($summary->post_id),
 					'summary' => get_post_meta($summary->post_id, '_argon_ai_summary', true),
-					'model' => get_post_meta($summary->post_id, '_argon_ai_summary_model', true),
-					'provider' => get_post_meta($summary->post_id, '_argon_ai_summary_provider', true),
+					'model' => $summary_model,
+					'provider' => $summary_provider,
 					'generated_time' => $summary->time
 				]
 			];
@@ -726,6 +783,30 @@ if (current_user_can('manage_options')):
 		$comment = get_comment($detection->comment_id);
 		if ($comment) {
 			$detection_result = get_comment_meta($detection->comment_id, '_argon_spam_detection_result', true);
+			$provider = get_comment_meta($detection->comment_id, '_argon_spam_detection_provider', true);
+			$model = get_comment_meta($detection->comment_id, '_argon_spam_detection_model', true);
+			$log_table = $wpdb->prefix . 'argon_ai_query_log';
+			$latest = $wpdb->get_row($wpdb->prepare(
+				"SELECT provider, model FROM {$log_table} WHERE scenario = %s AND status = 'success' AND comment_id = %d ORDER BY id DESC LIMIT 1",
+				'spam_detection',
+				$detection->comment_id
+			), ARRAY_A);
+			if (is_array($latest)) {
+				if (!empty($latest['provider']) && $latest['provider'] !== $provider) {
+					$provider = $latest['provider'];
+					update_comment_meta($detection->comment_id, '_argon_spam_detection_provider', $provider);
+				}
+				if (isset($latest['model']) && $latest['model'] !== $model) {
+					$model = $latest['model'];
+					update_comment_meta($detection->comment_id, '_argon_spam_detection_model', $model);
+				}
+			}
+			if (empty($provider)) {
+				$provider = get_option('argon_ai_summary_provider', 'openai');
+			}
+			if (empty($model)) {
+				$model = get_option('argon_ai_summary_model', '');
+			}
 			$all_records[] = [
 				'type' => 'spam_detection',
 				'code' => $detection->code,
@@ -747,6 +828,8 @@ if (current_user_can('manage_options')):
 					'suggestion' => isset($detection_result['suggestion']) ? $detection_result['suggestion'] : '',
 					'analysis' => isset($detection_result['analysis']) ? $detection_result['analysis'] : '',
 					'action' => isset($detection_result['action']) ? $detection_result['action'] : '',
+					'provider' => $provider,
+					'model' => $model,
 					'detection_time' => $detection->time
 				]
 			];

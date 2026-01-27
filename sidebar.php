@@ -612,7 +612,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 											
 											// 检测是否有标题已经带序号
 											// 支持格式：1. 1.1 一、二、第一、第二、(1) (一) [1] 等
-											var numberPattern = /^([\d一二三四五六七八九十百千]+[.、．:：]\s*|第[一二三四五六七八九十百千\d]+[章节部分条款、]\s*|[（\(【\[]\s*[\d一二三四五六七八九十]+\s*[）\)】\]]\s*|[IVXLCDM]+[.、．]\s*)/;
+											var numberPattern = /^(([\d一二三四五六七八九十百千]+(\.\d+)*)([.、．:：)\）]\s*|\s+)|第[一二三四五六七八九十百千\d]+[章节部分条款、]\s*|[（\(【\[]\s*[\d一二三四五六七八九十]+\s*[）\)】\]]\s*|[IVXLCDM]+[.、．]\s*)/;
 											var numberedCount = 0;
 											
 											items.forEach(function(item) {
@@ -623,13 +623,16 @@ $author_desc = get_option('argon_sidebar_author_description');
 											});
 											
 											// 如果超过一半的标题已有序号，认为文章自带编号
-											var hasNumberedHeadings = numberedCount > items.length / 2;
+											var hasNumberedHeadings = numberedCount > 0;
 											
 											if (!hasNumberedHeadings) {
-												// 添加 CSS 计数器样式
-												var style = document.createElement('style');
-												style.textContent = '#leftbar_catalog ul { counter-reset: blog_catalog_number; } #leftbar_catalog li.index-item > a:before { content: counters(blog_catalog_number, \".\") \" \"; counter-increment: blog_catalog_number; }';
-												document.head.appendChild(style);
+												var existingStyle = document.getElementById('argon_catalog_number_style');
+												if (!existingStyle) {
+													var style = document.createElement('style');
+													style.id = 'argon_catalog_number_style';
+													style.textContent = '#leftbar_catalog ul { counter-reset: blog_catalog_number; } #leftbar_catalog li.index-item { counter-increment: blog_catalog_number; display: flex; align-items: flex-start; } #leftbar_catalog li.index-item::before { content: counters(blog_catalog_number, \".\") \" \"; display: inline-block; margin-right: 6px; white-space: nowrap; } #leftbar_catalog li.index-item > a.index-link { flex: 1; word-break: break-word; }';
+													document.head.appendChild(style);
+												}
 											}
 										}
 										

@@ -53,6 +53,87 @@ function themeoptions_page(){
 				padding: 0;
 
 			}
+			.argon-ai-api-table {
+				table-layout: fixed;
+				width: 100%;
+			}
+			#argon-unified-api-list {
+				max-width: 1000px;
+				width: calc(100% - 240px);
+				margin: 0;
+			}
+			@media screen and (max-width: 1200px) {
+				#argon-unified-api-list {
+					max-width: 100%;
+					width: 100%;
+					margin: 0;
+				}
+			}
+			.argon-ai-api-table th,
+			.argon-ai-api-table td {
+				text-align: center;
+				vertical-align: middle;
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				padding: 8px 6px;
+				font-size: 13px;
+			}
+			.argon-ai-api-table th:nth-child(1),
+			.argon-ai-api-table td:nth-child(1) {
+				width: 70px;
+			}
+			.argon-ai-api-table th:nth-child(2),
+			.argon-ai-api-table td:nth-child(2) {
+				width: 80px;
+			}
+			.argon-ai-api-table th:nth-child(3),
+			.argon-ai-api-table td:nth-child(3) {
+				width: 100px;
+			}
+			.argon-ai-api-table th:nth-child(4),
+			.argon-ai-api-table td:nth-child(4) {
+				width: 120px;
+			}
+			.argon-ai-api-table th:nth-child(5),
+			.argon-ai-api-table td:nth-child(5) {
+				width: 120px;
+			}
+			.argon-ai-api-table th:nth-child(6),
+			.argon-ai-api-table td:nth-child(6) {
+				width: 80px;
+			}
+			.argon-ai-api-table th:nth-child(7),
+			.argon-ai-api-table td:nth-child(7) {
+				width: 140px;
+				overflow: visible;
+				text-overflow: clip;
+			}
+			.argon-ai-api-table td code {
+				display: inline-block;
+				max-width: 120px;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+				vertical-align: bottom;
+			}
+			.argon-ai-api-table .button.button-small {
+				padding: 0 6px;
+				min-height: 24px;
+				line-height: 24px;
+				font-size: 12px;
+			}
+			.argon-unified-api-status {
+				margin-top: 8px;
+				font-size: 13px;
+				line-height: 1.5;
+				max-width: 100%;
+				word-break: break-word;
+			}
+			.argon-unified-api-status pre {
+				max-height: 160px;
+				overflow: auto;
+			}
 
 			.gu-mirror{position:fixed!important;margin:0!important;z-index:9999!important;opacity:.8;-ms-filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";filter:alpha(opacity=80)}.gu-hide{display:none!important}.gu-unselectable{-webkit-user-select:none!important;-moz-user-select:none!important;-ms-user-select:none!important;user-select:none!important}.gu-transit{opacity:.2;-ms-filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=20)";filter:alpha(opacity=20)}
 
@@ -90,10 +171,8 @@ function themeoptions_page(){
 
 				<tbody>
 
-					<!-- ========== 1. 基础设置 ========== -->
-					<tr><th class="subtitle"><h2 id="section-basic"><?php _e("基础设置", 'argon');?></h2></th></tr>
-
-					<tr><th class="subtitle"><h3 id="subsection-theme-color"><?php _e("主题色", 'argon');?></h3></th></tr>
+					<!-- ========== 1. 主题色 ========== -->
+					<tr><th class="subtitle"><h2 id="section-theme-color"><?php _e("主题色", 'argon');?></h2></th></tr>
 
 					<tr>
 
@@ -241,7 +320,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-dark-mode"><?php _e('夜间模式', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h2 id="section-dark-mode"><?php _e('夜间模式', 'argon');?></h2></th></tr>
 
 					<tr>
 
@@ -291,10 +370,8 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 2. 外观样式 ========== -->
-					<tr><th class="subtitle"><h2 id="section-appearance"><?php _e('外观样式', 'argon');?></h2></th></tr>
-
-					<tr><th class="subtitle"><h3 id="subsection-card-style"><?php _e('卡片样式', 'argon');?></h3></th></tr>
+					<!-- ========== 2. 卡片样式 ========== -->
+					<tr><th class="subtitle"><h2 id="section-card-style"><?php _e('卡片样式', 'argon');?></h2></th></tr>
 
 					<tr>
 
@@ -344,7 +421,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-font"><?php _e('字体', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h2 id="section-font"><?php _e('字体', 'argon');?></h2></th></tr>
 
 					<tr>
 
@@ -380,7 +457,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-animation"><?php _e('动画效果', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h2 id="section-animation"><?php _e('动画效果', 'argon');?></h2></th></tr>
 
 					<tr>
 
@@ -454,10 +531,8 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 3. 页面布局 ========== -->
-					<tr><th class="subtitle"><h2 id="section-layout"><?php _e('页面布局', 'argon');?></h2></th></tr>
-
-					<tr><th class="subtitle"><h3 id="subsection-page-layout"><?php _e('整体布局', 'argon');?></h3></th></tr>
+					<!-- ========== 3. 整体布局 ========== -->
+					<tr><th class="subtitle"><h2 id="section-page-layout"><?php _e('整体布局', 'argon');?></h2></th></tr>
 
 					<tr>
 
@@ -520,6 +595,8 @@ function themeoptions_page(){
 						</td>
 
 					</tr>
+
+					<tr><th class="subtitle"><h2 id="section-article-list"><?php _e('文章列表', 'argon');?></h2></th></tr>
 
 					<tr>
 
@@ -1314,10 +1391,8 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 7. 侧边栏 ========== -->
-					<tr><th class="subtitle"><h2 id="section-sidebar"><?php _e('侧边栏', 'argon');?></h2></th></tr>
-
-					<tr><th class="subtitle"><h3 id="subsection-author-info"><?php _e('作者信息', 'argon');?></h3></th></tr>
+					<!-- ========== 7. 作者信息 ========== -->
+					<tr><th class="subtitle"><h2 id="section-author-info"><?php _e('作者信息', 'argon');?></h2></th></tr>
 
 					<tr>
 
@@ -1389,7 +1464,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-sidebar-features"><?php _e('扩展功能', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h2 id="section-sidebar-features"><?php _e('扩展功能', 'argon');?></h2></th></tr>
 
 					<tr>
 
@@ -1449,7 +1524,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-announcement"><?php _e('博客公告', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h2 id="section-announcement"><?php _e('博客公告', 'argon');?></h2></th></tr>
 
 					<tr>
 
@@ -1570,10 +1645,8 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 10. SEO与性能 ========== -->
-					<tr><th class="subtitle"><h2 id="section-seo-performance"><?php _e('SEO与性能', 'argon');?></h2></th></tr>
-
-					<tr><th class="subtitle"><h3 id="subsection-seo">SEO</h3></th></tr>
+					<!-- ========== 10. SEO ========== -->
+					<tr><th class="subtitle"><h2 id="section-seo">SEO</h2></th></tr>
 
 					<tr>
 
@@ -1603,7 +1676,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-cdn"><?php _e('CDN 加速', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h2 id="section-cdn"><?php _e('CDN 加速', 'argon');?></h2></th></tr>
 
 					<tr>
 
@@ -1665,6 +1738,8 @@ function themeoptions_page(){
 
 					</tr>
 
+					<tr><th class="subtitle"><h2 id="section-wp-path"><?php _e('WordPress 安装目录', 'argon');?></h2></th></tr>
+
 					<tr>
 
 						<th><label><?php _e('WordPress 安装目录', 'argon');?></label></th>
@@ -1679,7 +1754,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-date-format"><?php _e('日期格式', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h2 id="section-date-format"><?php _e('日期格式', 'argon');?></h2></th></tr>
 
 					<tr>
 
@@ -1705,10 +1780,8 @@ function themeoptions_page(){
 
 					</tr>
 
-					<!-- ========== 11. 文章显示 ========== -->
-					<tr><th class="subtitle"><h2 id="section-post-display"><?php _e('文章显示', 'argon');?></h2></th></tr>
-
-					<tr><th class="subtitle"><h3 id="subsection-post-meta"><?php _e('Meta 信息', 'argon');?></h3></th></tr>
+					<!-- ========== 11. Meta 信息 ========== -->
+					<tr><th class="subtitle"><h2 id="section-post-meta"><?php _e('Meta 信息', 'argon');?></h2></th></tr>
 
 					<tr>
 
@@ -1936,7 +2009,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-thumbnail"><?php _e('文章头图', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h2 id="section-thumbnail"><?php _e('文章头图', 'argon');?></h2></th></tr>
 
 					<tr>
 
@@ -1982,13 +2055,17 @@ function themeoptions_page(){
 
 					</tr>
 
-										<tr><td colspan="2" style="padding: 0;">
-				<!-- ========== AI 功能 ========== -->
-				<h1 style="color: #5e72e4; margin-top: 30px; font-size: 32px;"><?php _e('AI 功能', 'argon');?></h1>
-				<p style="margin-bottom: 30px; color: #666;"><?php _e('统一管理所有 AI 服务商的 API 配置，并配置 AI 文章摘要和评论审核功能', 'argon');?></p>
+				<!-- ========== 12. AI 功能 ========== -->
+				<tr><th class="subtitle"><h2 id="section-ai"><?php _e('AI 功能', 'argon');?></h2></th></tr>
+				<tr>
+					<th><label><?php _e('说明', 'argon');?></label></th>
+					<td>
+						<p class="description"><?php _e('统一管理所有 AI 服务商的 API 配置，并配置 AI 文章摘要和评论审核功能', 'argon');?></p>
+					</td>
+				</tr>
 
 				<!-- ========== API 管理 ========== -->
-				<tr><th class="subtitle"><h2 id="ai-api-management"><?php _e('API 管理', 'argon');?></h2></th></tr>
+				<tr><th class="subtitle"><h3 id="ai-api-management"><?php _e('API 管理', 'argon');?></h3></th></tr>
 
 				<tr>
 					<th><label><?php _e('已配置的 API', 'argon');?></label></th>
@@ -2007,7 +2084,7 @@ function themeoptions_page(){
 							'xiaomi' => __('小米 Mimo', 'argon'),
 							'qianwen' => __('通义千问', 'argon'),
 							'wenxin' => __('文心一言', 'argon'),
-							'doubao' => __('豆包 (火山引擎)', 'argon'),
+							'doubao' => __('火山引擎', 'argon'),
 							'kimi' => 'Kimi (Moonshot)',
 							'zhipu' => __('智谱 AI (GLM)', 'argon'),
 							'siliconflow' => __('硅基流动 (SiliconFlow)', 'argon')
@@ -2016,80 +2093,77 @@ function themeoptions_page(){
 						
 						<div id="argon-unified-api-list">
 							<?php if (!empty($all_apis)): ?>
-								<?php foreach ($all_apis as $api): ?>
-									<div class="argon-unified-api-item" data-api-id="<?php echo esc_attr($api['id']); ?>" style="padding: 15px; background: #f5f5f5; margin-bottom: 10px; border-radius: 6px; border-left: 4px solid #5e72e4;">
-										<div style="display: flex; align-items: center; justify-content: space-between;">
-											<div style="flex: 1;">
-												<div style="font-size: 16px; font-weight: 600; margin-bottom: 5px;">
-													<?php echo esc_html($api['name']); ?>
-													<?php if (!empty($api['model'])): ?>
-														<span style="color: #666; font-weight: 400; font-size: 14px;">(<?php echo esc_html($api['model']); ?>)</span>
-													<?php endif; ?>
-												</div>
-												<div style="font-size: 13px; color: #666;">
-													<span style="display: inline-block; padding: 2px 8px; background: #e3f2fd; color: #1976d2; border-radius: 3px; margin-right: 8px;">
-														<?php echo esc_html($providers[$api['provider']]); ?>
-													</span>
-													<?php _e('密钥:', 'argon'); ?> <code><?php echo esc_html(substr($api['api_key'], 0, 12)); ?>...</code>
-													<?php if (!empty($api['api_endpoint'])): ?>
-														| <?php _e('端点:', 'argon'); ?> <code><?php echo esc_html($api['api_endpoint']); ?></code>
-													<?php endif; ?>
-												</div>
-												<div style="margin-top: 8px; font-size: 12px; color: #888;">
+								<table class="widefat striped argon-ai-api-table">
+									<thead>
+										<tr>
+											<th><?php _e('名称', 'argon'); ?></th>
+											<th><?php _e('提供商', 'argon'); ?></th>
+											<th><?php _e('模型', 'argon'); ?></th>
+											<th><?php _e('密钥', 'argon'); ?></th>
+											<th><?php _e('端点', 'argon'); ?></th>
+											<th><?php _e('用途', 'argon'); ?></th>
+											<th><?php _e('操作', 'argon'); ?></th>
+										</tr>
+									</thead>
+									<tbody>
+										<?php foreach ($all_apis as $api): ?>
+											<tr data-api-id="<?php echo esc_attr($api['id']); ?>">
+												<td><strong><?php echo esc_html($api['name']); ?></strong></td>
+												<td><?php echo esc_html($providers[$api['provider']]); ?></td>
+												<td><?php echo !empty($api['model']) ? '<code>' . esc_html($api['model']) . '</code>' : ''; ?></td>
+												<td><code><?php echo esc_html(substr($api['api_key'], 0, 12)); ?>...</code></td>
+												<td><?php echo !empty($api['api_endpoint']) ? '<code>' . esc_html($api['api_endpoint']) . '</code>' : ''; ?></td>
+												<td>
 													<?php if ($api['id'] === $summary_active_api): ?>
-														<span style="display: inline-block; padding: 2px 6px; background: #4caf50; color: #fff; border-radius: 3px; margin-right: 5px;">
-															<?php _e('文章摘要', 'argon'); ?>
-														</span>
+														<span><?php _e('文章摘要', 'argon'); ?></span>
 													<?php endif; ?>
 													<?php if ($api['id'] === $spam_active_api): ?>
-														<span style="display: inline-block; padding: 2px 6px; background: #ff9800; color: #fff; border-radius: 3px; margin-right: 5px;">
-															<?php _e('评论审核', 'argon'); ?>
-														</span>
+														<?php if ($api['id'] === $summary_active_api): ?>
+															&nbsp;|&nbsp;
+														<?php endif; ?>
+														<span><?php _e('评论审核', 'argon'); ?></span>
 													<?php endif; ?>
-												</div>
-											</div>
-											<div style="display: flex; gap: 5px;">
-												<button type="button" class="button button-small argon-test-unified-api" data-api-id="<?php echo esc_attr($api['id']); ?>">
-													<span class="dashicons dashicons-yes-alt" style="margin-top: 3px;"></span>
-													<?php _e('测试', 'argon'); ?>
-												</button>
-												<button type="button" class="button button-small argon-edit-unified-api" data-api-id="<?php echo esc_attr($api['id']); ?>">
-													<?php _e('编辑', 'argon'); ?>
-												</button>
-												<button type="button" class="button button-small argon-delete-unified-api" data-api-id="<?php echo esc_attr($api['id']); ?>" style="color: #b32d2e;">
-													<?php _e('删除', 'argon'); ?>
-												</button>
-											</div>
-										</div>
-									</div>
-								<?php endforeach; ?>
+												</td>
+												<td>
+													<button type="button" class="button button-small argon-test-unified-api" data-api-id="<?php echo esc_attr($api['id']); ?>">
+														<?php _e('测试', 'argon'); ?>
+													</button>
+													<button type="button" class="button button-small argon-edit-unified-api" data-api-id="<?php echo esc_attr($api['id']); ?>">
+														<?php _e('编辑', 'argon'); ?>
+													</button>
+													<button type="button" class="button button-small argon-delete-unified-api" data-api-id="<?php echo esc_attr($api['id']); ?>">
+														<?php _e('删除', 'argon'); ?>
+													</button>
+												</td>
+											</tr>
+										<?php endforeach; ?>
+									</tbody>
+								</table>
 							<?php else: ?>
-								<p style="color: #666; padding: 20px; background: #f9f9f9; border-radius: 4px; text-align: center;">
-									<?php _e('暂无配置的 API，请点击下方按钮添加', 'argon'); ?>
-								</p>
+								<p class="description"><?php _e('暂无配置的 API，请点击下方按钮添加', 'argon'); ?></p>
 							<?php endif; ?>
+							<div class="argon-unified-api-status" id="argon-unified-api-status"></div>
 						</div>
 						
-						<button type="button" class="button button-primary" id="argon-add-unified-api-btn" style="margin-top: 15px;">
-							<span class="dashicons dashicons-plus-alt" style="margin-top: 3px;"></span>
+						<button type="button" class="button button-primary" id="argon-add-unified-api-btn">
 							<?php _e('添加新 API', 'argon'); ?>
 						</button>
 						
 						<!-- API 配置表单（隐藏） -->
-						<div id="argon-unified-api-form" style="display:none; margin-top: 20px; padding: 20px; background: #fff; border: 2px solid #5e72e4; border-radius: 6px;">
-							<h3 style="margin-top: 0;"><?php _e('API 配置', 'argon'); ?></h3>
+						<div id="argon-unified-api-form" style="display:none;">
+							<h4><?php _e('API 配置', 'argon'); ?></h4>
 							<input type="hidden" id="argon-unified-api-form-id" value="" />
 							
 							<p>
 								<label>
-									<strong><?php _e('配置名称:', 'argon'); ?></strong> <span style="color: #d32f2f;">*</span><br>
+									<strong><?php _e('配置名称:', 'argon'); ?></strong> *<br>
 									<input type="text" id="argon-unified-api-form-name" class="regular-text" placeholder="<?php _e('例如: 主 OpenAI API', 'argon'); ?>" />
 								</label>
 							</p>
 							
 							<p>
 								<label>
-									<strong><?php _e('API 密钥:', 'argon'); ?></strong> <span style="color: #d32f2f;">*</span><br>
+									<strong><?php _e('API 密钥:', 'argon'); ?></strong> *<br>
 									<input type="password" id="argon-unified-api-form-key" class="regular-text" placeholder="sk-..." />
 									<button type="button" class="button" id="argon-toggle-unified-password" style="margin-left: 5px;">
 										<span class="dashicons dashicons-visibility"></span>
@@ -2099,7 +2173,7 @@ function themeoptions_page(){
 							
 							<p>
 								<label>
-									<strong><?php _e('提供商:', 'argon'); ?></strong> <span style="color: #d32f2f;">*</span><br>
+									<strong><?php _e('提供商:', 'argon'); ?></strong> *<br>
 									<select id="argon-unified-api-form-provider" class="regular-text">
 										<option value=""><?php _e('请选择提供商', 'argon'); ?></option>
 										<?php foreach ($providers as $key => $name): ?>
@@ -2119,13 +2193,13 @@ function themeoptions_page(){
 							<p>
 								<label>
 									<strong><?php _e('模型:', 'argon'); ?></strong> <small>(<?php _e('可选', 'argon'); ?>)</small><br>
-									<input type="text" id="argon-unified-api-form-model" class="regular-text" placeholder="<?php _e('留空使用默认模型', 'argon'); ?>" style="width: calc(100% - 120px);" />
-									<button type="button" class="button" id="argon-refresh-unified-models" style="margin-left: 5px;">
+									<input type="text" id="argon-unified-api-form-model" class="regular-text" placeholder="<?php _e('留空使用默认模型', 'argon'); ?>" />
+									<button type="button" class="button" id="argon-refresh-unified-models">
 										<span class="dashicons dashicons-update"></span> <?php _e('刷新', 'argon'); ?>
 									</button>
 								</label>
-								<div id="argon-unified-models-list" style="display:none; margin-top: 10px; max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background: #fafafa; border-radius: 4px;">
-									<p style="margin: 0; color: #666;"><?php _e('加载中...', 'argon'); ?></p>
+								<div id="argon-unified-models-list" style="display:none;">
+									<p class="description"><?php _e('加载中...', 'argon'); ?></p>
 								</div>
 							</p>
 							
@@ -2139,15 +2213,14 @@ function themeoptions_page(){
 							</p>
 						</div>
 						
-						<p class="description" style="margin-top: 15px;">
-							<span class="dashicons dashicons-info" style="color: #2271b1;"></span>
+						<p class="description">
 							<?php _e('统一管理所有 AI 服务商的 API 配置。不同功能可以使用不同的 API（在下方的文章摘要和评论审核设置中选择）', 'argon');?>
 						</p>
 					</td>
 				</tr>
 
 				<!-- ========== 文章摘要 ========== -->
-				<tr><th class="subtitle"><h2 id="ai-summary"><?php _e('文章摘要', 'argon');?></h2></th></tr>
+				<tr><th class="subtitle"><h3 id="ai-summary"><?php _e('文章摘要', 'argon');?></h3></th></tr>
 
 				<tr>
 					<th><label><?php _e('启用 AI 摘要', 'argon');?></label></th>
@@ -2202,9 +2275,9 @@ function themeoptions_page(){
 						<p class="description"><?php _e('清除后，所有文章的 AI 摘要将在下次访问时重新生成', 'argon');?></p>
 					</td>
 				</tr>
-
+				
 				<!-- ========== 评论审核 ========== -->
-				<tr><th class="subtitle"><h2 id="ai-spam-detection"><?php _e('评论审核', 'argon');?></h2></th></tr>
+				<tr><th class="subtitle"><h3 id="ai-spam-detection"><?php _e('评论审核', 'argon');?></h3></th></tr>
 
 				<tr>
 					<th><label><?php _e('启用 AI 识别', 'argon');?></label></th>
@@ -2449,12 +2522,7 @@ function themeoptions_page(){
 						let apiId = $(this).data('api-id');
 						let $btn = $(this);
 						let originalHtml = $btn.html();
-						let $msg = $btn.next('.argon-test-msg');
-						
-						if ($msg.length === 0) {
-							$msg = $('<div class="argon-test-msg" style="margin-top: 8px; font-size: 13px; line-height: 1.5;"></div>');
-							$btn.after($msg);
-						}
+						let $msg = $('#argon-unified-api-status');
 						
 						$btn.prop('disabled', true).html('<span class="dashicons dashicons-update dashicons-spin"></span> <?php _e('测试中...', 'argon'); ?>');
 						$msg.html('<span style="color: #666;"><?php _e('正在连接 API...', 'argon'); ?></span>');
@@ -2602,7 +2670,7 @@ function themeoptions_page(){
 
 					</td></tr>
 
-<!-- ========== 12. 文章功能 ========== -->
+<!-- ========== 13. 文章功能 ========== -->
 
 <tr><th class="subtitle"><h2 id="section-post-features"><?php _e('文章功能', 'argon');?></h2></th></tr>
 
