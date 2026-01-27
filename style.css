@@ -16971,10 +16971,10 @@ article.post.card .post-thumbnail {
 #rightbar .card:nth-child(3) { animation-delay: 200ms; }
 
 /* 5. 页面过渡和浮动按钮动�?*/
-#primary.pjax-loading { opacity: 0.6; transform: translateY(10px); pointer-events: none; }
-#primary { transition: opacity var(--animation-normal) var(--ease-standard), transform var(--animation-normal) var(--ease-standard); }
-@keyframes modernContentFadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-article.post.post-full:not(.no-animation) { animation: modernContentFadeIn var(--animation-slow) var(--ease-emphasized-decelerate); }
+#primary.pjax-loading { opacity: 0.6; transform: translate3d(0, 10px, 0); pointer-events: none; }
+#primary { transition: opacity var(--animation-normal) var(--ease-standard), transform var(--animation-normal) var(--ease-standard); will-change: opacity, transform; }
+@keyframes modernContentFadeIn { from { opacity: 0; transform: translate3d(0, 16px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+article.post.post-full:not(.no-animation) { animation: modernContentFadeIn var(--animation-slow) var(--ease-emphasized-decelerate) both; will-change: opacity, transform; }
 article.post.post-full { transform-origin: center top; }
 
 #float_action_buttons { transition: transform var(--animation-normal) var(--ease-back), opacity var(--animation-normal) var(--ease-standard); }
@@ -17047,9 +17047,290 @@ article img.loaded, .post-thumbnail img.loaded, article img:not([loading="lazy"]
 /* 11. 骨架屏和加载动画 */
 @keyframes modernSkeletonPulse { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 .skeleton { background: linear-gradient(90deg, var(--color-border-on-foreground) 25%, var(--color-border-on-foreground-deeper) 50%, var(--color-border-on-foreground) 75%); background-size: 200% 100%; animation: modernSkeletonPulse 1.5s ease-in-out infinite; border-radius: var(--card-radius); }
+/* ---------- 加载动画 ---------- */
 @keyframes modernSpinnerRotate { to { transform: rotate(360deg); } }
 .loading-spinner { width: 24px; height: 24px; border: 2px solid var(--color-border); border-top-color: var(--themecolor); border-radius: 50%; animation: modernSpinnerRotate 0.8s linear infinite; }
 #page-loading-bar { position: fixed; top: 0; left: 0; height: 3px; background: var(--themecolor-gradient); z-index: 9999; transition: width var(--animation-fast) var(--ease-out-expo); box-shadow: 0 0 10px rgba(var(--themecolor-rgbstr), 0.5); }
+
+/* 加载遮罩层 */
+#article-loading-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 9998;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(255, 255, 255, 0.3);
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transition: opacity var(--animation-normal) var(--ease-standard), visibility 0s linear var(--animation-normal);
+	-webkit-backdrop-filter: blur(var(--card-blur, 20px)) saturate(var(--card-saturate, 180%));
+	backdrop-filter: blur(var(--card-blur, 20px)) saturate(var(--card-saturate, 180%));
+}
+html.darkmode #article-loading-overlay {
+	background: rgba(0, 0, 0, 0.5);
+}
+#article-loading-overlay.is-visible {
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+	transition: opacity var(--animation-normal) var(--ease-standard), visibility 0s;
+}
+#article-loading-overlay.is-hiding {
+	opacity: 0;
+	visibility: visible;
+	pointer-events: none;
+	transition: opacity var(--animation-normal) var(--ease-standard);
+}
+
+/* 加载内容容器 */
+#article-loading-overlay .overlay-content {
+	width: min(720px, 90vw);
+	opacity: 0;
+	transform: translate3d(0, 12px, 0) scale(0.98);
+	transition: opacity var(--animation-normal) var(--ease-standard), transform var(--animation-normal) var(--ease-emphasized-decelerate);
+}
+#article-loading-overlay.is-visible .overlay-content {
+	opacity: 1;
+	transform: translate3d(0, 0, 0) scale(1);
+}
+
+/* 卡片容器 */
+#article-loading-overlay .overlay-card {
+	background: var(--color-foreground);
+	border-radius: var(--card-radius);
+	overflow: hidden;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+	margin-bottom: 24px;
+}
+html.darkmode #article-loading-overlay .overlay-card {
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* 缩略图 */
+#article-loading-overlay .overlay-thumb {
+	position: relative;
+	width: 100%;
+	height: 240px;
+	overflow: hidden;
+}
+#article-loading-overlay .overlay-thumb-shimmer {
+	position: absolute;
+	top: 0;
+	left: -100%;
+	width: 100%;
+	height: 100%;
+	background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+	animation: shimmer 2s infinite;
+}
+html.darkmode #article-loading-overlay .overlay-thumb-shimmer {
+	background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+}
+@keyframes shimmer {
+	to { left: 100%; }
+}
+
+/* 卡片主体 */
+#article-loading-overlay .overlay-body {
+	padding: 24px;
+}
+
+/* 元信息区域 */
+#article-loading-overlay .overlay-meta {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 16px;
+}
+#article-loading-overlay .overlay-avatar {
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+#article-loading-overlay .overlay-meta-text {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+#article-loading-overlay .overlay-meta-line {
+	height: 12px;
+	border-radius: 6px;
+}
+
+/* 标题 */
+#article-loading-overlay .overlay-title {
+	height: 28px;
+	margin-bottom: 16px;
+	border-radius: 14px;
+	width: 85%;
+}
+
+/* 文本行 */
+#article-loading-overlay .overlay-text {
+	margin-bottom: 16px;
+}
+#article-loading-overlay .overlay-row {
+	height: 14px;
+	margin: 8px 0;
+	border-radius: 7px;
+}
+
+/* 标签 */
+#article-loading-overlay .overlay-tags {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+#article-loading-overlay .overlay-tag {
+	width: 60px;
+	height: 24px;
+	border-radius: 12px;
+}
+
+/* 骨架屏动画 */
+#article-loading-overlay .skeleton {
+	background: linear-gradient(90deg, var(--color-border-on-foreground) 25%, var(--color-border-on-foreground-deeper) 50%, var(--color-border-on-foreground) 75%);
+	background-size: 200% 100%;
+	animation: modernSkeletonPulse 1.8s ease-in-out infinite;
+}
+
+/* 加载旋转器 */
+#article-loading-overlay .overlay-spinner {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 16px;
+	padding: 20px;
+}
+#article-loading-overlay .spinner-ring {
+	position: relative;
+	width: 56px;
+	height: 56px;
+}
+#article-loading-overlay .spinner-ring::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border-radius: 50%;
+	border: 3px solid var(--color-border);
+	opacity: 0.2;
+}
+#article-loading-overlay .spinner-ring-inner {
+	position: absolute;
+	inset: 0;
+	border-radius: 50%;
+	border: 3px solid transparent;
+	border-top-color: var(--themecolor);
+	border-right-color: var(--themecolor);
+	animation: spinnerRotate 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+}
+@keyframes spinnerRotate {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
+
+/* 加载文字 */
+#article-loading-overlay .spinner-text {
+	color: var(--color-font);
+	font-size: 15px;
+	font-weight: 500;
+	letter-spacing: 0.3px;
+}
+
+/* 加载点动画 */
+#article-loading-overlay .spinner-dots {
+	display: flex;
+	gap: 6px;
+}
+#article-loading-overlay .spinner-dots .dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--themecolor);
+	animation: dotBounce 1.4s infinite ease-in-out both;
+}
+#article-loading-overlay .spinner-dots .dot:nth-child(1) {
+	animation-delay: -0.32s;
+}
+#article-loading-overlay .spinner-dots .dot:nth-child(2) {
+	animation-delay: -0.16s;
+}
+@keyframes dotBounce {
+	0%, 80%, 100% {
+		transform: scale(0.6);
+		opacity: 0.5;
+	}
+	40% {
+		transform: scale(1);
+		opacity: 1;
+	}
+}
+
+/* 响应式适配 */
+@media (max-width: 768px) {
+	#article-loading-overlay .overlay-thumb {
+		height: 180px;
+	}
+	#article-loading-overlay .overlay-body {
+		padding: 20px;
+	}
+	#article-loading-overlay .overlay-title {
+		height: 24px;
+		width: 90%;
+	}
+	#article-loading-overlay .spinner-ring {
+		width: 48px;
+		height: 48px;
+	}
+	#article-loading-overlay .spinner-text {
+		font-size: 14px;
+	}
+}
+@media (max-width: 480px) {
+	#article-loading-overlay .overlay-content {
+		width: 95vw;
+	}
+	#article-loading-overlay .overlay-thumb {
+		height: 160px;
+	}
+	#article-loading-overlay .overlay-body {
+		padding: 16px;
+	}
+	#article-loading-overlay .overlay-meta {
+		gap: 10px;
+	}
+	#article-loading-overlay .overlay-avatar {
+		width: 36px;
+		height: 36px;
+	}
+}
+
+/* 页面过渡内容容器 */
+.page-transition-content {
+    will-change: opacity, transform;
+    transition: opacity var(--animation-normal) var(--ease-standard), transform var(--animation-normal) var(--ease-emphasized-decelerate);
+    transform: translate3d(0, 0, 0);
+}
+html.page-transition-enter .page-transition-content {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+}
+html.page-transition-enter.page-transition-active .page-transition-content {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .page-transition-content,
+    #article-loading-overlay,
+    #article-loading-overlay .overlay-content {
+        transition: none !important;
+        animation: none !important;
+    }
+}
 
 /* 12. 模态框和下拉菜单动�?*/
 .modal { transition: opacity var(--animation-normal) var(--ease-standard); }

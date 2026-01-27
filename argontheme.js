@@ -3210,14 +3210,42 @@ function showLoadingOverlay() {
 		el.id = 'article-loading-overlay';
 		el.innerHTML = `
 			<div class="overlay-content">
-				<div class="overlay-thumb skeleton"></div>
-				<div class="overlay-title skeleton"></div>
-				<div class="overlay-row skeleton" style="width: 90%"></div>
-				<div class="overlay-row skeleton" style="width: 75%"></div>
-				<div class="overlay-row skeleton" style="width: 85%"></div>
-				<div class="center-spinner">
-					<div class="loading-spinner"></div>
-					<span style="color: var(--color-font-sub); font-size: 14px;">加载中...</span>
+				<div class="overlay-card">
+					<div class="overlay-thumb skeleton">
+						<div class="overlay-thumb-shimmer"></div>
+					</div>
+					<div class="overlay-body">
+						<div class="overlay-meta">
+							<div class="overlay-avatar skeleton"></div>
+							<div class="overlay-meta-text">
+								<div class="overlay-meta-line skeleton" style="width: 120px"></div>
+								<div class="overlay-meta-line skeleton" style="width: 80px"></div>
+							</div>
+						</div>
+						<div class="overlay-title skeleton"></div>
+						<div class="overlay-text">
+							<div class="overlay-row skeleton" style="width: 95%"></div>
+							<div class="overlay-row skeleton" style="width: 88%"></div>
+							<div class="overlay-row skeleton" style="width: 92%"></div>
+							<div class="overlay-row skeleton" style="width: 78%"></div>
+						</div>
+						<div class="overlay-tags">
+							<div class="overlay-tag skeleton"></div>
+							<div class="overlay-tag skeleton"></div>
+							<div class="overlay-tag skeleton"></div>
+						</div>
+					</div>
+				</div>
+				<div class="overlay-spinner">
+					<div class="spinner-ring">
+						<div class="spinner-ring-inner"></div>
+					</div>
+					<div class="spinner-text">正在加载精彩内容</div>
+					<div class="spinner-dots">
+						<span class="dot"></span>
+						<span class="dot"></span>
+						<span class="dot"></span>
+					</div>
 				</div>
 			</div>
 		`;
