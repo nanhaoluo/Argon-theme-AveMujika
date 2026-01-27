@@ -15153,13 +15153,15 @@ html.darkmode body {
 
 /* 卡片悬浮效果增强 */
 .card {
-    border: 1px solid rgba(var(--themecolor-rgbstr), 0.06);
-    background-color: var(--color-foreground);
+	border: 1px solid rgba(var(--themecolor-rgbstr), 0.06);
+	background-color: rgba(255, 255, 255, var(--card-opacity));
+	-webkit-backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
+	backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
 }
 
 html.darkmode .card {
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    background-color: var(--color-foreground);
+	border: 1px solid rgba(255, 255, 255, 0.05);
+	background-color: rgba(66, 66, 66, var(--card-opacity));
 }
 
 /* 文章卡片优化 */
