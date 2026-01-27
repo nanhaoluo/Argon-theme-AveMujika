@@ -1519,4 +1519,6 @@ if (apply_filters('argon_page_background_url', get_option('argon_page_background
 
 
 <div id="content" class="site-content">
+	<div class="container">
+		<div class="row">
 

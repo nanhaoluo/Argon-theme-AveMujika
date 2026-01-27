@@ -24,10 +24,10 @@
 					</footer>
 
 				</main>
-
 			</div>
-
 		</div>
+	</div>
+</div>
 
 		<!-- 加载主题核心 JS -->
 		<?php $assets_version = function_exists('argon_get_assets_version') ? argon_get_assets_version() : $GLOBALS['theme_version']; ?>
