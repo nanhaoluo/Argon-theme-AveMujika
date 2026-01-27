@@ -2162,13 +2162,13 @@ function themeoptions_page(){
 							</p>
 							
 							<p>
-								<label>
-									<strong><?php _e('API 密钥:', 'argon'); ?></strong> *<br>
-									<input type="password" id="argon-unified-api-form-key" class="regular-text" placeholder="sk-..." />
-									<button type="button" class="button" id="argon-toggle-unified-password" style="margin-left: 5px;">
-										<span class="dashicons dashicons-visibility"></span>
-									</button>
-								</label>
+								<label for="argon-unified-api-form-key">
+									<strong><?php _e('API 密钥:', 'argon'); ?></strong> *
+								</label><br>
+								<input type="password" id="argon-unified-api-form-key" class="regular-text" placeholder="sk-..." />
+								<button type="button" class="button" id="argon-toggle-unified-password" style="margin-left: 5px;">
+									<span class="dashicons dashicons-visibility"></span>
+								</button>
 							</p>
 							
 							<p>

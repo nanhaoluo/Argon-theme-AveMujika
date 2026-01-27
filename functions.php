@@ -9291,12 +9291,20 @@ function argon_get_openai_models($api_key, $custom_endpoint = '') {
 	
 	$models = [];
 	foreach ($body['data'] as $model) {
-		// 只显示 GPT 聊天模型
-		if (strpos($model['id'], 'gpt') !== false && strpos($model['id'], 'instruct') === false) {
-			$models[] = [
-				'id' => $model['id'],
-				'name' => $model['id']
-			];
+		// 只显示 GPT 聊天模型，排除嵌入、音频、图像等模型
+		if (isset($model['id'])) {
+			$model_id = $model['id'];
+			// 只保留 gpt 开头的模型，排除其他类型
+			if (strpos($model_id, 'gpt') === 0 && 
+				strpos($model_id, 'embedding') === false && 
+				strpos($model_id, 'whisper') === false && 
+				strpos($model_id, 'tts') === false && 
+				strpos($model_id, 'dall-e') === false) {
+				$models[] = [
+					'id' => $model['id'],
+					'name' => $model['id']
+				];
+			}
 		}
 	}
 	
@@ -9735,8 +9743,16 @@ function argon_get_siliconflow_models($api_key, $custom_endpoint = '') {
 	
 	$models = [];
 	foreach ($body['data'] as $model) {
-		// 只显示聊天模型
-		if (isset($model['id']) && strpos($model['id'], 'Instruct') !== false) {
+		// 过滤掉嵌入模型和图像模型，只保留聊天模型
+		if (isset($model['id'])) {
+			$model_id = $model['id'];
+			// 排除嵌入模型和图像模型
+			if (strpos($model_id, 'embedding') !== false || 
+				strpos($model_id, 'FLUX') !== false || 
+				strpos($model_id, 'stable-diffusion') !== false ||
+				strpos($model_id, 'kolors') !== false) {
+				continue;
+			}
 			$name = isset($model['name']) ? $model['name'] : $model['id'];
 			$models[] = [
 				'id' => $model['id'],
