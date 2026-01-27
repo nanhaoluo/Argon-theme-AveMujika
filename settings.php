@@ -58,9 +58,14 @@ function themeoptions_page(){
 				width: 100%;
 			}
 			#argon-unified-api-list {
-				max-width: 1000px;
-				width: calc(100% - 240px);
+				max-width: 1200px;
+				width: 100%;
 				margin: 0;
+			}
+			@media screen and (min-width: 1600px) {
+				#argon-unified-api-list {
+					width: calc(100% - 200px);
+				}
 			}
 			@media screen and (max-width: 1200px) {
 				#argon-unified-api-list {
@@ -81,37 +86,37 @@ function themeoptions_page(){
 			}
 			.argon-ai-api-table th:nth-child(1),
 			.argon-ai-api-table td:nth-child(1) {
-				width: 70px;
+				width: 120px;
 			}
 			.argon-ai-api-table th:nth-child(2),
 			.argon-ai-api-table td:nth-child(2) {
-				width: 80px;
+				width: 110px;
 			}
 			.argon-ai-api-table th:nth-child(3),
 			.argon-ai-api-table td:nth-child(3) {
-				width: 100px;
+				width: 150px;
 			}
 			.argon-ai-api-table th:nth-child(4),
 			.argon-ai-api-table td:nth-child(4) {
-				width: 120px;
+				width: 140px;
 			}
 			.argon-ai-api-table th:nth-child(5),
 			.argon-ai-api-table td:nth-child(5) {
-				width: 120px;
+				width: 180px;
 			}
 			.argon-ai-api-table th:nth-child(6),
 			.argon-ai-api-table td:nth-child(6) {
-				width: 80px;
+				width: 100px;
 			}
 			.argon-ai-api-table th:nth-child(7),
 			.argon-ai-api-table td:nth-child(7) {
-				width: 140px;
+				width: 200px;
 				overflow: visible;
 				text-overflow: clip;
 			}
 			.argon-ai-api-table td code {
 				display: inline-block;
-				max-width: 120px;
+				max-width: 160px;
 				overflow: hidden;
 				text-overflow: ellipsis;
 				white-space: nowrap;
