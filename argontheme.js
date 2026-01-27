@@ -3199,73 +3199,167 @@ var pjaxContainers = pjaxContainerSelectors.filter(function(selector) {
 	return document.querySelector(selector);
 });
 
+// ==========================================================================
+// 页面加载动画管理器
+// ==========================================================================
+
 /**
- * 显示页面加载动画遮罩
+ * 加载动画管理器
+ * 负责创建、显示和隐藏页面加载动画
  */
-function showLoadingOverlay() {
-	let el = document.getElementById('article-loading-overlay');
-	if (!el) {
-		// 动态创建加载动画元素
-		el = document.createElement('div');
-		el.id = 'article-loading-overlay';
-		el.innerHTML = `
-			<div class="overlay-content">
-				<div class="overlay-card">
-					<div class="overlay-thumb skeleton">
-						<div class="overlay-thumb-shimmer"></div>
+const LoadingOverlay = (function() {
+	const OVERLAY_ID = 'article-loading-overlay';
+	const ANIMATION_DURATION = 300;
+	const CLASS_VISIBLE = 'is-visible';
+	const CLASS_HIDING = 'is-hiding';
+	
+	let overlayElement = null;
+	let hideTimer = null;
+	
+	/**
+	 * 创建骨架屏 HTML 结构
+	 * @returns {string} HTML 字符串
+	 */
+	function createSkeletonHTML() {
+		return `
+			<div class="loading-overlay-content">
+				<div class="loading-card">
+					<div class="loading-thumb">
+						<div class="loading-shimmer"></div>
 					</div>
-					<div class="overlay-body">
-						<div class="overlay-meta">
-							<div class="overlay-avatar skeleton"></div>
-							<div class="overlay-meta-text">
-								<div class="overlay-meta-line skeleton" style="width: 120px"></div>
-								<div class="overlay-meta-line skeleton" style="width: 80px"></div>
+					<div class="loading-body">
+						<div class="loading-meta">
+							<div class="loading-avatar"></div>
+							<div class="loading-meta-text">
+								<div class="loading-meta-line" style="width: 120px"></div>
+								<div class="loading-meta-line" style="width: 80px"></div>
 							</div>
 						</div>
-						<div class="overlay-title skeleton"></div>
-						<div class="overlay-text">
-							<div class="overlay-row skeleton" style="width: 95%"></div>
-							<div class="overlay-row skeleton" style="width: 88%"></div>
-							<div class="overlay-row skeleton" style="width: 92%"></div>
-							<div class="overlay-row skeleton" style="width: 78%"></div>
+						<div class="loading-title"></div>
+						<div class="loading-text">
+							<div class="loading-line" style="width: 95%"></div>
+							<div class="loading-line" style="width: 88%"></div>
+							<div class="loading-line" style="width: 92%"></div>
+							<div class="loading-line" style="width: 78%"></div>
 						</div>
-						<div class="overlay-tags">
-							<div class="overlay-tag skeleton"></div>
-							<div class="overlay-tag skeleton"></div>
-							<div class="overlay-tag skeleton"></div>
+						<div class="loading-tags">
+							<div class="loading-tag"></div>
+							<div class="loading-tag"></div>
+							<div class="loading-tag"></div>
 						</div>
 					</div>
 				</div>
-				<div class="overlay-spinner">
-					<div class="spinner-ring">
-						<div class="spinner-ring-inner"></div>
+				<div class="loading-spinner-wrapper">
+					<div class="loading-spinner">
+						<div class="loading-spinner-ring"></div>
 					</div>
-					<div class="spinner-text">正在加载精彩内容</div>
-					<div class="spinner-dots">
-						<span class="dot"></span>
-						<span class="dot"></span>
-						<span class="dot"></span>
+					<div class="loading-text-hint">正在加载精彩内容</div>
+					<div class="loading-dots">
+						<span class="loading-dot"></span>
+						<span class="loading-dot"></span>
+						<span class="loading-dot"></span>
 					</div>
 				</div>
 			</div>
 		`;
-		document.body.appendChild(el);
 	}
-	el.classList.remove('is-hiding');
-	el.classList.add('is-visible');
+	
+	/**
+	 * 创建加载动画元素
+	 * @returns {HTMLElement} 创建的元素
+	 */
+	function createElement() {
+		const el = document.createElement('div');
+		el.id = OVERLAY_ID;
+		el.className = 'loading-overlay';
+		el.innerHTML = createSkeletonHTML();
+		return el;
+	}
+	
+	/**
+	 * 获取或创建加载动画元素
+	 * @returns {HTMLElement} 加载动画元素
+	 */
+	function getElement() {
+		if (!overlayElement) {
+			overlayElement = document.getElementById(OVERLAY_ID);
+		}
+		if (!overlayElement) {
+			overlayElement = createElement();
+			document.body.appendChild(overlayElement);
+		}
+		return overlayElement;
+	}
+	
+	/**
+	 * 显示加载动画
+	 */
+	function show() {
+		// 清除可能存在的隐藏定时器
+		if (hideTimer) {
+			clearTimeout(hideTimer);
+			hideTimer = null;
+		}
+		
+		const el = getElement();
+		el.classList.remove(CLASS_HIDING);
+		
+		// 强制重排以确保动画生效
+		void el.offsetWidth;
+		
+		el.classList.add(CLASS_VISIBLE);
+	}
+	
+	/**
+	 * 隐藏加载动画
+	 */
+	function hide() {
+		const el = document.getElementById(OVERLAY_ID);
+		if (!el) return;
+		
+		el.classList.add(CLASS_HIDING);
+		
+		// 动画结束后清理状态
+		hideTimer = setTimeout(function() {
+			el.classList.remove(CLASS_VISIBLE, CLASS_HIDING);
+			hideTimer = null;
+		}, ANIMATION_DURATION);
+	}
+	
+	/**
+	 * 销毁加载动画元素
+	 */
+	function destroy() {
+		if (hideTimer) {
+			clearTimeout(hideTimer);
+			hideTimer = null;
+		}
+		if (overlayElement && overlayElement.parentNode) {
+			overlayElement.parentNode.removeChild(overlayElement);
+			overlayElement = null;
+		}
+	}
+	
+	// 公开 API
+	return {
+		show: show,
+		hide: hide,
+		destroy: destroy
+	};
+})();
+
+/**
+ * 显示页面加载动画（向后兼容）
+ */
+function showLoadingOverlay() {
+	LoadingOverlay.show();
 }
 
 /**
- * 隐藏页面加载动画遮罩
+ * 隐藏页面加载动画（向后兼容）
  */
 function hideLoadingOverlay() {
-	let el = document.getElementById('article-loading-overlay');
-	if (!el) return;
-	el.classList.add('is-hiding');
-	setTimeout(function() {
-		el.classList.remove('is-visible');
-		el.classList.remove('is-hiding');
-	}, 300);
+	LoadingOverlay.hide();
 }
 function startPageTransition() {
 	document.documentElement.classList.add('page-transition-enter');
@@ -3479,7 +3573,7 @@ $(document).on("click", ".reference-link , .reference-list-backlink" , function(
 	}, 1);
 });
 
-/*Tags Dialog pjax 加载后自动关闭/
+/*Tags Dialog pjax 加载后自动关闭 */
 $(document).on("click" , "#blog_tags .tag" , function(){
 	$("#blog_tags button.close").trigger("click");
 });
