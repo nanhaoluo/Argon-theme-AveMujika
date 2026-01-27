@@ -2864,7 +2864,14 @@ function post_comment_preprocessing($comment){
 					// 检查是否触发关键字
 					$keyword_check = argon_check_spam_keywords($temp_comment);
 					if ($keyword_check && $keyword_check['triggered']) {
-						$should_check = true;
+						// 如果是黑名单关键字，直接标记为垃圾评论
+						if (isset($keyword_check['is_blacklist']) && $keyword_check['is_blacklist']) {
+							$comment['comment_approved'] = 'spam';
+							$_POST['_argon_spam_blacklist_keywords'] = json_encode($keyword_check['keywords']);
+						} else {
+							// 触发关键字，需要 AI 检测
+							$should_check = true;
+						}
 					}
 					// 全量检测模式
 					elseif ($mode === 'all') {
@@ -10029,18 +10036,49 @@ function argon_detect_spam_comment_sync($comment) {
 /**
  * 检查评论是否触发关键字
  * @param object $comment 评论对象
- * @return array|false ['triggered' => bool, 'keywords' => array, 'confidence' => float]
+ * @return array|false ['triggered' => bool, 'keywords' => array, 'confidence' => float, 'is_blacklist' => bool]
  */
 function argon_check_spam_keywords($comment) {
-	// 获取关键字列表
-	$keywords_text = get_option('argon_comment_spam_detection_keywords', '');
-	if (empty($keywords_text)) {
+	// 先检查黑名单关键字（直接判定为垃圾）
+	$blacklist_keywords_text = get_option('argon_comment_spam_detection_keywords', '');
+	if (!empty($blacklist_keywords_text)) {
+		$blacklist_keywords = array_filter(array_map('trim', explode("\n", $blacklist_keywords_text)));
+		if (!empty($blacklist_keywords)) {
+			$check_text = $comment->comment_author . ' ' . $comment->comment_content;
+			$check_text = strtolower($check_text);
+			
+			$triggered_blacklist = [];
+			foreach ($blacklist_keywords as $keyword) {
+				$keyword = strtolower(trim($keyword));
+				if (empty($keyword)) {
+					continue;
+				}
+				
+				if (strpos($check_text, $keyword) !== false) {
+					$triggered_blacklist[] = $keyword;
+				}
+			}
+			
+			if (!empty($triggered_blacklist)) {
+				return [
+					'triggered' => true,
+					'keywords' => $triggered_blacklist,
+					'confidence' => 1.0,
+					'is_blacklist' => true
+				];
+			}
+		}
+	}
+	
+	// 再检查触发关键字（需要 AI 检测）
+	$trigger_keywords_text = get_option('argon_comment_spam_detection_trigger_keywords', '');
+	if (empty($trigger_keywords_text)) {
 		return false;
 	}
 	
 	// 按行分割关键字
-	$keywords = array_filter(array_map('trim', explode("\n", $keywords_text)));
-	if (empty($keywords)) {
+	$trigger_keywords = array_filter(array_map('trim', explode("\n", $trigger_keywords_text)));
+	if (empty($trigger_keywords)) {
 		return false;
 	}
 	
@@ -10049,7 +10087,7 @@ function argon_check_spam_keywords($comment) {
 	$check_text = strtolower($check_text);
 	
 	$triggered_keywords = [];
-	foreach ($keywords as $keyword) {
+	foreach ($trigger_keywords as $keyword) {
 		$keyword = strtolower(trim($keyword));
 		if (empty($keyword)) {
 			continue;
@@ -10067,7 +10105,8 @@ function argon_check_spam_keywords($comment) {
 		return [
 			'triggered' => true,
 			'keywords' => $triggered_keywords,
-			'confidence' => $confidence
+			'confidence' => $confidence,
+			'is_blacklist' => false
 		];
 	}
 	
