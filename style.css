@@ -227,6 +227,13 @@ License URI: https://www.gnu.org/licenses/gpl-3.0.html
 	--state-focus-opacity: 0.12;
 	--state-pressed-opacity: 0.12;
 	--state-dragged-opacity: 0.16;
+
+	/* 透明度与毛玻璃效果控�?*/
+	--bg-opacity: 0.90;
+	--card-opacity: 0.60;
+	--card-blur: 20px;
+	--card-saturate: 180%;
+	--toolbar-blur: 12px;
 }
 
 html.darkmode body {
@@ -991,7 +998,7 @@ html.darkmode .mermaid-loading-spinner {
 	gap: 5px;
 	z-index: 10;
 	background: rgba(255, 255, 255, 0.85);
-	backdrop-filter: blur(10px);
+	backdrop-filter: blur(calc(var(--card-blur) / 2));
 	border-radius: 6px;
 	padding: 5px;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
@@ -1110,11 +1117,11 @@ html.darkmode .mermaid-zoom-btn[title]::after {
 
 html.darkmode .mermaid-hint {
 	background: rgba(255, 255, 255, 0.15);
-	backdrop-filter: blur(10px);
+	backdrop-filter: blur(calc(var(--card-blur) / 2));
 }
 
-/* 拖拽时的光标和视觉反馈 */
-/* 需求 13.1, 13.2, 13.4: 优化拖拽视觉反馈 */
+/* 拖拽时的光标和视觉反�?*/
+/* 需�?13.1, 13.2, 13.4: 优化拖拽视觉反馈 */
 .mermaid-container-inner.dragging {
 	cursor: grabbing !important;
 	user-select: none;
@@ -1127,7 +1134,7 @@ html.darkmode .mermaid-hint {
 	cursor: grab;
 }
 
-/* 拖拽时禁用 SVG 内的文本选择 */
+/* 拖拽时禁�?SVG 内的文本选择 */
 .mermaid-container-inner.dragging svg {
 	user-select: none;
 	-webkit-user-select: none;
@@ -1135,7 +1142,7 @@ html.darkmode .mermaid-hint {
 	-ms-user-select: none;
 }
 
-/* 需求 14: Mermaid 全屏模式样式 */
+/* 需�?14: Mermaid 全屏模式样式 */
 .mermaid-fullscreen {
 	position: fixed !important;
 	top: 0 !important;
@@ -1157,7 +1164,7 @@ html.darkmode .mermaid-fullscreen {
 	background: var(--color-widgets) !important;
 }
 
-/* 全屏模式下的工具栏 */
+/* 全屏模式下的工具�?*/
 .mermaid-fullscreen .mermaid-zoom-controls {
 	opacity: 1;
 	transform: translateY(0);
@@ -1170,13 +1177,13 @@ html.darkmode .mermaid-fullscreen .mermaid-zoom-controls {
 	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 }
 
-/* 全屏按钮激活状态 */
+/* 全屏按钮激活状�?*/
 .mermaid-zoom-btn[data-action="fullscreen"].active {
 	background: rgba(94, 114, 228, 0.2);
 	color: var(--themecolor);
 }
 
-/* 需求 15: Mermaid 导出功能样式 */
+/* 需�?15: Mermaid 导出功能样式 */
 /* 导出按钮 */
 .mermaid-export-btn {
 	position: relative;
@@ -1240,7 +1247,7 @@ html.darkmode .mermaid-export-option:hover {
 	background: rgba(94, 114, 228, 0.2);
 }
 
-/* 需求 15.5: 导出错误提示 */
+/* 需�?15.5: 导出错误提示 */
 .mermaid-export-error {
 	position: absolute;
 	top: 50%;
@@ -1304,8 +1311,8 @@ article.card .mermaid-container {
 	margin: 20px -20px;
 }
 
-/* 响应式调整 */
-/* 需求 16.1: 移动端工具栏适配 - 调整按钮大小 */
+/* 响应式调�?*/
+/* 需�?16.1: 移动端工具栏适配 - 调整按钮大小 */
 @media screen and (max-width: 768px) {
 	.mermaid-container {
 		margin: 15px -15px;
@@ -1316,7 +1323,7 @@ article.card .mermaid-container {
 		margin: 15px -15px;
 	}
 	
-	/* 移动端工具栏按钮放大，便于触摸 */
+	/* 移动端工具栏按钮放大，便于触�?*/
 	.mermaid-zoom-controls {
 		padding: 8px;
 		gap: 8px;
@@ -1334,14 +1341,14 @@ article.card .mermaid-container {
 		padding: 0 10px;
 	}
 	
-	/* 移动端提示文本调整 */
+	/* 移动端提示文本调�?*/
 	.mermaid-hint {
 		font-size: 11px;
 		padding: 5px 10px;
 		bottom: 8px;
 	}
 	
-	/* 移动端导出菜单调整 */
+	/* 移动端导出菜单调�?*/
 	.mermaid-export-menu {
 		right: 8px;
 		top: 50px;
@@ -1354,7 +1361,7 @@ article.card .mermaid-container {
 	}
 }
 
-/* 需求 16.5: 横屏模式优化 - 自动调整图表布局 */
+/* 需�?16.5: 横屏模式优化 - 自动调整图表布局 */
 @media screen and (max-width: 768px) and (orientation: landscape) {
 	.mermaid-container {
 		max-height: 70vh;
@@ -1365,7 +1372,7 @@ article.card .mermaid-container {
 		max-height: 65vh;
 	}
 	
-	/* 横屏时工具栏更紧凑 */
+	/* 横屏时工具栏更紧�?*/
 	.mermaid-zoom-controls {
 		padding: 5px;
 		gap: 5px;
@@ -2431,13 +2438,9 @@ body.leftbar-can-headroom.headroom---unpinned #navbar-main {
 }
 
 #navbar_search_input_container.open .input-group {
-
 	background: rgba(255, 255, 255, 0.2);
-
-	-webkit-backdrop-filter: blur(12px);
-
-	backdrop-filter: blur(12px);
-
+	-webkit-backdrop-filter: blur(var(--toolbar-blur));
+	backdrop-filter: blur(var(--toolbar-blur));
 }
 
 #navbar_search_input_container.open .input-group:hover,
@@ -2575,27 +2578,18 @@ html.navbar-absolute:not(.no-banner) #navbar-main {
 }
 
 html.no-banner #navbar-main {
-
-	background-color: rgba(var(--themecolor-rgbstr), 0.82) !important;
-
+	background-color: rgba(var(--themecolor-rgbstr), calc(var(--bg-opacity) - 0.08)) !important;
 }
 
 html.no-banner.toolbar-blur #navbar-main {
-
-	background-color: rgba(var(--themecolor-rgbstr), 0.6) !important;
-
-	-webkit-backdrop-filter: blur(20px) saturate(130%);
-
-	backdrop-filter: blur(20px) saturate(130%);
-
+	background-color: rgba(var(--themecolor-rgbstr), calc(var(--card-opacity))) !important;
+	-webkit-backdrop-filter: blur(var(--card-blur)) saturate(130%);
+	backdrop-filter: blur(var(--card-blur)) saturate(130%);
 }
 
 html.no-banner.toolbar-blur #navbar-main.navbar-no-blur {
-
-	background-color: rgba(var(--themecolor-rgbstr), 0.85) !important;
-
+	background-color: rgba(var(--themecolor-rgbstr), calc(var(--bg-opacity) - 0.05)) !important;
 	backdrop-filter: blur(0px);
-
 }
 
 .banner {
@@ -3952,10 +3946,8 @@ html.darkmode #float_action_buttons #fabtn_toggle_darkmode i.fa-lightbulb-o {
 	box-shadow: 
 		0 12px 40px rgba(0, 0, 0, 0.15),
 		0 4px 12px rgba(0, 0, 0, 0.08);
-
-	-webkit-backdrop-filter: blur(24px) saturate(180%);
-
-	backdrop-filter: blur(24px) saturate(180%);
+	-webkit-backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
+	backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
 	overflow-y: auto;
 }
 
@@ -10589,9 +10581,9 @@ html.darkmode.amoled-dark #content:after {
 		border-radius: 50%;
 		background: rgba(255, 255, 255, 0.15);
 
-		-webkit-backdrop-filter: blur(10px);
+		-webkit-backdrop-filter: blur(calc(var(--card-blur) / 2));
 
-		backdrop-filter: blur(10px);
+		backdrop-filter: blur(calc(var(--card-blur) / 2));
 		cursor: pointer;
 		transition: all var(--animation-fast) var(--ease-standard);
 		color: #fff;
@@ -10660,9 +10652,9 @@ html.darkmode.amoled-dark #content:after {
 		gap: 0;
 		background: rgba(255, 255, 255, 0.12);
 
-		-webkit-backdrop-filter: blur(10px);
+		-webkit-backdrop-filter: blur(calc(var(--card-blur) / 2));
 
-		backdrop-filter: blur(10px);
+		backdrop-filter: blur(calc(var(--card-blur) / 2));
 		border-radius: 16px;
 		padding: 12px 8px;
 		position: relative;
@@ -11751,10 +11743,8 @@ html.darkmode.amoled-dark #content:after {
 		height: 100vh;
 		z-index: 1001;
 		background: rgba(0, 0, 0, 0.5);
-
-		-webkit-backdrop-filter: blur(2px);
-
-		backdrop-filter: blur(2px);
+		-webkit-backdrop-filter: blur(calc(var(--toolbar-blur) / 6));
+		backdrop-filter: blur(calc(var(--toolbar-blur) / 6));
 		opacity: 0;
 		visibility: hidden;
 		transition: opacity var(--animation-normal) var(--ease-standard),
@@ -12219,10 +12209,8 @@ html.darkmode.amoled-dark #content:after {
 	}
 	
 	html.leftbar-opened #sidebar_mask {
-
-		-webkit-backdrop-filter: blur(4px);
-
-		backdrop-filter: blur(4px);
+		-webkit-backdrop-filter: blur(calc(var(--toolbar-blur) / 3));
+		backdrop-filter: blur(calc(var(--toolbar-blur) / 3));
 	}
 }
 
@@ -12803,7 +12791,7 @@ html.using-safari .friend-link-description:after {
   * 萌娘百科仅开放Vector皮肤 
   * 请尊重萌娘百科版权，以下代码除非注明均是管理员手敲出来的！！！复制需要注明源自萌娘百科，并且附上URL地址 `http://zh.moegirl.org/MediaWiki:Common.css` 
 /* ==========================================================================
-   黑幕效果（Spoiler/Heimu）
+   黑幕效果（Spoiler/Heimu�?
    ========================================================================== */
 
 /* 基础黑幕样式 */
@@ -12822,7 +12810,7 @@ a .heimu,
 	transition: inherit;
 }
 
-/* 悬停和激活状态 */
+/* 悬停和激活状�?*/
 .heimu:hover,
 .heimu:active,
 .heimu:hover .heimu,
@@ -12883,7 +12871,7 @@ html.darkmode .color-curtain:hover a {
 	color: inherit !important;
 }
 
-/* 评论区黑幕 */
+/* 评论区黑�?*/
 html.darkmode .comment-content .heimu,
 html.darkmode .comment-content .color-curtain {
 	background-color: #1a1a1a !important;
@@ -12897,7 +12885,7 @@ html.darkmode .comment-content .color-curtain:active {
 	background-color: transparent !important;
 }
 
-/* 禁用链接下划线动画（防止冲突） */
+/* 禁用链接下划线动画（防止冲突�?*/
 article .post-content .heimu a:before,
 article .entry-content .heimu a:before,
 .article-content .heimu a:before,
@@ -12908,7 +12896,7 @@ article .post-content .huhua a:before {
 	content: none !important;
 }
 
-/* 确保宏内链接继承过渡属性 */
+/* 确保宏内链接继承过渡属�?*/
 .heimu a,
 .color-curtain a,
 .text-blur a,
@@ -12955,10 +12943,8 @@ article .post-content .huhua a:before {
 	right: 0;
 	bottom: 0;
 	background: rgba(0, 0, 0, 0.6);
-
-	-webkit-backdrop-filter: blur(8px);
-
-	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(calc(var(--card-blur) / 2.5));
+	backdrop-filter: blur(calc(var(--card-blur) / 2.5));
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -13626,11 +13612,8 @@ html.darkmode .todo-add-form input:focus {
 	border-radius: 14px;
 	gap: 4px;
 	color: #fff;
-	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-
-	-webkit-backdrop-filter: blur(4px);
-
-	backdrop-filter: blur(4px);
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);	-webkit-backdrop-filter: blur(calc(var(--toolbar-blur) / 3));
+	backdrop-filter: blur(calc(var(--toolbar-blur) / 3));
 }
 
 .leftbar-mobile-user-name .duolingo-streak.not-done {
@@ -14146,10 +14129,10 @@ html.darkmode .argon-fl-item:hover {
 
 /* 顶栏基础增强 - 柔和毛玻璃效�?*/
 #navbar-main {
-    -webkit-backdrop-filter: blur(12px) saturate(120%);
-    backdrop-filter: blur(12px) saturate(120%);
-    border-bottom: none;
-    box-shadow: none;
+	-webkit-backdrop-filter: blur(var(--toolbar-blur)) saturate(120%);
+	backdrop-filter: blur(var(--toolbar-blur)) saturate(120%);
+	border-bottom: none;
+	box-shadow: none;
 }
 
 /* 顶栏底部柔和过渡伪元�?*/
@@ -14182,8 +14165,8 @@ html.navbar-absolute:not(.no-banner) #navbar-main.navbar-ontop {
         rgba(0, 0, 0, 0.1) 50%,
         transparent 100%
     ) !important;
-    -webkit-backdrop-filter: blur(8px);
-    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(calc(var(--toolbar-blur) / 1.5));
+    backdrop-filter: blur(calc(var(--toolbar-blur) / 1.5));
 }
 
 /* 顶栏渐变背景模式 */
@@ -14196,13 +14179,13 @@ html.toolbar-gradient #navbar-main {
 
 /* 顶栏玻璃态模�?*/
 html.toolbar-glass #navbar-main {
-    background: rgba(255, 255, 255, 0.12) !important;
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    backdrop-filter: blur(20px) saturate(180%);
-    border-bottom: none;
+	background: rgba(255, 255, 255, var(--bg-opacity)) !important;
+	-webkit-backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
+	backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
+	border-bottom: none;
 }
 html.toolbar-glass.darkmode #navbar-main {
-    background: rgba(0, 0, 0, 0.25) !important;
+	background: rgba(0, 0, 0, var(--bg-opacity)) !important;
 }
 
 /* 顶栏阴影增强 - 更柔�?*/
@@ -14989,10 +14972,10 @@ article .post-content a:hover {
 
 /* 搜索框展开时默认毛玻璃状�?*/
 #navbar_search_input_container.open .input-group {
-    background: rgba(255, 255, 255, 0.15) !important;
-    -webkit-backdrop-filter: blur(20px);
-    backdrop-filter: blur(20px);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+	background: rgba(255, 255, 255, 0.15) !important;
+	-webkit-backdrop-filter: blur(var(--card-blur));
+	backdrop-filter: blur(var(--card-blur));
+	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.2);
 }
 
 #navbar_search_input_container.open .input-group .input-group-text {
@@ -15011,10 +14994,10 @@ article .post-content a:hover {
 #navbar_search_input_container.open .input-group:hover,
 #navbar_search_input_container.open .input-group:focus-within,
 #navbar_search_input_container.open.has-text .input-group {
-    background: rgba(255, 255, 255, 0.95) !important;
-    -webkit-backdrop-filter: blur(20px);
-    backdrop-filter: blur(20px);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+	background: rgba(255, 255, 255, 0.95) !important;
+	-webkit-backdrop-filter: blur(var(--card-blur));
+	backdrop-filter: blur(var(--card-blur));
+	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
 }
 
 #navbar_search_input_container.open .input-group:hover .input-group-text,
@@ -15572,18 +15555,18 @@ body {
 
 /* 响应式优�?*/
 @media (max-width: 768px) {
-    .card {
-        -webkit-backdrop-filter: blur(6px);
-        backdrop-filter: blur(6px);
-    }
-    
-    article.post.card:hover {
-        transform: none;
-    }
-    
-    .banner::after {
-        height: 80px;
-    }
+	.card {
+		-webkit-backdrop-filter: blur(calc(var(--card-blur) / 3));
+		backdrop-filter: blur(calc(var(--card-blur) / 3));
+	}
+	
+	article.post.card:hover {
+		transform: none;
+	}
+	
+	.banner::after {
+		height: 80px;
+	}
 }
 
 /* 减少动画偏好 */
@@ -15829,29 +15812,29 @@ html.darkmode .related-posts.card {
 
 /* 下拉菜单 Apple 风格 */
 .dropdown-menu {
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    box-shadow: 
-        0 10px 40px rgba(0, 0, 0, 0.12),
-        0 2px 10px rgba(0, 0, 0, 0.06);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    backdrop-filter: blur(20px) saturate(180%);
-    background: rgba(255, 255, 255, 0.9);
+	border: 1px solid rgba(0, 0, 0, 0.08);
+	box-shadow: 
+		0 10px 40px rgba(0, 0, 0, 0.12),
+		0 2px 10px rgba(0, 0, 0, 0.06);
+	-webkit-backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
+	backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
+	background: rgba(255, 255, 255, var(--bg-opacity));
 }
 
 html.darkmode .dropdown-menu {
-    background: rgba(40, 40, 40, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+	background: rgba(40, 40, 40, var(--bg-opacity));
+	border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* 模态框 Apple 风格 */
 .modal-content {
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 
-        0 25px 80px rgba(0, 0, 0, 0.25),
-        0 10px 30px rgba(0, 0, 0, 0.1);
-    -webkit-backdrop-filter: blur(30px) saturate(150%);
-    backdrop-filter: blur(30px) saturate(150%);
-    background: rgba(255, 255, 255, 0.95);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	box-shadow: 
+		0 25px 80px rgba(0, 0, 0, 0.25),
+		0 10px 30px rgba(0, 0, 0, 0.1);
+	-webkit-backdrop-filter: blur(calc(var(--card-blur) * 1.5)) saturate(calc(var(--card-saturate) * 0.83));
+	backdrop-filter: blur(calc(var(--card-blur) * 1.5)) saturate(calc(var(--card-saturate) * 0.83));
+	background: rgba(255, 255, 255, 0.95);
 }
 
 html.darkmode .modal-content {
@@ -16182,8 +16165,8 @@ html.darkmode.style-glass article.post.post-full.card {
         justify-content: center;
         border-radius: 50%;
         background: rgba(255, 255, 255, 0.18);
-        -webkit-backdrop-filter: blur(8px);
-        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(calc(var(--card-blur) / 2.5));
+        backdrop-filter: blur(calc(var(--card-blur) / 2.5));
         color: #fff;
         cursor: pointer;
         z-index: 2;
@@ -16251,17 +16234,17 @@ html.darkmode.style-glass article.post.post-full.card {
         margin: 0 auto;
     }
     
-    /* 统计数据 */
-    .leftbar-mobile-stats {
-        display: flex;
-        background: rgba(255, 255, 255, 0.15);
-        -webkit-backdrop-filter: blur(8px);
-        backdrop-filter: blur(8px);
-        border-radius: 16px;
-        padding: 14px 10px;
-        position: relative;
-        z-index: 1;
-    }
+	/* 统计数据 */
+	.leftbar-mobile-stats {
+		display: flex;
+		background: rgba(255, 255, 255, 0.15);
+		-webkit-backdrop-filter: blur(calc(var(--card-blur) / 2.5));
+		backdrop-filter: blur(calc(var(--card-blur) / 2.5));
+		border-radius: 16px;
+		padding: 14px 10px;
+		position: relative;
+		z-index: 1;
+	}
     
     .leftbar-mobile-stat {
         flex: 1;
@@ -17099,10 +17082,10 @@ article img.loaded, .post-thumbnail img.loaded, article img:not([loading="lazy"]
 @keyframes modernSkeletonPulse { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 .skeleton { background: linear-gradient(90deg, var(--color-border-on-foreground) 25%, var(--color-border-on-foreground-deeper) 50%, var(--color-border-on-foreground) 75%); background-size: 200% 100%; animation: modernSkeletonPulse 1.5s ease-in-out infinite; border-radius: var(--card-radius); }
 /* ==========================================================================
-   现代化页面加载系统
+   现代化页面加载系�?
    ========================================================================== */
 
-/* ---------- 基础旋转器（保留用于其他地方） ---------- */
+/* ---------- 基础旋转器（保留用于其他地方�?---------- */
 @keyframes modernSpinnerRotate {
 	to {
 		transform: rotate(360deg);
@@ -17117,7 +17100,7 @@ article img.loaded, .post-thumbnail img.loaded, article img:not([loading="lazy"]
 	animation: modernSpinnerRotate 0.8s linear infinite;
 }
 
-/* ---------- 顶部进度条 ---------- */
+/* ---------- 顶部进度�?---------- */
 #page-loading-bar {
 	position: fixed;
 	top: 0;
@@ -17129,7 +17112,7 @@ article img.loaded, .post-thumbnail img.loaded, article img:not([loading="lazy"]
 	box-shadow: 0 0 10px rgba(var(--themecolor-rgbstr), 0.5);
 }
 
-/* ---------- 页面加载器容器 ---------- */
+/* ---------- 页面加载器容�?---------- */
 .page-loader {
 	position: fixed;
 	inset: 0;
@@ -17158,8 +17141,8 @@ article img.loaded, .post-thumbnail img.loaded, article img:not([loading="lazy"]
 	position: absolute;
 	inset: 0;
 	background: linear-gradient(135deg, rgba(var(--themecolor-rgbstr), 0.03) 0%, rgba(var(--themecolor-rgbstr), 0.08) 100%);
-	-webkit-backdrop-filter: blur(24px) saturate(180%);
-	backdrop-filter: blur(24px) saturate(180%);
+	-webkit-backdrop-filter: blur(calc(var(--card-blur) * 1.2)) saturate(var(--card-saturate));
+	backdrop-filter: blur(calc(var(--card-blur) * 1.2)) saturate(var(--card-saturate));
 }
 html.darkmode .page-loader-backdrop {
 	background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.6) 100%);
@@ -17182,14 +17165,14 @@ html.darkmode .page-loader-backdrop {
 	transition-delay: 0.1s;
 }
 
-/* ---------- 进度环容器 ---------- */
+/* ---------- 进度环容�?---------- */
 .loader-ring-container {
 	position: relative;
 	width: 120px;
 	height: 120px;
 }
 
-/* ---------- SVG 进度环 ---------- */
+/* ---------- SVG 进度�?---------- */
 .loader-ring {
 	width: 100%;
 	height: 100%;
@@ -17212,7 +17195,7 @@ html.darkmode .page-loader-backdrop {
 	transition: stroke-dashoffset 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 渐变定义（通过 JS 动态添加或使用内联 SVG） */
+/* 渐变定义（通过 JS 动态添加或使用内联 SVG�?*/
 .loader-ring::before {
 	content: '';
 	position: absolute;
@@ -17290,7 +17273,7 @@ html.darkmode .page-loader-backdrop {
 	font-weight: 400;
 }
 
-/* ---------- 骨架屏（延迟显示） ---------- */
+/* ---------- 骨架屏（延迟显示�?---------- */
 .loader-skeleton {
 	opacity: 0;
 	transform: translateY(20px);
@@ -17419,7 +17402,7 @@ html.darkmode .skeleton-image::after {
 	}
 }
 
-/* ---------- 减少动画（无障碍） ---------- */
+/* ---------- 减少动画（无障碍�?---------- */
 @media (prefers-reduced-motion: reduce) {
 	.page-loader,
 	.page-loader-content,
@@ -17610,7 +17593,7 @@ html.darkmode .mermaid-error-code pre {
 	gap: 5px;
 	z-index: 10;
 	background: rgba(255, 255, 255, 0.85);
-	backdrop-filter: blur(10px);
+	backdrop-filter: blur(calc(var(--card-blur) / 2));
 	border-radius: 6px;
 	padding: 5px;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
@@ -17816,5 +17799,42 @@ html.darkmode .mermaid-container::-webkit-scrollbar-thumb {
 }
 
 html.darkmode .mermaid-container::-webkit-scrollbar-thumb:hover {
-	background: var(--color-text-secondary-dark);
+        background: var(--color-text-secondary-dark);
 }
+
+.argon-hidden-text {
+    transition: all 0.3s ease;
+}
+.argon-hidden-text-background {
+    background-color: #252525;
+    color: #252525;
+    text-shadow: none;
+    border-radius: 2px;
+    padding: 0 2px;
+}
+.argon-hidden-text-background:hover, 
+.argon-hidden-text-background:active {
+    color: #fff;
+}
+html.darkmode .argon-hidden-text-background {
+    background-color: #ddd;
+    color: #ddd;
+}
+html.darkmode .argon-hidden-text-background:hover, 
+html.darkmode .argon-hidden-text-background:active {
+    color: #000;
+}
+
+.argon-hidden-text-blur {
+    filter: blur(5px);
+    -webkit-filter: blur(5px);
+    cursor: default;
+    user-select: none;
+}
+.argon-hidden-text-blur:hover, 
+.argon-hidden-text-blur:active {
+    filter: none;
+    -webkit-filter: none;
+    user-select: auto;
+}
+
