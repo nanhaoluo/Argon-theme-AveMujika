@@ -1250,10 +1250,11 @@ if ($card_opacity == '' || $card_opacity == '1') {
 			backdrop-filter: blur(<?php echo $card_blur_inline; ?>px) saturate(<?php echo $card_saturate_inline; ?>%);
 			-webkit-backdrop-filter: blur(<?php echo $card_blur_inline; ?>px) saturate(<?php echo $card_saturate_inline; ?>%);
 			background-clip: padding-box;
-			-webkit-transform: translateZ(0);
-			transform: translateZ(0);
+			-webkit-transform: translate3d(0, 0, 0);
+			transform: translate3d(0, 0, 0);
 			position: relative;
-			z-index: 0;
+			z-index: 1;
+			contain: layout style;
 		}
 		article.post.card .post-content {
 			background-color: transparent;
@@ -1271,6 +1272,8 @@ if ($card_opacity == '' || $card_opacity == '1') {
 		#leftbar_part2 {
 			backdrop-filter: blur(<?php echo $card_blur_inline; ?>px) saturate(<?php echo $card_saturate_inline; ?>%);
 			-webkit-backdrop-filter: blur(<?php echo $card_blur_inline; ?>px) saturate(<?php echo $card_saturate_inline; ?>%);
+			-webkit-transform: translate3d(0, 0, 0);
+			transform: translate3d(0, 0, 0);
 		}
 
 	</style>
@@ -1302,10 +1305,11 @@ if (apply_filters('argon_page_background_url', get_option('argon_page_background
 		backdrop-filter: blur(<?php echo $card_blur_standalone; ?>px) saturate(<?php echo $card_saturate_standalone; ?>%);
 		-webkit-backdrop-filter: blur(<?php echo $card_blur_standalone; ?>px) saturate(<?php echo $card_saturate_standalone; ?>%);
 		background-clip: padding-box;
-		-webkit-transform: translateZ(0);
-		transform: translateZ(0);
+		-webkit-transform: translate3d(0, 0, 0);
+		transform: translate3d(0, 0, 0);
 		position: relative;
-		z-index: 0;
+		z-index: 1;
+		contain: layout style;
 	}
 	article.post.card .post-content {
 		background-color: transparent;
