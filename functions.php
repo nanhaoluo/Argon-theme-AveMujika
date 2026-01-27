@@ -13101,3 +13101,118 @@ function argon_ajax_clear_keyword_optimization_log() {
 	wp_send_json_success(['message' => '关键字优化日志已清除']);
 }
 add_action('wp_ajax_argon_clear_keyword_optimization_log', 'argon_ajax_clear_keyword_optimization_log');
+
+/**
+ * AJAX: 全站扫描垃圾评论
+ */
+function argon_ajax_spam_scan_comments() {
+	check_ajax_referer('argon_spam_scan_comments', 'nonce');
+	
+	if (!current_user_can('manage_options')) {
+		wp_send_json_error(['message' => '权限不足']);
+	}
+	
+	$scan_type = isset($_POST['scan_type']) ? sanitize_text_field($_POST['scan_type']) : 'all';
+	$offset = isset($_POST['offset']) ? intval($_POST['offset']) : 0;
+	$batch_size = isset($_POST['batch_size']) ? intval($_POST['batch_size']) : 10;
+	
+	// 构建查询参数
+	$args = [
+		'number' => $batch_size,
+		'offset' => $offset,
+		'orderby' => 'comment_date',
+		'order' => 'DESC'
+	];
+	
+	// 如果只扫描待审核评论
+	if ($scan_type === 'pending') {
+		$args['status'] = 'hold';
+	}
+	
+	// 获取评论
+	$comments = get_comments($args);
+	
+	// 获取总数（用于计算进度）
+	$total_args = $args;
+	unset($total_args['number']);
+	unset($total_args['offset']);
+	$total_args['count'] = true;
+	$total_comments = get_comments($total_args);
+	
+	$scanned = 0;
+	$skipped = 0;
+	$spam_found = 0;
+	$spam_comments = [];
+	
+	foreach ($comments as $comment) {
+		// 检查是否已经过 AI 审核
+		$existing_result = get_comment_meta($comment->comment_ID, '_argon_spam_detection_result', true);
+		
+		if (!empty($existing_result)) {
+			// 已审核，跳过
+			$skipped++;
+			continue;
+		}
+		
+		// 使用 AI 检测
+		$detection_result = argon_detect_spam_with_ai($comment->comment_content, $comment->comment_author, $comment->comment_author_email);
+		
+		if ($detection_result && isset($detection_result['is_spam'])) {
+			// 保存检测结果
+			update_comment_meta($comment->comment_ID, '_argon_spam_detection_result', $detection_result);
+			
+			$scanned++;
+			
+			if ($detection_result['is_spam']) {
+				$spam_found++;
+				
+				// 添加到垃圾评论列表
+				$spam_comments[] = [
+					'id' => $comment->comment_ID,
+					'author' => esc_html($comment->comment_author),
+					'content' => esc_html(mb_substr($comment->comment_content, 0, 200)),
+					'date' => get_comment_date('Y-m-d H:i', $comment->comment_ID),
+					'confidence' => isset($detection_result['confidence']) ? intval($detection_result['confidence']) : 0,
+					'reason' => isset($detection_result['reason']) ? esc_html($detection_result['reason']) : '',
+					'edit_link' => admin_url('comment.php?action=editcomment&c=' . $comment->comment_ID)
+				];
+				
+				// 根据设置自动处理
+				$auto_action = get_option('argon_comment_spam_detection_auto_action', 'trash');
+				$confidence_threshold = intval(get_option('argon_comment_spam_detection_confidence_threshold', 85));
+				$confidence = isset($detection_result['confidence']) ? intval($detection_result['confidence']) : 0;
+				
+				if ($confidence >= $confidence_threshold) {
+					if ($auto_action === 'trash') {
+						wp_trash_comment($comment->comment_ID);
+					} elseif ($auto_action === 'hold') {
+						wp_set_comment_status($comment->comment_ID, 'hold');
+					}
+					// 'mark' 选项只标记不处理
+				}
+			}
+		} else {
+			$scanned++;
+		}
+	}
+	
+	// 计算进度
+	$progress = 0;
+	if ($total_comments > 0) {
+		$progress = min(100, round((($offset + count($comments)) / $total_comments) * 100));
+	}
+	
+	// 判断是否完成
+	$completed = (count($comments) < $batch_size) || (($offset + $batch_size) >= $total_comments);
+	
+	wp_send_json_success([
+		'scanned' => $scanned,
+		'skipped' => $skipped,
+		'spam_found' => $spam_found,
+		'spam_comments' => $spam_comments,
+		'progress' => $progress,
+		'completed' => $completed,
+		'total' => $total_comments
+	]);
+}
+add_action('wp_ajax_argon_spam_scan_comments', 'argon_ajax_spam_scan_comments');
