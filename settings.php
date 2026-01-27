@@ -2552,9 +2552,10 @@ function themeoptions_page(){
 						</p>
 					</td>
 				</tr>
+			</table>
 
-				<script>
-				jQuery(document).ready(function($) {
+			<script>
+			jQuery(document).ready(function($) {
 					// ========== API 管理交互 ==========
 					
 					// 添加 API 按钮
@@ -3029,7 +3030,7 @@ function themeoptions_page(){
 				});
 				</script>
 
-					</td></tr>
+			<table class="form-table">
 
 <!-- ========== 13. 文章功能 ========== -->
 
