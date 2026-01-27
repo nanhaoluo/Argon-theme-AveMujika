@@ -726,18 +726,33 @@
 $card_opacity = get_option('argon_post_background_opacity', '0.7');
 $card_blur = get_option('argon_card_blur', '20');
 $card_saturate = get_option('argon_card_saturate', '180');
+$bg_opacity = get_option('argon_page_background_opacity', '1');
+
+// 顶栏模糊度为卡片模糊度的 60%（12px / 20px = 0.6）
+$toolbar_blur = round($card_blur * 0.6);
 
 // 如果透明度为空或为1，使用推荐默认值
 if ($card_opacity == '' || $card_opacity == '1') {
 	$card_opacity = '0.7';
 }
+if ($bg_opacity == '') {
+	$bg_opacity = '1';
+}
 ?>
 
 <style id="theme_card_effect_css">
 	:root {
+		--bg-opacity: <?php echo $bg_opacity; ?>;
 		--card-opacity: <?php echo $card_opacity; ?>;
 		--card-blur: <?php echo $card_blur; ?>px;
 		--card-saturate: <?php echo $card_saturate; ?>%;
+		--toolbar-blur: <?php echo $toolbar_blur; ?>px;
+		--page-background-opacity: <?php echo $bg_opacity; ?>;
+		--banner-mask-height: 120px;
+		--banner-mask-opacity-top: 0.25;
+		--banner-mask-opacity-mid: 0.15;
+		--banner-mask-stop-mid: 35%;
+		--banner-title-shadow: 0 5px 15px rgba(0, 0, 0, .2);
 	}
 </style>
 
@@ -1168,11 +1183,7 @@ if ($card_opacity == '' || $card_opacity == '1') {
 			background-size: cover;
 
 			background-repeat: no-repeat;
-
-			opacity: <?php echo (get_option('argon_page_background_opacity') == '' ? '1' : get_option('argon_page_background_opacity')); ?>;
-
-			transition: opacity .5s ease;
-
+			opacity: var(--page-background-opacity);
 		}
 
 		html.darkmode #content:before{
@@ -1217,7 +1228,7 @@ if ($card_opacity == '' || $card_opacity == '1') {
 
 			html.darkmode #content:after {
 
-				opacity: <?php echo (get_option('argon_page_background_opacity') == '' ? '1' : get_option('argon_page_background_opacity')); ?>;
+				opacity: var(--page-background-opacity);
 
 			}
 
@@ -1246,9 +1257,9 @@ if ($card_opacity == '' || $card_opacity == '1') {
 		.post-navigation.card,
 		.related-posts.card,
 		.card.bg-white {
-			background-color: rgba(255, 255, 255, <?php echo $post_bg_opacity_inline; ?>) !important;
-			backdrop-filter: blur(<?php echo $card_blur_inline; ?>px) saturate(<?php echo $card_saturate_inline; ?>%);
-			-webkit-backdrop-filter: blur(<?php echo $card_blur_inline; ?>px) saturate(<?php echo $card_saturate_inline; ?>%);
+			background-color: rgba(255, 255, 255, var(--card-opacity)) !important;
+			backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
+			-webkit-backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
 			background-clip: padding-box;
 			-webkit-transform: translateZ(0);
 			transform: translateZ(0);
@@ -1264,13 +1275,13 @@ if ($card_opacity == '' || $card_opacity == '1') {
 		html.darkmode .post-navigation.card,
 		html.darkmode .related-posts.card,
 		html.darkmode .card.bg-white {
-			background-color: rgba(66, 66, 66, <?php echo $post_bg_opacity_inline; ?>) !important;
+			background-color: rgba(66, 66, 66, var(--card-opacity)) !important;
 		}
 		#leftbar .card,
 		#leftbar_part1,
 		#leftbar_part2 {
-			backdrop-filter: blur(<?php echo $card_blur_inline; ?>px) saturate(<?php echo $card_saturate_inline; ?>%);
-			-webkit-backdrop-filter: blur(<?php echo $card_blur_inline; ?>px) saturate(<?php echo $card_saturate_inline; ?>%);
+			backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
+			-webkit-backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
 		}
 
 	</style>
@@ -1298,9 +1309,9 @@ if (apply_filters('argon_page_background_url', get_option('argon_page_background
 	.post-navigation.card,
 	.related-posts.card,
 	.card.bg-white {
-		background-color: rgba(255, 255, 255, <?php echo $post_bg_opacity_standalone; ?>) !important;
-		backdrop-filter: blur(<?php echo $card_blur_standalone; ?>px) saturate(<?php echo $card_saturate_standalone; ?>%);
-		-webkit-backdrop-filter: blur(<?php echo $card_blur_standalone; ?>px) saturate(<?php echo $card_saturate_standalone; ?>%);
+		background-color: rgba(255, 255, 255, var(--card-opacity)) !important;
+		backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
+		-webkit-backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
 		background-clip: padding-box;
 		-webkit-transform: translateZ(0);
 		transform: translateZ(0);
@@ -1316,13 +1327,13 @@ if (apply_filters('argon_page_background_url', get_option('argon_page_background
 	html.darkmode .post-navigation.card,
 	html.darkmode .related-posts.card,
 	html.darkmode .card.bg-white {
-		background-color: rgba(66, 66, 66, <?php echo $post_bg_opacity_standalone; ?>) !important;
+		background-color: rgba(66, 66, 66, var(--card-opacity)) !important;
 	}
 	#leftbar .card,
 	#leftbar_part1,
 	#leftbar_part2 {
-		backdrop-filter: blur(<?php echo $card_blur_standalone; ?>px) saturate(<?php echo $card_saturate_standalone; ?>%);
-		-webkit-backdrop-filter: blur(<?php echo $card_blur_standalone; ?>px) saturate(<?php echo $card_saturate_standalone; ?>%);
+		backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
+		-webkit-backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
 	}
 </style>
 <?php endif; ?>
@@ -1344,9 +1355,9 @@ if (apply_filters('argon_page_background_url', get_option('argon_page_background
 
 			top: 0;
 
-			height: 120px;
+			height: var(--banner-mask-height);
 
-			background: linear-gradient(180deg, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.15) 35%, rgba(0,0,0,0) 100%);
+			background: linear-gradient(180deg, rgba(0,0,0,var(--banner-mask-opacity-top)) 0%, rgba(0,0,0,var(--banner-mask-opacity-mid)) var(--banner-mask-stop-mid), rgba(0,0,0,0) 100%);
 
 			display: block;
 
@@ -1356,7 +1367,7 @@ if (apply_filters('argon_page_background_url', get_option('argon_page_background
 
 		.banner-title {
 
-			text-shadow: 0 5px 15px rgba(0, 0, 0, .2);
+			text-shadow: var(--banner-title-shadow);
 
 		}
 

@@ -227,13 +227,6 @@ License URI: https://www.gnu.org/licenses/gpl-3.0.html
 	--state-focus-opacity: 0.12;
 	--state-pressed-opacity: 0.12;
 	--state-dragged-opacity: 0.16;
-
-	/* 透明度与毛玻璃效果控�?*/
-	--bg-opacity: 0.90;
-	--card-opacity: 0.60;
-	--card-blur: 20px;
-	--card-saturate: 180%;
-	--toolbar-blur: 12px;
 }
 
 html.darkmode body {
