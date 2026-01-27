@@ -516,7 +516,7 @@
 
 			}
 
-			// 触发主题切换事件（用于 Mermaid 等组件响应主题变化）
+			// 触发主题切换事件
 			document.dispatchEvent(new CustomEvent('argon:theme-switched', {
 				detail: { darkmode: enable }
 			}));
