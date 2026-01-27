@@ -284,6 +284,7 @@ require_once(get_template_directory() . '/email-templates/comment-notify.php');
 require_once(get_template_directory() . '/email-templates/reply-notify.php');
 require_once(get_template_directory() . '/email-templates/feedback-notify.php');
 require_once(get_template_directory() . '/email-templates/spam-notify.php');
+require_once(get_template_directory() . '/email-templates/blacklist-spam-notify.php');
 require_once(get_template_directory() . '/email-templates/username-change-notify.php');
 
 //检测更新
@@ -2868,6 +2869,7 @@ function post_comment_preprocessing($comment){
 						if (isset($keyword_check['is_blacklist']) && $keyword_check['is_blacklist']) {
 							$comment['comment_approved'] = 'spam';
 							$_POST['_argon_spam_blacklist_keywords'] = json_encode($keyword_check['keywords']);
+							$_POST['_argon_spam_by_blacklist'] = 'true';
 						} else {
 							// 触发关键字，需要 AI 检测
 							$should_check = true;
@@ -2986,6 +2988,29 @@ add_action('argon_async_comment_mail_notify', 'argon_async_comment_mail_notify_h
 function post_comment_updatemetas($id){
 	$parentID = $_POST['comment_parent'];
 	$comment = get_comment($id);
+	
+	// 保存黑名单关键字标记
+	if (isset($_POST['_argon_spam_blacklist_keywords'])) {
+		update_comment_meta($id, '_argon_spam_blacklist_keywords', $_POST['_argon_spam_blacklist_keywords']);
+	}
+	if (isset($_POST['_argon_spam_by_blacklist'])) {
+		update_comment_meta($id, '_argon_spam_by_blacklist', 'true');
+		
+		// 发送黑名单拦截通知邮件（带反馈按钮）
+		if (get_option('argon_comment_spam_blacklist_notify', 'true') === 'true') {
+			argon_send_blacklist_spam_notify_email($comment);
+		}
+	}
+	
+	// 保存触发的关键字
+	if (isset($_POST['_argon_spam_triggered_keywords'])) {
+		update_comment_meta($id, '_argon_spam_triggered_keywords', $_POST['_argon_spam_triggered_keywords']);
+	}
+	
+	// 保存需要 AI 检测的标记
+	if (isset($_POST['_argon_needs_spam_check'])) {
+		update_comment_meta($id, '_argon_needs_spam_check', 'true');
+	}
 	$commentPostID = $comment -> comment_post_ID;
 	$commentAuthor = $comment -> comment_author;
 	$mailnoticeUnsubscribeKey = get_random_token();
@@ -12680,3 +12705,399 @@ function argon_clear_spam_error_log() {
 	}
 }
 add_action('wp_ajax_argon_clear_spam_error_log', 'argon_clear_spam_error_log');
+
+
+// ==========================================================================
+// 黑名单关键字智能优化系统
+// ==========================================================================
+
+/**
+ * 处理黑名单拦截反馈请求
+ */
+function argon_handle_spam_feedback() {
+	// 验证参数
+	if (!isset($_GET['action']) || $_GET['action'] !== 'argon_spam_feedback') {
+		return;
+	}
+	
+	if (!isset($_GET['comment_id']) || !isset($_GET['token'])) {
+		wp_die('无效的反馈链接');
+	}
+	
+	$comment_id = intval($_GET['comment_id']);
+	$token = sanitize_text_field($_GET['token']);
+	
+	// 获取评论
+	$comment = get_comment($comment_id);
+	if (!$comment) {
+		wp_die('评论不存在');
+	}
+	
+	// 验证 token
+	$saved_token = get_comment_meta($comment_id, '_argon_spam_feedback_token', true);
+	if ($token !== $saved_token) {
+		wp_die('无效的反馈链接');
+	}
+	
+	// 检查是否已经处理过
+	$feedback_processed = get_comment_meta($comment_id, '_argon_spam_feedback_processed', true);
+	if ($feedback_processed === 'true') {
+		wp_die('此反馈已经处理过了');
+	}
+	
+	// 标记为正在处理
+	update_comment_meta($comment_id, '_argon_spam_feedback_processing', 'true');
+	
+	// 使用 AI 重新评估
+	$result = argon_ai_review_blacklist_spam($comment);
+	
+	if ($result['success']) {
+		// 标记为已处理
+		update_comment_meta($comment_id, '_argon_spam_feedback_processed', 'true');
+		update_comment_meta($comment_id, '_argon_spam_feedback_result', json_encode($result));
+		
+		if ($result['action'] === 'restore') {
+			// 显示成功页面
+			argon_show_feedback_result_page($comment, $result, 'success');
+		} else {
+			// 显示维持拦截页面
+			argon_show_feedback_result_page($comment, $result, 'rejected');
+		}
+	} else {
+		// 显示错误页面
+		argon_show_feedback_result_page($comment, $result, 'error');
+	}
+	
+	exit;
+}
+add_action('template_redirect', 'argon_handle_spam_feedback');
+
+/**
+ * 使用 AI 重新评估被黑名单拦截的评论
+ * 
+ * @param WP_Comment $comment 评论对象
+ * @return array 评估结果
+ */
+function argon_ai_review_blacklist_spam($comment) {
+	// 获取触发的黑名单关键字
+	$blacklist_keywords = get_comment_meta($comment->comment_ID, '_argon_spam_blacklist_keywords', true);
+	$keywords_array = json_decode($blacklist_keywords, true);
+	
+	if (empty($keywords_array)) {
+		return [
+			'success' => false,
+			'error' => '无法获取触发的关键字'
+		];
+	}
+	
+	// 构建 AI 评估提示词
+	$prompt = '你是专业的内容审核专家。一条评论因触发黑名单关键字而被拦截，现在需要你重新评估。
+
+评估要求：
+1. 判断这条评论是否真的是垃圾评论（广告、违法、色情、暴力、恶意攻击等）
+2. 分析触发的关键字是否合理
+3. 如果评论正常，建议如何优化关键字规则
+
+请返回 JSON 格式：
+{
+	"is_spam": true/false,
+	"confidence": 0-100,
+	"reason": "判断理由（50字以内）",
+	"keyword_analysis": {
+		"keyword": "关键字",
+		"is_reasonable": true/false,
+		"suggestion": "优化建议（如果不合理）"
+	}[],
+	"action_suggestion": "restore（恢复评论）或 maintain（维持拦截）"
+}';
+	
+	$content = sprintf(
+		"触发的关键字：%s\n\n用户名：%s\n评论内容：%s",
+		implode('、', $keywords_array),
+		$comment->comment_author,
+		$comment->comment_content
+	);
+	
+	// 调用 AI
+	$ai_result = argon_ai_query('blacklist_review', $prompt, $content, [
+		'comment_id' => $comment->comment_ID,
+		'keywords' => $keywords_array
+	]);
+	
+	if ($ai_result === false) {
+		return [
+			'success' => false,
+			'error' => 'AI 评估失败'
+		];
+	}
+	
+	// 解析 AI 结果
+	$review = json_decode($ai_result, true);
+	if (!$review || !isset($review['is_spam'])) {
+		return [
+			'success' => false,
+			'error' => 'AI 返回格式错误'
+		];
+	}
+	
+	// 保存 AI 评估结果
+	update_comment_meta($comment->comment_ID, '_argon_spam_ai_review', json_encode($review));
+	
+	// 根据 AI 判断执行操作
+	if (!$review['is_spam'] && $review['confidence'] >= 70) {
+		// AI 认为这不是垃圾评论，恢复评论
+		wp_set_comment_status($comment->comment_ID, 'approve');
+		
+		// 优化关键字
+		argon_optimize_blacklist_keywords($keywords_array, $review['keyword_analysis'], $comment);
+		
+		// 记录日志
+		error_log(sprintf(
+			'Argon: 黑名单拦截误判，已恢复评论 #%d，优化关键字：%s',
+			$comment->comment_ID,
+			implode('、', $keywords_array)
+		));
+		
+		return [
+			'success' => true,
+			'action' => 'restore',
+			'reason' => $review['reason'],
+			'confidence' => $review['confidence'],
+			'optimizations' => $review['keyword_analysis']
+		];
+	} else {
+		// AI 认为确实是垃圾评论，维持拦截
+		return [
+			'success' => true,
+			'action' => 'maintain',
+			'reason' => $review['reason'],
+			'confidence' => $review['confidence']
+		];
+	}
+}
+
+/**
+ * 优化黑名单关键字
+ * 
+ * @param array $triggered_keywords 触发的关键字
+ * @param array $keyword_analysis AI 分析结果
+ * @param WP_Comment $comment 评论对象
+ */
+function argon_optimize_blacklist_keywords($triggered_keywords, $keyword_analysis, $comment) {
+	// 获取当前黑名单关键字
+	$blacklist_text = get_option('argon_comment_spam_detection_keywords', '');
+	$blacklist_array = array_filter(array_map('trim', explode("\n", $blacklist_text)));
+	
+	$removed_keywords = [];
+	$modified_keywords = [];
+	
+	// 根据 AI 分析优化关键字
+	foreach ($keyword_analysis as $analysis) {
+		$keyword = $analysis['keyword'];
+		
+		if (!$analysis['is_reasonable']) {
+			// 关键字不合理，移除
+			$key = array_search($keyword, $blacklist_array);
+			if ($key !== false) {
+				unset($blacklist_array[$key]);
+				$removed_keywords[] = $keyword;
+			}
+		} elseif (!empty($analysis['suggestion'])) {
+			// 有优化建议，记录但不自动修改
+			$modified_keywords[] = [
+				'original' => $keyword,
+				'suggestion' => $analysis['suggestion']
+			];
+		}
+	}
+	
+	// 更新黑名单
+	if (!empty($removed_keywords)) {
+		$new_blacklist = implode("\n", array_values($blacklist_array));
+		update_option('argon_comment_spam_detection_keywords', $new_blacklist);
+		
+		// 记录优化历史
+		$optimization_log = get_option('argon_spam_keyword_optimization_log', []);
+		$optimization_log[] = [
+			'time' => time(),
+			'comment_id' => $comment->comment_ID,
+			'removed_keywords' => $removed_keywords,
+			'modified_suggestions' => $modified_keywords,
+			'comment_author' => $comment->comment_author,
+			'comment_content' => mb_substr($comment->comment_content, 0, 100)
+		];
+		
+		// 只保留最近 50 条记录
+		if (count($optimization_log) > 50) {
+			$optimization_log = array_slice($optimization_log, -50);
+		}
+		
+		update_option('argon_spam_keyword_optimization_log', $optimization_log);
+	}
+}
+
+/**
+ * 显示反馈结果页面
+ * 
+ * @param WP_Comment $comment 评论对象
+ * @param array $result 处理结果
+ * @param string $type 结果类型：success, rejected, error
+ */
+function argon_show_feedback_result_page($comment, $result, $type) {
+	$site_name = get_bloginfo('name');
+	$post = get_post($comment->comment_post_ID);
+	
+	?>
+	<!DOCTYPE html>
+	<html <?php language_attributes(); ?>>
+	<head>
+		<meta charset="<?php bloginfo('charset'); ?>">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>反馈处理结果 - <?php echo esc_html($site_name); ?></title>
+		<style>
+			* { margin: 0; padding: 0; box-sizing: border-box; }
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+				background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+				min-height: 100vh;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				padding: 20px;
+			}
+			.container {
+				background: white;
+				border-radius: 12px;
+				box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+				max-width: 600px;
+				width: 100%;
+				padding: 40px;
+			}
+			.icon {
+				width: 80px;
+				height: 80px;
+				margin: 0 auto 20px;
+				border-radius: 50%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 40px;
+			}
+			.icon.success { background: #d4edda; color: #28a745; }
+			.icon.rejected { background: #fff3cd; color: #ffc107; }
+			.icon.error { background: #f8d7da; color: #dc3545; }
+			h1 {
+				text-align: center;
+				color: #333;
+				margin-bottom: 20px;
+				font-size: 24px;
+			}
+			.message {
+				color: #666;
+				line-height: 1.8;
+				margin-bottom: 20px;
+				text-align: center;
+			}
+			.detail-box {
+				background: #f8f9fa;
+				border-left: 4px solid #5e72e4;
+				padding: 15px;
+				margin: 20px 0;
+				border-radius: 4px;
+			}
+			.detail-box p {
+				color: #666;
+				margin: 8px 0;
+				line-height: 1.6;
+			}
+			.detail-box strong {
+				color: #333;
+			}
+			.btn {
+				display: inline-block;
+				padding: 12px 30px;
+				background: #5e72e4;
+				color: white;
+				text-decoration: none;
+				border-radius: 6px;
+				margin-top: 20px;
+				transition: background 0.3s;
+			}
+			.btn:hover {
+				background: #4c63d2;
+			}
+			.btn-container {
+				text-align: center;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<?php if ($type === 'success'): ?>
+				<div class="icon success">✓</div>
+				<h1>评论已恢复</h1>
+				<p class="message">
+					经过 AI 重新评估，您的评论没有违规内容，已经成功恢复并发布。
+				</p>
+				<div class="detail-box">
+					<p><strong>AI 评估结果：</strong><?php echo esc_html($result['reason']); ?></p>
+					<p><strong>置信度：</strong><?php echo esc_html($result['confidence']); ?>%</p>
+					<?php if (!empty($result['optimizations'])): ?>
+						<p><strong>关键字优化：</strong>系统已自动优化相关关键字规则，避免类似误判。</p>
+					<?php endif; ?>
+				</div>
+				<p class="message">
+					感谢您的反馈，这有助于我们改进系统！
+				</p>
+			<?php elseif ($type === 'rejected'): ?>
+				<div class="icon rejected">!</div>
+				<h1>维持拦截决定</h1>
+				<p class="message">
+					经过 AI 重新评估，您的评论仍然被判定为不符合社区规范。
+				</p>
+				<div class="detail-box">
+					<p><strong>AI 评估结果：</strong><?php echo esc_html($result['reason']); ?></p>
+					<p><strong>置信度：</strong><?php echo esc_html($result['confidence']); ?>%</p>
+				</div>
+				<p class="message">
+					如有疑问，请联系网站管理员。
+				</p>
+			<?php else: ?>
+				<div class="icon error">×</div>
+				<h1>处理失败</h1>
+				<p class="message">
+					抱歉，处理您的反馈时出现了错误。
+				</p>
+				<div class="detail-box">
+					<p><strong>错误信息：</strong><?php echo esc_html($result['error']); ?></p>
+				</div>
+				<p class="message">
+					请稍后重试或联系网站管理员。
+				</p>
+			<?php endif; ?>
+			
+			<div class="btn-container">
+				<a href="<?php echo esc_url(get_permalink($post->ID)); ?>" class="btn">返回文章</a>
+			</div>
+		</div>
+	</body>
+	</html>
+	<?php
+}
+
+
+/**
+ * AJAX: 清除关键字优化日志
+ */
+function argon_ajax_clear_keyword_optimization_log() {
+	check_ajax_referer('argon_clear_keyword_optimization_log', 'nonce');
+	
+	if (!current_user_can('manage_options')) {
+		wp_send_json_error(['message' => '权限不足']);
+	}
+	
+	delete_option('argon_spam_keyword_optimization_log');
+	
+	wp_send_json_success(['message' => '关键字优化日志已清除']);
+}
+add_action('wp_ajax_argon_clear_keyword_optimization_log', 'argon_ajax_clear_keyword_optimization_log');

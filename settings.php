@@ -2422,6 +2422,81 @@ function themeoptions_page(){
 				</tr>
 
 				<tr>
+					<th><label><?php _e('黑名单拦截通知', 'argon');?></label></th>
+					<td>
+						<?php $argon_comment_spam_blacklist_notify = get_option('argon_comment_spam_blacklist_notify', 'true'); ?>
+						<label>
+							<input type="checkbox" name="argon_comment_spam_blacklist_notify" value="true" <?php if ($argon_comment_spam_blacklist_notify=='true'){echo 'checked';}?>/> 
+							<?php _e('向评论者发送拦截通知邮件（带 AI 复审按钮）', 'argon');?>
+						</label>
+						<p class="description">
+							<?php _e('当评论被黑名单关键字拦截时，向评论者发送通知邮件。评论者可以申请 AI 复审，如果 AI 判定无误，将自动恢复评论并优化关键字规则。', 'argon');?>
+						</p>
+					</td>
+				</tr>
+
+				<tr>
+					<th><label><?php _e('关键字优化日志', 'argon');?></label></th>
+					<td>
+						<?php
+						$optimization_log = get_option('argon_spam_keyword_optimization_log', []);
+						if (!empty($optimization_log)):
+							// 倒序显示，最新的在前
+							$optimization_log = array_reverse($optimization_log);
+						?>
+							<div style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 15px; background: #f9f9f9;">
+								<?php foreach ($optimization_log as $log): ?>
+									<div style="background: white; padding: 12px; margin-bottom: 10px; border-left: 3px solid #5e72e4; border-radius: 3px;">
+										<p style="margin: 0 0 8px 0; color: #666; font-size: 12px;">
+											<strong><?php echo date('Y-m-d H:i:s', $log['time']); ?></strong>
+											<?php if (!empty($log['comment_id'])): ?>
+												| 评论 #<?php echo $log['comment_id']; ?>
+											<?php endif; ?>
+										</p>
+										<?php if (!empty($log['removed_keywords'])): ?>
+											<p style="margin: 0 0 5px 0; color: #333;">
+												<span style="color: #dc3545;">✗ 移除关键字：</span>
+												<code style="background: #f8d7da; padding: 2px 6px; border-radius: 3px; font-size: 12px;">
+													<?php echo esc_html(implode('、', $log['removed_keywords'])); ?>
+												</code>
+											</p>
+										<?php endif; ?>
+										<?php if (!empty($log['modified_suggestions'])): ?>
+											<p style="margin: 0 0 5px 0; color: #333;">
+												<span style="color: #ffc107;">⚠ 优化建议：</span>
+											</p>
+											<?php foreach ($log['modified_suggestions'] as $suggestion): ?>
+												<p style="margin: 0 0 5px 0; padding-left: 20px; font-size: 12px; color: #666;">
+													<code style="background: #fff3cd; padding: 2px 6px; border-radius: 3px;">
+														<?php echo esc_html($suggestion['original']); ?>
+													</code>
+													→ <?php echo esc_html($suggestion['suggestion']); ?>
+												</p>
+											<?php endforeach; ?>
+										<?php endif; ?>
+										<?php if (!empty($log['comment_author']) && !empty($log['comment_content'])): ?>
+											<p style="margin: 5px 0 0 0; padding-top: 8px; border-top: 1px solid #eee; font-size: 12px; color: #999;">
+												<strong><?php echo esc_html($log['comment_author']); ?>：</strong>
+												<?php echo esc_html($log['comment_content']); ?>
+											</p>
+										<?php endif; ?>
+									</div>
+								<?php endforeach; ?>
+							</div>
+							<p class="description" style="margin-top: 10px;">
+								<?php printf(__('共 %d 条优化记录（最多保留 50 条）', 'argon'), count($optimization_log)); ?>
+								<button type="button" class="button" id="argon-clear-keyword-optimization-log" style="margin-left: 10px;">
+									<span class="dashicons dashicons-trash" style="margin-top: 3px;"></span>
+									<?php _e('清除日志', 'argon'); ?>
+								</button>
+							</p>
+						<?php else: ?>
+							<p class="description"><?php _e('暂无优化记录。当用户反馈黑名单误判并通过 AI 复审后，系统会自动优化关键字并记录在此。', 'argon');?></p>
+						<?php endif; ?>
+					</td>
+				</tr>
+
+				<tr>
 					<th><label><?php _e('Prompt 模式', 'argon');?></label></th>
 					<td>
 						<select name="argon_comment_spam_detection_prompt_mode">
@@ -2737,6 +2812,33 @@ function themeoptions_page(){
 							} else {
 								let msg = (response.data && response.data.message) ? response.data.message : response.data;
 								alert('✗ <?php _e('清除失败:', 'argon'); ?> ' + msg);
+							}
+							$btn.prop('disabled', false).html(originalHtml);
+						}).fail(function() {
+							alert('<?php _e('请求失败，请重试', 'argon'); ?>');
+							$btn.prop('disabled', false).html(originalHtml);
+						});
+					});
+					
+					// ========== 清除关键字优化日志 ==========
+					$('#argon-clear-keyword-optimization-log').on('click', function() {
+						if (!confirm('<?php _e('确定要清除所有关键字优化日志吗？', 'argon'); ?>')) {
+							return;
+						}
+						
+						let $btn = $(this);
+						let originalHtml = $btn.html();
+						$btn.prop('disabled', true).html('<span class="dashicons dashicons-update dashicons-spin"></span> <?php _e('清除中...', 'argon'); ?>');
+						
+						$.post(ajaxurl, {
+							action: 'argon_clear_keyword_optimization_log',
+							nonce: '<?php echo wp_create_nonce('argon_clear_keyword_optimization_log'); ?>'
+						}, function(response) {
+							if (response.success) {
+								alert('✓ ' + response.data.message);
+								location.reload();
+							} else {
+								alert('✗ <?php _e('清除失败:', 'argon'); ?> ' + response.data.message);
 							}
 							$btn.prop('disabled', false).html(originalHtml);
 						}).fail(function() {
@@ -6990,6 +7092,7 @@ function argon_update_themeoptions(){
 	argon_update_option('argon_comment_spam_detection_prompt_mode');
 	argon_update_option('argon_comment_spam_detection_custom_prompt');
 	argon_update_option('argon_comment_spam_detection_auto_threshold');
+	argon_update_option_checkbox('argon_comment_spam_blacklist_notify');
 
 	}
 
