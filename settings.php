@@ -2521,13 +2521,26 @@ function themeoptions_page(){
 						</p>
 					</td>
 				</tr>
-
-				<tr>
-					<th><label><?php _e('自动处理阈值', 'argon');?></label></th>
 					<td>
-						<input type="number" name="argon_comment_spam_detection_auto_threshold" min="0" max="100" step="1" value="<?php echo get_option('argon_comment_spam_detection_auto_threshold', '85'); ?>" style="width: 80px;"/> %
+						<select name="argon_comment_spam_detection_prompt_mode">
+							<?php $argon_comment_spam_detection_prompt_mode = get_option('argon_comment_spam_detection_prompt_mode', 'standard'); ?>
+							<option value="minimal" <?php if ($argon_comment_spam_detection_prompt_mode=='minimal'){echo 'selected';} ?>><?php _e('极简模式（省 token）', 'argon');?></option>
+							<option value="standard" <?php if ($argon_comment_spam_detection_prompt_mode=='standard'){echo 'selected';} ?>><?php _e('标准模式（推荐）', 'argon');?></option>
+							<option value="enhanced" <?php if ($argon_comment_spam_detection_prompt_mode=='enhanced'){echo 'selected';} ?>><?php _e('增强模式（更准确）', 'argon');?></option>
+							<option value="custom" <?php if ($argon_comment_spam_detection_prompt_mode=='custom'){echo 'selected';} ?>><?php _e('自定义 Prompt', 'argon');?></option>
+						</select>
 						<p class="description">
-							<?php _e('AI 置信度超过此阈值时，自动将评论标记为垃圾评论。设置为 100 则禁用自动处理。', 'argon');?>
+							<?php _e('不同模式使用不同的 Prompt，平衡准确性和 API 成本', 'argon');?>
+						</p>
+					</td>
+				</tr>
+
+				<tr class="argon-custom-prompt-row" style="<?php echo ($argon_comment_spam_detection_prompt_mode !== 'custom') ? 'display:none;' : ''; ?>">
+					<th><label><?php _e('自定义 Prompt', 'argon');?></label></th>
+					<td>
+						<textarea name="argon_comment_spam_detection_custom_prompt" rows="8" cols="70" style="font-family: monospace;"><?php echo get_option('argon_comment_spam_detection_custom_prompt', ''); ?></textarea>
+						<p class="description">
+							<?php _e('自定义 AI 检测时使用的 Prompt。评论内容会自动附加在 Prompt 后面。', 'argon');?>
 						</p>
 					</td>
 				</tr>
@@ -7091,7 +7104,6 @@ function argon_update_themeoptions(){
 	argon_update_option('argon_comment_spam_detection_confidence_threshold');
 	argon_update_option('argon_comment_spam_detection_prompt_mode');
 	argon_update_option('argon_comment_spam_detection_custom_prompt');
-	argon_update_option('argon_comment_spam_detection_auto_threshold');
 	argon_update_option_checkbox('argon_comment_spam_blacklist_notify');
 
 	}
