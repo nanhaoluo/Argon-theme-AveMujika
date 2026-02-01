@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-Argon 是一款基于 WordPress 的现代化博客主题，采用 Material Design 设计语言，提供丰富的功能和高度的可定制性。主题版本 1.5.0，由 solstice23 开发维护。
+Argon 是一款基于 WordPress 的现代化博客主题，采用 Material Design 设计语言，提供丰富的功能和高度的可定制性。
 
 ### 核心特性
 
@@ -26,7 +26,7 @@ Argon 是一款基于 WordPress 的现代化博客主题，采用 Material Desig
 - WordPress 4.4+
 - jQuery 3.x
 - Bootstrap 4 (Argon Design System)
-- Prism.js (代码高亮)
+- Highlight.js (代码高亮)
 - MathJax/KaTeX (数学公式)
 - Headroom.js (顶栏自动隐藏)
 
@@ -36,21 +36,22 @@ Argon 是一款基于 WordPress 的现代化博客主题，采用 Material Desig
 
 ```
 argon/
-├── style.css                    # 主题样式表 (~12000 行)
-├── argontheme.js               # 主题核心 JavaScript (~3700 行)
-├── functions.php               # WordPress 主题函数 (~5700 行)
-├── settings.php                # 后台设置页面 (~6000 行)
-├── header.php                  # 页面头部模板
-├── footer.php                  # 页面底部模板
-├── index.php                   # 首页模板
-├── single.php                  # 文章页模板
-├── page.php                    # 页面模板
-├── archive.php                 # 归档页模板
+├── style.css                    # 主题样式表 (核心样式定义，包含配色、排版、组件样式)
+├── argontheme.js               # 主题核心 JavaScript (负责 PJAX、界面交互、功能初始化)
+├── functions.php               # WordPress 主题函数 (功能入口、Hook 挂载、核心逻辑实现)
+├── settings.php                # 后台设置页面 (提供外观、功能开关等配置选项)
+├── header.php                  # 页面头部模板 (HTML Head、顶部导航栏、全局变量输出)
+├── footer.php                  # 页面底部模板 (页脚区域、JavaScript 脚本引入)
+├── index.php                   # 首页模板 (文章列表展示)
+├── single.php                  # 文章页模板 (单篇文章内容展示)
+├── page.php                    # 页面模板 (独立页面展示)
+├── archive.php                 # 归档页模板 (分类、标签、日期归档)
 ├── search.php                  # 搜索结果页模板
-├── 404.php                     # 404 页面模板
-├── comments.php                # 评论区模板
-├── sidebar.php                 # 侧边栏模板
-└── info.json                   # 主题信息配置
+├── 404.php                     # 404 错误页面模板
+├── comments.php                # 评论区模板 (评论列表与发表评论表单)
+├── sidebar.php                 # 侧边栏模板 (个人信息卡片、小工具挂载点)
+├── admin.css                   # 后台设置页面样式
+└── languages/                  # 多语言包目录 (.po/.mo 文件)
 ```
 
 ### 功能模块文件
@@ -280,7 +281,24 @@ $GLOBALS['theme_version'] = $argon_version;
 $GLOBALS['assets_path'] = get_bloginfo('template_url');
 ```
 
-2. **header.php 渲染**（输出 HTML 头部）
+2. **导航菜单注册**
+	
+	主题通过 `init` 挂钩注册了四个核心菜单位置，用于定义页面的不同导航区域：
+
+	```php
+	// functions.php
+	function init_nav_menus(){
+		register_nav_menus( array(
+			'toolbar_menu' => __('顶部导航', 'argon'),             // 顶部工具栏菜单
+			'leftbar_menu' => __('左侧栏菜单', 'argon'),           // 左侧主要导航菜单
+			'leftbar_author_links' => __('左侧栏作者个人链接', 'argon'), // 左侧作者信息下方的图标链接
+			'leftbar_friend_links' => __('左侧栏友情链接', 'argon')  // 左侧底部的友情链接区域
+		));
+	}
+	add_action('init', 'init_nav_menus');
+	```
+
+	3. **header.php 渲染**（输出 HTML 头部）
 
 ```php
 // header.php
@@ -498,10 +516,11 @@ wp_enqueue_script("resource_loader", ".../resource-loader.js");
 wp_enqueue_script("argon_js_merged", ".../argon_js_merged.js", array(), $assets_version, false);
 
 // 3. Argon 修复补丁（必须在 wp_head() 之后）
-<script src="<?php echo get_template_directory_uri(); ?>/assets/js/argon.min.js"></script>
+<script src="<?php echo get_template_directory_uri(); ?>/assets/js/argon.min.js?ver=<?php echo $assets_version; ?>"></script>
 
 // 4. 主题核心脚本（在 footer.php 中加载）
-wp_enqueue_script("argontheme", ".../argontheme.js", array('argon_js_merged'));
+<?php $assets_version = function_exists('argon_get_assets_version') ? argon_get_assets_version() : $GLOBALS['theme_version']; ?>
+<script src="<?php echo $GLOBALS['assets_path']; ?>/argontheme.js?v=<?php echo $assets_version; ?>"></script>
 ```
 
 3. **按需加载**
@@ -513,10 +532,8 @@ if (typeof ArgonResourceLoader !== "undefined") {
 	ArgonResourceLoader.smartLoad("//fonts.googleapis.com/css?family=...", "css");
 }
 
-// 数学公式渲染库按需加载（在 footer.php 中）
-<?php if (get_option('argon_mathjax_option') != 'disabled'): ?>
-	<script src="//cdn.jsdelivr.net/npm/mathjax@3/..."></script>
-<?php endif; ?>
+// 数学公式渲染库在 footer.php 中按设置输出（get_option('argon_math_render')）
+// 可选：mathjax3 / mathjax2 / katex / disabled
 ```
 
 #### 强制刷新机制
@@ -746,6 +763,128 @@ html.darkmode.amoled-dark body {
 ```
 
 
+
+### 后台设置框架
+
+Argon 主题不依赖第三方设置框架（如 Redux 或 Codestar），而是使用原生 PHP + HTML 实现了一个轻量级的设置页面。
+
+#### 1. 设置页面结构
+
+设置页面位于 `settings.php`，通过 `functions.php` 中的 `add_theme_page` 挂载：
+
+```php
+// functions.php
+function themeoptions_admin_menu() {
+    add_theme_page("Argon 主题设置", "Argon 主题选项", 'edit_themes', basename(__FILE__), 'themeoptions_page');
+}
+add_action('admin_menu', 'themeoptions_admin_menu');
+```
+
+页面内容主要由 `themeoptions_page()` 函数输出，采用 HTML Table 布局，包含多个选项卡（如“全局设置”、“侧栏设置”等）。
+
+#### 2. 选项存储与更新
+
+设置数据的保存逻辑集成在 `settings.php` 顶部：
+
+```php
+// settings.php
+if (isset($_POST['update_themeoptions']) && $_POST['update_themeoptions'] == 'true') {
+    // 1. 验证 Nonce 安全令牌
+    check_admin_referer('argon_update_themeoptions', 'argon_update_themeoptions_nonce');
+    
+    // 2. 处理复选框（未选中的 checkbox 不会提交，需要手动设为 false）
+    if (!isset($_POST['argon_enable_lazyload'])) $_POST['argon_enable_lazyload'] = 'false';
+    
+    // 3. 循环更新所有选项
+    foreach ($_POST as $key => $value) {
+        if (isset($value) && $value != '') {
+            update_option($key, $value);
+        } else {
+            delete_option($key); // 空值则删除选项
+        }
+    }
+    
+    // 4. 提示保存成功
+    echo '<div id="message" class="updated fade"><p><strong>设置已保存</strong></p></div>';
+}
+```
+
+#### 3. 添加新选项指南
+
+要在主题中添加一个新的设置项，需遵循以下步骤：
+
+1.  在 `settings.php` 的对应表格行中添加 HTML 输入控件。
+2.  `name` 属性必须以 `argon_` 开头（这是约定，方便管理）。
+3.  使用 `get_option('option_name')` 获取当前值回显。
+
+示例：添加一个“显示版权信息”的开关
+
+```php
+<tr>
+    <th><label><?php _e('显示版权信息', 'argon');?></label></th>
+    <td>
+        <select name="argon_show_copyright">
+            <?php $show_copyright = get_option('argon_show_copyright', 'true'); ?>
+            <option value="true" <?php selected($show_copyright, 'true'); ?>>开启</option>
+            <option value="false" <?php selected($show_copyright, 'false'); ?>>关闭</option>
+        </select>
+    </td>
+</tr>
+```
+
+### 前端交互架构 (PJAX & SPA)
+
+Argon 主题采用 PJAX (PushState + AJAX) 技术实现单页应用 (SPA) 体验，核心逻辑位于 `assets/js/argontheme.js`。
+
+#### 1. PJAX 工作原理
+
+1.  **拦截点击**：监听所有 `a` 标签点击事件。
+2.  **获取内容**：通过 AJAX 请求目标页面 URL。
+3.  **解析响应**：从响应 HTML 中提取 `#content` 容器内容。
+4.  **替换容器**：将当前页面的 `#content` 替换为新内容。
+5.  **更新状态**：使用 `history.pushState` 更新浏览器 URL。
+6.  **重载资源**：重新执行内联脚本，重置事件监听器。
+
+#### 2. 初始化与重载机制
+
+由于 PJAX 会替换页面的部分 DOM，依赖旧 DOM 的事件绑定与第三方实例需要在 PJAX 完成后重新初始化。Argon 的实现采用“首屏最小初始化 + PJAX 完整重初始化”的策略。
+
+首屏加载完成后的初始化入口位于 `argontheme.js` 的 `$(document).ready(...)`，主要执行性能优化模块初始化（如已加载）以及基础渲染：
+
+```javascript
+$(document).ready(function(){
+	if (typeof initArgonPerformance === 'function') {
+		initArgonPerformance();
+	}
+	highlightJsRender();
+	waterflowInit();
+});
+```
+
+PJAX 主流程通过 `$(document).pjax(...)` 建立，并在 `pjax:beforeReplace` 统一清理旧页面资源，在 `pjax:complete` 完整初始化新页面模块（包含数学公式渲染、脚本执行与各功能模块的错误隔离初始化）。
+
+#### 3. 脚本执行器 (Inline Script Executor)
+
+PJAX 替换的 DOM 片段中可能包含内联 `<script>`。Argon 使用“创建新 script 节点并插入 head”的方式执行内联脚本，同时为每个脚本标记 `data-pjax-executed`，避免重复执行：
+
+```javascript
+function executeInlineScripts(container) {
+	const scripts = container.querySelectorAll('script');
+	scripts.forEach((script) => {
+		if (script.getAttribute('data-pjax-executed') === 'true') return;
+		if (script.src) return;
+		if (!script.textContent || script.textContent.trim() === '') return;
+		const newScript = document.createElement('script');
+		newScript.text = script.textContent;
+		document.head.appendChild(newScript);
+		document.head.removeChild(newScript);
+		script.setAttribute('data-pjax-executed', 'true');
+	});
+}
+```
+
+**开发注意**：如果你在文章或页面中编写了自定义 JavaScript，确保它们不依赖 `document.ready`，或者在 PJAX 重载时能被正确处理。
+
 ## 核心功能模块
 
 ### 1. 主题色系统
@@ -947,8 +1086,12 @@ PJAX 使用 jquery-pjax 库实现页面无刷新加载。配置在 argontheme.js
 ```javascript
 // argontheme.js
 $.pjax.defaults.timeout = 10000;  // 超时时间 10 秒
-$.pjax.defaults.container = ['#content', '#leftbar', '#rightbar'];  // 要替换的容器
-$.pjax.defaults.fragment = ['#content', '#leftbar', '#rightbar'];   // 从响应中提取的片段
+var pjaxContainerSelectors = ['#primary', '#leftbar_part1_menu', '#leftbar_part2_inner', '.page-information-card-container', '#rightbar', '#wpadminbar'];
+var pjaxContainers = pjaxContainerSelectors.filter(function(selector) {
+	return document.querySelector(selector);
+});
+$.pjax.defaults.container = pjaxContainers;  // 要替换的容器
+$.pjax.defaults.fragment = pjaxContainers;   // 从响应中提取的片段
 ```
 
 #### 链接拦截
@@ -957,19 +1100,11 @@ $.pjax.defaults.fragment = ['#content', '#leftbar', '#rightbar'];   // 从响应
 
 ```javascript
 // argontheme.js
-$(document).on('click', 'a[href^="' + argonConfig.wp_path + '"]:not([no-pjax]):not([target])', function(event) {
-	// 排除特殊链接
-	if ($(this).attr('href').indexOf('#') !== -1) return;  // 锚点链接
-	if ($(this).attr('href').indexOf('wp-admin') !== -1) return;  // 后台链接
-	if ($(this).attr('href').indexOf('wp-login') !== -1) return;  // 登录链接
-	
-	// 使用 PJAX 加载
-	$.pjax.click(event, {
-		container: ['#content', '#leftbar', '#rightbar'],
-		fragment: ['#content', '#leftbar', '#rightbar'],
-		timeout: 10000
-	});
-});
+$(document).pjax(
+	"a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):not([download]):not(.reference-link):not(.reference-list-backlink):not([href^='#'])",
+	pjaxContainers.length ? pjaxContainers[0] : '#primary',
+	{ fragment: (pjaxContainers.length ? pjaxContainers : ['#primary']), timeout: $.pjax.defaults.timeout }
+);
 ```
 
 #### 页面切换流程
@@ -1009,8 +1144,7 @@ $(document).on('pjax:complete', function() {
 		scrollTop: 0
 	}, argonConfig.pjax_animation_durtion);
 	
-	// 重新初始化各功能模块
-	reinitAfterPjax();
+	// 重新初始化各功能模块（主题在 pjax:complete 内集中处理，如 waterflowInit / lazyloadInit / zoomifyInit / highlightJsRender 等）
 });
 
 // 3. 请求失败
@@ -1032,40 +1166,20 @@ PJAX 加载完成后，需要重新初始化页面功能：
 
 ```javascript
 // argontheme.js
-function reinitAfterPjax() {
-	// 重新初始化代码高亮
-	if (typeof Prism !== 'undefined') {
-		Prism.highlightAll();
-	}
-	
-	// 重新初始化图片懒加载
-	if (argonConfig.lazyload) {
-		initLazyload();
-	}
-	
-	// 重新初始化瀑布流布局
-	if (argonConfig.waterflow_columns != '1') {
-		waterflowInit();
-	}
-	
-	// 重新初始化图片缩放
-	if (argonConfig.zoomify) {
-		$('.post-content img').zoomify(argonConfig.zoomify);
-	}
-	
-	// 重新绑定评论表单事件
-	bindCommentFormEvents();
-	
-	// 重新初始化数学公式渲染
-	if (typeof MathJax !== 'undefined') {
-		MathJax.typesetPromise();
-	} else if (typeof renderMathInElement !== 'undefined') {
-		renderMathInElement(document.body);
-	}
-	
-	// 触发自定义事件
-	$(document).trigger('argon:pjax-complete');
-}
+// 主题在 pjax:complete 事件里集中完成“功能重置/再初始化”（单个模块失败不会影响其他模块）
+try { waterflowInit(); } catch (err) {}
+try { lazyloadInit(); } catch (err) {}
+try { zoomifyInit(); } catch (err) {}
+try { highlightJsRender(); } catch (err) {}
+try { panguInit(); } catch (err) {}
+try { clampInit(); } catch (err) {}
+try { tippyInit(); } catch (err) {}
+try { getGithubInfoCardContent(); } catch (err) {}
+try { showPostOutdateToast(); } catch (err) {}
+try { calcHumanTimesOnPage(); } catch (err) {}
+try { foldLongComments(); } catch (err) {}
+try { foldLongShuoshuo(); } catch (err) {}
+try { handleHashNavigation(); } catch (err) {}
 ```
 
 #### 禁用 PJAX
@@ -1329,36 +1443,76 @@ if (argonConfig.waterflow_columns != "1") {
 
 评论数据存储在 WordPress 标准的 `wp_comments` 表中，扩展字段通过 `wp_commentmeta` 表存储：
 
+**标准字段（wp_comments 表）：**
+- `comment_ID` - 评论 ID
+- `comment_post_ID` - 所属文章 ID
+- `comment_author` - 评论者昵称
+- `comment_author_email` - 评论者邮箱
+- `comment_author_url` - 评论者网站
+- `comment_content` - 评论内容（HTML）
+- `comment_parent` - 父评论 ID（用于回复）
+- `user_id` - 用户 ID（登录用户）
+- `comment_date` - 评论时间
+
+**扩展字段（wp_commentmeta 表）：**
 - `comment_upvote` - 点赞数
 - `comment_is_private` - 是否私密评论
 - `comment_use_markdown` - 是否使用 Markdown
+- `comment_content_source` - Markdown 源码
 - `comment_edit_history` - 编辑历史（JSON 格式）
 - `comment_pinned` - 是否置顶
+- `qq` - QQ 号（用于 QQ 头像）
 
 #### AJAX 发送评论
+
+前端通过 AJAX 提交评论，避免页面刷新：
 
 ```javascript
 // argontheme.js
 function postComment() {
+	let formData = {
+		action: 'ajax_post_comment',
+		comment_post_ID: postID,
+		author: $('#comment_author').val(),
+		email: $('#comment_email').val(),
+		url: $('#comment_url').val(),
+		comment: $('#comment_content').val(),
+		comment_parent: replyID,
+		use_markdown: $('#use_markdown').is(':checked') ? 'true' : 'false',
+		is_private: $('#is_private').is(':checked') ? 'true' : 'false',
+		argon_nonce: $('#argon_comment_nonce').val(),
+		// 验证码相关字段
+		captcha_seed: $('#captcha_seed').val(),
+		captcha_answer: $('#captcha_answer').val()
+	};
+	
 	$.ajax({
 		type: 'POST',
 		url: argonConfig.wp_path + "wp-admin/admin-ajax.php",
 		dataType: "json",
-		data: {
-			action: "ajax_post_comment",
-			comment_post_ID: postID,
-			author: name,
-			email: email,
-			url: url,
-			comment: content,
-			comment_parent: replyID,
-			// ... 其他参数
+		data: formData,
+		beforeSend: function() {
+			$('#comment_submit').text(__('发送中'));
+			$('#comment_submit').prop('disabled', true);
 		},
 		success: function(result) {
 			if (result.status == "success") {
 				// 插入新评论到页面
-				insertComment(result.comment_html);
+				insertComment(result.html, result.parentID, result.commentOrder);
+				// 清空表单
+				$('#comment_content').val('');
+				// 更新验证码
+				updateCaptcha(result.newCaptchaSeed, result.newCaptcha);
+			} else {
+				alert(result.msg);
 			}
+		},
+		error: function() {
+			alert(__('评论发送失败'));
+		},
+		complete: function() {
+			$('#comment_submit').text(__('发送'));
+			$('#comment_submit').prop('disabled', false);
 		}
 	});
 }
@@ -1366,158 +1520,265 @@ function postComment() {
 
 #### PHP 处理函数
 
+服务器端处理评论提交：
+
 ```php
 // functions.php
-function ajax_post_comment() {
-	// 验证 nonce
-	check_ajax_referer('post_comment', 'nonce');
-	
-	// 验证验证码
-	if (argon_is_comment_captcha_enabled()) {
-		verify_captcha();
+function ajax_post_comment(){
+	// 1. IP 黑名单检查
+	if (argon_is_ip_blocked_global()) {
+		exit(json_encode(array(
+			'status' => 'failed',
+			'msg' => __('您的 IP 已被限制访问', 'argon'),
+			'isAdmin' => current_user_can('level_7')
+		)));
 	}
 	
-	// 过滤内容
-	$comment_content = wp_filter_kses($_POST['comment']);
+	// 2. 私密评论权限检查
+	$parentID = $_POST['comment_parent'];
+	if (is_comment_private_mode($parentID)){
+		if (!user_can_view_comment($parentID)){
+			exit(json_encode(array(
+				'status' => 'failed',
+				'msg' =>  __('不能回复其他人的悄悄话评论', 'argon'),
+				'isAdmin' => current_user_can('level_7')
+			)));
+		}
+	}
 	
-	// 构建评论数据
-	$commentdata = array(
-		'comment_post_ID' => $post_id,
-		'comment_author' => $author,
-		'comment_author_email' => $email,
-		'comment_content' => $comment_content,
-		'comment_parent' => $parent,
-		'user_id' => get_current_user_id()
+	// 3. QQ 邮箱处理
+	if (get_option('argon_comment_enable_qq_avatar') == 'true'){
+		if (check_qqnumber($_POST['email'])){
+			$_POST['qq'] = $_POST['email'];
+			$_POST['email'] .= "@qq.com";
+		}
+	}
+	
+	// 4. CSRF nonce 校验
+	if (!isset($_POST['argon_nonce']) || !wp_verify_nonce($_POST['argon_nonce'], 'argon_comment')) {
+		exit(json_encode(array(
+			'status' => 'failed',
+			'msg' => __('请求已失效，请刷新页面后重试', 'argon'),
+			'isAdmin' => current_user_can('level_7')
+		)));
+	}
+	
+	// 5. Honeypot 反垃圾检查
+	if (!empty($_POST['argon_comment_honeypot'])) {
+		exit(json_encode(array(
+			'status' => 'failed',
+			'msg' => __('Spam detected', 'argon'),
+			'isAdmin' => current_user_can('level_7')
+		)));
+	}
+	
+	// 6. 速率限制（防止刷评论）
+	$rate_enable = get_option('argon_rate_limit_enable', 'true');
+	if ($rate_enable === 'true') {
+		$ip = isset($_SERVER['HTTP_X_FORWARDED_FOR']) ? explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0] : $_SERVER['REMOTE_ADDR'];
+		$ip = sanitize_text_field($ip);
+		$rate_key = 'argon_rate_cmt_' . md5($ip);
+		$state = get_transient($rate_key);
+		$now = time();
+		$window = intval(get_option('argon_rate_limit_window', 300)); // 窗口秒数（默认 5 分钟）
+		$max_count = intval(get_option('argon_rate_limit_max_count', 5)); // 窗口内最大次数
+		$min_interval = intval(get_option('argon_rate_limit_min_interval', 10)); // 两次最小间隔（秒）
+		
+		// 检查最小间隔
+		if (!is_array($state)) {
+			$state = array('count' => 0, 'start' => $now, 'last' => 0);
+		}
+		if ($state['last'] > 0 && ($now - intval($state['last'])) < $min_interval) {
+			exit(json_encode(array(
+				'status' => 'failed',
+				'msg' => __('您评论过快，请稍后再试', 'argon'),
+				'isAdmin' => current_user_can('level_7')
+			)));
+		}
+		
+		// 检查窗口内次数
+		if (($now - intval($state['start'])) < $window && intval($state['count']) >= $max_count) {
+			exit(json_encode(array(
+				'status' => 'failed',
+				'msg' => __('操作过于频繁，请稍后再试', 'argon'),
+				'isAdmin' => current_user_can('level_7')
+			)));
+		}
+		
+		// 更新速率状态
+		if (($now - intval($state['start'])) >= $window) {
+			$state['start'] = $now;
+			$state['count'] = 0;
+		}
+		$state['count'] = intval($state['count']) + 1;
+		$state['last'] = $now;
+		set_transient($rate_key, $state, $window);
+	}
+	
+	// 7. 提交评论
+	$comment = wp_handle_comment_submission(wp_unslash($_POST));
+	if (is_wp_error($comment)){
+		$msg = $comment->get_error_message();
+		exit(json_encode(array(
+			'status' => 'failed',
+			'msg' => $msg,
+			'isAdmin' => current_user_can('level_7')
+		)));
+	}
+	
+	// 8. 设置 Cookie
+	$user = wp_get_current_user();
+	do_action('set_comment_cookies', $comment, $user);
+	
+	// 9. 生成评论 HTML
+	$html = wp_list_comments(
+		array(
+			'type'      => 'comment',
+			'callback'  => 'argon_comment_format',
+			'echo'      => false
+		),
+		array($comment)
 	);
 	
-	// 插入评论
-	$comment_id = wp_new_comment($commentdata);
+	// 10. 生成新验证码
+	$newCaptchaSeed = get_comment_captcha_seed(true);
+	$newCaptcha = get_comment_captcha($newCaptchaSeed);
 	
-	// 保存扩展字段
-	if ($_POST['is_private'] == 'true') {
-		update_comment_meta($comment_id, 'comment_is_private', 'true');
-	}
-	
-	// 发送邮件通知
-	send_comment_notification($comment_id);
-	
-	// 返回结果
-	wp_send_json(array(
+	// 11. 返回结果
+	exit(json_encode(array(
 		'status' => 'success',
-		'comment_html' => get_comment_html($comment_id)
-	));
+		'html' => $html,
+		'id' => $comment->comment_ID,
+		'parentID' => $comment->comment_parent,
+		'commentOrder' => (get_option("comment_order") == "" ? "desc" : get_option("comment_order")),
+		'newCaptchaSeed' => $newCaptchaSeed,
+		'newCaptcha' => $newCaptcha,
+		'isAdmin' => current_user_can('level_7'),
+		'isLogin' => is_user_logged_in()
+	)));
 }
 add_action('wp_ajax_ajax_post_comment', 'ajax_post_comment');
 add_action('wp_ajax_nopriv_ajax_post_comment', 'ajax_post_comment');
 ```
 
-#### 评论格式化
+#### Markdown 解析
+
+评论支持 Markdown 语法，使用 Parsedown 库解析：
 
 ```php
 // functions.php
-function argon_comment_format($comment, $args, $depth) {
-	$GLOBALS['comment'] = $comment;
-	?>
-	<li id="comment-<?php comment_ID(); ?>" <?php comment_class(); ?>>
-		<div class="comment-item">
-			<div class="comment-avatar">
-				<?php echo get_avatar($comment, 48); ?>
-			</div>
-			<div class="comment-body">
-				<div class="comment-item-title">
-					<span class="comment-name">
-						<?php echo get_comment_author_link(); ?>
-					</span>
-					<?php if (get_comment_meta($comment->comment_ID, 'comment_is_private', true) == 'true'): ?>
-						<span class="badge badge-secondary badge-private-comment">
-							私密
-						</span>
-					<?php endif; ?>
-				</div>
-				<div class="comment-item-text">
-					<?php comment_text(); ?>
-				</div>
-				<div class="comment-item-meta">
-					<span class="comment-time">
-						<?php echo get_comment_date('Y-m-d H:i'); ?>
-					</span>
-					<a class="comment-reply" data-id="<?php comment_ID(); ?>">
-						回复
-					</a>
-				</div>
-			</div>
-		</div>
-	</li>
-	<?php
-}
-```
+require_once(get_template_directory() . '/parsedown.php');
 
-#### 评论编辑功能
-
-支持用户编辑自己的评论，保留编辑历史：
-
-```php
-// functions.php
-function user_edit_comment() {
-	check_ajax_referer('edit_comment', 'nonce');
+function comment_markdown_parse($comment_content){
+	// 允许评论中额外的 HTML 标签
+	global $allowedtags;
+	$allowedtags['pre'] = array('class' => array());
+	$allowedtags['i'] = array('class' => array(), 'aria-hidden' => array());
+	$allowedtags['img'] = array('src' => array(), 'alt' => array(), 'class' => array());
+	$allowedtags['ol'] = array();
+	$allowedtags['ul'] = array();
+	$allowedtags['li'] = array();
+	$allowedtags['span'] = array('class' => array(), 'style' => array(), 'title' => array());
+	$allowedtags['a']['class'] = array();
+	$allowedtags['a']['data-src'] = array();
+	$allowedtags['a']['target'] = array();
+	$allowedtags['h1'] = $allowedtags['h2'] = $allowedtags['h3'] = $allowedtags['h4'] = $allowedtags['h5'] = $allowedtags['h6'] = array();
 	
-	$comment_id = intval($_POST['id']);
-	$comment = get_comment($comment_id);
+	// 解析 Markdown
+	$parsedown = new _Parsedown();
+	$res = $parsedown->text($comment_content);
 	
-	// 权限检查
-	if (!current_user_can('edit_comment', $comment_id) && 
-	    $comment->user_id != get_current_user_id()) {
-		wp_send_json(array('status' => 'failed', 'reason' => '权限不足'));
-	}
-	
-	// 保存编辑历史
-	$history = get_comment_meta($comment_id, 'comment_edit_history', true);
-	if (!$history) $history = array();
-	$history[] = array(
-		'content' => $comment->comment_content,
-		'time' => current_time('timestamp')
+	// 为链接添加 target="_blank"
+	$res = preg_replace(
+		'/<a (.*?)>(.*?)<\/a>/',
+		'<a $1 target="_blank">$2</a>',
+		$res
 	);
-	update_comment_meta($comment_id, 'comment_edit_history', $history);
 	
-	// 更新评论内容
-	wp_update_comment(array(
-		'comment_ID' => $comment_id,
-		'comment_content' => $_POST['content']
-	));
-	
-	wp_send_json(array('status' => 'success'));
+	return $res;
 }
-add_action('wp_ajax_user_edit_comment', 'user_edit_comment');
+
+// 评论发送前处理
+function post_comment_preprocessing($comment){
+	// 保存评论未经 Markdown 解析的源码
+	$_POST['comment_content_source'] = $comment['comment_content'];
+	
+	// 应用评论宏（黑幕、彩幕等）
+	$comment['comment_content'] = argon_apply_comment_macros($comment['comment_content']);
+	
+	// Markdown 解析
+	if ($_POST['use_markdown'] == 'true' && get_option("argon_comment_allow_markdown") != "false"){
+		$comment['comment_content'] = comment_markdown_parse($comment['comment_content']);
+	}
+	
+	return $comment;
+}
+add_filter('preprocess_comment', 'post_comment_preprocessing');
 ```
 
-#### 评论点赞
+#### 评论宏
+
+主题支持多种评论宏，用于实现特殊效果：
 
 ```php
 // functions.php
-function upvote_comment() {
-	$comment_id = intval($_POST['id']);
-	$upvote_key = 'comment_upvote_' . $comment_id;
+function argon_apply_comment_macros($text){
+	// 黑幕：{{黑幕|内容}} 或 {{黑幕|内容|提示}}
+	$text = preg_replace_callback('/\{\{黑幕\|([\s\S]*?)(?:\|([\s\S]*?))?\}\}/u', function($m){
+		$content = trim($m[1]);
+		$title = isset($m[2]) ? trim($m[2]) : '你知道的太多了';
+		return '<span class="heimu"' . (strlen($title) ? ' title="' . htmlspecialchars($title, ENT_QUOTES) . '"' : '') . '>' . htmlspecialchars($content) . '</span>';
+	}, $text);
 	
-	// 检查是否已点赞
-	if (isset($_COOKIE[$upvote_key])) {
-		wp_send_json(array('status' => 'failed', 'reason' => '已点赞'));
-	}
+	// 彩幕：{{彩幕|内容|背景色|提示|前景色}}
+	$text = preg_replace_callback('/\{\{彩幕\|([\s\S]*?)\}\}/u', function($m){
+		$parts = explode('|', $m[1]);
+		$content = isset($parts[0]) ? trim($parts[0]) : '';
+		$bg = isset($parts[1]) ? trim($parts[1]) : '#252525';
+		$tip = isset($parts[2]) ? trim($parts[2]) : '你知道的太多了';
+		$fg = isset($parts[3]) ? trim($parts[3]) : '';
+		
+		// 如果没有指定前景色，根据背景色亮度自动计算
+		if (empty($fg)) {
+			$hex = ltrim($bg, '#');
+			if (strlen($hex) == 6) {
+				$r = hexdec(substr($hex, 0, 2));
+				$g = hexdec(substr($hex, 2, 2));
+				$b = hexdec(substr($hex, 4, 2));
+				$luma = 0.2126 * $r + 0.7152 * $g + 0.0722 * $b;
+				$fg = ($luma >= 180) ? '#000' : '#fff';
+			} else {
+				$fg = '#fff';
+			}
+		}
+		
+		$style = '--curtain-bg: ' . htmlspecialchars($bg, ENT_QUOTES) . '; --curtain-fg: ' . htmlspecialchars($fg, ENT_QUOTES) . ';';
+		return '<span class="color-curtain"' . (strlen($tip) ? ' title="' . htmlspecialchars($tip, ENT_QUOTES) . '"' : '') . ' style="' . $style . '">' . htmlspecialchars($content) . '</span>';
+	}, $text);
 	
-	// 增加点赞数
-	$upvotes = intval(get_comment_meta($comment_id, 'comment_upvote', true));
-	update_comment_meta($comment_id, 'comment_upvote', $upvotes + 1);
+	// 文字模糊：{{文字模糊|内容|提示|颜色|时间}}
+	$text = preg_replace_callback('/\{\{文字模糊\|([\s\S]*?)\}\}/u', function($m){
+		$parts = explode('|', $m[1]);
+		$content = isset($parts[0]) ? trim($parts[0]) : '';
+		$tip = isset($parts[1]) ? trim($parts[1]) : '你知道的太多了';
+		$color = isset($parts[2]) ? trim($parts[2]) : '';
+		$time = isset($parts[3]) ? trim($parts[3]) : '0.2';
+		$style = '--text-blur-transition-time: ' . preg_replace('/[^0-9\.]/', '', $time) . 's;';
+		if (strlen($color) > 0) {
+			$style .= ' --text-blur-color: ' . htmlspecialchars($color, ENT_QUOTES) . ';';
+		}
+		return '<span class="text-blur"' . (strlen($tip) ? ' title="' . htmlspecialchars($tip, ENT_QUOTES) . '"' : '') . ' style="' . $style . '">' . htmlspecialchars($content) . '</span>';
+	}, $text);
 	
-	// 设置 Cookie 防止重复点赞
-	setcookie($upvote_key, '1', time() + 86400 * 365, '/');
-	
-	wp_send_json(array(
-		'status' => 'success',
-		'upvotes' => $upvotes + 1
-	));
+	return $text;
 }
-add_action('wp_ajax_upvote_comment', 'upvote_comment');
-add_action('wp_ajax_nopriv_upvote_comment', 'upvote_comment');
+add_filter('comment_text', 'argon_comment_text_render', 9);
 ```
+
+使用示例：
+- `{{黑幕|剧透内容}}` - 鼠标悬停显示
+- `{{彩幕|彩色文字|#ff0000}}` - 彩色背景
+- `{{文字模糊|模糊文字}}` - 鼠标悬停清晰
 
 
 ### 6. 说说功能
@@ -1753,7 +2014,7 @@ function loadAISummary(postId) {
 
 #### 设置页面结构
 
-`settings.php` 是主题的后台设置页面，包含约 6000 行代码，提供完整的主题配置界面。
+`settings.php` 是主题的后台设置页面，包含 7000+ 行代码（当前仓库约 7273 行），提供完整的主题配置界面。
 
 #### 设置分类
 
@@ -2072,40 +2333,270 @@ function user_edit_comment() {
 
 #### 验证码系统
 
-评论支持多种验证码方案：
+评论与部分交互功能支持验证码验证，用于减少机器人提交与恶意请求。验证码启用逻辑采用“评论独立开关 + 全局开关”组合：
 
-- 算术验证码
-- Google reCAPTCHA
-- hCaptcha
-- Cloudflare Turnstile
+- 评论验证码开关：`argon_comment_captcha_mode`，取值为 `enabled` / `disabled` / `global`
+- 全局验证码开关：`argon_need_captcha`（兼容旧选项 `argon_comment_need_captcha`）
+
+当前版本的验证码实现包含：
+
+- **算术验证码**：通过 `captcha_calculation` 生成挑战题，`get_comment_captcha()` 输出题目，`get_comment_captcha_answer()` 用于校验答案
+- **极验验证码 (Geetest 4)**：通过 `geetest_validate(...)` 校验前端提交的四个字段（lot_number/captcha_output/pass_token/gen_time）
+
+评论场景是否启用验证码由 `argon_is_comment_captcha_enabled()` 决定：
 
 ```php
-// functions.php
 function argon_is_comment_captcha_enabled() {
-	$captcha_type = get_option('argon_comment_captcha_type', 'none');
-	return $captcha_type !== 'none';
-}
-
-function verify_captcha() {
-	$captcha_type = get_option('argon_comment_captcha_type', 'none');
-	
-	switch ($captcha_type) {
-		case 'math':
-			verify_math_captcha();
-			break;
-		case 'recaptcha':
-			verify_recaptcha();
-			break;
-		case 'hcaptcha':
-			verify_hcaptcha();
-			break;
-		case 'turnstile':
-			verify_turnstile();
-			break;
-	}
+    $mode = get_option('argon_comment_captcha_mode', 'global');
+    if ($mode === 'enabled') {
+        return true;
+    } elseif ($mode === 'disabled') {
+        return false;
+    }
+    return argon_is_captcha_enabled();
 }
 ```
 
+
+### 11. 友链管理系统
+
+#### 功能概述
+
+Argon 主题内置了一套独立的友链管理系统，支持友链的申请、审核、分组和展示，无需依赖第三方插件。
+
+#### 数据存储
+
+友链数据不使用 WordPress 的 Links Manager API（已废弃），而是存储在 `argon_friend_links` 选项中，数据结构为 JSON 数组。该数组既包含展示所需字段，也包含审核与可用性检测的状态字段：
+
+```php
+$links = get_option('argon_friend_links', array());
+// 结构示例：
+// [
+//     {
+//         'id' => 'fl_5f...',
+//         'name' => '站点名称',
+//         'url' => 'https://example.com',
+//         'avatar' => '...',
+//         'description' => '...',
+//         'category' => '',
+//         'email' => '',
+//         'message' => '',
+//         'status' => 'approved',  // pending, approved
+//         'verified' => false,
+//         'is_wordpress' => false,
+//         'accessible' => true,
+//         'last_check' => 1700000000,
+//         'created_at' => 1700000000,
+//         'updated_at' => 1700000000
+//     },
+//     ...
+// ]
+```
+
+#### 核心逻辑
+
+主要逻辑在 `functions.php` 中实现：
+
+- `argon_add_friend_link($data)`: 添加新友链
+- `argon_update_friend_link($id, $data)`: 更新友链信息
+- `argon_handle_link_application_v3($post_data)`: 处理友链申请
+
+#### 自动获取站点信息
+
+在申请友链和后台新增友链时，主题会自动获取目标网站的基础信息。实现入口为 `argon_fetch_site_info($url)`，其返回结构包含可用性与安全拦截相关的状态字段：
+
+```php
+$info = array(
+    'favicon' => '',
+    'title' => '',
+    'description' => '',
+    'author_avatar' => '',
+    'is_wordpress' => false,
+    'accessible' => false,
+    'blocked_by_waf' => false,
+    'error_reason' => ''
+);
+```
+
+核心流程包括：
+
+1. 使用模拟浏览器的请求头与 UA 进行 `wp_remote_get`（`timeout` 约 20 秒，允许最多 5 次重定向）
+2. 根据 HTTP 状态码与页面内容特征识别 WAF 拦截（403/503/关键字命中），并写入 `blocked_by_waf` 与 `error_reason`
+3. 在可访问的前提下解析 `<title>`、`meta description`，并通过多种 `<link rel="icon">` 规则获取 favicon，必要时回退到 `/favicon.ico`
+4. 尝试检测站点是否为 WordPress（页面特征 + `/wp-json/` 探测），若为 WordPress 则进一步尝试获取作者头像信息
+
+#### 申请频率限制与安全校验
+
+为了防止滥用，申请入口 `argon_handle_link_application_v3($post_data)` 依次执行以下校验：
+
+1. **IP 黑名单**：读取 `argon_global_blocked_ips`，支持精确匹配 / 通配符 / CIDR
+2. **频率限制**：按“用户标识符”限制提交频率
+   - 已登录用户：`user_{ID}`
+   - 未登录用户：对 `IP + User-Agent` 计算哈希并截断（用于避免单纯按 IP 误伤共享网络）
+   - 计数使用 transient：`flink_apply_{identifier}`
+   - 默认限制来自选项：`argon_flink_apply_limit`（默认 3）与 `argon_flink_apply_period`（默认 3600 秒）
+3. **Nonce 验证**：校验字段 `argon_link_apply_nonce`，action 为 `argon_link_apply`
+4. **可选验证码**：当全局验证码开启时，会调用 `argon_verify_captcha('flink')` 对友链申请场景进行验证
+
+## 12. 短代码与小工具系统
+
+Argon 主题内置了丰富的小工具区域和短代码支持，增强了内容展示的灵活性。
+
+### 小工具区域 (Sidebars)
+
+主题在 `functions.php` 的 `argon_widgets_init` 函数中注册了三个主要的小工具区域：
+
+1. **左侧栏小工具 (`leftbar-tools`)**
+   - 显示在页面左侧边栏。
+   - 如果设置了小工具，会在侧栏增加一个 Tab 标签页。
+   
+2. **右侧栏小工具 (`rightbar-tools`)**
+   - 仅在 "Argon 主题选项" 中选择 "三栏布局" 时显示。
+   - 位于页面右侧。
+
+3. **站点概览额外内容 (`leftbar-siteinfo-extra-tools`)**
+   - 用于在左侧栏站点概览卡片下方添加额外内容。
+
+**注册代码示例：**
+
+```php
+function argon_widgets_init(){
+    register_sidebar(
+        array(
+            'name'          => __('左侧栏小工具', 'argon'),
+            'id'            => 'leftbar-tools',
+            // ...
+        )
+    );
+    // ...
+}
+add_action('widgets_init', 'argon_widgets_init');
+```
+
+### 短代码系统 (Shortcodes)
+
+主题定义了大量自定义短代码，用于在文章中快速插入特殊样式或功能组件。所有短代码均在 `functions.php` 中通过 `add_shortcode` 注册。
+
+#### 主要短代码列表
+
+- **布局与样式**：`[br]`, `[label]`, `[progressbar]`, `[checkbox]`, `[collapse]/[fold]`
+- **提示框**：`[alert]`, `[admonition]`
+- **功能组件**：`[timeline]`, `[github]`, `[video]`
+- **元数据**：`[post_time]`, `[post_modified_time]`, `[hide_reading_time]`
+- **其他**：`[friendlinks]`, `[sfriendlinks]`, `[hidden]/[spoiler]`, `[ref]`
+
+#### 实现示例：Alert 短代码
+
+`[alert]` 短代码用于显示带颜色的提示框，支持 `color` 和 `icon` 参数。
+
+```php
+// 注册短代码
+add_shortcode('alert','shortcode_alert');
+
+// 回调函数实现
+function shortcode_alert($attr, $content=""){
+    // 预处理内容
+    $content = shortcode_content_preprocess($attr, $content);
+    
+    // 构建 HTML
+    $out = "<div class='alert";
+    $color = isset( $attr['color'] ) ? $attr['color'] : 'indigo';
+    
+    // 根据颜色参数添加对应的 CSS 类
+    switch ($color){
+        case 'indigo': $out .= " alert-primary"; break;
+        case 'green':  $out .= " alert-success"; break;
+        // ...
+    }
+    
+    $out .= "'>";
+    // ...
+    return $out;
+}
+```
+
+## 13. 扩展接口与 Hooks
+
+Argon 主题提供了一些自定义的 Action 和 Filter Hooks，方便开发者在不修改核心文件的情况下扩展主题功能。
+
+### 主要 Hooks 列表
+
+#### Filters (过滤器)
+
+1. **`argon_banner_title_html`**
+   - **作用**：过滤 Banner 标题的 HTML 内容。
+   - **位置**：`header.php`
+   - **参数**：`$banner_title` (当前标题)
+
+2. **`argon_page_background_url`**
+   - **作用**：过滤页面背景图片的 URL。
+   - **位置**：`header.php`
+   - **参数**：`$url` (设置中的背景 URL)
+
+3. **`argon_email_types`**
+   - **作用**：过滤邮件通知类型列表，可用于修改默认邮件模板或添加新类型。
+   - **位置**：`email-templates/base.php`
+   - **参数**：`$types` (包含邮件类型配置的数组)
+
+#### Actions (动作)
+
+1. **`argon_cache_cleared`**
+   - **作用**：当主题缓存被清除时触发（如保存设置时）。
+   - **位置**：`functions.php`
+
+**使用示例：**
+
+```php
+// 修改 Banner 标题后缀
+add_filter('argon_banner_title_html', function($title) {
+    return $title . ' <small>(Dev Mode)</small>';
+});
+
+// 自定义背景图片逻辑
+add_filter('argon_page_background_url', function($url) {
+    if (is_page('special')) {
+        return 'https://example.com/special-bg.jpg';
+    }
+    return $url;
+});
+```
+
+## 14. 国际化与多语言支持
+
+Argon 主题完全支持国际化（I18n），允许开发者轻松创建多语言版本。
+
+### 核心配置
+
+- **Text Domain**: `argon`
+- **语言包路径**: `/languages`
+- **加载逻辑**: `functions.php` 中的 `theme_slug_setup` 函数。
+
+```php
+function theme_slug_setup() {
+    // ...
+    load_theme_textdomain('argon', get_template_directory() . '/languages');
+}
+```
+
+### 翻译指南
+
+1. **PHP 文件中**：
+   使用 WordPress 标准本地化函数：
+   ```php
+   // 返回翻译字符串
+   $text = __('Hello World', 'argon');
+   
+   // 直接输出翻译字符串
+   _e('Settings', 'argon');
+   
+   // 带有上下文的翻译
+   _x('Post', 'noun', 'argon');
+   ```
+
+2. **创建语言包**：
+   - 当前仓库未提供 `languages/argon.pot` 模板文件。
+   - 可使用 Poedit 扫描主题源代码生成新的 `.po`（Text Domain 选择 `argon`），完成翻译后生成 `.mo`。
+   - 将生成的 `.po/.mo` 文件放在 `languages/` 目录下即可被加载。
 
 ## 开发指南
 
@@ -2255,24 +2746,35 @@ Template Name: 自定义页面
 
 #### 更新检查器
 
-主题使用 `theme-update-checker` 库实现自动更新检查：
+主题使用 `plugin-update-checker`（Puc v4）实现自动更新检查。更新源由选项 `argon_update_source` 控制，不同取值会切换到不同的元数据地址：
 
 ```php
 // functions.php
-require get_template_directory() . '/theme-update-checker/theme-update-checker.php';
-$myUpdateChecker = Puc_v4_Factory::buildUpdateChecker(
-	'https://github.com/solstice23/argon-theme/',
-	__FILE__,
-	'argon'
-);
+require_once(get_template_directory() . '/theme-update-checker/plugin-update-checker.php');
+$argon_update_source = get_option('argon_update_source');
+switch ($argon_update_source) {
+	case "stop":
+		break;
+	case "fastgit":
+		Puc_v4_Factory::buildUpdateChecker('https://api.solstice23.top/argon/info.json?source=fastgit', get_template_directory() . '/functions.php', 'argon');
+		break;
+	case "cfworker":
+		Puc_v4_Factory::buildUpdateChecker('https://api.solstice23.top/argon/info.json?source=cfworker', get_template_directory() . '/functions.php', 'argon');
+		break;
+	case "solstice23top":
+		Puc_v4_Factory::buildUpdateChecker('https://api.solstice23.top/argon/info.json?source=0', get_template_directory() . '/functions.php', 'argon');
+		break;
+	case "github":
+	default:
+		Puc_v4_Factory::buildUpdateChecker('https://raw.githubusercontent.com/solstice23/argon-theme/master/info.json', get_template_directory() . '/functions.php', 'argon');
+}
 ```
 
 #### 更新流程
 
-1. 主题定期检查 GitHub 仓库的更新
-2. 发现新版本后在后台显示更新提示
-3. 点击更新按钮自动下载并安装新版本
-4. 更新完成后自动激活
+1. 主题通过更新检查器向 WordPress 更新系统注册可用版本信息
+2. 在后台“仪表盘 → 更新”或“外观 → 主题”中显示更新提示
+3. 管理员点击更新后，由 WordPress 负责下载并覆盖主题文件
 
 #### 手动更新
 
@@ -2289,17 +2791,18 @@ $myUpdateChecker = Puc_v4_Factory::buildUpdateChecker(
 
 主题支持多语言，翻译文件位于 `languages/` 目录：
 
-- `zh_CN.po` / `zh_CN.mo` - 简体中文
 - `zh_TW.po` / `zh_TW.mo` - 繁体中文
 - `en_US.po` / `en_US.mo` - 英文
 - `ru_RU.po` / `ru_RU.mo` - 俄文
 
 #### 添加新语言
 
-1. 复制 `languages/argon.pot` 文件
-2. 使用 Poedit 等工具打开并翻译
-3. 保存为对应语言代码的 `.po` 和 `.mo` 文件
-4. 放置到 `languages/` 目录
+当前仓库未提供 `languages/argon.pot` 模板文件。新增语言时可采用两种方式之一：
+
+1. 使用 Poedit 扫描主题源代码生成新的 `.po`（Text Domain 选择 `argon`），完成翻译后生成 `.mo`
+2. 使用 WP-CLI i18n 工具自行生成 POT，再在 Poedit 中基于 POT 创建语言包
+
+生成的 `.po/.mo` 文件放置到 `languages/` 目录即可被 `load_theme_textdomain('argon', ... )` 加载
 
 
 #### 在代码中使用翻译
@@ -2376,10 +2879,10 @@ alert(__('确定'));
 
 #### 代码高亮显示异常
 
-1. 确认 Prism.js 库已加载
-2. 检查代码块的语言类名是否正确（如 `language-javascript`）
-3. 确认代码高亮样式文件已加载
-4. 尝试在 PJAX 加载后重新初始化高亮
+1. 确认 Highlight.js 已加载（浏览器控制台 `window.hljs` 存在）
+2. 确认代码高亮已启用（`argon_enable_code_highlight` 为 true，且 `argonConfig.code_highlight.enable` 为 true）
+3. 确认高亮主题 CSS 已加载（footer.php 会输出 highlight 样式链接）
+4. PJAX 场景下检查 `pjax:complete` 是否触发 `highlightJsRender()`
 
 ### 性能问题
 
@@ -3136,28 +3639,16 @@ add_filter('argon_excerpt_length', 'custom_excerpt_length');
   - 响应式布局
 
 
-## 结语
+## 結語
 
-本文档详细介绍了 Argon 主题的架构、核心功能、开发规范和最佳实践。通过学习本文档，开发者应该能够：
+本文檔用於內部開發協作，聚焦於主題架構、關鍵模組、開發規範與排查路徑，目標是讓開發者能以一致的方法理解、修改與驗證功能。
 
-1. 理解主题的整体架构和文件组织
-2. 掌握核心功能的实现原理
-3. 遵循统一的代码规范进行开发
-4. 独立完成主题的定制和扩展
-5. 解决常见的开发和部署问题
+在日常開發與維護中，建議遵循以下原則：
 
-在实际开发过程中，建议：
+1. 以實際程式碼為準，文件同步更新，避免規格漂移
+2. 變更前先界定影響範圍（頁面類型、PJAX、設定項、相依資源）
+3. 變更後完成基本回歸（切換頁面、文章頁、評論、行動端、暗色模式）
+4. 優先保留相容性與可回退性，避免破壞既有站點行為
+5. 對安全與效能保持敏感（輸出轉義、權限檢查、資源載入與快取）
 
-1. 始终遵循代码规范，保持代码整洁
-2. 充分测试功能，确保兼容性和稳定性
-3. 注重性能优化，提升用户体验
-4. 重视安全性，防范潜在风险
-5. 保持代码可维护性，便于后续迭代
-
-如有问题或建议，欢迎通过 GitHub Issues 反馈。
-
----
-
-文档版本：1.0.0
-最后更新：2026-01-31
-维护者：Argon Theme Development Team
+若需討論或提案，請依內部既定流程提交（需求/缺陷、代碼審查、發布/回滾），並附上可重現步驟與必要的日誌或截圖。
