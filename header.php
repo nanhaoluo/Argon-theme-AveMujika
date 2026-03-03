@@ -166,7 +166,7 @@
 
 <head>
 
-	<meta charset="<?php bloginfo( 'charset' ); ?>">
+	<meta charset="UTF-8">
 
 	<?php if (get_option('argon_enable_mobile_scale') != 'true'){ ?>
 
@@ -731,8 +731,8 @@ $bg_opacity = get_option('argon_page_background_opacity', '1');
 // 顶栏模糊度为卡片模糊度的 60%（12px / 20px = 0.6）
 $toolbar_blur = round($card_blur * 0.6);
 
-// 如果透明度为空或为1，使用推荐默认值
-if ($card_opacity == '' || $card_opacity == '1') {
+// 如果透明度为空，使用推荐默认值
+if ($card_opacity == '') {
 	$card_opacity = '0.7';
 }
 if ($bg_opacity == '') {
@@ -1246,8 +1246,8 @@ if ($bg_opacity == '') {
 		$card_blur_inline = intval(get_option('argon_card_blur', '20'));
 		$card_saturate_inline = intval(get_option('argon_card_saturate', '180'));
 		
-		// 如果透明度为空或为1，使用推荐默认值
-		if ($post_bg_opacity_inline == '' || $post_bg_opacity_inline == '1') {
+		// 如果透明度为空，使用推荐默认值
+		if ($post_bg_opacity_inline == '') {
 			$post_bg_opacity_inline = '0.7';
 		}
 		?>
@@ -1256,15 +1256,13 @@ if ($bg_opacity == '') {
 		#post_comment.card,
 		.post-navigation.card,
 		.related-posts.card,
-		.card.bg-white {
+		.card.bg-white,
+		.card {
 			background-color: rgba(255, 255, 255, var(--card-opacity)) !important;
-			backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
-			-webkit-backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
+			backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate)) !important;
+			-webkit-backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate)) !important;
 			background-clip: padding-box;
-			-webkit-transform: translateZ(0);
-			transform: translateZ(0);
 			position: relative;
-			z-index: 0;
 		}
 		article.post.card .post-content {
 			background-color: transparent;
@@ -1280,8 +1278,8 @@ if ($bg_opacity == '') {
 		#leftbar .card,
 		#leftbar_part1,
 		#leftbar_part2 {
-			backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
-			-webkit-backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
+			backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate)) !important;
+			-webkit-backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate)) !important;
 		}
 
 	</style>
@@ -1296,8 +1294,8 @@ $post_bg_opacity_standalone = get_option('argon_post_background_opacity', '0.7')
 
 // 只有在没有背景图片时才输出毛玻璃样式（有背景图片时上面已经输出了）
 if (apply_filters('argon_page_background_url', get_option('argon_page_background_url')) == ''): 
-	// 如果透明度为空或为1，使用推荐默认值
-	if ($post_bg_opacity_standalone == '' || $post_bg_opacity_standalone == '1') {
+	// 如果透明度为空，使用推荐默认值
+	if ($post_bg_opacity_standalone == '') {
 		$post_bg_opacity_standalone = '0.7';
 	}
 ?>
@@ -1308,15 +1306,13 @@ if (apply_filters('argon_page_background_url', get_option('argon_page_background
 	#post_comment.card,
 	.post-navigation.card,
 	.related-posts.card,
-	.card.bg-white {
+	.card.bg-white,
+	.card {
 		background-color: rgba(255, 255, 255, var(--card-opacity)) !important;
-		backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
-		-webkit-backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
+		backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate)) !important;
+		-webkit-backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate)) !important;
 		background-clip: padding-box;
-		-webkit-transform: translateZ(0);
-		transform: translateZ(0);
 		position: relative;
-		z-index: 0;
 	}
 	article.post.card .post-content {
 		background-color: transparent;
@@ -1332,8 +1328,8 @@ if (apply_filters('argon_page_background_url', get_option('argon_page_background
 	#leftbar .card,
 	#leftbar_part1,
 	#leftbar_part2 {
-		backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
-		-webkit-backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
+		backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate)) !important;
+		-webkit-backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate)) !important;
 	}
 </style>
 <?php endif; ?>

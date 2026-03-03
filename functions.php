@@ -19,6 +19,31 @@ function argon_prevent_mobile_cache() {
 }
 add_action('send_headers', 'argon_prevent_mobile_cache');
 
+/**
+ * 强制全站前台使用 UTF-8 字符集，修复乱码
+ */
+function argon_force_utf8_charset() {
+	$is_ajax = (defined('DOING_AJAX') && DOING_AJAX) || (function_exists('wp_doing_ajax') && wp_doing_ajax());
+	$is_rest = defined('REST_REQUEST') && REST_REQUEST;
+
+	if (is_admin() || $is_ajax || $is_rest || is_feed() || is_trackback() || is_robots()) {
+		return;
+	}
+
+	if (!headers_sent()) {
+		header('Content-Type: text/html; charset=UTF-8', true);
+	}
+}
+add_action('send_headers', 'argon_force_utf8_charset', 1);
+
+/**
+ * 固定 WordPress 前台字符集为 UTF-8，避免配置异常导致的编码错误
+ */
+function argon_force_blog_charset_utf8($value) {
+	return 'UTF-8';
+}
+add_filter('pre_option_blog_charset', 'argon_force_blog_charset_utf8');
+
 if (version_compare( $GLOBALS['wp_version'], '4.4-alpha', '<' )) {
 	echo "<div style='background: #5e72e4;color: #fff;font-size: 30px;padding: 50px 30px;position: fixed;width: 100%;left: 0;right: 0;bottom: 0;z-index: 2147483647;'>" . __("Argon 主题不支持 Wordpress 4.4 以下版本，请更新 Wordpress", 'argon') . "</div>";
 }
@@ -3553,6 +3578,14 @@ function argon_lazyload($content){
 					return $matches[0];
 				}
 				$original_src = $src_match[1];
+				$original_srcset = null;
+				$original_sizes = null;
+				if (preg_match('/\bsrcset\s*=\s*["\']([^"\']*)["\']/', $attrs, $srcset_match)) {
+					$original_srcset = $srcset_match[1];
+				}
+				if (preg_match('/\bsizes\s*=\s*["\']([^"\']*)["\']/', $attrs, $sizes_match)) {
+					$original_sizes = $sizes_match[1];
+				}
 				
 				// 跳过已经是 base64 的图片
 				if (strpos($original_src, 'data:image') === 0) {
@@ -3565,6 +3598,22 @@ function argon_lazyload($content){
 					'src="' . $placeholder . '" data-src="' . esc_attr($original_src) . '"',
 					$attrs
 				);
+				
+				if ($original_srcset !== null) {
+					$new_attrs = preg_replace(
+						'/\bsrcset\s*=\s*["\'][^"\']*["\']/',
+						'data-srcset="' . esc_attr($original_srcset) . '"',
+						$new_attrs
+					);
+				}
+				
+				if ($original_sizes !== null) {
+					$new_attrs = preg_replace(
+						'/\bsizes\s*=\s*["\'][^"\']*["\']/',
+						'data-sizes="' . esc_attr($original_sizes) . '"',
+						$new_attrs
+					);
+				}
 				
 				// 添加 lazyload 类
 				if (preg_match('/\bclass\s*=\s*["\']([^"\']*)["\']/', $new_attrs, $class_match)) {
@@ -12951,7 +13000,7 @@ function argon_show_feedback_result_page($comment, $result, $type) {
 	<!DOCTYPE html>
 	<html <?php language_attributes(); ?>>
 	<head>
-		<meta charset="<?php bloginfo('charset'); ?>">
+		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<title>反馈处理结果 - <?php echo esc_html($site_name); ?></title>
 		<style>

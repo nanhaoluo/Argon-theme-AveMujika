@@ -3452,6 +3452,17 @@ const PageLoader = (function() {
 		destroy: destroy
 	};
 })();
+
+/**
+ * 向后兼容的函数
+ */
+function showLoadingOverlay() {
+	PageLoader.show();
+}
+
+function hideLoadingOverlay() {
+	PageLoader.hide();
+}
 function startPageTransition() {
 	document.documentElement.classList.add('page-transition-enter');
 	pjaxContainers.forEach(function(selector) {
@@ -3499,7 +3510,7 @@ $(document).pjax(
 	NProgress.remove();
 	NProgress.start();
 	pjaxLoading = true;
-	PageLoader.show();
+	showLoadingOverlay();
 }).on('pjax:afterGetContainers', function(e, f, g) {
 	pjaxScrollTop = 0;
 	if ($("html").hasClass("banner-as-cover")){
@@ -3536,7 +3547,7 @@ $(document).pjax(
 	startPageTransition();
 	activatePageTransition();
 	setTimeout(function() {
-		PageLoader.hide();
+		hideLoadingOverlay();
 		endPageTransition();
 	}, 320);
 	
@@ -3610,7 +3621,7 @@ $(document).pjax(
 
 	NProgress.done();
 }).on('pjax:error', function() {
-	PageLoader.hide();
+	hideLoadingOverlay();
 	endPageTransition();
 	pjaxLoading = false;
 }).on('pjax:end', function() {
