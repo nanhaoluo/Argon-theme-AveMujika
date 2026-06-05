@@ -3331,35 +3331,20 @@ const PageLoader = (function () {
 	function createHTML() {
 		return `
 			<div class="page-loader-backdrop"></div>
-			<div class="page-loader-content">
-				<!-- 进度环 -->
-				<div class="loader-ring-container">
-					<svg class="loader-ring" viewBox="0 0 100 100">
-						<circle class="loader-ring-bg" cx="50" cy="50" r="45"></circle>
-						<circle class="loader-ring-progress" cx="50" cy="50" r="45"></circle>
-					</svg>
-					<div class="loader-icon">
-						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-							<path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
-						</svg>
-					</div>
-				</div>
-				
-				<!-- 加载文字 -->
+			<div class="page-loader-content" role="status" aria-live="polite" aria-label="页面加载中">
 				<div class="loader-text">
 					<div class="loader-title">加载中</div>
-					<div class="loader-subtitle">正在为您准备内容</div>
+					<div class="loader-subtitle">请稍候</div>
 				</div>
-				
-				<!-- 骨架屏（延迟显示） -->
-				<div class="loader-skeleton">
-					<div class="skeleton-card">
-						<div class="skeleton-image"></div>
-						<div class="skeleton-content">
-							<div class="skeleton-title"></div>
-							<div class="skeleton-line"></div>
-							<div class="skeleton-line short"></div>
-						</div>
+				<div class="loader-progress" aria-hidden="true">
+					<div class="loader-progress-bar"></div>
+				</div>
+				<div class="loader-skeleton" aria-hidden="true">
+					<div class="skeleton-page">
+						<div class="skeleton-top"></div>
+						<div class="skeleton-row skeleton-row-wide"></div>
+						<div class="skeleton-row"></div>
+						<div class="skeleton-row skeleton-row-short"></div>
 					</div>
 				</div>
 			</div>
@@ -3398,11 +3383,9 @@ const PageLoader = (function () {
 		const el = state.element;
 		if (!el) return;
 
-		const circle = el.querySelector('.loader-ring-progress');
-		if (circle) {
-			const circumference = 2 * Math.PI * 45;
-			const offset = circumference - (progress / 100) * circumference;
-			circle.style.strokeDashoffset = offset;
+		const bar = el.querySelector('.loader-progress-bar');
+		if (bar) {
+			bar.style.width = progress + '%';
 		}
 
 		state.progress = progress;
