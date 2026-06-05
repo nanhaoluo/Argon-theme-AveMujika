@@ -621,6 +621,24 @@ $(document).on("change", ".search-filter", function (e) {
 
 	let part1OffsetTop = $('#leftbar_part1').offset().top;
 	let part1OuterHeight = $('#leftbar_part1').outerHeight();
+	let leftbarStickyUpdateFrame = 0;
+
+	function setLeftbarRootProperty(name, value) {
+		if (document.documentElement.style.getPropertyValue(name) !== value) {
+			document.documentElement.style.setProperty(name, value);
+		}
+	}
+
+	function requestLeftbarStickyStatusUpdate() {
+		if (leftbarStickyUpdateFrame) return;
+		let scheduleFrame = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function (callback) {
+			return window.setTimeout(callback, 16);
+		};
+		leftbarStickyUpdateFrame = scheduleFrame(function () {
+			leftbarStickyUpdateFrame = 0;
+			changeLeftbarStickyStatus();
+		});
+	}
 
 	function changeLeftbarStickyStatus() {
 		let scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
@@ -655,9 +673,9 @@ $(document).on("change", ".search-filter", function (e) {
 					part3MaxHeight = Math.max(minPart3Height, availableHeight - part2Height - 10);
 				}
 
-				document.documentElement.style.setProperty('--leftbar-part2-height', leftbarPart2.offsetHeight + 10 + 'px');
-				document.documentElement.style.setProperty('--leftbar-part3-height', part3MaxHeight + 'px');
-				document.documentElement.style.setProperty('--leftbar-part3-max-height', part3MaxHeight + 'px');
+				setLeftbarRootProperty('--leftbar-part2-height', leftbarPart2.offsetHeight + 10 + 'px');
+				setLeftbarRootProperty('--leftbar-part3-height', part3MaxHeight + 'px');
+				setLeftbarRootProperty('--leftbar-part3-max-height', part3MaxHeight + 'px');
 			}
 		} else {
 			//滚动条在顶部 不浮动状态
@@ -691,7 +709,7 @@ $(document).on("change", ".search-filter", function (e) {
 	// 因为 changeLeftbarStickyStatus 会修改 DOM 属性（classList, style），使用 MuationObserver 会导致无限循环死机
 	if (typeof ResizeObserver !== 'undefined') {
 		const ro = new ResizeObserver(function () {
-			changeLeftbarStickyStatus();
+			requestLeftbarStickyStatusUpdate();
 		});
 		if (leftbarPart2) ro.observe(leftbarPart2);
 		if (leftbarPart3) ro.observe(leftbarPart3);
