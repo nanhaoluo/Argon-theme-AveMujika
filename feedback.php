@@ -543,7 +543,7 @@ $status_labels = ['pending' => __('未查看', 'argon'), 'viewed' => __('已查�
 $feedback_card_blur = intval(get_option('argon_card_blur', '20'));
 $feedback_card_saturate = intval(get_option('argon_card_saturate', '180'));
 $feedback_card_opacity = get_option('argon_post_background_opacity', '0.7');
-if ($feedback_card_opacity == '' || $feedback_card_opacity == '1') {
+if ($feedback_card_opacity == '') {
 	$feedback_card_opacity = '0.7';
 }
 ?>
@@ -582,7 +582,7 @@ html.darkmode .feedback-subtitle { color: #aaa; }
 
 /* 管理员统计 */
 .feedback-admin-stats { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
-.feedback-admin-stat { flex: 1; min-width: 120px; padding: 20px; background-color: rgba(255, 255, 255, <?php echo $feedback_card_opacity; ?>); backdrop-filter: blur(<?php echo $feedback_card_blur; ?>px) saturate(<?php echo $feedback_card_saturate; ?>%); -webkit-backdrop-filter: blur(<?php echo $feedback_card_blur; ?>px) saturate(<?php echo $feedback_card_saturate; ?>%); border-radius: var(--card-radius); text-align: center; border: 1px solid var(--color-border); transition: all var(--animation-fast) var(--ease-standard); }
+.feedback-admin-stat { flex: 1; min-width: 120px; padding: 20px; background-color: rgba(255, 255, 255, var(--card-opacity)); backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate)); -webkit-backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate)); border-radius: var(--card-radius); text-align: center; border: 1px solid var(--color-border); transition: all var(--animation-fast) var(--ease-standard); }
 .feedback-admin-stat:hover { transform: translateY(-2px); border-color: rgba(var(--themecolor-rgbstr), 0.3); box-shadow: 0 4px 12px rgba(var(--themecolor-rgbstr), 0.15); }
 .feedback-admin-stat .stat-value { font-size: 32px; font-weight: 600; color: var(--themecolor); line-height: 1.2; }
 .feedback-admin-stat .stat-label { font-size: 13px; color: #888; margin-top: 6px; }
@@ -590,7 +590,7 @@ html.darkmode .feedback-subtitle { color: #aaa; }
 .feedback-admin-stat.pending .stat-value { color: #d97706; }
 .feedback-admin-stat.resolved { border-color: rgba(5, 150, 105, 0.3); }
 .feedback-admin-stat.resolved .stat-value { color: #059669; }
-html.darkmode .feedback-admin-stat { background-color: rgba(66, 66, 66, <?php echo $feedback_card_opacity; ?>); }
+html.darkmode .feedback-admin-stat { background-color: rgba(66, 66, 66, var(--card-opacity)); }
 html.darkmode .feedback-admin-stat .stat-label { color: #aaa; }
 
 /* 表单样式 */

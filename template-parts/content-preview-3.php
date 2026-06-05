@@ -151,5 +151,5 @@
 		</div>
 
 	<?php } ?>
-
+	<?php echo get_article_skeleton('1'); ?>
 </article>

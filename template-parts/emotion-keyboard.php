@@ -2,7 +2,7 @@
 	global $emotionListDefault;
 	$emotionList = apply_filters("argon_emotion_list", $emotionListDefault);
 ?>
-<div id="emotion_keyboard" class="emotion-keyboard card shadow-sm bg-white">
+<div id="emotion_keyboard" class="emotion-keyboard">
 	<div class="emotion-keyboard-content">
 		<?php
 			foreach ($emotionList as $groupIndex => $group){ 

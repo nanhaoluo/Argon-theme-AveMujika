@@ -6,7 +6,7 @@
 		<div class="shuoshuo-content">
 			<?php the_content(); ?>
 		</div>
-	</article>
+	</div>
 	<div class="shuoshuo-preview-meta">
 		<span>
 			<i class="fa fa-calendar-o" aria-hidden="true"></i> 
@@ -46,4 +46,5 @@
 	<a class="shuoshuo-preview-link btn btn-outline-primary btn-icon-only rounded-circle" type="button" href="<?php the_permalink(); ?>">
 		<span class="btn-inner--icon"><i class="fa fa-arrow-right"></i></span>
 	</a>
+	<?php echo get_article_skeleton('1'); ?>
 </div>

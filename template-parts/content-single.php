@@ -43,6 +43,12 @@
 			<?php if (!post_password_required() && get_option("argon_show_readingtime") != "false" && is_readingtime_meta_hidden() == False) {
 				echo get_article_reading_time_meta(get_the_content());
 			} ?>
+			<!-- 优雅内置的沉浸式阅读按钮 -->
+			<div class="post-meta-devide">|</div>
+			<div class="post-meta-detail post-meta-detail-immersive" id="immersive_read_toggle" title="<?php _e('沉浸阅读', 'argon'); ?>" style="cursor: pointer; transition: color 0.3s ease;">
+				<i class="fa fa-television immersive-read-icon-enter" aria-hidden="true"></i>
+				<span class="immersive-read-label"><?php _e('沉浸', 'argon'); ?></span>
+			</div>
 		</div>
 		<?php
 			if (has_post_thumbnail() && $show_thumbnail_in_banner != 'true'){
@@ -51,9 +57,114 @@
 		?>
 	</header>
 
+	<!-- 简约的顶部退出按钮 -->
+	<div id="immersive_exit_btn" class="immersive-exit-btn-container">
+		<button class="immersive-exit-btn-fast">
+			<i class="fa fa-compress" aria-hidden="true"></i> <?php _e('退出沉浸模式', 'argon'); ?>
+		</button>
+	</div>
+
+	<!-- 沉浸式阅读 JS -->
+	<script>
+	(function() {
+		var toggleBtn = document.getElementById('immersive_read_toggle');
+		var exitTopBtn = document.getElementById('immersive_exit_btn');
+		if (!toggleBtn) return;
+
+		var isActive = false;
+
+		function enterImmersive() {
+			if (isActive) return;
+			isActive = true;
+
+			document.documentElement.classList.add('immersive-read');
+			toggleBtn.classList.add('active');
+			toggleBtn.title = '<?php _e("退出沉浸", "argon"); ?>';
+
+			var icon = toggleBtn.querySelector('i.fa');
+			if (icon) {
+				icon.classList.remove('fa-television');
+				icon.classList.add('fa-compress');
+			}
+			var label = toggleBtn.querySelector('.immersive-read-label');
+			if (label) {
+				label.innerText = '<?php _e("退出", "argon"); ?>';
+			}
+
+			// 快速滚动到文章头部
+			var postContent = document.getElementById('post_content');
+			if (postContent) {
+				var rect = postContent.getBoundingClientRect();
+				var headerOffset = 20;
+				var scrollTarget = window.scrollY + rect.top - headerOffset;
+				window.scrollTo({ top: scrollTarget, behavior: 'smooth' });
+			}
+
+			if (exitTopBtn) {
+				exitTopBtn.classList.add('visible');
+			}
+		}
+
+		function exitImmersive() {
+			if (!isActive) return;
+			isActive = false;
+
+			document.documentElement.classList.remove('immersive-read');
+
+			toggleBtn.classList.remove('active');
+			toggleBtn.title = '<?php _e("沉浸阅读", "argon"); ?>';
+
+			var icon = toggleBtn.querySelector('i.fa');
+			if (icon) {
+				icon.classList.remove('fa-compress');
+				icon.classList.add('fa-television');
+			}
+			var label = toggleBtn.querySelector('.immersive-read-label');
+			if (label) {
+				label.innerText = '<?php _e("沉浸", "argon"); ?>';
+			}
+
+			if (exitTopBtn) {
+				exitTopBtn.classList.remove('visible');
+			}
+		}
+
+		toggleBtn.addEventListener('click', function(e) {
+			e.preventDefault();
+			isActive ? exitImmersive() : enterImmersive();
+		});
+
+		if (exitTopBtn) {
+			exitTopBtn.querySelector('button').addEventListener('click', function(e) {
+				e.preventDefault();
+				exitImmersive();
+			});
+		}
+
+		// Esc 快捷键支持
+		document.addEventListener('keydown', function(e) {
+			if (e.key === 'Escape' && isActive) exitImmersive();
+		});
+
+		// 滚动检测: 控制顶部退出按钮透明度防遮挡
+		var ticking = false;
+		window.addEventListener('scroll', function() {
+			if (!isActive || !exitTopBtn) return;
+			if (!ticking) {
+				ticking = true;
+				requestAnimationFrame(function() {
+					// 当滚动超过一定距离时，使其半透明，鼠标悬浮时恢复
+					exitTopBtn.classList.toggle('dimmed', window.scrollY > 200);
+					ticking = false;
+				});
+			}
+		}, { passive: true });
+	})();
+	</script>
+
 	<?php get_template_part('template-parts/ai-summary'); ?>
 
-	<div class="post-content" id="post_content"<?php echo function_exists('argon_get_content_performance_attrs') ? argon_get_content_performance_attrs() : ''; ?>>
+	<div class="post-content" id="post_content">
 		<?php if (post_password_required()){ ?>
 			<div class="text-center container">
 				<form action="<?php echo $GLOBALS['wp_path']; ?>wp-login.php?action=postpass" class="post-password-form" method="post">

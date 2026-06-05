@@ -84,6 +84,38 @@ function argon_get_email_types() {
                 'theme_color' => __('主题色', 'argon'),
             ),
         ),
+        'panic_mode_notify' => array(
+            'name' => __('怕死模式审核通知', 'argon'),
+            'description' => __('当评论在怕死模式下未通过审核时发送给评论者', 'argon'),
+            'default_subject' => '[{{blog_name}}] 您的评论未通过审核',
+            'default_content' => '<h2 style="margin: 0 0 20px 0; font-size: 18px; font-weight: 600; color: {{theme_color}};">评论审核通知</h2>
+<p style="margin: 0 0 16px 0; color: #525f7f; line-height: 1.6;">尊敬的用户 <strong>{{commenter_name}}</strong>：</p>
+<p style="margin: 0 0 20px 0; color: #525f7f; line-height: 1.6;">您在文章《<a href="{{post_url}}" style="color: {{theme_color}}; text-decoration: none;">{{post_title}}</a>》中发表的评论未通过系统审核。</p>
+<div style="background: #fff5f5; border-left: 4px solid #f56565; padding: 16px; border-radius: 4px; margin: 0 0 20px 0;">
+    <p style="margin: 0 0 8px 0; color: #2d3748; font-size: 14px; font-weight: 600;">您的评论内容</p>
+    <p style="margin: 0; color: #4a5568; line-height: 1.6;">{{comment_content}}</p>
+</div>
+<div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 4px; margin: 0 0 20px 0;">
+    <p style="margin: 0 0 8px 0; color: #92400e; font-size: 14px; font-weight: 600;">审核说明</p>
+    <p style="margin: 0; color: #78350f; line-height: 1.6;">很抱歉，由于该文章当前处于特殊审核状态，评论内容需要经过更严格的审查。您的评论未能通过此次审核，建议您修改后重新提交。</p>
+</div>
+<p style="margin: 0 0 20px 0; color: #525f7f; line-height: 1.6;">如果您认为这是误判，请联系网站管理员申诉。</p>
+<p style="margin: 0;">
+    <a href="{{query_url}}" style="display: inline-block; background: {{theme_color}}; color: #ffffff; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-size: 14px;">查询识别详情</a>
+</p>',
+            'placeholders' => array(
+                'blog_name' => __('博客名称', 'argon'),
+                'post_title' => __('文章标题', 'argon'),
+                'post_url' => __('文章链接', 'argon'),
+                'commenter_name' => __('评论者名称', 'argon'),
+                'comment_content' => __('评论内容', 'argon'),
+                'ai_spam_reason' => __('AI 识别理由', 'argon'),
+                'ai_detection_code' => __('AI 识别码', 'argon'),
+                'query_url' => __('查询链接', 'argon'),
+                'unsubscribe_url' => __('退订链接', 'argon'),
+                'theme_color' => __('主题色', 'argon'),
+            ),
+        ),
         'reply_notify' => array(
             'name' => __('回复通知', 'argon'),
             'description' => __('当评论收到回复时发送给原评论者', 'argon'),
@@ -131,6 +163,69 @@ function argon_get_email_types() {
                 'todo_content' => __('TODO 内容', 'argon'),
                 'todo_id' => __('TODO ID', 'argon'),
                 'urge_time' => __('提醒时间', 'argon'),
+                'theme_color' => __('主题色', 'argon'),
+            ),
+        ),
+        'blacklist_spam_notify' => array(
+            'name' => __('黑名单拦截通知', 'argon'),
+            'description' => __('当评论被黑名单关键字拦截时发送给评论者', 'argon'),
+            'default_subject' => '[{{blog_name}}] 您的评论被系统拦截',
+            'default_content' => '<h2 style="margin: 0 0 20px 0; font-size: 18px; font-weight: 600; color: {{theme_color}};">评论拦截通知</h2>
+<p style="margin: 0 0 16px 0; color: #525f7f; line-height: 1.6;">您好，<strong>{{commenter_name}}</strong>！</p>
+<p style="margin: 0 0 20px 0; color: #525f7f; line-height: 1.6;">您在文章《<a href="{{post_url}}" style="color: {{theme_color}}; text-decoration: none;">{{post_title}}</a>》中的评论因触发关键字过滤规则而被系统自动拦截。</p>
+<div style="background: #fff5f5; border-left: 4px solid #f56565; padding: 16px; border-radius: 4px; margin: 0 0 20px 0;">
+    <p style="margin: 0 0 8px 0; color: #2d3748; font-size: 14px; font-weight: 600;">您的评论内容</p>
+    <p style="margin: 0; color: #4a5568; line-height: 1.6;">{{comment_content}}</p>
+</div>
+<div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 4px; margin: 0 0 20px 0;">
+    <p style="margin: 0; color: #92400e; font-size: 14px;"><strong>触发的关键字：</strong>{{blacklist_keywords}}</p>
+</div>
+<p style="margin: 0 0 20px 0; color: #525f7f; line-height: 1.6;">如果您认为这是一次误判，可以点击下方按钮申请 AI 复审。</p>
+<p style="margin: 0;">
+    <a href="{{feedback_url}}" style="display: inline-block; background: {{theme_color}}; color: #ffffff; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-size: 14px;">申请 AI 复审</a>
+</p>',
+            'placeholders' => array(
+                'blog_name' => __('博客名称', 'argon'),
+                'post_title' => __('文章标题', 'argon'),
+                'post_url' => __('文章链接', 'argon'),
+                'commenter_name' => __('评论者名称', 'argon'),
+                'comment_content' => __('评论内容', 'argon'),
+                'blacklist_keywords' => __('触发的关键字', 'argon'),
+                'feedback_url' => __('申诉链接', 'argon'),
+                'theme_color' => __('主题色', 'argon'),
+            ),
+        ),
+        'username_change_notify' => array(
+            'name' => __('用户名变更通知', 'argon'),
+            'description' => __('当评论用户名被 AI 识别为不合规并自动修改时发送给评论者', 'argon'),
+            'default_subject' => '[{{blog_name}}] 您的评论用户名已被修改',
+            'default_content' => '<h2 style="margin: 0 0 20px 0; font-size: 18px; font-weight: 600; color: {{theme_color}};">用户名变更通知</h2>
+<p style="margin: 0 0 16px 0; color: #525f7f; line-height: 1.6;">您好，<strong>{{original_username}}</strong>！</p>
+<p style="margin: 0 0 20px 0; color: #525f7f; line-height: 1.6;">您在文章《<a href="{{post_url}}" style="color: {{theme_color}}; text-decoration: none;">{{post_title}}</a>》发表的评论已成功提交，但系统检测到您的用户名可能不符合规范。</p>
+<div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 4px; margin: 0 0 20px 0;">
+    <p style="margin: 0 0 8px 0; color: #92400e; font-size: 14px; font-weight: 600;">AI 检测结果</p>
+    <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.6;">{{ai_reason}}</p>
+</div>
+<div style="background: #f6f9fc; padding: 16px; border-radius: 4px; margin: 0 0 20px 0;">
+    <p style="margin: 0 0 8px 0; color: #8898aa; font-size: 14px;">原用户名：<del>{{original_username}}</del></p>
+    <p style="margin: 0; color: {{theme_color}}; font-size: 14px; font-weight: 600;">新用户名：{{new_username}}</p>
+</div>
+<div style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 16px; border-radius: 4px; margin: 0 0 20px 0;">
+    <p style="margin: 0 0 8px 0; color: #1565c0; font-size: 14px; font-weight: 600;">温馨提示</p>
+    <p style="margin: 0; color: #1976d2; font-size: 14px; line-height: 1.6;">您的评论内容正常，仅用户名被自动修改。今后发表评论时，请使用符合规范的用户名。</p>
+</div>
+<p style="margin: 0;">
+    <a href="{{comment_url}}" style="display: inline-block; background: {{theme_color}}; color: #ffffff; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-size: 14px;">查看您的评论</a>
+</p>',
+            'placeholders' => array(
+                'blog_name' => __('博客名称', 'argon'),
+                'post_title' => __('文章标题', 'argon'),
+                'post_url' => __('文章链接', 'argon'),
+                'original_username' => __('原用户名', 'argon'),
+                'new_username' => __('新用户名', 'argon'),
+                'ai_reason' => __('AI 判断理由', 'argon'),
+                'ai_detection_code' => __('识别码', 'argon'),
+                'comment_url' => __('评论链接', 'argon'),
                 'theme_color' => __('主题色', 'argon'),
             ),
         ),

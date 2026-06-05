@@ -489,13 +489,15 @@ function resetGeetestCaptcha() {
 						<button id="comment_emotion_btn" class="btn btn-icon btn-primary pull-right" type="button" title="<?php _e('表情', 'argon');?>">
 							<i class="fa fa-smile-o" aria-hidden="true"></i>
 						</button>
-						<?php get_template_part( 'template-parts/emotion-keyboard' ); ?>
 					<?php } ?>
 				</div>
 			</div>
 			<input id="post_comment_captcha_seed" value="<?php echo $commentCaptchaSeed;?>" style="display: none;"></input>
 			<input id="post_comment_post_id" value="<?php echo get_the_ID();?>" style="display: none;"></input>
 		</form>
+		<?php if (get_option("argon_comment_emotion_keyboard", "true") != "false"){ ?>
+			<?php get_template_part( 'template-parts/emotion-keyboard' ); ?>
+		<?php } ?>
 	</div>
 </div>
 <div id="comment_edit_history" class="modal fade" tabindex="-1" role="dialog" aria-modal="true">

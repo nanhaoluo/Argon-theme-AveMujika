@@ -564,16 +564,17 @@ $author_desc = get_option('argon_sidebar_author_description');
 												var headIndexInstance = $(document).data('headIndex');
 												
 												// 添加额外的滚动监听，确保目录跟随
-												var scrollTimer = null;
+												var scrollTicking = false;
 												$(window).on('scroll.desktopCatalog', function() {
-													if (scrollTimer) {
-														clearTimeout(scrollTimer);
+													if (!scrollTicking) {
+														scrollTicking = true;
+														requestAnimationFrame(function() {
+															if (headIndexInstance && typeof headIndexInstance.updateCurrent === 'function') {
+																headIndexInstance.updateCurrent();
+															}
+															scrollTicking = false;
+														});
 													}
-													scrollTimer = setTimeout(function() {
-														if (headIndexInstance && typeof headIndexInstance.updateCurrent === 'function') {
-															headIndexInstance.updateCurrent();
-														}
-													}, 100);
 												});
 												
 												// PJAX 后重新绑定
@@ -712,6 +713,15 @@ $author_desc = get_option('argon_sidebar_author_description');
 								</div>
 
 							</nav>
+
+							<?php if (get_option('argon_show_rss_link', 'false') == 'true') : ?>
+								<div class="site-rss">
+									<a href="<?php bloginfo('rss2_url'); ?>" target="_blank" class="site-rss-btn" data-toggle="tooltip" data-placement="bottom" title="<?php _e('RSS 订阅', 'argon'); ?>">
+										<i class="fa fa-rss"></i> <?php _e('RSS 订阅', 'argon'); ?>
+									</a>
+								</div>
+							<?php endif; ?>
+
 
 							<?php
 

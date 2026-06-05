@@ -7,11 +7,6 @@
 						?>
 
 						<div>❤Theme <a href="https://github.com/solstice23/argon-theme" target="_blank"><strong>Argon</strong></a><?php if (get_option('argon_hide_footer_author') != 'true') {echo " By solstice23"; }?>❤<?php
-						// 显示 CDN 请求头信息
-						$cdn_info = function_exists('argon_get_cdn_info') ? argon_get_cdn_info() : false;
-						if ($cdn_info) :
-						?> <span class="cdn-info-badge" title="CDN: <?php echo esc_attr($cdn_info); ?>"><i class="fa fa-cloud"></i> CDN: <?php echo esc_html($cdn_info); ?></span><?php
-						endif;
 						// 显示 Git 版本信息
 						$git_info = argon_get_git_info();
 						if ($git_info) :
@@ -29,10 +24,10 @@
 					</footer>
 
 				</main>
+
 			</div>
+
 		</div>
-	</div>
-</div>
 
 		<!-- 加载主题核心 JS -->
 		<?php $assets_version = function_exists('argon_get_assets_version') ? argon_get_assets_version() : $GLOBALS['theme_version']; ?>
@@ -134,8 +129,7 @@
 				document.addEventListener("DOMContentLoaded", function() {
 					function tryRenderMath() {
 						if (typeof renderMathInElement === 'function') {
-							var mathRoot = document.getElementById('post_content') || document.body;
-							renderMathInElement(mathRoot, {
+							renderMathInElement(document.body, {
 								delimiters: [
 									{left: "$$", right: "$$", display: true},
 									{left: "$", right: "$", display: false},
@@ -166,6 +160,55 @@
 </div>
 
 <?php wp_footer(); ?>
+
+<!-- 长文章 backdrop-filter 模糊层 JS -->
+<script>
+(function() {
+	function initPostFullBlur() {
+		var card = document.querySelector('article.post.post-full.card');
+		if (!card) return;
+
+		// 创建模糊覆盖层
+		var overlay = document.createElement('div');
+		overlay.className = 'post-full-blur-overlay';
+		card.insertBefore(overlay, card.firstChild);
+
+		var ticking = false;
+		function updateOverlay() {
+			var cardRect = card.getBoundingClientRect();
+			// 覆盖层比视口高 800px（上下各多 400px），充分溢出窗口避免穿帮
+			// offset = 卡片顶部到视口顶部的距离 - 400px 上方余量
+			var offset = Math.max(0, -cardRect.top - 400);
+			// 限制偏移量不超过卡片高度减去覆盖层高度
+			var overlayHeight = window.innerHeight + 800;
+			var maxOffset = card.offsetHeight - overlayHeight;
+			if (maxOffset > 0) {
+				offset = Math.min(offset, maxOffset);
+			}
+			overlay.style.transform = 'translateY(' + offset + 'px)';
+			ticking = false;
+		}
+
+		function onScroll() {
+			if (!ticking) {
+				ticking = true;
+				requestAnimationFrame(updateOverlay);
+			}
+		}
+
+		window.addEventListener('scroll', onScroll, { passive: true });
+		window.addEventListener('resize', onScroll, { passive: true });
+		// 初始定位
+		updateOverlay();
+	}
+
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', initPostFullBlur);
+	} else {
+		initPostFullBlur();
+	}
+})();
+</script>
 
 </body>
 
