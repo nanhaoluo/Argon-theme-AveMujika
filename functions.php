@@ -2627,7 +2627,13 @@ function argon_verify_captcha($context = 'comment') {
         if ($answer === '') {
             return array('success' => false, 'error' => __('请输入验证码', 'argon'));
         }
-        $seed = get_comment_captcha_seed();
+        $seed = isset($_POST['comment_captcha_seed']) ? intval($_POST['comment_captcha_seed']) : 0;
+        if ($seed < 0 || $seed > 500000000) {
+            $seed = 0;
+        }
+        if ($seed === 0) {
+            $seed = get_comment_captcha_seed();
+        }
         $captcha = new captcha_calculation($seed);
         if (!$captcha->check($answer)) {
             return array('success' => false, 'error' => __('验证码错误', 'argon'));
@@ -2658,6 +2664,9 @@ add_action('wp_ajax_get_captcha', 'ajax_get_captcha');
 add_action('wp_ajax_nopriv_get_captcha', 'ajax_get_captcha');
 //Ajax 发送评论
 function ajax_post_comment(){
+	if (!headers_sent()) {
+		header('Content-Type: application/json; charset=UTF-8');
+	}
 	// IP 黑名单检查
 	if (argon_is_ip_blocked_global()) {
 		exit(json_encode(array(
