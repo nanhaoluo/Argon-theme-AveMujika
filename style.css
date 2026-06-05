@@ -2226,7 +2226,15 @@ html:not(.is-home) .cover-scroll-down {
 
 	margin-right: 0;
 
+	margin-bottom: 0;
+
 	padding: 0;
+
+}
+
+.leftbar-menu:empty {
+
+	display: none;
 
 }
 
@@ -2416,7 +2424,7 @@ html:not(.is-home) .cover-scroll-down {
 
 .leftbar-search-button {
 
-	padding: 0 15px 15px 15px;
+	padding: 15px 15px;
 
 	margin-top: 0;
 
@@ -2426,7 +2434,7 @@ html:not(.is-home) .cover-scroll-down {
 
 .leftbar-search-button.open {
 
-	padding: 0 15px 15px 15px;
+	padding: 15px 15px;
 
 	margin-top: 0;
 
