@@ -117,6 +117,71 @@ if (isset($_POST['flink_action'])) {
                 $response = array('success' => true, 'data' => $info);
             }
             break;
+
+        case 'refresh_info':
+            $id = isset($_POST['id']) ? sanitize_text_field($_POST['id']) : '';
+            $link = $id ? argon_get_friend_link($id) : null;
+            if (!$link) {
+                $response = array('success' => false, 'message' => __('友链不存在', 'argon'));
+                break;
+            }
+
+            $raw_url = isset($_POST['url']) ? trim(wp_unslash($_POST['url'])) : '';
+            if ($raw_url === '') {
+                $raw_url = isset($link['url']) ? $link['url'] : '';
+            }
+            if ($raw_url !== '' && !preg_match('/^https?:\/\//i', $raw_url)) {
+                $raw_url = 'https://' . $raw_url;
+            }
+            $url = esc_url_raw($raw_url);
+            if (empty($url)) {
+                $response = array('success' => false, 'message' => __('请输入网址', 'argon'));
+                break;
+            }
+
+            $info = argon_fetch_site_info($url);
+            $best_image = function_exists('argon_select_friend_link_image') ? argon_select_friend_link_image($info) : '';
+            $update_data = array(
+                'url' => $url,
+                'last_info_update' => time(),
+                'last_check' => time(),
+                'accessible' => !empty($info['accessible']),
+                'blocked_by_waf' => !empty($info['blocked_by_waf']),
+                'is_wordpress' => !empty($info['is_wordpress']),
+                'error_reason' => !empty($info['error_reason']) ? $info['error_reason'] : ''
+            );
+
+            if (!empty($info['title'])) {
+                $update_data['display_name'] = $info['title'];
+            }
+            if (!empty($info['description'])) {
+                $description = wp_strip_all_tags($info['description']);
+                $update_data['description'] = function_exists('mb_substr') ? mb_substr($description, 0, 100) : substr($description, 0, 100);
+            }
+            foreach (array('author_avatar', 'favicon', 'site_image', 'image') as $field) {
+                if (!empty($info[$field])) {
+                    $update_data[$field] = $info[$field];
+                }
+            }
+            if (!empty($info['favicon'])) {
+                $update_data['auto_favicon'] = $info['favicon'];
+            }
+            if (!empty($best_image)) {
+                $update_data['avatar'] = $best_image;
+                $update_data['image'] = $best_image;
+            }
+
+            $updated = argon_update_friend_link($id, $update_data);
+            if ($updated) {
+                $info['url'] = $url;
+                $info['avatar'] = !empty($update_data['avatar']) ? $update_data['avatar'] : (isset($link['avatar']) ? $link['avatar'] : '');
+                $info['last_info_update'] = $update_data['last_info_update'];
+                $info['last_check'] = $update_data['last_check'];
+                $response = array('success' => true, 'message' => __('已更新并保存', 'argon'), 'data' => $info);
+            } else {
+                $response = array('success' => false, 'message' => __('保存失败', 'argon'), 'data' => $info);
+            }
+            break;
             
         default:
             $response = array('success' => false, 'message' => '未知操作');
@@ -1015,30 +1080,39 @@ if (typeof initGeetest4 === 'function') {
             this.disabled = true; this.textContent = '<?php _e('获取中...', 'argon'); ?>';
             var btn = this;
                 
-            flinkAction('fetch_info', { url: url }, function(res) {
+            flinkAction('refresh_info', {
+                id: document.getElementById('edit-id').value,
+                url: url
+            }, function(res) {
                 btn.disabled = false; btn.textContent = '<?php _e('更新信息', 'argon'); ?>';
                 if (res.success && res.data) {
                     var displayName = document.getElementById('edit-display-name');
+                    var editUrl = document.getElementById('edit-url');
                     var avatar = document.getElementById('edit-avatar');
                     var desc = document.getElementById('edit-desc');
 
-                    // 直接替换数据
+                    if (res.data.url) editUrl.value = res.data.url;
                     if (res.data.title) displayName.value = res.data.title;
-                    var newAvatar = res.data.image || res.data.author_avatar || res.data.site_image || res.data.favicon || '';
+                    var newAvatar = res.data.avatar || res.data.image || res.data.author_avatar || res.data.site_image || res.data.favicon || '';
                     if (newAvatar) avatar.value = newAvatar;
                     if (res.data.description) desc.value = res.data.description;
 
-                    // 显示获取结果
                     var statusInfo = document.getElementById('edit-status-info');
                     var infoHtml = '<div style="margin-top:10px;padding:10px;background:#e8f5e9;border-radius:6px;font-size:13px;">';
-                    infoHtml += '<strong><?php _e('已更新', 'argon'); ?></strong>';
+                    infoHtml += '<strong><?php _e('已更新并保存', 'argon'); ?></strong>';
                     if (res.data.blocked_by_waf) {
                         infoHtml += ' <span style="color:#e91e63;">(<?php _e('被WAF拦截', 'argon'); ?>)</span>';
+                    } else if (res.data.accessible === false) {
+                        infoHtml += ' <span style="color:#dc2626;">(<?php _e('无法访问', 'argon'); ?>)</span>';
+                    }
+                    if (res.data.last_info_update) {
+                        var updatedAt = new Date(res.data.last_info_update * 1000);
+                        infoHtml += '<br><?php _e('更新时间', 'argon'); ?>: ' + updatedAt.toLocaleString();
                     }
                     infoHtml += '</div>';
                     statusInfo.innerHTML = infoHtml;
                 } else {
-                    alert((res.data && res.data.error_reason) || '<?php _e('获取失败', 'argon'); ?>');
+                    alert(res.message || (res.data && res.data.error_reason) || '<?php _e('获取失败', 'argon'); ?>');
                 }
             });
         });
