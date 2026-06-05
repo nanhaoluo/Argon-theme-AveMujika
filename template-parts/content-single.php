@@ -45,7 +45,7 @@
 			} ?>
 			<!-- 优雅内置的沉浸式阅读按钮 -->
 			<div class="post-meta-devide">|</div>
-			<div class="post-meta-detail post-meta-detail-immersive" id="immersive_read_toggle" title="<?php _e('沉浸阅读', 'argon'); ?>" style="cursor: pointer; transition: color 0.3s ease;">
+			<div class="post-meta-detail post-meta-detail-immersive" id="immersive_read_toggle" role="button" tabindex="0" aria-pressed="false" title="<?php _e('沉浸阅读', 'argon'); ?>">
 				<i class="fa fa-television immersive-read-icon-enter" aria-hidden="true"></i>
 				<span class="immersive-read-label"><?php _e('沉浸', 'argon'); ?></span>
 			</div>
@@ -59,74 +59,96 @@
 
 	<!-- 简约的顶部退出按钮 -->
 	<div id="immersive_exit_btn" class="immersive-exit-btn-container">
-		<button class="immersive-exit-btn-fast">
-			<i class="fa fa-compress" aria-hidden="true"></i> <?php _e('退出沉浸模式', 'argon'); ?>
+		<button class="immersive-exit-btn-fast" type="button" aria-label="<?php esc_attr_e('退出沉浸模式', 'argon'); ?>">
+			<i class="fa fa-compress" aria-hidden="true"></i><span><?php _e('退出', 'argon'); ?></span>
 		</button>
 	</div>
 
 	<!-- 沉浸式阅读 JS -->
 	<script>
 	(function() {
+		var root = document.documentElement;
 		var toggleBtn = document.getElementById('immersive_read_toggle');
 		var exitTopBtn = document.getElementById('immersive_exit_btn');
+		var exitButton = exitTopBtn ? exitTopBtn.querySelector('button') : null;
 		if (!toggleBtn) return;
 
-		var isActive = false;
+		var isActive = root.classList.contains('immersive-read');
+		var transitionTimer = null;
+		var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+		function updateToggle(active) {
+			toggleBtn.classList.toggle('active', active);
+			toggleBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+			toggleBtn.title = active ? '<?php _e("退出沉浸", "argon"); ?>' : '<?php _e("沉浸阅读", "argon"); ?>';
+
+			var icon = toggleBtn.querySelector('i.fa');
+			if (icon) {
+				icon.classList.toggle('fa-television', !active);
+				icon.classList.toggle('fa-compress', active);
+			}
+
+			var label = toggleBtn.querySelector('.immersive-read-label');
+			if (label) {
+				label.innerText = active ? '<?php _e("退出", "argon"); ?>' : '<?php _e("沉浸", "argon"); ?>';
+			}
+		}
+
+		function clearTransitionTimer() {
+			if (transitionTimer) {
+				clearTimeout(transitionTimer);
+				transitionTimer = null;
+			}
+		}
+
+		function scrollArticleIntoView() {
+			var article = document.querySelector('article.post.post-full');
+			if (!article) return;
+			var rect = article.getBoundingClientRect();
+			var scrollTarget = Math.max(0, window.scrollY + rect.top - 18);
+			window.scrollTo({
+				top: scrollTarget,
+				behavior: prefersReducedMotion ? 'auto' : 'smooth'
+			});
+		}
 
 		function enterImmersive() {
 			if (isActive) return;
 			isActive = true;
+			clearTransitionTimer();
 
-			document.documentElement.classList.add('immersive-read');
-			toggleBtn.classList.add('active');
-			toggleBtn.title = '<?php _e("退出沉浸", "argon"); ?>';
-
-			var icon = toggleBtn.querySelector('i.fa');
-			if (icon) {
-				icon.classList.remove('fa-television');
-				icon.classList.add('fa-compress');
-			}
-			var label = toggleBtn.querySelector('.immersive-read-label');
-			if (label) {
-				label.innerText = '<?php _e("退出", "argon"); ?>';
-			}
-
-			// 快速滚动到文章头部
-			var postContent = document.getElementById('post_content');
-			if (postContent) {
-				var rect = postContent.getBoundingClientRect();
-				var headerOffset = 20;
-				var scrollTarget = window.scrollY + rect.top - headerOffset;
-				window.scrollTo({ top: scrollTarget, behavior: 'smooth' });
-			}
+			root.classList.remove('immersive-read-leaving');
+			root.classList.add('immersive-read', 'immersive-read-entering');
+			updateToggle(true);
 
 			if (exitTopBtn) {
 				exitTopBtn.classList.add('visible');
 			}
+
+			requestAnimationFrame(scrollArticleIntoView);
+			transitionTimer = setTimeout(function() {
+				root.classList.remove('immersive-read-entering');
+				transitionTimer = null;
+			}, prefersReducedMotion ? 0 : 360);
 		}
 
 		function exitImmersive() {
-			if (!isActive) return;
+			if (!isActive && !root.classList.contains('immersive-read')) return;
 			isActive = false;
+			clearTransitionTimer();
 
-			document.documentElement.classList.remove('immersive-read');
-
-			toggleBtn.classList.remove('active');
-			toggleBtn.title = '<?php _e("沉浸阅读", "argon"); ?>';
-
-			var icon = toggleBtn.querySelector('i.fa');
-			if (icon) {
-				icon.classList.remove('fa-compress');
-				icon.classList.add('fa-television');
-			}
-			var label = toggleBtn.querySelector('.immersive-read-label');
-			if (label) {
-				label.innerText = '<?php _e("沉浸", "argon"); ?>';
-			}
+			root.classList.remove('immersive-read-entering');
+			root.classList.add('immersive-read-leaving');
+			updateToggle(false);
 
 			if (exitTopBtn) {
 				exitTopBtn.classList.remove('visible');
 			}
+
+			transitionTimer = setTimeout(function() {
+				root.classList.remove('immersive-read', 'immersive-read-leaving');
+				transitionTimer = null;
+			}, prefersReducedMotion ? 0 : 180);
 		}
 
 		toggleBtn.addEventListener('click', function(e) {
@@ -134,8 +156,14 @@
 			isActive ? exitImmersive() : enterImmersive();
 		});
 
-		if (exitTopBtn) {
-			exitTopBtn.querySelector('button').addEventListener('click', function(e) {
+		toggleBtn.addEventListener('keydown', function(e) {
+			if (e.key !== 'Enter' && e.key !== ' ') return;
+			e.preventDefault();
+			isActive ? exitImmersive() : enterImmersive();
+		});
+
+		if (exitButton) {
+			exitButton.addEventListener('click', function(e) {
 				e.preventDefault();
 				exitImmersive();
 			});
@@ -146,19 +174,12 @@
 			if (e.key === 'Escape' && isActive) exitImmersive();
 		});
 
-		// 滚动检测: 控制顶部退出按钮透明度防遮挡
-		var ticking = false;
-		window.addEventListener('scroll', function() {
-			if (!isActive || !exitTopBtn) return;
-			if (!ticking) {
-				ticking = true;
-				requestAnimationFrame(function() {
-					// 当滚动超过一定距离时，使其半透明，鼠标悬浮时恢复
-					exitTopBtn.classList.toggle('dimmed', window.scrollY > 200);
-					ticking = false;
-				});
-			}
-		}, { passive: true });
+		document.addEventListener('pjax:send', exitImmersive);
+		window.addEventListener('beforeunload', function() {
+			root.classList.remove('immersive-read', 'immersive-read-entering', 'immersive-read-leaving');
+		});
+
+		updateToggle(isActive);
 	})();
 	</script>
 
