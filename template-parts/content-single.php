@@ -53,7 +53,7 @@
 
 	<?php get_template_part('template-parts/ai-summary'); ?>
 
-	<div class="post-content" id="post_content">
+	<div class="post-content" id="post_content"<?php echo function_exists('argon_get_content_performance_attrs') ? argon_get_content_performance_attrs() : ''; ?>>
 		<?php if (post_password_required()){ ?>
 			<div class="text-center container">
 				<form action="<?php echo $GLOBALS['wp_path']; ?>wp-login.php?action=postpass" class="post-password-form" method="post">

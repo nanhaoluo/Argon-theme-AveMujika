@@ -7039,6 +7039,15 @@ code[hljs-codeblock-inner] {
 
 }
 
+pre.hljs-codeblock.hljs-lite-codeblock code[hljs-codeblock-inner] {
+	white-space: pre;
+	overflow-x: auto;
+}
+
+pre.hljs-codeblock.hljs-lite-codeblock .hljs-control-toggle-linenumber {
+	display: none;
+}
+
 .hljs-ln-numbers {
 
 	-webkit-touch-callout: none;
@@ -12185,8 +12194,9 @@ article .post-content a:hover {
     }
 }
 
-/* 3. Git 徽章样式 */
-.git-version-badge {
+/* 3. 页脚状态徽章样式 */
+.git-version-badge,
+.cdn-info-badge {
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -12204,24 +12214,30 @@ article .post-content a:hover {
     user-select: none;
 }
 
-.git-version-badge:hover {
+.git-version-badge:hover,
+.cdn-info-badge:hover {
     opacity: 1;
 }
 
-.git-version-badge .git-icon {
+.git-version-badge .git-icon,
+.cdn-info-badge .fa {
     width: 11px;
     height: 11px;
+    line-height: 11px;
+    font-size: 11px;
     color: #f05033;
     flex-shrink: 0;
 }
 
-/* 移动端隐藏Git徽章 */
+/* 移动端隐藏页脚状态徽章 */
 @media screen and (max-width: 576px) {
-    .git-version-badge {
+    .git-version-badge,
+    .cdn-info-badge {
         display: none;
     }
     
-    .git-version-badge .git-icon {
+    .git-version-badge .git-icon,
+    .cdn-info-badge .fa {
         width: 11px;
         height: 11px;
     }

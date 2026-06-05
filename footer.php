@@ -7,6 +7,11 @@
 						?>
 
 						<div>❤Theme <a href="https://github.com/solstice23/argon-theme" target="_blank"><strong>Argon</strong></a><?php if (get_option('argon_hide_footer_author') != 'true') {echo " By solstice23"; }?>❤<?php
+						// 显示 CDN 请求头信息
+						$cdn_info = function_exists('argon_get_cdn_info') ? argon_get_cdn_info() : false;
+						if ($cdn_info) :
+						?> <span class="cdn-info-badge" title="CDN: <?php echo esc_attr($cdn_info); ?>"><i class="fa fa-cloud"></i> CDN: <?php echo esc_html($cdn_info); ?></span><?php
+						endif;
 						// 显示 Git 版本信息
 						$git_info = argon_get_git_info();
 						if ($git_info) :
@@ -129,7 +134,8 @@
 				document.addEventListener("DOMContentLoaded", function() {
 					function tryRenderMath() {
 						if (typeof renderMathInElement === 'function') {
-							renderMathInElement(document.body, {
+							var mathRoot = document.getElementById('post_content') || document.body;
+							renderMathInElement(mathRoot, {
 								delimiters: [
 									{left: "$$", right: "$$", display: true},
 									{left: "$", right: "$", display: false},

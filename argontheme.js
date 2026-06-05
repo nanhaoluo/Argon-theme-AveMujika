@@ -123,6 +123,11 @@ var argonResourceLoader = null;     // 资源加载实例
 var argonRenderOptimizer = null;    // 渲染优化实例
 var argonMemoryManager = null;      // 内存管理实例
 var argonPerformanceMonitor = null; // 性能监控实例
+var argonLongContentState = {
+	isLong: false,
+	contentSize: 0,
+	nodeCount: 0
+};
 
 // ==========================================================================
 // 调试控制台（由 argon-performance.js 引入）
@@ -142,6 +147,59 @@ if (typeof ArgonDebug === 'undefined') {
 		info(...args) { if (this.enabled) console.info('[Argon]', ...args); }
 	};
 	ArgonDebug.init();
+}
+
+function getArgonPostContentElement() {
+	return document.getElementById('post_content');
+}
+
+function updateArgonLongContentState() {
+	var content = getArgonPostContentElement();
+	if (!content) {
+		argonLongContentState = {
+			isLong: false,
+			contentSize: 0,
+			nodeCount: 0
+		};
+		return argonLongContentState;
+	}
+
+	var contentSize = parseInt(content.getAttribute('data-argon-content-size') || '0', 10);
+	if (!contentSize) {
+		contentSize = content.textContent ? content.textContent.length : 0;
+	}
+
+	var isLongByContent = content.getAttribute('data-argon-long-content') === 'true' || contentSize > 524288;
+	var nodeCount = isLongByContent ? 0 : content.getElementsByTagName('*').length;
+	argonLongContentState = {
+		isLong: isLongByContent || nodeCount > 2500,
+		contentSize: contentSize,
+		nodeCount: nodeCount
+	};
+	document.documentElement.classList.toggle('argon-long-content', argonLongContentState.isLong);
+	return argonLongContentState;
+}
+
+function argonScheduleIdle(callback, timeout) {
+	if (typeof window.requestIdleCallback === 'function') {
+		return window.requestIdleCallback(callback, { timeout: timeout || 1200 });
+	}
+	return window.setTimeout(function() {
+		callback({
+			timeRemaining: function() {
+				return 8;
+			},
+			didTimeout: true
+		});
+	}, 16);
+}
+
+function argonCancelIdle(id) {
+	if (typeof window.cancelIdleCallback === 'function') {
+		window.cancelIdleCallback(id);
+	} else {
+		window.clearTimeout(id);
+	}
 }
 /*Cookies 操作*/
 function setCookie(cname, cvalue, exdays) {
@@ -945,6 +1003,25 @@ if (argonConfig.waterflow_columns != "1") {
 	});
 
 	let $window = $(window);
+	var readingProgressMetrics = null;
+	function invalidateReadingProgressMetrics() {
+		readingProgressMetrics = null;
+	}
+	function getReadingProgressMetrics() {
+		if (readingProgressMetrics) {
+			return readingProgressMetrics;
+		}
+		var article = document.querySelector("article.post.post-full");
+		if (!article) {
+			return null;
+		}
+		var rect = article.getBoundingClientRect();
+		readingProgressMetrics = {
+			top: rect.top + window.pageYOffset - 80,
+			scrollable: article.offsetHeight + 50 - window.innerHeight
+		};
+		return readingProgressMetrics;
+	}
 
 	function changefabtnDisplayStatus(){
 		//阅读进度
@@ -956,11 +1033,12 @@ if (argonConfig.waterflow_columns != "1") {
 			$readingProgressDetails.html((percent * 100).toFixed(0) + "%");
 			$readingProgressBar.css("width" , (percent * 100).toFixed(0) + "%");
 		}
-		if ($("article.post.post-full").length == 0){
+		let metrics = getReadingProgressMetrics();
+		if (!metrics){
 			hideReadingProgress();
 		}else{
-			let a = $window.scrollTop() - ($("article.post.post-full").offset().top - 80);
-			let b = $("article.post.post-full").outerHeight() + 50 - $window.height();
+			let a = window.pageYOffset - metrics.top;
+			let b = metrics.scrollable;
 			if (b <= 0){
 				hideReadingProgress();
 			}else{
@@ -984,8 +1062,14 @@ if (argonConfig.waterflow_columns != "1") {
 		changefabtnDisplayStatus();
 	});
 	$(window).resize(function(){
+		invalidateReadingProgressMetrics();
 		changefabtnDisplayStatus();
 	});
+	document.addEventListener("load", function(e) {
+		if (e.target && e.target.tagName === "IMG") {
+			invalidateReadingProgressMetrics();
+		}
+	}, true);
 	$fabtns.removeClass("fabtns-unloaded");
 }();
 
@@ -2950,9 +3034,15 @@ function cleanupPjaxResources() {
 	ArgonDebug.log('开始清理 PJAX 资源...');
 	
 	// 按顺序清理各类资源
+	if (highlightRenderJob) {
+		argonCancelIdle(highlightRenderJob);
+		highlightRenderJob = null;
+	}
+	codeOfBlocks = {};
 	cleanupLazyloadObserver();
 	cleanupZoomifyInstances();
-	cleanupTippyInstances();	cleanupDynamicStyles();
+	cleanupTippyInstances();
+	cleanupDynamicStyles();
 	cleanupDynamicScripts();
 	cleanupEventListeners();
 	
@@ -3183,29 +3273,35 @@ $(document).pjax("a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):no
 		ArgonDebug.error('executeInlineScripts failed:', err);
 	}
 	
-	// MathJax 数学公式渲染
-	try{
-		if (MathJax != undefined){
-			if (MathJax.Hub != undefined){
-				MathJax.Hub.Typeset();
-			}else{
-				MathJax.typeset();
+	updateArgonLongContentState();
+	argonScheduleIdle(function() {
+		var mathRoot = getArgonPostContentElement() || document.body;
+		// MathJax 数学公式渲染
+		try{
+			if (MathJax != undefined){
+				if (MathJax.Hub != undefined){
+					MathJax.Hub.Typeset(mathRoot);
+				}else if (typeof MathJax.typesetPromise === 'function'){
+					MathJax.typesetPromise([mathRoot]);
+				}else{
+					MathJax.typeset([mathRoot]);
+				}
 			}
-		}
-	}catch (err){}
-	
-	// KaTeX 数学公式渲染
-	try{
-		if (renderMathInElement != undefined){
-			renderMathInElement(document.body,{
-				delimiters: [
-					{left: "$$", right: "$$", display: true},
-					{left: "$", right: "$", display: false},
-					{left: "\\(", right: "\\)", display: false}
-				]
-			});
-		}
-	}catch (err){}
+		}catch (err){}
+
+		// KaTeX 数学公式渲染
+		try{
+			if (renderMathInElement != undefined){
+				renderMathInElement(mathRoot,{
+					delimiters: [
+						{left: "$$", right: "$$", display: true},
+						{left: "$", right: "$", display: false},
+						{left: "\\(", right: "\\)", display: false}
+					]
+				});
+			}
+		}catch (err){}
+	}, argonLongContentState.isLong ? 2000 : 800);
 
 	// 初始化各个功能模块（添加错误处理确保单个模块失败不影响其他模块）
 	try { waterflowInit(); } catch (err) { ArgonDebug.error('waterflowInit failed:', err); }
@@ -3361,6 +3457,23 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 	
 	// ========== 移动端文章目录初始化 ==========
 	window.mobileCatalogInitialized = false;
+	var mobileCatalogHeaders = [];
+	var mobileCatalogOffsets = [];
+	var mobileCatalogOffsetDirty = true;
+
+	function markMobileCatalogOffsetDirty() {
+		mobileCatalogOffsetDirty = true;
+	}
+
+	function rebuildMobileCatalogOffsets() {
+		mobileCatalogOffsets = mobileCatalogHeaders.map(function(header) {
+			return {
+				id: header.id,
+				top: header.element.getBoundingClientRect().top + window.pageYOffset - 100
+			};
+		});
+		mobileCatalogOffsetDirty = false;
+	}
 	
 	function initMobileCatalog() {
 		if (window.mobileCatalogInitialized) return;
@@ -3370,8 +3483,8 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		if ($postContent.length === 0) return;
 		
 		// 直接生成目录，不依赖 headIndex 插件
-		var $headers = $postContent.find('h1, h2, h3, h4, h5, h6');
-		if ($headers.length === 0) {
+		var headers = $postContent.find('h1, h2, h3, h4, h5, h6').toArray();
+		if (headers.length === 0) {
 			$mobileContainer.html('<div class="no-catalog">暂无目录</div>');
 			return;
 		}
@@ -3379,20 +3492,24 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 		// 构建目录树
 		var toc = [];
 		var stack = [{ level: 0, children: toc }];
+		mobileCatalogHeaders = [];
 		
-		$headers.each(function(index) {
-			var $h = $(this);
-			var level = parseInt(this.tagName.charAt(1));
-			var text = $h.text().trim();
-			var id = $h.attr('id');
+		headers.forEach(function(header, index) {
+			var level = parseInt(header.tagName.charAt(1));
+			var text = header.textContent.trim();
+			var id = header.getAttribute('id');
 			
 			// 确保标题有ID
 			if (!id) {
 				id = 'mobile-heading-' + index;
-				$h.attr('id', id);
+				header.setAttribute('id', id);
 			}
 			
 			var item = { id: id, text: text, level: level, children: [] };
+			mobileCatalogHeaders.push({
+				id: id,
+				element: header
+			});
 			
 			// 找到合适的父级
 			while (stack.length > 1 && stack[stack.length - 1].level >= level) {
@@ -3401,6 +3518,8 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 			stack[stack.length - 1].children.push(item);
 			stack.push({ level: level, children: item.children });
 		});
+		markMobileCatalogOffsetDirty();
+		rebuildMobileCatalogOffsets();
 		
 		// 递归生成 HTML
 		function buildHtml(items, isRoot) {
@@ -3452,20 +3571,26 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 	// 更新移动端目录高亮
 	function updateMobileCatalogHighlight() {
 		var $mobileContainer = $("#leftbar_mobile_catalog");
-		var $postContent = $("#post_content");
-		if ($mobileContainer.length === 0 || $postContent.length === 0) return;
+		if ($mobileContainer.length === 0 || mobileCatalogHeaders.length === 0) return;
 		
 		var scrollTop = $(window).scrollTop();
-		var $headers = $postContent.find('h1, h2, h3, h4, h5, h6');
 		var currentId = null;
-		
-		$headers.each(function() {
-			var $h = $(this);
-			var top = $h.offset().top - 100;
-			if (scrollTop >= top) {
-				currentId = $h.attr('id');
+
+		if (mobileCatalogOffsetDirty) {
+			rebuildMobileCatalogOffsets();
+		}
+
+		var left = 0;
+		var right = mobileCatalogOffsets.length - 1;
+		while (left <= right) {
+			var mid = Math.floor((left + right) / 2);
+			if (scrollTop >= mobileCatalogOffsets[mid].top) {
+				currentId = mobileCatalogOffsets[mid].id;
+				left = mid + 1;
+			} else {
+				right = mid - 1;
 			}
-		});
+		}
 		
 		if (currentId) {
 			$mobileContainer.find('.index-item').removeClass('current');
@@ -3476,6 +3601,9 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 	// 重置移动端目录状态（由PJAX 调用）
 	window.resetMobileCatalog = function() {
 		window.mobileCatalogInitialized = false;
+		mobileCatalogHeaders = [];
+		mobileCatalogOffsets = [];
+		mobileCatalogOffsetDirty = true;
 		$("#leftbar_mobile_catalog").empty();
 	};
 	
@@ -3511,6 +3639,9 @@ $(document).on("click" , "#blog_categories .tag" , function(){
 				scrollMobileCatalogToActive();
 			}
 		}, 150);
+	});
+	$(window).on("resize.mobileCatalog", function() {
+		markMobileCatalogOffsetDirty();
 	});
 	
 	// 点击目录项后关闭侧边栏（已在 initMobileCatalog 中处理）
@@ -4269,23 +4400,126 @@ function randomString(len) {
 	return res;
 }
 var codeOfBlocks = {};
+var highlightRenderJob = null;
+var highlightClipboard = null;
 function getCodeFromBlock(block){
 	if (codeOfBlocks[block.id] != undefined){
 		return codeOfBlocks[block.id];
 	}
 	let lines = $(".hljs-ln-code", block);
 	let res = "";
-	for (let i = 0; i < lines.length - 1; i++){
-		res += lines[i].innerText;
-		res += "\n";
+	if (lines.length > 0) {
+		for (let i = 0; i < lines.length - 1; i++){
+			res += lines[i].innerText;
+			res += "\n";
+		}
+		res += lines[lines.length - 1].innerText;
+	} else {
+		var code = $(block).children("code")[0] || block;
+		res = code.innerText || code.textContent || "";
 	}
-	res += lines[lines.length - 1].innerText;
 	codeOfBlocks[block.id] = res;
 	return res;
 }
 
+function initHighlightClipboard() {
+	if (highlightClipboard || typeof ClipboardJS === "undefined") {
+		return;
+	}
+	highlightClipboard = new ClipboardJS(".hljs-control-copy", {
+		text: function(trigger) {
+			var block = $(trigger).closest("pre.hljs-codeblock")[0];
+			return block ? getCodeFromBlock(block) : "";
+		}
+	});
+	highlightClipboard.on('success', function(e) {
+		iziToast.show({
+			title: __("复制成功"),
+			message: __("代码已复制到剪贴板"),
+			class: 'shadow',
+			position: 'topRight',
+			backgroundColor: '#2dce89',
+			titleColor: '#ffffff',
+			messageColor: '#ffffff',
+			iconColor: '#ffffff',
+			progressBarColor: '#ffffff',
+			icon: 'fa fa-check',
+			timeout: 5000
+		});
+	});
+	highlightClipboard.on('error', function(e) {
+		iziToast.show({
+			title: __("复制失败"),
+			message: __("请手动复制代码"),
+			class: 'shadow',
+			position: 'topRight',
+			backgroundColor: '#f5365c',
+			titleColor: '#ffffff',
+			messageColor: '#ffffff',
+			iconColor: '#ffffff',
+			progressBarColor: '#ffffff',
+			icon: 'fa fa-close',
+			timeout: 5000
+		});
+	});
+}
 
-function highlightJsRender(){	
+function prepareCodeBlock(block) {
+	if ($(block).hasClass("no-hljs")){
+		return null;
+	}
+	if ($(block).attr("hljs-codeblock-inner") !== undefined) {
+		return null;
+	}
+	return block;
+}
+
+function renderHighlightBlock(block) {
+	if (!block || $(block).hasClass("no-hljs") || $(block).attr("hljs-codeblock-inner") !== undefined) {
+		return;
+	}
+	var $pre = $(block).parent();
+	if (!$pre.attr("id")) {
+		$pre.attr("id", randomString());
+	}
+	var longState = argonLongContentState || updateArgonLongContentState();
+	var shouldUseLiteMode = longState.isLong && ((block.textContent || "").length > 60000 || (block.textContent || "").split("\n").length > 500);
+	if (!shouldUseLiteMode) {
+		hljs.highlightBlock(block);
+		hljs.lineNumbersBlock(block, {singleLine: true});
+	} else {
+		$pre.addClass("hljs-lite-codeblock");
+	}
+	$pre.addClass("hljs-codeblock");
+	if (argonConfig.code_highlight.hide_linenumber){
+		$pre.addClass("hljs-hide-linenumber");
+	}
+	if (argonConfig.code_highlight.break_line){
+		$pre.addClass("hljs-break-line");
+	}
+	if (argonConfig.code_highlight.transparent_linenumber){
+		$pre.addClass("hljs-transparent-linenumber");
+	}
+	$(block).attr("hljs-codeblock-inner", "");
+	if ($pre.children(".hljs-control").length === 0) {
+		$pre.append(`<div class="hljs-control hljs hljs-title">
+				<div class="hljs-control-btn hljs-control-toggle-linenumber" tooltip-hide-linenumber="` + __("隐藏行号") + `" tooltip-show-linenumber="` + __("显示行号") + `">
+					<i class="fa fa-list"></i>
+				</div>
+				<div class="hljs-control-btn hljs-control-toggle-break-line" tooltip-enable-breakline="` + __("开启折行") + `" tooltip-disable-breakline="` + __("关闭折行") + `">
+					<i class="fa fa-align-left"></i>
+				</div>
+				<div class="hljs-control-btn hljs-control-copy" tooltip="` + __("复制") + `">
+					<i class="fa fa-clipboard"></i>
+				</div>
+				<div class="hljs-control-btn hljs-control-fullscreen" tooltip-fullscreen="` + __("全屏") + `" tooltip-exit-fullscreen="` + __("退出全屏") + `">
+					<i class="fa fa-arrows-alt"></i>
+				</div>
+			</div>`);
+	}
+}
+
+function highlightJsRender(){
 	if (typeof(hljs) == "undefined"){
 		return;
 	}
@@ -4295,81 +4529,48 @@ function highlightJsRender(){
 	if (!argonConfig.code_highlight.enable){
 		return;
 	}
+	initHighlightClipboard();
+	if (highlightRenderJob) {
+		argonCancelIdle(highlightRenderJob);
+		highlightRenderJob = null;
+	}
 	$("article pre.code").each(function(index, block) {
 		if ($(block).hasClass("no-hljs")){
 			return;
 		}
-		$(block).html("<code>" + $(block).html() + "</code>");
+		if ($(block).children("code").length === 0) {
+			$(block).html("<code>" + $(block).html() + "</code>");
+		}
 	});
-	$("article pre > code").each(function(index, block) {
-		if ($(block).hasClass("no-hljs")){
-			return;
-		}
-		$(block).parent().attr("id", randomString());
-		hljs.highlightBlock(block);
-		hljs.lineNumbersBlock(block, {singleLine: true});
-		$(block).parent().addClass("hljs-codeblock");
-		if (argonConfig.code_highlight.hide_linenumber){
-			$(block).parent().addClass("hljs-hide-linenumber");
-		}
-		if (argonConfig.code_highlight.break_line){
-			$(block).parent().addClass("hljs-break-line");
-		}
-		if (argonConfig.code_highlight.transparent_linenumber){
-			$(block).parent().addClass("hljs-transparent-linenumber");
-		}
-		$(block).attr("hljs-codeblock-inner", "");
-		let copyBtnID = "copy_btn_" + randomString();
-		$(block).parent().append(`<div class="hljs-control hljs hljs-title">
-				<div class="hljs-control-btn hljs-control-toggle-linenumber" tooltip-hide-linenumber="` + __("隐藏行号") + `" tooltip-show-linenumber="` + __("显示行号") + `">
-					<i class="fa fa-list"></i>
-				</div>
-				<div class="hljs-control-btn hljs-control-toggle-break-line" tooltip-enable-breakline="` + __("开启折行") + `" tooltip-disable-breakline="` + __("关闭折行") + `">
-					<i class="fa fa-align-left"></i>
-				</div>
-				<div class="hljs-control-btn hljs-control-copy" id=` + copyBtnID + ` tooltip="` + __("复制") + `">
-					<i class="fa fa-clipboard"></i>
-				</div>
-				<div class="hljs-control-btn hljs-control-fullscreen" tooltip-fullscreen="` + __("全屏") + `" tooltip-exit-fullscreen="` + __("退出全屏") + `">
-					<i class="fa fa-arrows-alt"></i>
-				</div>
-			</div>`);
-		let clipboard = new ClipboardJS("#" + copyBtnID, {
-			text: function(trigger) {
-				return getCodeFromBlock($(block).parent()[0]);
+	var blocks = $("article pre > code").toArray().map(prepareCodeBlock).filter(Boolean);
+	var longState = updateArgonLongContentState();
+	var batchSize = longState.isLong ? 1 : 4;
+	var index = 0;
+
+	function runBatch(deadline) {
+		var start = Date.now();
+		while (index < blocks.length) {
+			renderHighlightBlock(blocks[index++]);
+			if (longState.isLong && (!deadline || deadline.timeRemaining() < 4 || Date.now() - start > 12)) {
+				break;
 			}
-		});
-		clipboard.on('success', function(e) {
-			iziToast.show({
-				title: __("复制成功"),
-				message: __("代码已复制到剪贴板"),
-				class: 'shadow',
-				position: 'topRight',
-				backgroundColor: '#2dce89',
-				titleColor: '#ffffff',
-				messageColor: '#ffffff',
-				iconColor: '#ffffff',
-				progressBarColor: '#ffffff',
-				icon: 'fa fa-check',
-				timeout: 5000
-			});
-		});
-		clipboard.on('error', function(e) {
-			iziToast.show({
-				title: __("复制失败"),
-				message: __("请手动复制代码"),
-				class: 'shadow',
-				position: 'topRight',
-				backgroundColor: '#f5365c',
-				titleColor: '#ffffff',
-				messageColor: '#ffffff',
-				iconColor: '#ffffff',
-				progressBarColor: '#ffffff',
-				icon: 'fa fa-close',
-				timeout: 5000
-			});
-		});
-	});
+			if (!longState.isLong && Date.now() - start > 20) {
+				break;
+			}
+			if (longState.isLong && (index % batchSize) === 0) {
+				break;
+			}
+		}
+		if (index < blocks.length) {
+			highlightRenderJob = argonScheduleIdle(runBatch, 1000);
+		} else {
+			highlightRenderJob = null;
+		}
+	}
+
+	if (blocks.length > 0) {
+		highlightRenderJob = argonScheduleIdle(runBatch, 800);
+	}
 }
 $(document).ready(function(){
 	// ==========================================================================

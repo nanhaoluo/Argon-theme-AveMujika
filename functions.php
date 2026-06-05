@@ -3529,6 +3529,19 @@ function get_banner_background_url(){
 	}
 }
 //懒加载：对 <img> 标签添加懒加载支持
+function argon_is_long_content($content) {
+	return is_string($content) && strlen($content) > 524288;
+}
+
+function argon_get_content_performance_attrs() {
+	global $post;
+
+	$content_size = isset($post->post_content) ? strlen($post->post_content) : 0;
+	$is_long_content = $content_size > 524288 ? 'true' : 'false';
+
+	return ' data-argon-content-size="' . esc_attr($content_size) . '" data-argon-long-content="' . esc_attr($is_long_content) . '"';
+}
+
 function argon_lazyload($content){
 	// 移除 !is_home() 限制，允许在首页也使用懒加载
 	if (!is_feed() && !is_robots()) {
@@ -3597,11 +3610,13 @@ function argon_fancybox($content){
 	return $content;
 }
 function the_content_filter($content){
+	$is_long_content = argon_is_long_content($content);
+
 	// 根据设置决定是否启用懒加载
-	if (get_option('argon_enable_lazyload') !== 'false') {
+	if (!$is_long_content && get_option('argon_enable_lazyload') !== 'false') {
 		$content = argon_lazyload($content);
 	}
-	if (get_option('argon_enable_fancybox') != 'false' && get_option('argon_enable_zoomify') == 'false'){
+	if (!$is_long_content && get_option('argon_enable_fancybox') != 'false' && get_option('argon_enable_zoomify') == 'false'){
 		$content = argon_fancybox($content);
 	}
 	global $post;
@@ -4954,6 +4969,51 @@ function argon_enqueue_qrcode_script() {
 }
 add_action('wp_enqueue_scripts', 'argon_enqueue_qrcode_script');
 
+
+// 获取当前请求携带的 CDN 信息
+function argon_get_cdn_info() {
+	$header_keys = array(
+		'HTTP_CDN',
+		'HTTP_X_CDN',
+		'HTTP_X_ARGON_CDN',
+		'CDN',
+		'cdn',
+		'X_CDN',
+		'X-Cache',
+		'HTTP_X_CACHE',
+		'CF-Cache-Status',
+		'HTTP_CF_CACHE_STATUS',
+	);
+	$headers = array();
+
+	if (function_exists('getallheaders')) {
+		$headers = getallheaders();
+	}
+
+	foreach ($header_keys as $key) {
+		$value = '';
+		$normalized_key = str_replace(' ', '-', ucwords(strtolower(str_replace(array('HTTP_', '_'), array('', ' '), $key))));
+		if (isset($_SERVER[$key])) {
+			$value = $_SERVER[$key];
+		} elseif (isset($headers[$key])) {
+			$value = $headers[$key];
+		} else {
+			foreach ($headers as $header_name => $header_value) {
+				if (strcasecmp($header_name, $normalized_key) === 0 || strcasecmp($header_name, $key) === 0) {
+					$value = $header_value;
+					break;
+				}
+			}
+		}
+
+		$value = is_string($value) ? trim($value) : '';
+		if ($value !== '') {
+			return sanitize_text_field($value);
+		}
+	}
+
+	return false;
+}
 
 // 获取 Git 版本信息
 function argon_get_git_info() {
