@@ -3133,14 +3133,19 @@ function resetGT4Captcha() {
 }
 
 function handleHashNavigation() {
-	if (!location.hash) {
+	if (!location.hash || location.hash === "#") {
 		return;
 	}
 	let target = null;
 	try {
 		target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
-	} catch (e) {
-		target = document.querySelector(location.hash);
+	} catch (e) { }
+	if (!target) {
+		try {
+			target = document.querySelector(location.hash);
+		} catch (e) {
+			return;
+		}
 	}
 	if (!target) {
 		return;
@@ -3730,6 +3735,7 @@ $(document).on("click", ".reference-link , .reference-list-backlink", function (
 	} catch (err) {
 		return;
 	}
+	if (!$target.length) { return; }
 	$("body,html").animate({
 		scrollTop: $target.offset().top - document.body.clientHeight / 2 - 75
 	}, 500, 'easeOutExpo')
@@ -3885,8 +3891,13 @@ $(document).on("click", "#blog_categories .tag", function () {
 		$mobileContainer.off('click.mobileCatalog').on('click.mobileCatalog', '.index-link', function (e) {
 			e.preventDefault();
 			var targetId = $(this).attr('href');
-			if (targetId) {
-				var $target = $(targetId);
+			if (targetId && targetId !== "#") {
+				var $target;
+				try {
+					$target = $(targetId);
+				} catch (err) {
+					return;
+				}
 				if ($target.length) {
 					$mobileContainer.find('.index-item').removeClass('current');
 					$(this).closest('.index-item').addClass('current');
@@ -5031,8 +5042,13 @@ setInterval(function(){
 			anchor.dataset.smoothScrollInit = 'true';
 			anchor.addEventListener('click', function (e) {
 				var targetId = this.getAttribute('href');
-				if (targetId === '#') return;
-				var target = document.querySelector(targetId);
+				if (!targetId || targetId === '#') return;
+				var target;
+				try {
+					target = document.querySelector(targetId);
+				} catch (err) {
+					return;
+				}
 				if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 			});
 		});
