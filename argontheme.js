@@ -1428,6 +1428,41 @@ if (argonConfig.waterflow_columns != "1") {
 		$(".post-comment-captcha-container").removeClass("active");
 	});
 
+	function restoreCommentSubmitControls(isAdmin){
+		$("#post_comment").removeClass("sending");
+		$("#post_comment_content").removeAttr("disabled");
+		$("#post_comment_name").removeAttr("disabled");
+		$("#post_comment_email").removeAttr("disabled");
+		$("#post_comment_link").removeAttr("disabled");
+		$("#post_comment_send").removeAttr("disabled");
+		$("#post_comment_reply_cancel").removeAttr("disabled");
+		if (!isAdmin){
+			$("#post_comment_captcha").removeAttr("disabled");
+		}
+		$("#post_comment_send .btn-inner--icon.hide-on-comment-editing").html("<i class='fa fa-send'></i>");
+		$("#post_comment_send .btn-inner--text.hide-on-comment-editing").html(__("发送"));
+		window.geetestAutoSubmitting = false;
+	}
+
+	function resetGeetestCommentCaptcha(){
+		if ($("#geetest-captcha").length == 0){
+			return;
+		}
+		window.geetestVerified = false;
+		window.geetestAutoSubmitting = false;
+		$("#geetest_lot_number").val("");
+		$("#geetest_captcha_output").val("");
+		$("#geetest_pass_token").val("");
+		$("#geetest_gen_time").val("");
+		if (window.geetestCaptcha) {
+			try {
+				window.geetestCaptcha.reset();
+			} catch (e) {
+				ArgonDebug.warn('Geetest reset error:', e);
+			}
+		}
+	}
+
 	//发送评论
 	window.postComment = function postComment(){
 		let commentContent = $("#post_comment_content").val();
@@ -1450,6 +1485,8 @@ if (argonConfig.waterflow_columns != "1") {
 
 		let postID = $("#post_comment_post_id").val();
 		let commentCaptchaSeed = $("#post_comment_captcha_seed").val();
+		let needCaptcha = !$("#post_comment").hasClass("no-need-captcha");
+		let useGeetestCaptcha = needCaptcha && $("#geetest-captcha").length > 0;
 
 		let isError = false;
 		let errorMsg = "";
@@ -1494,9 +1531,9 @@ if (argonConfig.waterflow_columns != "1") {
 			isError = true;
 			errorMsg += __("网站格式错误 (不是 http(s):// 开头)") + "</br>";
 		}
-		if (!$("#post_comment").hasClass("no-need-captcha")){
+		if (needCaptcha){
 			// 检查是否使用Geetest验证码
-		if ($("#geetest-captcha").length > 0) {
+		if (useGeetestCaptcha) {
 			// 检查Geetest库是否加载成功
 			if (typeof window.geetestLoadFailed !== 'undefined' && window.geetestLoadFailed) {
 				isError = true;
@@ -1529,17 +1566,7 @@ if (argonConfig.waterflow_columns != "1") {
 			}
 		}
 		if (isError){
-			// 确保按钮和表单元素处于可用状态
-			$("#post_comment_send").removeAttr("disabled");
-			$("#post_comment_content").removeAttr("disabled");
-			$("#post_comment_name").removeAttr("disabled");
-			$("#post_comment_email").removeAttr("disabled");
-			$("#post_comment_link").removeAttr("disabled");
-			$("#post_comment_captcha").removeAttr("disabled");
-			$("#post_comment_reply_cancel").removeAttr("disabled");
-			$("#post_comment").removeClass("sending");
-			$("#post_comment_send .btn-inner--icon.hide-on-comment-editing").html("<i class='fa fa-send'></i>");
-			$("#post_comment_send .btn-inner--text.hide-on-comment-editing").html(__("发送"));
+			restoreCommentSubmitControls(false);
 			
 			iziToast.show({
 				title: __("评论格式错误"),
@@ -1595,26 +1622,19 @@ if (argonConfig.waterflow_columns != "1") {
 			comment_parent: replyID,
 			"wp-comment-cookies-consent": "yes",
 			use_markdown: useMarkdown,
-			private_mode: privateMode,
-			enable_mailnotice: mailNotice,
-			argon_nonce: $("#argon_comment_nonce").val()
+			private_mode: privateMode ? "true" : "false",
+			enable_mailnotice: mailNotice ? "true" : "false",
+			argon_nonce: $("#argon_comment_nonce").val() || "",
+			argon_comment_honeypot: $("#argon_comment_honeypot").val() || ""
 		};
+		ajaxData.use_markdown = useMarkdown ? "true" : "false";
+		ajaxData.comment_parent = replyID || 0;
 
 		// 根据验证码类型添加相应参数
-		if ($("#geetest-captcha").length > 0) {
+		if (useGeetestCaptcha) {
 			// 检查Geetest库加载状态
 			if (typeof window.geetestLoadFailed !== 'undefined' && window.geetestLoadFailed) {
-				// 重新启用按钮和表单元素
-				$("#post_comment").removeClass("sending");
-				$("#post_comment_content").removeAttr("disabled");
-				$("#post_comment_name").removeAttr("disabled");
-				$("#post_comment_email").removeAttr("disabled");
-				$("#post_comment_captcha").removeAttr("disabled");
-				$("#post_comment_link").removeAttr("disabled");
-				$("#post_comment_send").removeAttr("disabled");
-				$("#post_comment_reply_cancel").removeAttr("disabled");
-				$("#post_comment_send .btn-inner--icon.hide-on-comment-editing").html("<i class='fa fa-send'></i>");
-				$("#post_comment_send .btn-inner--text.hide-on-comment-editing").html(__("发送"));
+				restoreCommentSubmitControls(false);
 				
 				setTimeout(function() {
 					try {
@@ -1639,17 +1659,8 @@ if (argonConfig.waterflow_columns != "1") {
 			
 			// 验证Geetest参数是否完整
 			if (!ajaxData.lot_number || !ajaxData.captcha_output || !ajaxData.pass_token || !ajaxData.gen_time) {
-				// 重新启用按钮和表单元素
-				$("#post_comment").removeClass("sending");
-				$("#post_comment_content").removeAttr("disabled");
-				$("#post_comment_name").removeAttr("disabled");
-				$("#post_comment_email").removeAttr("disabled");
-				$("#post_comment_captcha").removeAttr("disabled");
-				$("#post_comment_link").removeAttr("disabled");
-				$("#post_comment_send").removeAttr("disabled");
-				$("#post_comment_reply_cancel").removeAttr("disabled");
-				$("#post_comment_send .btn-inner--icon.hide-on-comment-editing").html("<i class='fa fa-send'></i>");
-				$("#post_comment_send .btn-inner--text.hide-on-comment-editing").html(__("发送"));
+				restoreCommentSubmitControls(false);
+				resetGeetestCommentCaptcha();
 				
 				// 使用 setTimeout 确保 iziToast 操作在下一个事件循环中执行
 				setTimeout(function() {
@@ -1666,7 +1677,7 @@ if (argonConfig.waterflow_columns != "1") {
 				}, 0);
 				return false;
 			}
-		} else {
+		} else if (needCaptcha) {
 			// 原有数学验证码参数
 			ajaxData.comment_captcha_seed = commentCaptchaSeed;
 			ajaxData.comment_captcha = commentCaptcha;
@@ -1678,22 +1689,12 @@ if (argonConfig.waterflow_columns != "1") {
 			dataType : "json",
 			data: ajaxData,
 			success: function(result){
-				$("#post_comment").removeClass("sending");
-				$("#post_comment_content").removeAttr("disabled");
-				$("#post_comment_name").removeAttr("disabled");
-				$("#post_comment_email").removeAttr("disabled");
-				$("#post_comment_link").removeAttr("disabled");
-				$("#post_comment_send").removeAttr("disabled");
-				$("#post_comment_reply_cancel").removeAttr("disabled");
-				$("#post_comment_send .btn-inner--icon.hide-on-comment-editing").html("<i class='fa fa-send'></i>");
-				$("#post_comment_send .btn-inner--text.hide-on-comment-editing").html(__("发送"));
+				restoreCommentSubmitControls(result.isAdmin);
 				$("#post_comment").removeClass("show-extra-input post-comment-force-privatemode-on post-comment-force-privatemode-off");
-				if (!result.isAdmin){
-					$("#post_comment_captcha").removeAttr("disabled");
-				}
 
 				//判断是否有错误
 				if (result.status == "failed"){
+					resetGeetestCommentCaptcha();
 					// 使用 setTimeout 确保 iziToast 操作在下一个事件循环中执行
 					setTimeout(function() {
 						try {
@@ -1730,22 +1731,7 @@ if (argonConfig.waterflow_columns != "1") {
 				
 				// 清空Geetest验证码隐藏字段并重置验证码实例
 				if ($("#geetest-captcha").length > 0) {
-					$("#geetest_lot_number").val("");
-					$("#geetest_captcha_output").val("");
-					$("#geetest_pass_token").val("");
-					$("#geetest_gen_time").val("");
-					// 重置验证状态标志位
-					window.geetestVerified = false;
-					// 重置自动提交标记
-					window.geetestAutoSubmitting = false;
-					// 重置 Geetest 实例，确保下一次可以重新验证
-					if (window.geetestCaptcha) {
-						try {
-							window.geetestCaptcha.reset();
-						} catch (e) {
-							ArgonDebug.warn('Geetest reset error:', e);
-						}
-					}
+					resetGeetestCommentCaptcha();
 				}
 				
 				// 显示成功提示
@@ -1805,32 +1791,9 @@ if (argonConfig.waterflow_columns != "1") {
 				}
 				},
 				error: function(result){
-				$("#post_comment").removeClass("sending");
-				$("#post_comment_content").removeAttr("disabled");
-				$("#post_comment_name").removeAttr("disabled");
-				$("#post_comment_email").removeAttr("disabled");
-				$("#post_comment_link").removeAttr("disabled");
-				$("#post_comment_send").removeAttr("disabled");
-				$("#post_comment_reply_cancel").removeAttr("disabled");
-				$("#post_comment_send .btn-inner--icon.hide-on-comment-editing").html("<i class='fa fa-send'></i>");
-				$("#post_comment_send .btn-inner--text.hide-on-comment-editing").html(__("发送"));
+				restoreCommentSubmitControls(false);
 				$("#post_comment").removeClass("show-extra-input post-comment-force-privatemode-on post-comment-force-privatemode-off");
-				if (!result.isAdmin){
-					$("#post_comment_captcha").removeAttr("disabled");
-				}
-
-				// 重置Geetest验证状态
-				window.geetestVerified = false;
-				// 重置自动提交标记
-				window.geetestAutoSubmitting = false;
-				$("#geetest_lot_number").val("");
-				$("#geetest_captcha_output").val("");
-				$("#geetest_pass_token").val("");
-				$("#geetest_gen_time").val("");
-				// 重置 Geetest 实例，确保下一次生成新的pass_token
-				if (window.geetestCaptcha) {
-					try { window.geetestCaptcha.reset(); } catch (e) {}
-				}
+				resetGeetestCommentCaptcha();
 
 				// 安全地处理iziToast 操作，防止time 属性错误
 				setTimeout(function() {
@@ -2051,22 +2014,12 @@ if (argonConfig.waterflow_columns != "1") {
 			}
 			if (commentLink != "" && !(/https?:\/\//).test(commentLink)){
 				isError = true;
-				errorMsg += __("网站格式错误 (不是 http(s):// 开头") + "</br>";
+				errorMsg += __("网站格式错误 (不是 http(s):// 开头)") + "</br>";
 			}
 			
 			// 如果基本表单验证失败，显示错误信息并返回
 			if (isError){
-				// 确保按钮和表单元素处于可用状态
-				$("#post_comment_send").removeAttr("disabled");
-				$("#post_comment_content").removeAttr("disabled");
-				$("#post_comment_name").removeAttr("disabled");
-				$("#post_comment_email").removeAttr("disabled");
-				$("#post_comment_link").removeAttr("disabled");
-				$("#post_comment_captcha").removeAttr("disabled");
-				$("#post_comment_reply_cancel").removeAttr("disabled");
-				$("#post_comment").removeClass("sending");
-				$("#post_comment_send .btn-inner--icon.hide-on-comment-editing").html("<i class='fa fa-send'></i>");
-				$("#post_comment_send .btn-inner--text.hide-on-comment-editing").html(__("发送"));
+				restoreCommentSubmitControls(false);
 				
 				iziToast.show({
 					title: __("评论格式错误"),
@@ -2085,7 +2038,7 @@ if (argonConfig.waterflow_columns != "1") {
 			}
 			
 			// 基本验证通过后，检查验证码
-			if ($("#geetest-captcha").length > 0) {
+			if (!$("#post_comment").hasClass("no-need-captcha") && $("#geetest-captcha").length > 0) {
 				// 检查Geetest 库是否加载失败
 				if (window.geetestLoadFailed) {
 					if (typeof loadGeetestScript === 'function' && typeof initGeetestCaptchaCore === 'function') {

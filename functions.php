@@ -2582,8 +2582,31 @@ function ajax_get_captcha(){
 }
 add_action('wp_ajax_get_captcha', 'ajax_get_captcha');
 add_action('wp_ajax_nopriv_get_captcha', 'ajax_get_captcha');
+function argon_request_value_is_true($value){
+	if (is_bool($value)){
+		return $value;
+	}
+	if (is_string($value)){
+		$value = strtolower(trim($value));
+	}
+	return in_array($value, array('1', 1, 'true', 'on', 'yes'), true);
+}
+function argon_normalize_ajax_comment_request(){
+	$_POST['comment'] = isset($_POST['comment']) ? $_POST['comment'] : '';
+	$_POST['author'] = isset($_POST['author']) ? $_POST['author'] : '';
+	$_POST['email'] = isset($_POST['email']) ? $_POST['email'] : '';
+	$_POST['url'] = isset($_POST['url']) ? $_POST['url'] : '';
+	$_POST['comment_post_ID'] = isset($_POST['comment_post_ID']) ? absint($_POST['comment_post_ID']) : 0;
+	$_POST['comment_parent'] = isset($_POST['comment_parent']) ? absint($_POST['comment_parent']) : 0;
+	$_POST['use_markdown'] = argon_request_value_is_true(isset($_POST['use_markdown']) ? $_POST['use_markdown'] : false) ? 'true' : 'false';
+	$_POST['private_mode'] = argon_request_value_is_true(isset($_POST['private_mode']) ? $_POST['private_mode'] : false) ? 'true' : 'false';
+	$_POST['enable_mailnotice'] = argon_request_value_is_true(isset($_POST['enable_mailnotice']) ? $_POST['enable_mailnotice'] : false) ? 'true' : 'false';
+	$_POST['argon_nonce'] = isset($_POST['argon_nonce']) ? $_POST['argon_nonce'] : '';
+	$_POST['argon_comment_honeypot'] = isset($_POST['argon_comment_honeypot']) ? $_POST['argon_comment_honeypot'] : '';
+}
 //Ajax 发送评论
 function ajax_post_comment(){
+	argon_normalize_ajax_comment_request();
 	// IP 黑名单检查
 	if (argon_is_ip_blocked_global()) {
 		exit(json_encode(array(
@@ -2593,7 +2616,7 @@ function ajax_post_comment(){
 		)));
 	}
 	
-	$parentID = $_POST['comment_parent'];
+	$parentID = absint($_POST['comment_parent']);
 	if (is_comment_private_mode($parentID)){
 		if (!user_can_view_comment($parentID)){
 			//如果父级评论是悄悄话模式且当前 Token 与父级不相同则返回
@@ -2630,6 +2653,9 @@ function ajax_post_comment(){
 	}
 	// 简单速率限制（按 IP 计数，可配置）
 	$rate_enable = get_option('argon_rate_limit_enable', 'true');
+	$rate_key = '';
+	$rate_state_to_save = null;
+	$rate_window_to_save = 0;
 	if ($rate_enable === 'true') {
 		$ip = isset($_SERVER['HTTP_X_FORWARDED_FOR']) ? explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0] : $_SERVER['REMOTE_ADDR'];
 		$ip = sanitize_text_field($ip);
@@ -2667,7 +2693,8 @@ function ajax_post_comment(){
 		}
 		$state['count'] = intval($state['count']) + 1;
 		$state['last'] = $now;
-		set_transient($rate_key, $state, $window);
+		$rate_state_to_save = $state;
+		$rate_window_to_save = $window;
 	}
 	$comment = wp_handle_comment_submission(wp_unslash($_POST));
 	if (is_wp_error($comment)){
@@ -2680,6 +2707,9 @@ function ajax_post_comment(){
 			'msg' => $msg,
 			'isAdmin' => current_user_can('level_7')
 		)));
+	}
+	if ($rate_state_to_save !== null) {
+		set_transient($rate_key, $rate_state_to_save, $rate_window_to_save);
 	}
 	$user = wp_get_current_user();
 	do_action('set_comment_cookies', $comment, $user);
@@ -2832,7 +2862,7 @@ function post_comment_preprocessing($comment){
 	$_POST['comment_content_source'] = $comment['comment_content'];
 	$comment['comment_content'] = argon_apply_comment_macros($comment['comment_content']);
 	//Markdown
-	if ($_POST['use_markdown'] == 'true' && get_option("argon_comment_allow_markdown") != "false"){
+	if (isset($_POST['use_markdown']) && $_POST['use_markdown'] == 'true' && get_option("argon_comment_allow_markdown") != "false"){
 		$comment['comment_content'] = comment_markdown_parse($comment['comment_content']);
 	}
 	
@@ -2986,7 +3016,7 @@ function argon_async_comment_mail_notify_handler($comment_id){
 add_action('argon_async_comment_mail_notify', 'argon_async_comment_mail_notify_handler');
 //评论发送完成添加 Meta
 function post_comment_updatemetas($id){
-	$parentID = $_POST['comment_parent'];
+	$parentID = isset($_POST['comment_parent']) ? absint($_POST['comment_parent']) : 0;
 	$comment = get_comment($id);
 	
 	// 保存黑名单关键字标记
@@ -3014,26 +3044,27 @@ function post_comment_updatemetas($id){
 	$commentPostID = $comment -> comment_post_ID;
 	$commentAuthor = $comment -> comment_author;
 	$mailnoticeUnsubscribeKey = get_random_token();
+	$commentContentSource = isset($_POST['comment_content_source']) ? $_POST['comment_content_source'] : $comment -> comment_content;
 	//评论 Markdown 源码
-	update_comment_meta($id, "comment_content_source", $_POST['comment_content_source']);
+	update_comment_meta($id, "comment_content_source", $commentContentSource);
 	//评论者 Token
 	set_user_token_cookie();
 	update_comment_meta($id, "user_token", $_COOKIE["argon_user_token"]);
 	//保存初次编辑记录
 	$editHistory = array(array(
-		'content' => $_POST['comment_content_source'],
+		'content' => $commentContentSource,
 		'time' => time(),
 		'isfirst' => true
 	));
 	update_comment_meta($id, "comment_edit_history", addslashes(json_encode($editHistory, JSON_UNESCAPED_UNICODE)));
 	//是否启用 Markdown
-	if ($_POST['use_markdown'] == 'true' && get_option("argon_comment_allow_markdown") != "false"){
+	if (isset($_POST['use_markdown']) && $_POST['use_markdown'] == 'true' && get_option("argon_comment_allow_markdown") != "false"){
 		update_comment_meta($id, "use_markdown", "true");
 	}else{
 		update_comment_meta($id, "use_markdown", "false");
 	}
 	//是否启用悄悄话模式
-	if ($_POST['private_mode'] == 'true' && get_option("argon_comment_allow_privatemode") == "true"){
+	if (isset($_POST['private_mode']) && $_POST['private_mode'] == 'true' && get_option("argon_comment_allow_privatemode") == "true"){
 		update_comment_meta($id, "private_mode", $_COOKIE["argon_user_token"]);
 	}else{
 		update_comment_meta($id, "private_mode", "false");
@@ -3047,7 +3078,7 @@ function post_comment_updatemetas($id){
 		update_comment_meta($id, "private_mode", "false");
 	}
 	//是否启用邮件通知
-	if ($_POST['enable_mailnotice'] == 'true' && get_option("argon_comment_allow_mailnotice") == "true"){
+	if (isset($_POST['enable_mailnotice']) && $_POST['enable_mailnotice'] == 'true' && get_option("argon_comment_allow_mailnotice") == "true"){
 		update_comment_meta($id, "enable_mailnotice", "true");
 		update_comment_meta($id, "mailnotice_unsubscribe_key", $mailnoticeUnsubscribeKey);
 	}else{

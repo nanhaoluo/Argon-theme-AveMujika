@@ -301,6 +301,7 @@ function resetGeetestCaptcha() {
 <?php $name_and_email_required = get_option('require_name_email');?>
 <?php $enable_qq_avatar = get_option('argon_comment_enable_qq_avatar'); ?>
 <?php
+	$commentCaptchaSeed = get_comment_captcha_seed();
 	$current_commenter = wp_get_current_commenter();
 	if ($enable_qq_avatar == 'true'){
 		$current_commenter['comment_author_email'] = str_replace("@avatarqq.com", "", $current_commenter['comment_author_email']);
