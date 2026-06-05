@@ -3560,21 +3560,64 @@ function showLoadingOverlay() {
 function hideLoadingOverlay() {
 	PageLoader.hide();
 }
-function startPageTransition() {
-	document.documentElement.classList.add('page-transition-enter');
+var pageTransitionTimer = null;
+
+function getPageTransitionDuration() {
+	var fallback = 260;
+	try {
+		var value = getComputedStyle(document.documentElement).getPropertyValue('--pjax-transition-duration').trim();
+		if (!value) return fallback;
+		if (value.indexOf('ms') > -1) return parseFloat(value);
+		if (value.indexOf('s') > -1) return parseFloat(value) * 1000;
+		return parseFloat(value) || fallback;
+	} catch (e) {
+		return fallback;
+	}
+}
+
+function markPageTransitionContent() {
 	pjaxContainers.forEach(function (selector) {
 		var c = document.querySelector(selector);
 		if (c) c.classList.add('page-transition-content');
 	});
 }
-function activatePageTransition() {
+
+function startPageExitTransition() {
+	if (pageTransitionTimer) {
+		clearTimeout(pageTransitionTimer);
+		pageTransitionTimer = null;
+	}
+	document.documentElement.classList.remove('page-transition-enter');
+	document.documentElement.classList.add('page-transition-leave');
+	markPageTransitionContent();
 	requestAnimationFrame(function () {
 		document.documentElement.classList.add('page-transition-active');
 	});
 }
+
+function startPageEnterTransition() {
+	if (pageTransitionTimer) {
+		clearTimeout(pageTransitionTimer);
+		pageTransitionTimer = null;
+	}
+	document.documentElement.classList.remove('page-transition-leave', 'page-transition-active');
+	document.documentElement.classList.add('page-transition-enter');
+	markPageTransitionContent();
+	void document.documentElement.offsetWidth;
+	requestAnimationFrame(function () {
+		document.documentElement.classList.add('page-transition-active');
+	});
+	pageTransitionTimer = setTimeout(endPageTransition, getPageTransitionDuration() + 80);
+}
+
 function endPageTransition() {
+	if (pageTransitionTimer) {
+		clearTimeout(pageTransitionTimer);
+		pageTransitionTimer = null;
+	}
 	document.documentElement.classList.remove('page-transition-active');
 	document.documentElement.classList.remove('page-transition-enter');
+	document.documentElement.classList.remove('page-transition-leave');
 	pjaxContainers.forEach(function (selector) {
 		var c = document.querySelector(selector);
 		if (c) c.classList.remove('page-transition-content');
@@ -3617,7 +3660,7 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 			}
 		}).on('pjax:send', function () {
 			NProgress.set(0.618);
-			startPageTransition();
+			startPageExitTransition();
 		}).on('pjax:beforeReplace', function (e, dom) {
 			// ========== 需求 1.1-1.4: 清理旧页面的所有资源 ==========
 			// 调用统一的资源清理管理器
@@ -3641,12 +3684,10 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 			// ========== 需求 1.5, 1.6: 重新初始化所有功能模块 ==========
 			pjaxLoading = false;
 			NProgress.inc();
-			startPageTransition();
-			activatePageTransition();
+			startPageEnterTransition();
 			setTimeout(function () {
 				hideLoadingOverlay();
-				endPageTransition();
-			}, 320);
+			}, 120);
 
 			// ========== 需求 4.1-4.5: 执行新页面中的内联脚本 ==========
 			try {

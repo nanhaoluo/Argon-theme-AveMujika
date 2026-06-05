@@ -2442,6 +2442,8 @@ html:not(.is-home) .cover-scroll-down {
 
 #leftbar_search_container {
 
+	gap: 8px;
+
 	transition: width var(--animation-normal) var(--ease-emphasized), height var(--animation-normal) var(--ease-emphasized), box-shadow var(--animation-fast) var(--ease-standard),
 
 		transform var(--animation-fast) var(--ease-standard);
@@ -2464,11 +2466,21 @@ html:not(.is-home) .cover-scroll-down {
 
 	transform: unset !important;
 
+	white-space: nowrap;
+
 	text-transform: capitalize;
 
 	background-color: var(--color-border-on-foreground-deeper);
 
 	color: var(--color-text-deeper);
+
+}
+
+#leftbar_search_container .menu-item-icon {
+
+	flex: 0 0 auto;
+
+	margin-right: 0 !important;
 
 }
 
@@ -17351,13 +17363,54 @@ html.darkmode {
 }
 
 /* 5. 椤甸潰杩囨浮鍜屾诞鍔ㄦ寜閽姩?*/
+:root {
+	--pjax-transition-duration: 260ms;
+	--pjax-transition-distance: 14px;
+}
+
 #primary.pjax-loading {
 	opacity: 0.6;
 	pointer-events: none;
 }
 
 #primary {
-	transition: opacity var(--animation-normal) var(--ease-standard);
+	transition:
+		opacity var(--animation-normal) var(--ease-standard),
+		transform var(--pjax-transition-duration) var(--ease-emphasized-decelerate);
+}
+
+.page-transition-content {
+	transition:
+		opacity var(--pjax-transition-duration) var(--ease-standard),
+		transform var(--pjax-transition-duration) var(--ease-emphasized-decelerate),
+		filter var(--pjax-transition-duration) var(--ease-standard);
+	will-change: opacity, transform, filter;
+}
+
+html.page-transition-leave.page-transition-active .page-transition-content {
+	opacity: 0;
+	transform: translate3d(0, calc(var(--pjax-transition-distance) * -0.45), 0) scale(0.992);
+	filter: blur(2px);
+	pointer-events: none;
+}
+
+html.page-transition-enter .page-transition-content {
+	opacity: 0;
+	transform: translate3d(0, var(--pjax-transition-distance), 0);
+}
+
+html.page-transition-enter.page-transition-active .page-transition-content {
+	opacity: 1;
+	transform: translate3d(0, 0, 0);
+	filter: blur(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.page-transition-content {
+		transition: opacity 120ms var(--ease-standard) !important;
+		transform: none !important;
+		filter: none !important;
+	}
 }
 
 @keyframes modernContentFadeIn {
