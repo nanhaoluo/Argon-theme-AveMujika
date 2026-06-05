@@ -309,7 +309,7 @@ function resetGeetestCaptcha() {
 	$captcha_type = get_option('argon_captcha_type', 'math');
 	$commentCaptchaSeed = ($captcha_enabled && $captcha_type !== 'geetest') ? get_comment_captcha_seed() : '';
 ?>
-<div id="post_comment" class="card shadow-sm comments-collapsed <?php if (is_user_logged_in()) {echo("logged");}?><?php if (!$name_and_email_required) {echo(" no-need-name-email");}?><?php if (!argon_is_comment_captcha_enabled()) {echo(" no-need-captcha");}?><?php if ($enable_qq_avatar == 'true') {echo(" enable-qq-avatar");}?>">
+<div id="post_comment" class="card shadow-sm comments-collapsed <?php if (is_user_logged_in()) {echo("logged");}?><?php if (!$name_and_email_required) {echo(" no-need-name-email");}?><?php if (!$captcha_enabled) {echo(" no-need-captcha");}?><?php if ($enable_qq_avatar == 'true') {echo(" enable-qq-avatar");}?>">
 	<div class="card-body">
 		<h2 class="post-comment-title">
 			<i class="fa fa-commenting"></i>
@@ -334,6 +334,7 @@ function resetGeetestCaptcha() {
 		<form>
 			<div style="display:none;">
 				<input type="text" name="argon_comment_honeypot" id="argon_comment_honeypot" value="" tabindex="-1" autocomplete="off">
+				<input type="hidden" id="argon_comment_nonce" value="<?php echo esc_attr(wp_create_nonce('argon_comment')); ?>">
 			</div>
 			<div class="row">
 				<div class="col-md-12">
@@ -349,19 +350,9 @@ function resetGeetestCaptcha() {
 				$col3_class = "col-md-3";
 				$hide_identity_fields = is_user_logged_in() || ((get_option('argon_hide_name_email_site_input') == 'true') && ($name_and_email_required != true));
 				if ($hide_identity_fields){
-					if (!$captcha_enabled){
-						$col1_class = "d-none";
-						$col2_class = "d-none";
-						$col3_class = "d-none";
-					}elseif ($captcha_type === 'geetest'){
-						$col1_class = "col-md-4";
-						$col2_class = "col-md-4";
-						$col3_class = "col-md-4";
-					}else{
-						$col1_class = "d-none";
-						$col2_class = "d-none";
-						$col3_class = "col-md-12";
-					}
+					$col1_class = "d-none";
+					$col2_class = "d-none";
+					$col3_class = $captcha_enabled ? "col-md-12" : "d-none";
 				}else{
 					if (!$captcha_enabled){
 						$col1_class = "col-md-6";
@@ -398,15 +389,14 @@ function resetGeetestCaptcha() {
 				<div class="<?php echo $col3_class;?>">
 					<div class="form-group">
 						<?php 
-						if ($captcha_type === 'geetest') { ?>
+						if ($captcha_enabled && $captcha_type === 'geetest') { ?>
 							<!-- Geetest 验证码容器 -->
 							<div id="geetest-captcha" class="argon-comment-geetest mb-4"></div>
 							<input type="hidden" id="geetest_lot_number" name="lot_number" value="">
 							<input type="hidden" id="geetest_captcha_output" name="captcha_output" value="">
 							<input type="hidden" id="geetest_pass_token" name="pass_token" value="">
 							<input type="hidden" id="geetest_gen_time" name="gen_time" value="">
-							<input type="hidden" id="argon_comment_nonce" value="<?php echo wp_create_nonce('argon_comment'); ?>">
-						<?php } else { ?>
+						<?php } elseif ($captcha_enabled) { ?>
 							<!-- 原有的数学验证码 -->
 							<div class="input-group input-group-alternative mb-4 post-comment-captcha-container" captcha="<?php echo esc_attr(get_comment_captcha($commentCaptchaSeed));?>">
 								<div class="input-group-prepend">
@@ -418,7 +408,6 @@ function resetGeetestCaptcha() {
 										content: attr(captcha);
 									}
 								</style>
-								<input type="hidden" id="argon_comment_nonce" value="<?php echo wp_create_nonce('argon_comment'); ?>">
 								<?php if (get_option('argon_get_captcha_by_ajax', 'false') == 'true') {?>
 									<script>
 										$(".post-comment-captcha-container").attr("captcha", "Loading...");
