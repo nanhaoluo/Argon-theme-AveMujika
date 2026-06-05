@@ -6993,46 +6993,133 @@ if (!wp_next_scheduled('argon_daily_link_check')) {
 add_action('argon_daily_link_check', 'argon_scheduled_link_check');
 
 // 添加自定义时间间隔
-add_filter('cron_schedules', function($schedules) {
-	$schedules['sixhourly'] = [
-		'interval' => 6 * 3600,
-		'display' => __('每6小时', 'argon')
-	];
-	return $schedules;
-});
-
-// 注册AI对抗测试定时任务（根据设置动态调度）
-function argon_schedule_adversarial_test_cron() {
-	$enabled = get_option('argon_ai_adversarial_test_enable', 'false');
-	$interval = get_option('argon_ai_adversarial_test_interval', 'sixhourly');
-	
-	// 清除现有的定时任务
-	$timestamp = wp_next_scheduled('argon_adversarial_test_event');
-	if ($timestamp) {
-		wp_unschedule_event($timestamp, 'argon_adversarial_test_event');
-	}
-	wp_clear_scheduled_hook('argon_adversarial_test_event');
-	
-	// 如果启用，重新注册定时任务
-	if ($enabled === 'true') {
-		wp_schedule_event(time(), $interval, 'argon_adversarial_test_event');
-	}
-}
-
-// 在设置保存后更新定时任务
-add_action('update_option_argon_ai_adversarial_test_enable', 'argon_schedule_adversarial_test_cron');
-add_action('update_option_argon_ai_adversarial_test_interval', 'argon_schedule_adversarial_test_cron');
-
-// 初始化时检查定时任务
-$adversarial_enabled = get_option('argon_ai_adversarial_test_enable', 'false');
-if ($adversarial_enabled === 'true' && !wp_next_scheduled('argon_adversarial_test_event')) {
-	$adversarial_interval = get_option('argon_ai_adversarial_test_interval', 'sixhourly');
-	wp_schedule_event(time(), $adversarial_interval, 'argon_adversarial_test_event');
-}
-add_action('argon_adversarial_test_event', 'argon_schedule_adversarial_test');
-
-
 // ==================== AI 查询组件 ====================
+
+function argon_normalize_ai_provider($provider) {
+	$provider = strtolower(trim((string)$provider));
+	if (in_array($provider, ['anthropic', 'anthropic_compatible', 'claude'], true)) {
+		return 'anthropic_compatible';
+	}
+	return 'openai_compatible';
+}
+
+function argon_get_ai_provider_label($provider) {
+	return argon_normalize_ai_provider($provider) === 'anthropic_compatible'
+		? __('Anthropic 兼容', 'argon')
+		: __('OpenAI 兼容', 'argon');
+}
+
+function argon_get_default_ai_endpoint($provider) {
+	$provider = strtolower(trim((string)$provider));
+	$endpoints = [
+		'openai' => 'https://api.openai.com/v1/chat/completions',
+		'openai_compatible' => 'https://api.openai.com/v1/chat/completions',
+		'opai' => 'https://api.openai.com/v1/chat/completions',
+		'anthropic' => 'https://api.anthropic.com/v1/messages',
+		'anthropic_compatible' => 'https://api.anthropic.com/v1/messages',
+		'claude' => 'https://api.anthropic.com/v1/messages',
+		'deepseek' => 'https://api.deepseek.com/v1/chat/completions',
+		'xiaomi' => 'https://api.xiaomimimo.com/v1/chat/completions',
+		'qianwen' => 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+		'wenxin' => 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions',
+		'doubao' => 'https://ark.cn-beijing.volces.com/api/v3/chat/completions',
+		'kimi' => 'https://api.moonshot.cn/v1/chat/completions',
+		'zhipu' => 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+		'siliconflow' => 'https://api.siliconflow.cn/v1/chat/completions'
+	];
+	return isset($endpoints[$provider]) ? $endpoints[$provider] : $endpoints[argon_normalize_ai_provider($provider)];
+}
+
+function argon_normalize_xiaomi_model_name($model, $endpoint) {
+	if (strpos((string)$endpoint, 'xiaomimimo.com') !== false && strcasecmp($model, 'MiMo-V2-Flash') === 0) {
+		return 'mimo-v2-flash';
+	}
+	if (strpos((string)$endpoint, 'api.mimo.xiaomi.com') !== false && strcasecmp($model, 'mimo-v2-flash') === 0) {
+		return 'MiMo-V2-Flash';
+	}
+	return $model;
+}
+
+function argon_get_default_ai_model($provider, $endpoint = '') {
+	$provider = strtolower(trim((string)$provider));
+	$models = [
+		'openai' => 'gpt-4o-mini',
+		'openai_compatible' => 'gpt-4o-mini',
+		'opai' => 'gpt-4o-mini',
+		'anthropic' => 'claude-3-5-haiku-20241022',
+		'anthropic_compatible' => 'claude-3-5-haiku-20241022',
+		'claude' => 'claude-3-5-haiku-20241022',
+		'deepseek' => 'deepseek-chat',
+		'xiaomi' => 'MiMo-V2-Flash',
+		'qianwen' => 'qwen-turbo',
+		'wenxin' => 'ernie-4.0-turbo-8k',
+		'doubao' => 'doubao-pro-32k',
+		'kimi' => 'moonshot-v1-8k',
+		'zhipu' => 'glm-4-flash',
+		'siliconflow' => 'Qwen/Qwen2.5-7B-Instruct'
+	];
+	$model = isset($models[$provider]) ? $models[$provider] : $models[argon_normalize_ai_provider($provider)];
+	return $provider === 'xiaomi' ? argon_normalize_xiaomi_model_name($model, $endpoint) : $model;
+}
+
+function argon_normalize_ai_api_config($api) {
+	if (!is_array($api)) {
+		return [];
+	}
+	$original_provider = isset($api['provider']) ? sanitize_text_field($api['provider']) : 'openai_compatible';
+	$provider = argon_normalize_ai_provider($original_provider);
+	$endpoint = isset($api['api_endpoint']) ? trim((string)$api['api_endpoint']) : '';
+	if ($endpoint === '') {
+		$endpoint = argon_get_default_ai_endpoint($original_provider);
+	}
+	$model = isset($api['model']) ? trim((string)$api['model']) : '';
+	if ($model === '') {
+		$model = argon_get_default_ai_model($original_provider, $endpoint);
+	} elseif (strtolower($original_provider) === 'xiaomi') {
+		$model = argon_normalize_xiaomi_model_name($model, $endpoint);
+	}
+	$api['provider'] = $provider;
+	$api['original_provider'] = $original_provider;
+	$api['api_endpoint'] = $endpoint;
+	$api['model'] = $model;
+	return $api;
+}
+
+function argon_get_openai_compatible_models($api_key, $custom_endpoint = '') {
+	$endpoint = !empty($custom_endpoint) ? $custom_endpoint : argon_get_default_ai_endpoint('openai_compatible');
+	$endpoint = preg_replace('#/chat/completions$#', '/models', $endpoint);
+	$fallback = [
+		['id' => 'gpt-4o-mini', 'name' => 'gpt-4o-mini'],
+		['id' => 'gpt-4o', 'name' => 'gpt-4o'],
+		['id' => 'deepseek-chat', 'name' => 'deepseek-chat'],
+		['id' => 'qwen-turbo', 'name' => 'qwen-turbo']
+	];
+	$response = wp_remote_get($endpoint, [
+		'headers' => [
+			'Authorization' => 'Bearer ' . $api_key,
+			'Accept' => 'application/json'
+		],
+		'timeout' => 15,
+		'sslverify' => true
+	]);
+	if (is_wp_error($response)) {
+		return $fallback;
+	}
+	$body = json_decode(wp_remote_retrieve_body($response), true);
+	if (!isset($body['data']) || !is_array($body['data'])) {
+		return $fallback;
+	}
+	$models = [];
+	foreach ($body['data'] as $model) {
+		if (isset($model['id'])) {
+			$models[] = [
+				'id' => $model['id'],
+				'name' => isset($model['name']) ? $model['name'] : $model['id']
+			];
+		}
+	}
+	return !empty($models) ? $models : $fallback;
+}
 
 /**
  * 创建 AI 查询记录表
@@ -7193,6 +7280,7 @@ function argon_ai_query($scenario, $prompt, $content, $context = []) {
 	
 	$api_key = $config['api_key'];
 	$model = isset($context['model']) ? $context['model'] : (isset($config['model']) ? $config['model'] : '');
+	$provider = argon_normalize_ai_provider($provider);
 	
 	// 记录开始时间
 	$start_time = microtime(true);
@@ -7207,66 +7295,18 @@ function argon_ai_query($scenario, $prompt, $content, $context = []) {
 	// 获取 API 端点
 	$endpoint = isset($config['api_endpoint']) ? $config['api_endpoint'] : '';
 
-	if (empty($model) || $provider === 'xiaomi') {
-		$provider_defaults = [
-			'openai' => 'gpt-4o-mini',
-			'anthropic' => 'claude-3-5-haiku-20241022',
-			'deepseek' => 'deepseek-chat',
-			'qianwen' => 'qwen-turbo',
-			'wenxin' => 'ernie-4.0-turbo-8k',
-			'doubao' => 'doubao-pro-32k',
-			'kimi' => 'moonshot-v1-8k',
-			'zhipu' => 'glm-4-flash',
-			'siliconflow' => 'Qwen/Qwen2.5-7B-Instruct',
-			'xiaomi' => 'MiMo-V2-Flash'
-		];
-		if (empty($model) && isset($provider_defaults[$provider])) {
-			$model = $provider_defaults[$provider];
-		}
-		if ($provider === 'xiaomi' && !empty($endpoint) && !empty($model)) {
-			if (strpos($endpoint, 'xiaomimimo.com') !== false && strcasecmp($model, 'MiMo-V2-Flash') === 0) {
-				$model = 'mimo-v2-flash';
-			} elseif (strpos($endpoint, 'api.mimo.xiaomi.com') !== false && strcasecmp($model, 'mimo-v2-flash') === 0) {
-				$model = 'MiMo-V2-Flash';
-			}
-		}
+	if (empty($endpoint)) {
+		$endpoint = argon_get_default_ai_endpoint($provider);
+	}
+	if (empty($model)) {
+		$model = argon_get_default_ai_model($provider, $endpoint);
 	}
 
 	try {
-		switch ($provider) {
-			case 'openai':
-				$result = argon_call_openai_api($api_key, $prompt, $content, $post_id, $model, $endpoint);
-				break;
-			case 'anthropic':
-				$result = argon_call_anthropic_api($api_key, $prompt, $content, $post_id, $model, $endpoint);
-				break;
-			case 'deepseek':
-				$result = argon_call_deepseek_api($api_key, $prompt, $content, $post_id, $model, $endpoint);
-				break;
-			case 'xiaomi':
-				$result = argon_call_xiaomi_api($api_key, $prompt, $content, $post_id, $model, $endpoint);
-				break;
-			case 'qianwen':
-				$result = argon_call_qianwen_api($api_key, $prompt, $content, $post_id, $model, $endpoint);
-				break;
-			case 'wenxin':
-				$result = argon_call_wenxin_api($api_key, $prompt, $content, $post_id, $model, $endpoint);
-				break;
-			case 'doubao':
-				$result = argon_call_doubao_api($api_key, $prompt, $content, $post_id, $model, $endpoint);
-				break;
-			case 'kimi':
-				$result = argon_call_kimi_api($api_key, $prompt, $content, $post_id, $model, $endpoint);
-				break;
-			case 'zhipu':
-				$result = argon_call_zhipu_api($api_key, $prompt, $content, $post_id, $model, $endpoint);
-				break;
-			case 'siliconflow':
-				$result = argon_call_siliconflow_api($api_key, $prompt, $content, $post_id, $model, $endpoint);
-				break;
-			default:
-				$error_message = "Unsupported provider: {$provider}";
-				error_log("Argon AI Query Error: {$error_message}");
+		if ($provider === 'anthropic_compatible') {
+			$result = argon_call_anthropic_api($api_key, $prompt, $content, $post_id, $model, $endpoint);
+		} else {
+			$result = argon_call_openai_api($api_key, $prompt, $content, $post_id, $model, $endpoint);
 		}
 	} catch (Exception $e) {
 		$error_message = $e->getMessage();
@@ -7321,22 +7361,6 @@ function argon_ai_query($scenario, $prompt, $content, $context = []) {
 	return $result;
 }
 
-/**
- * 重置 Prompt 基因池
- */
-function argon_ajax_reset_prompt_pool() {
-	check_ajax_referer('argon_manage_unified_apis', 'nonce');
-	if (!current_user_can('manage_options')) {
-		wp_send_json_error(__('权限不足', 'argon'));
-	}
-	delete_option('argon_ai_audit_prompt_pool');
-	wp_send_json_success(['message' => __('基因池已重置', 'argon')]);
-}
-add_action('wp_ajax_argon_reset_prompt_pool', 'argon_ajax_reset_prompt_pool');
-
-/**
- * 清空学习到的关键词缓存
- */
 function argon_ajax_clear_learned_keywords() {
 	check_ajax_referer('argon_manage_unified_apis', 'nonce');
 	if (!current_user_can('manage_options')) {
@@ -7379,27 +7403,12 @@ function argon_resolve_ai_provider_model($scenario, $context = []) {
 		$model = $config['model'];
 	}
 	
-	$provider_defaults = [
-		'openai' => 'gpt-4o-mini',
-		'anthropic' => 'claude-3-5-haiku-20241022',
-		'deepseek' => 'deepseek-chat',
-		'qianwen' => 'qwen-turbo',
-		'wenxin' => 'ernie-4.0-turbo-8k',
-		'doubao' => 'doubao-pro-32k',
-		'kimi' => 'moonshot-v1-8k',
-		'zhipu' => 'glm-4-flash',
-		'siliconflow' => 'Qwen/Qwen2.5-7B-Instruct',
-		'xiaomi' => 'MiMo-V2-Flash'
-	];
-	if (empty($model) && isset($provider_defaults[$provider])) {
-		$model = $provider_defaults[$provider];
+	$provider = argon_normalize_ai_provider($provider);
+	if (empty($endpoint)) {
+		$endpoint = argon_get_default_ai_endpoint($provider);
 	}
-	if ($provider === 'xiaomi' && !empty($endpoint) && !empty($model)) {
-		if (strpos($endpoint, 'xiaomimimo.com') !== false && strcasecmp($model, 'MiMo-V2-Flash') === 0) {
-			$model = 'mimo-v2-flash';
-		} elseif (strpos($endpoint, 'api.mimo.xiaomi.com') !== false && strcasecmp($model, 'mimo-v2-flash') === 0) {
-			$model = 'MiMo-V2-Flash';
-		}
+	if (empty($model)) {
+		$model = argon_get_default_ai_model($provider, $endpoint);
 	}
 	
 	return [
@@ -7818,9 +7827,11 @@ function argon_get_ai_provider_config($provider = '') {
 	if (!empty($all_apis)) {
 		// 如果指定了提供商，查找该提供商的第一个 API
 		if (!empty($provider)) {
+			$provider = argon_normalize_ai_provider($provider);
 			foreach ($all_apis as $api) {
 				if (isset($api['provider']) && $api['provider'] === $provider) {
 					return [
+						'provider' => $api['provider'],
 						'api_key' => isset($api['api_key']) ? $api['api_key'] : '',
 						'api_endpoint' => isset($api['api_endpoint']) ? $api['api_endpoint'] : '',
 						'model' => isset($api['model']) ? $api['model'] : ''
@@ -7832,6 +7843,7 @@ function argon_get_ai_provider_config($provider = '') {
 		// 如果没有指定提供商或没有找到，返回第一个 API
 		if (isset($all_apis[0])) {
 			return [
+				'provider' => isset($all_apis[0]['provider']) ? $all_apis[0]['provider'] : 'openai_compatible',
 				'api_key' => isset($all_apis[0]['api_key']) ? $all_apis[0]['api_key'] : '',
 				'api_endpoint' => isset($all_apis[0]['api_endpoint']) ? $all_apis[0]['api_endpoint'] : '',
 				'model' => isset($all_apis[0]['model']) ? $all_apis[0]['model'] : ''
@@ -7841,6 +7853,7 @@ function argon_get_ai_provider_config($provider = '') {
 	
 	// 如果没有任何 API 配置，返回空配置
 	return [
+		'provider' => argon_normalize_ai_provider($provider),
 		'api_key' => '',
 		'api_endpoint' => '',
 		'model' => ''
@@ -7860,6 +7873,10 @@ function argon_get_all_apis() {
 	if (!is_array($apis)) {
 		$apis = [];
 	}
+	foreach ($apis as &$api) {
+		$api = argon_normalize_ai_api_config($api);
+	}
+	unset($api);
 	
 	return $apis;
 }
@@ -7896,7 +7913,7 @@ function argon_add_api($config) {
 	$new_api = [
 		'id' => $api_id,
 		'name' => sanitize_text_field($config['name']),
-		'provider' => sanitize_text_field($config['provider']),
+		'provider' => argon_normalize_ai_provider(isset($config['provider']) ? $config['provider'] : 'openai_compatible'),
 		'api_key' => sanitize_text_field($config['api_key']),
 		'api_endpoint' => esc_url_raw($config['api_endpoint']),
 		'model' => sanitize_text_field($config['model']),
@@ -7923,7 +7940,7 @@ function argon_update_api($api_id, $config) {
 	foreach ($apis as &$api) {
 		if ($api['id'] === $api_id) {
 			$api['name'] = sanitize_text_field($config['name']);
-			$api['provider'] = sanitize_text_field($config['provider']);
+			$api['provider'] = argon_normalize_ai_provider(isset($config['provider']) ? $config['provider'] : 'openai_compatible');
 			$api['api_key'] = sanitize_text_field($config['api_key']);
 			$api['api_endpoint'] = esc_url_raw($config['api_endpoint']);
 			$api['model'] = sanitize_text_field($config['model']);
@@ -9238,7 +9255,7 @@ function argon_get_ai_models() {
 		wp_send_json_error(__('权限不足', 'argon'));
 	}
 	
-	$provider = sanitize_text_field($_POST['provider']);
+	$provider = argon_normalize_ai_provider(sanitize_text_field($_POST['provider']));
 	$api_key = sanitize_text_field($_POST['api_key']);
 	$api_endpoint = sanitize_text_field($_POST['api_endpoint']);
 	
@@ -9248,40 +9265,9 @@ function argon_get_ai_models() {
 	
 	$models = [];
 	
-	switch ($provider) {
-		case 'openai':
-			$models = argon_get_openai_models($api_key, $api_endpoint);
-			break;
-		case 'anthropic':
-			$models = argon_get_anthropic_models();
-			break;
-		case 'deepseek':
-			$models = argon_get_deepseek_models($api_key, $api_endpoint);
-			break;
-		case 'xiaomi':
-			$models = argon_get_xiaomi_models($api_key, $api_endpoint);
-			break;
-		case 'qianwen':
-			$models = argon_get_qianwen_models($api_key, $api_endpoint);
-			break;
-		case 'wenxin':
-			$models = argon_get_wenxin_models($api_key, $api_endpoint);
-			break;
-		case 'doubao':
-			$models = argon_get_doubao_models($api_key, $api_endpoint);
-			break;
-		case 'kimi':
-			$models = argon_get_kimi_models($api_key, $api_endpoint);
-			break;
-		case 'zhipu':
-			$models = argon_get_zhipu_models($api_key, $api_endpoint);
-			break;
-		case 'siliconflow':
-			$models = argon_get_siliconflow_models($api_key, $api_endpoint);
-			break;
-		default:
-			wp_send_json_error(__('不支持的服务商', 'argon'));
-	}
+	$models = ($provider === 'anthropic_compatible')
+		? argon_get_anthropic_models()
+		: argon_get_openai_compatible_models($api_key, $api_endpoint);
 	
 	if ($models === false || empty($models)) {
 		wp_send_json_error(__('获取模型列表失败，请检查 API 密钥和网络连接', 'argon'));
@@ -9301,7 +9287,7 @@ function argon_test_api_connection() {
 		wp_send_json_error(__('权限不足', 'argon'));
 	}
 	
-	$provider = sanitize_text_field($_POST['provider']);
+	$provider = argon_normalize_ai_provider(sanitize_text_field($_POST['provider']));
 	$api_key = sanitize_text_field($_POST['api_key']);
 	$api_endpoint = sanitize_text_field($_POST['api_endpoint']);
 	$model = sanitize_text_field($_POST['model']);
@@ -9317,42 +9303,18 @@ function argon_test_api_connection() {
 	$test_prompt = __('请回复"连接成功"', 'argon');
 	$test_content = __('测试', 'argon');
 	
-	// 根据不同服务商调用 API
 	$result = false;
 	try {
-		switch ($provider) {
-			case 'openai':
-				$result = argon_call_openai_api($api_key, $test_prompt, $test_content, 0, $model, $api_endpoint);
-				break;
-			case 'anthropic':
-				$result = argon_call_anthropic_api($api_key, $test_prompt, $test_content, 0, $model, $api_endpoint);
-				break;
-			case 'deepseek':
-				$result = argon_call_deepseek_api($api_key, $test_prompt, $test_content, 0, $model, $api_endpoint);
-				break;
-			case 'xiaomi':
-				$result = argon_call_xiaomi_api($api_key, $test_prompt, $test_content, 0, $model, $api_endpoint);
-				break;
-			case 'qianwen':
-				$result = argon_call_qianwen_api($api_key, $test_prompt, $test_content, 0, $model, $api_endpoint);
-				break;
-			case 'wenxin':
-				$result = argon_call_wenxin_api($api_key, $test_prompt, $test_content, 0, $model, $api_endpoint);
-				break;
-			case 'doubao':
-				$result = argon_call_doubao_api($api_key, $test_prompt, $test_content, 0, $model, $api_endpoint);
-				break;
-			case 'kimi':
-				$result = argon_call_kimi_api($api_key, $test_prompt, $test_content, 0, $model, $api_endpoint);
-				break;
-			case 'zhipu':
-				$result = argon_call_zhipu_api($api_key, $test_prompt, $test_content, 0, $model, $api_endpoint);
-				break;
-			case 'siliconflow':
-				$result = argon_call_siliconflow_api($api_key, $test_prompt, $test_content, 0, $model, $api_endpoint);
-				break;
-			default:
-				wp_send_json_error(__('不支持的服务商', 'argon'));
+		if (empty($api_endpoint)) {
+			$api_endpoint = argon_get_default_ai_endpoint($provider);
+		}
+		if (empty($model)) {
+			$model = argon_get_default_ai_model($provider, $api_endpoint);
+		}
+		if ($provider === 'anthropic_compatible') {
+			$result = argon_call_anthropic_api($api_key, $test_prompt, $test_content, 0, $model, $api_endpoint);
+		} else {
+			$result = argon_call_openai_api($api_key, $test_prompt, $test_content, 0, $model, $api_endpoint);
 		}
 	} catch (Exception $e) {
 		wp_send_json_error($e->getMessage());
@@ -9699,58 +9661,18 @@ function argon_ajax_test_unified_api() {
 		wp_send_json_error(['message' => 'API 不存在']);
 		return;
 	}
+
+	$api = argon_normalize_ai_api_config($api);
+	$provider = $api['provider'];
 	
-	// 获取默认端点
-	$default_endpoints = [
-		'openai' => 'https://api.openai.com/v1/chat/completions',
-		'anthropic' => 'https://api.anthropic.com/v1/messages',
-		'deepseek' => 'https://api.deepseek.com/v1/chat/completions',
-		'xiaomi' => 'https://api.xiaomimimo.com/v1/chat/completions',
-		'qianwen' => 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
-		'wenxin' => 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions',
-		'doubao' => 'https://ark.cn-beijing.volces.com/api/v3/chat/completions',
-		'kimi' => 'https://api.moonshot.cn/v1/chat/completions',
-		'zhipu' => 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
-		'siliconflow' => 'https://api.siliconflow.cn/v1/chat/completions'
-	];
-	
-	$api_endpoint = !empty($api['api_endpoint']) ? $api['api_endpoint'] : (isset($default_endpoints[$api['provider']]) ? $default_endpoints[$api['provider']] : '');
+	$api_endpoint = !empty($api['api_endpoint']) ? $api['api_endpoint'] : argon_get_default_ai_endpoint($provider);
 	
 	if (empty($api_endpoint)) {
 		wp_send_json_error(['message' => '未配置 API 端点']);
 		return;
 	}
 	
-	// 根据提供商设置默认模型
-	$default_models = [
-		'openai' => 'gpt-4o-mini',
-		'anthropic' => 'claude-3-5-sonnet-20241022',
-		'deepseek' => 'deepseek-chat',
-		'xiaomi' => 'MiMo-V2-Flash',
-		'qianwen' => 'qwen-turbo',
-		'wenxin' => 'ernie-4.0-8k',
-		'doubao' => 'doubao-pro-32k',
-		'kimi' => 'moonshot-v1-8k',
-		'zhipu' => 'glm-4-flash',
-		'siliconflow' => 'deepseek-ai/DeepSeek-V2.5'
-	];
-	
-	$model = !empty($api['model']) ? $api['model'] : (isset($default_models[$api['provider']]) ? $default_models[$api['provider']] : 'gpt-4o-mini');
-	if (empty($api['model']) && isset($api['provider']) && $api['provider'] === 'xiaomi') {
-		if (strpos($api_endpoint, 'xiaomimimo.com') !== false) {
-			$model = 'mimo-v2-flash';
-		} else {
-			$model = 'MiMo-V2-Flash';
-		}
-	}
-	
-	if (isset($api['provider']) && $api['provider'] === 'xiaomi') {
-		if (strpos($api_endpoint, 'xiaomimimo.com') !== false && strcasecmp($model, 'MiMo-V2-Flash') === 0) {
-			$model = 'mimo-v2-flash';
-		} elseif (strpos($api_endpoint, 'api.mimo.xiaomi.com') !== false && strcasecmp($model, 'mimo-v2-flash') === 0) {
-			$model = 'MiMo-V2-Flash';
-		}
-	}
+	$model = !empty($api['model']) ? $api['model'] : argon_get_default_ai_model($provider, $api_endpoint);
 	
 	// 构建测试请求
 	$data = [
@@ -9758,21 +9680,28 @@ function argon_ajax_test_unified_api() {
 		'messages' => [
 			[
 				'role' => 'user',
-				'content' => '你好，这是一个测试。请回复"测试成功"。'
+				'content' => 'Connection test. Reply with "test success".'
 			]
 		],
-		'max_tokens' => 50,
-		'stream' => false
+		'max_tokens' => 50
 	];
+
+	$headers = [
+		'Content-Type' => 'application/json',
+		'Accept' => 'application/json'
+	];
+	if ($provider === 'anthropic_compatible') {
+		$headers['x-api-key'] = $api['api_key'];
+		$headers['anthropic-version'] = '2023-06-01';
+	} else {
+		$headers['Authorization'] = 'Bearer ' . $api['api_key'];
+		$data['stream'] = false;
+	}
 	
 	$start_time = microtime(true);
 	
 	$response = wp_remote_post($api_endpoint, [
-		'headers' => [
-			'Content-Type' => 'application/json',
-			'Authorization' => 'Bearer ' . $api['api_key'],
-			'Accept' => 'application/json'
-		],
+		'headers' => $headers,
 		'body' => json_encode($data, JSON_UNESCAPED_UNICODE),
 		'timeout' => 30,
 		'sslverify' => true
@@ -10700,202 +10629,7 @@ function argon_send_panic_mode_notify_email($comment, $detection_result, $detect
 	return argon_send_email($comment->comment_author_email, 'panic_mode_notify', $vars);
 }
 
-/**
- * 获取怕死模式遗传算法提示词（白盒模式）
- * @param string $intensity 审查强度
- * @param array $focus 审查方向数组
- * @return string Prompt 文本
- */
-function argon_get_panic_mode_genetic_prompt($intensity = 'strict', $focus = array('political')) {
-	$gene_pool = get_option('argon_panic_mode_prompt_gene_pool', []);
-	
-	if (empty($gene_pool)) {
-		$gene_pool = argon_init_panic_mode_gene_pool();
-	}
-	
-	// 白盒：记录选择过程
-	$selection_log = [
-		'timestamp' => current_time('mysql'),
-		'candidates' => [],
-		'selection_reason' => ''
-	];
-	
-	$best_gene = null;
-	$best_score = -1;
-	$best_index = -1;
-	
-	foreach ($gene_pool as $index => $gene) {
-		$score = isset($gene['score']) ? $gene['score'] : 0;
-		$accuracy = $gene['total_count'] > 0 ? round($gene['correct_count'] / $gene['total_count'] * 100, 2) : 0;
-		
-		// 白盒：记录每个候选基因的详细信息
-		$selection_log['candidates'][] = [
-			'index' => $index,
-			'score' => $score,
-			'accuracy' => $accuracy . '%',
-			'correct' => $gene['correct_count'],
-			'total' => $gene['total_count'],
-			'generations' => $gene['generations']
-		];
-		
-		if ($score > $best_score) {
-			$best_score = $score;
-			$best_gene = $gene;
-			$best_index = $index;
-		}
-	}
-	
-	// 白盒：记录选择理由
-	if ($best_gene) {
-		$selection_log['selected_index'] = $best_index;
-		$selection_log['selection_reason'] = sprintf(
-			'选择基因 #%d：准确率 %.2f%% (%d/%d)，代数 %d',
-			$best_index,
-			$best_score * 100,
-			$best_gene['correct_count'],
-			$best_gene['total_count'],
-			$best_gene['generations']
-		);
-		
-		global $argon_current_prompt_index;
-		$argon_current_prompt_index = $best_index;
-		
-		// 白盒：保存选择日志
-		$history = get_option('argon_panic_mode_genetic_log', []);
-		$history[] = $selection_log;
-		if (count($history) > 100) array_shift($history);
-		update_option('argon_panic_mode_genetic_log', $history);
-		
-		return $best_gene['prompt'];
-	}
-	
-	$selection_log['selection_reason'] = '基因池为空，使用默认提示词';
-	$history = get_option('argon_panic_mode_genetic_log', []);
-	$history[] = $selection_log;
-	update_option('argon_panic_mode_genetic_log', $history);
-	
-	return argon_get_panic_mode_prompt($intensity, $focus);
-}
-
-/**
- * 初始化怕死模式基因池
- * @return array 基因池数组
- */
-function argon_init_panic_mode_gene_pool() {
-	// 创建多样化的初始基因池，覆盖不同强度和方向
-	$default_genes = [
-		// 政治专项 - 严格模式
-		[
-			'prompt' => argon_get_panic_mode_prompt('strict', ['political']),
-			'score' => 0,
-			'generations' => 0,
-			'correct_count' => 0,
-			'total_count' => 0,
-			'focus' => 'political',
-			'intensity' => 'strict'
-		],
-		// 政治+社会 - 严格模式
-		[
-			'prompt' => argon_get_panic_mode_prompt('strict', ['political', 'social']),
-			'score' => 0,
-			'generations' => 0,
-			'correct_count' => 0,
-			'total_count' => 0,
-			'focus' => 'political_social',
-			'intensity' => 'strict'
-		],
-		// 全方位 - 严格模式
-		[
-			'prompt' => argon_get_panic_mode_prompt('strict', ['all']),
-			'score' => 0,
-			'generations' => 0,
-			'correct_count' => 0,
-			'total_count' => 0,
-			'focus' => 'all',
-			'intensity' => 'strict'
-		],
-		// 政治专项 - 极端模式（更严格）
-		[
-			'prompt' => argon_get_panic_mode_prompt('extreme', ['political']),
-			'score' => 0,
-			'generations' => 0,
-			'correct_count' => 0,
-			'total_count' => 0,
-			'focus' => 'political',
-			'intensity' => 'extreme'
-		],
-		// 政治专项 - 适度模式（平衡）
-		[
-			'prompt' => argon_get_panic_mode_prompt('moderate', ['political']),
-			'score' => 0,
-			'generations' => 0,
-			'correct_count' => 0,
-			'total_count' => 0,
-			'focus' => 'political',
-			'intensity' => 'moderate'
-		]
-	];
-	
-	update_option('argon_panic_mode_prompt_gene_pool', $default_genes);
-	return $default_genes;
-}
-
-/**
- * 更新怕死模式基因池评分（白盒模式）
- * @param int $gene_index 基因索引
- * @param bool $is_correct 是否判断正确
- */
-function argon_update_panic_mode_gene_score($gene_index, $is_correct) {
-	$gene_pool = get_option('argon_panic_mode_prompt_gene_pool', []);
-	
-	if (!isset($gene_pool[$gene_index])) {
-		return;
-	}
-	
-	$gene = $gene_pool[$gene_index];
-	$old_score = isset($gene['score']) ? $gene['score'] : 0;
-	$gene['total_count'] = isset($gene['total_count']) ? $gene['total_count'] + 1 : 1;
-	
-	if ($is_correct) {
-		$gene['correct_count'] = isset($gene['correct_count']) ? $gene['correct_count'] + 1 : 1;
-	}
-	
-	$gene['score'] = $gene['total_count'] > 0 ? $gene['correct_count'] / $gene['total_count'] : 0;
-	$gene['generations'] = isset($gene['generations']) ? $gene['generations'] + 1 : 1;
-	
-	// 白盒：记录评分变化
-	$update_log = [
-		'timestamp' => current_time('mysql'),
-		'gene_index' => $gene_index,
-		'is_correct' => $is_correct,
-		'old_score' => round($old_score * 100, 2) . '%',
-		'new_score' => round($gene['score'] * 100, 2) . '%',
-		'correct_count' => $gene['correct_count'],
-		'total_count' => $gene['total_count'],
-		'change' => round(($gene['score'] - $old_score) * 100, 2) . '%'
-	];
-	
-	$gene_pool[$gene_index] = $gene;
-	update_option('argon_panic_mode_prompt_gene_pool', $gene_pool);
-	
-	// 白盒：保存更新日志
-	$history = get_option('argon_panic_mode_score_log', []);
-	$history[] = $update_log;
-	if (count($history) > 200) array_shift($history);
-	update_option('argon_panic_mode_score_log', $history);
-}
-
-// ==========================================================================
-// AI 垃圾评论识别
-// ==========================================================================
-
-
-/**
- * 获取垃圾评论检测 Prompt（根据模式）
- * @param string $mode Prompt 模式：minimal, standard, enhanced
- * @return string Prompt 文本
- */
-	function argon_get_spam_detection_prompt($mode) {
+function argon_get_spam_detection_prompt($mode) {
 	$prompts = [
 		'minimal' => '你是严谨的内容安全专家。判断评论是否违规。
 
@@ -11008,1096 +10742,6 @@ function argon_update_panic_mode_gene_score($gene_index, $is_correct) {
 }
 
 
-/**
- * 获取遗传算法优化的 Prompt
- * @param string $base_mode 基础模式 (minimal/standard/enhanced)
- * @return string 优化的 Prompt
- */
-function argon_get_genetic_audit_prompt($base_mode) {
-	if (get_option('argon_ai_audit_genetic_prompt_enable', 'false') !== 'true') {
-		return argon_get_spam_detection_prompt($base_mode);
-	}
-
-	$pool = get_option('argon_ai_audit_prompt_pool', []);
-	if (empty($pool) || !isset($pool[$base_mode])) {
-		// 初始化 Prompt 池（双通道评分系统）- 创建多个初始变体增加多样性
-		$standard_prompt = argon_get_spam_detection_prompt($base_mode);
-		
-		// 创建初始种群：基础prompt + 3个变体
-		$initial_variants = [
-			$standard_prompt, // 原始版本
-			$standard_prompt . " 【强化】特别注意识别变体：谐音、符号混淆、空格分隔等规避手段。",
-			$standard_prompt . " 【优化】对边界案例保持谨慎，避免误伤正常讨论，擦边内容建议人工审核。",
-			$standard_prompt . " 【平衡】在准确识别违规内容的同时，注意区分正常交流和营销推广的边界。"
-		];
-		
-		$population = [];
-		foreach ($initial_variants as $idx => $variant) {
-			$population[] = [
-				'content' => $variant,
-				'fitness' => 100,
-				'usage_count' => 0,
-				'success_count' => 0,
-				'error_count' => 0,
-				'version' => 1,
-				'variant_type' => $idx === 0 ? 'original' : 'initial_variant_' . $idx,
-				// 双通道评分
-				'admin_score' => 100,
-				'adversarial_score' => 100,
-				'admin_feedback_count' => 0,
-				'adversarial_test_count' => 0,
-				'last_adversarial_test' => 0,
-				'combined_fitness' => 100
-			];
-		}
-		
-		$pool[$base_mode] = [
-			'population' => $population,
-			'current_best_index' => 0,
-			'last_mutation_time' => time(),
-			'last_adversarial_run' => 0,
-			'adversarial_test_cases' => []
-		];
-		update_option('argon_ai_audit_prompt_pool', $pool);
-		return $standard_prompt;
-	}
-
-	$population = &$pool[$base_mode]['population'];
-	
-	// 轮盘赌选择或直接选择表现最好的
-	// 为了确保收敛和探索平衡，80% 概率选择当前最好，20% 概率随机选择一个旧的或尝试变异
-	if (wp_rand(1, 100) > 20) {
-		$selected_index = $pool[$base_mode]['current_best_index'];
-	} else {
-		$selected_index = wp_rand(0, count($population) - 1);
-	}
-
-	// 记录当前使用的索引到临时变量，用于后续更新置信度
-	// 因为后续可能异步，所以这里返回时把索引也带上（通过 global 或 transient）
-	global $argon_current_prompt_index;
-	$argon_current_prompt_index = $selected_index;
-
-	return $population[$selected_index]['content'];
-}
-
-function argon_genetic_correct_keywords() {
-	if (get_option('argon_ai_audit_genetic_keyword_correction_enable', 'false') !== 'true') {
-		return;
-	}
-
-	$learned_keywords = get_option('argon_comment_spam_learned_keywords', []);
-	if (empty($learned_keywords)) {
-		return;
-	}
-
-	$mutation_rate = floatval(get_option('argon_ai_audit_genetic_keyword_mutation_rate', '0.05'));
-	$new_keywords = [];
-	$decay_factor = 0.98;
-	$changes = [
-		'decayed' => 0,
-		'eliminated' => 0,
-		'corrected' => 0,
-		'short_penalty' => 0
-	];
-
-	foreach ($learned_keywords as $keyword => $stats) {
-		$total_count = $stats['spam_count'] + $stats['normal_count'];
-		
-		// 1. 遗传衰减：太久没出现的词置信度降低
-		$days_since_added = isset($stats['added_time']) ? (time() - $stats['added_time']) / (24 * 3600) : 0;
-		if ($days_since_added > 30) {
-			$old_confidence = $stats['confidence'];
-			$stats['confidence'] *= pow($decay_factor, ($days_since_added - 30) / 7);
-			if (abs($old_confidence - $stats['confidence']) > 0.01) {
-				$changes['decayed']++;
-			}
-		}
-
-		// 2. 淘汰低频且低置信度的“基因”
-		if ($total_count < 2 && $stats['confidence'] < 0.4) {
-			$changes['eliminated']++;
-			continue;
-		}
-
-		// 3. 特征漂变（变异保护）：如果一个词被误伤太多，强制修正
-		if ($stats['normal_count'] > $stats['spam_count'] * 2 && $stats['spam_count'] > 0) {
-			$stats['confidence'] *= 0.5;
-			$changes['corrected']++;
-		}
-
-		// 4. 遗传修正：短词惩罚
-		if (mb_strlen($keyword) <= 2) {
-			$stats['confidence'] *= 0.9;
-			$changes['short_penalty']++;
-		}
-
-		$new_keywords[$keyword] = $stats;
-	}
-
-	update_option('argon_comment_spam_learned_keywords', $new_keywords);
-	
-	// 记录遗传修正历史
-	if ($changes['decayed'] > 0 || $changes['eliminated'] > 0 || $changes['corrected'] > 0) {
-		$history = get_option('argon_keyword_genetic_history', []);
-		$history[] = [
-			'action' => __('自动遗传修正', 'argon'),
-			'detail' => sprintf(
-				__('衰减: %d, 淘汰: %d, 纠正: %d, 短词惩罚: %d', 'argon'),
-				$changes['decayed'],
-				$changes['eliminated'],
-				$changes['corrected'],
-				$changes['short_penalty']
-			),
-			'time' => time()
-		];
-		if (count($history) > 50) {
-			$history = array_slice($history, -50);
-		}
-		update_option('argon_keyword_genetic_history', $history);
-	}
-}
-
-/**
- * 计算综合适应度（双通道融合）
- * @param array $prompt_data Prompt数据
- * @return float 综合适应度
- */
-function argon_calculate_combined_fitness($prompt_data) {
-	$admin_weight = 0.6;      // 管理员反馈权重
-	$adversarial_weight = 0.4; // AI对抗测试权重
-	
-	$admin_score = isset($prompt_data['admin_score']) ? $prompt_data['admin_score'] : 100;
-	$adversarial_score = isset($prompt_data['adversarial_score']) ? $prompt_data['adversarial_score'] : 100;
-	
-	// 根据反馈次数动态调整权重
-	$admin_count = isset($prompt_data['admin_feedback_count']) ? $prompt_data['admin_feedback_count'] : 0;
-	$adversarial_count = isset($prompt_data['adversarial_test_count']) ? $prompt_data['adversarial_test_count'] : 0;
-	
-	if ($admin_count > 10 && $adversarial_count > 5) {
-		// 两个通道都有足够数据，使用标准权重
-		$combined = $admin_score * $admin_weight + $adversarial_score * $adversarial_weight;
-	} elseif ($admin_count > 10) {
-		// 只有管理员反馈数据
-		$combined = $admin_score;
-	} elseif ($adversarial_count > 5) {
-		// 只有AI对抗测试数据
-		$combined = $adversarial_score;
-	} else {
-		// 数据不足，使用基础fitness
-		$combined = isset($prompt_data['fitness']) ? $prompt_data['fitness'] : 100;
-	}
-	
-	return max(10, min(1000, $combined));
-}
-
-/**
- * 更新 Prompt 适应度（管理员通道）
- * @param string $mode 基础模式
- * @param int $prompt_index Prompt 索引
- * @param bool $is_correct AI 判断是否正确
- */
-function argon_update_prompt_fitness($mode, $prompt_index, $is_correct) {
-	if (get_option('argon_ai_audit_genetic_prompt_enable', 'false') !== 'true') {
-		return;
-	}
-
-	$pool = get_option('argon_ai_audit_prompt_pool', []);
-	if (!isset($pool[$mode]['population'][$prompt_index])) {
-		return;
-	}
-
-	$p = &$pool[$mode]['population'][$prompt_index];
-	$p['usage_count']++;
-	$p['admin_feedback_count'] = isset($p['admin_feedback_count']) ? $p['admin_feedback_count'] + 1 : 1;
-	
-	// 更新管理员评分
-	if (!isset($p['admin_score'])) {
-		$p['admin_score'] = 100;
-	}
-	
-	if ($is_correct) {
-		$p['success_count']++;
-		$p['fitness'] += 2;
-		$p['admin_score'] += 3; // 管理员确认正确，加分更多
-	} else {
-		$p['error_count']++;
-		$p['fitness'] -= 5;
-		$p['admin_score'] -= 8; // 管理员纠正错误，扣分更多
-	}
-
-	// 约束范围
-	$p['fitness'] = max(10, min(1000, $p['fitness']));
-	$p['admin_score'] = max(10, min(1000, $p['admin_score']));
-	
-	// 计算综合适应度
-	$p['combined_fitness'] = argon_calculate_combined_fitness($p);
-
-	// 更新最佳索引（基于综合适应度）
-	$best_fitness = -1000;
-	$best_idx = 0;
-	foreach ($pool[$mode]['population'] as $idx => $item) {
-		$item_fitness = isset($item['combined_fitness']) ? $item['combined_fitness'] : (isset($item['fitness']) ? $item['fitness'] : 100);
-		if ($item_fitness > $best_fitness) {
-			$best_fitness = $item_fitness;
-			$best_idx = $idx;
-		}
-	}
-	$pool[$mode]['current_best_index'] = $best_idx;
-
-	// 变异检查 - 根据错误类型智能变异
-	if ($p['usage_count'] > 50 && wp_rand(1, 100) < 5) {
-		$new_prompt = $p['content'];
-		
-		// 根据当前表现选择变异策略
-		$error_rate = $p['usage_count'] > 0 ? $p['error_count'] / $p['usage_count'] : 0;
-		
-		if ($error_rate > 0.3) {
-			// 错误率高，需要强化检测
-			$mutations = [
-				" 【强化】对擦边内容保持高度警惕，宁可误判不可漏判。",
-				" 【强化】特别注意政治敏感、色情暗示、谣言传播等高风险内容。",
-				" 【强化】识别变体：谐音（薇信）、符号混淆（v·x）、空格分隔（w e i x i n）。"
-			];
-		} else if ($error_rate < 0.1) {
-			// 错误率低，可以优化精确度
-			$mutations = [
-				" 【优化】在保持准确率的同时，避免误伤正常讨论。",
-				" 【优化】区分正常交流和营销推广的边界。",
-				" 【优化】对边界案例给出'review'建议而非直接拦截。"
-			];
-		} else {
-			// 中等错误率，平衡优化
-			$mutations = [
-				" 注意识别带有联系方式的变体（微信、QQ、链接等）。",
-				" 对看起来像机器生成的重复无意义内容保持警惕。",
-				" 识别故意错别字、符号分隔等规避检测的手段。",
-				" 区分正常技术讨论和隐晦的营销推广。"
-			];
-		}
-		$new_prompt .= $mutations[wp_rand(0, count($mutations) - 1)];
-		
-		$new_version = $p['version'] + 1;
-		
-		$pool[$mode]['population'][] = [
-			'content' => $new_prompt,
-			'fitness' => 80,
-			'usage_count' => 0,
-			'success_count' => 0,
-			'error_count' => 0,
-			'version' => $new_version,
-			'admin_score' => 80,
-			'adversarial_score' => 100,
-			'admin_feedback_count' => 0,
-			'adversarial_test_count' => 0,
-			'last_adversarial_test' => 0,
-			'combined_fitness' => 90
-		];
-		
-		// 记录变异历史
-		if (!isset($pool[$mode]['history'])) {
-			$pool[$mode]['history'] = [];
-		}
-		$pool[$mode]['history'][] = [
-			'version' => $new_version,
-			'action' => __('自动变异', 'argon'),
-			'time' => time(),
-			'changes' => 'mutation'
-		];
-	}
-	
-	// 记录管理员反馈历史（每10次记录一次）
-	if ($p['admin_feedback_count'] % 10 === 0) {
-		if (!isset($pool[$mode]['history'])) {
-			$pool[$mode]['history'] = [];
-		}
-		$pool[$mode]['history'][] = [
-			'version' => $p['version'],
-			'action' => sprintf(__('管理员反馈 #%d', 'argon'), $p['admin_feedback_count']),
-			'time' => time(),
-			'changes' => 'admin_feedback',
-			'score' => $p['admin_score']
-		];
-	}
-
-	update_option('argon_ai_audit_prompt_pool', $pool);
-}
-
-/**
- * 更新 Prompt 适应度（AI对抗通道）
- * @param string $mode 基础模式
- * @param int $prompt_index Prompt 索引
- * @param float $score AI对抗测试得分 (0-100)
- * @param array $test_results 详细测试结果
- */
-function argon_update_prompt_adversarial_fitness($mode, $prompt_index, $score, $test_results = []) {
-	if (get_option('argon_ai_audit_genetic_prompt_enable', 'false') !== 'true') {
-		return;
-	}
-
-	$pool = get_option('argon_ai_audit_prompt_pool', []);
-	if (!isset($pool[$mode]['population'][$prompt_index])) {
-		return;
-	}
-
-	$p = &$pool[$mode]['population'][$prompt_index];
-	
-	// 初始化对抗评分字段
-	if (!isset($p['adversarial_score'])) {
-		$p['adversarial_score'] = 100;
-	}
-	if (!isset($p['adversarial_test_count'])) {
-		$p['adversarial_test_count'] = 0;
-	}
-	
-	$p['adversarial_test_count']++;
-	$p['last_adversarial_test'] = time();
-	
-	// 平滑更新对抗评分（避免单次测试波动过大）
-	$alpha = 0.3; // 新测试权重
-	$p['adversarial_score'] = $p['adversarial_score'] * (1 - $alpha) + $score * $alpha;
-	$p['adversarial_score'] = max(10, min(1000, $p['adversarial_score']));
-	
-	// 计算综合适应度
-	$p['combined_fitness'] = argon_calculate_combined_fitness($p);
-	
-	// 更新最佳索引
-	$best_fitness = -1000;
-	$best_idx = 0;
-	foreach ($pool[$mode]['population'] as $idx => $item) {
-		$item_fitness = isset($item['combined_fitness']) ? $item['combined_fitness'] : (isset($item['fitness']) ? $item['fitness'] : 100);
-		if ($item_fitness > $best_fitness) {
-			$best_fitness = $item_fitness;
-			$best_idx = $idx;
-		}
-	}
-	$pool[$mode]['current_best_index'] = $best_idx;
-	
-	// 存储测试结果用于分析
-	if (!empty($test_results)) {
-		if (!isset($pool[$mode]['adversarial_history'])) {
-			$pool[$mode]['adversarial_history'] = [];
-		}
-		$pool[$mode]['adversarial_history'][] = [
-			'time' => time(),
-			'prompt_index' => $prompt_index,
-			'score' => $score,
-			'results' => $test_results
-		];
-		// 只保留最近20次测试历史
-		if (count($pool[$mode]['adversarial_history']) > 20) {
-			$pool[$mode]['adversarial_history'] = array_slice($pool[$mode]['adversarial_history'], -20);
-		}
-	}
-	
-	// 记录AI对抗测试历史
-	if (!isset($pool[$mode]['history'])) {
-		$pool[$mode]['history'] = [];
-	}
-	$pool[$mode]['history'][] = [
-		'version' => $p['version'],
-		'action' => sprintf(__('AI对抗测试 #%d', 'argon'), $p['adversarial_test_count']),
-		'time' => time(),
-		'changes' => 'adversarial_test',
-		'score' => round($score, 1)
-	];
-	
-	// 只保留最近50条历史
-	if (count($pool[$mode]['history']) > 50) {
-		$pool[$mode]['history'] = array_slice($pool[$mode]['history'], -50);
-	}
-
-	update_option('argon_ai_audit_prompt_pool', $pool);
-}
-
-/**
- * 生成AI对抗测试用例（AI动态生成）
- * @return array 测试用例数组
- */
-function argon_generate_adversarial_test_cases() {
-	// 检查缓存（避免频繁调用AI）
-	$cached = get_transient('argon_adversarial_test_cases');
-	if ($cached !== false && is_array($cached) && !empty($cached)) {
-		return $cached;
-	}
-	
-	// 使用AI生成测试用例
-	$ai_generated = argon_ai_generate_test_cases();
-	
-	// 如果AI生成失败，使用最小种子用例
-	if (empty($ai_generated)) {
-		$ai_generated = argon_get_seed_test_cases();
-	}
-	
-	// 缓存1小时
-	set_transient('argon_adversarial_test_cases', $ai_generated, HOUR_IN_SECONDS);
-	
-	return $ai_generated;
-}
-
-/**
- * 使用AI生成对抗测试用例（结合时事热点）
- * @return array 测试用例数组
- */
-function argon_ai_generate_test_cases() {
-	// 获取时事热点关键词
-	$hot_topics = argon_get_current_hot_topics();
-	$topics_context = !empty($hot_topics) ? "\n\n当前时事热点：" . implode('、', $hot_topics) . "\n请结合这些热点生成相关的敏感内容和谣言测试用例。" : "";
-	
-	$prompt = '你是内容安全测试专家。请生成30个用于测试评论审核系统的测试用例，必须包含：
-
-1. 高敏感内容（各10个）：
-   - 政治敏感：攻击政府、煽动对立、政治谣言、境外势力等
-   - 色情低俗：性暗示、约炮、色情服务、性骚扰等
-   - 谣言虚假：时事谣言、恐慌信息、阴谋论、虚假消息等
-
-2. 边界擦边内容（各5个）：
-   - 政治边界：正常政策讨论 vs 政治攻击
-   - 色情边界：正常夸赞 vs 性骚扰
-   - 谣言边界：新闻引用 vs 谣言传播
-
-3. 规避检测变体（5个）：
-   - 谐音字、符号混淆、空格分隔等
-
-4. 正常评论（5个）：
-   - 技术讨论、感谢反馈、提问等' . $topics_context . '
-
-要求：
-- 每个用例必须真实、具体、符合中文互联网环境
-- 高敏感内容要足够敏感，能测试系统边界
-- 边界内容要有迷惑性，容易误判
-- 输出JSON格式，每个用例包含：type(spam/normal/borderline/sensitive)、content、expected(spam/normal)、difficulty(easy/medium/hard)、category
-
-直接输出JSON数组，无需其他说明。';
-
-	$result = argon_ai_query('test_generation', $prompt, '', [
-		'test_mode' => true
-	]);
-	
-	if ($result === false) {
-		return [];
-	}
-	
-	$test_cases = json_decode($result, true);
-	if (!is_array($test_cases)) {
-		return [];
-	}
-	
-	return $test_cases;
-}
-
-/**
- * 获取当前时事热点（用于生成测试用例）
- * @return array 热点关键词数组
- */
-function argon_get_current_hot_topics() {
-	// 检查缓存（6小时更新一次）
-	$cached = get_transient('argon_hot_topics');
-	if ($cached !== false && is_array($cached)) {
-		return $cached;
-	}
-	
-	// 尝试从管理员配置的热点关键词获取
-	$manual_topics = get_option('argon_adversarial_hot_topics', '');
-	if (!empty($manual_topics)) {
-		$topics = array_filter(array_map('trim', explode(',', $manual_topics)));
-		if (!empty($topics)) {
-			set_transient('argon_hot_topics', $topics, 6 * HOUR_IN_SECONDS);
-			return $topics;
-		}
-	}
-	
-	// 使用AI提取当前可能的热点（基于历史拦截记录）
-	$topics = argon_ai_extract_hot_topics_from_history();
-	
-	if (!empty($topics)) {
-		set_transient('argon_hot_topics', $topics, 6 * HOUR_IN_SECONDS);
-	}
-	
-	return $topics;
-}
-
-/**
- * 从历史拦截记录中提取热点关键词
- * @return array 热点关键词
- */
-function argon_ai_extract_hot_topics_from_history() {
-	global $wpdb;
-	
-	// 获取最近7天被拦截的评论
-	$recent_spam = $wpdb->get_results($wpdb->prepare("
-		SELECT comment_content
-		FROM {$wpdb->comments}
-		WHERE comment_approved = 'spam'
-		AND comment_date > DATE_SUB(NOW(), INTERVAL 7 DAY)
-		ORDER BY comment_date DESC
-		LIMIT 50
-	"));
-	
-	if (empty($recent_spam)) {
-		return [];
-	}
-	
-	$spam_contents = array_map(function($c) { return $c->comment_content; }, $recent_spam);
-	$combined = implode("\n", array_slice($spam_contents, 0, 20));
-	
-	$prompt = '你是数据分析专家。从以下最近被拦截的垃圾评论中，提取出可能的时事热点关键词（如：特定事件、人物、地点、话题等）。
-
-要求：
-- 只提取可能与时事相关的关键词
-- 每个关键词不超过10个字
-- 最多提取10个关键词
-- 直接输出关键词列表，每行一个，无需编号和解释
-
-被拦截的评论内容：
-' . $combined;
-
-	$result = argon_ai_query('keyword_extraction', $prompt, '', [
-		'extract_mode' => true
-	]);
-	
-	if ($result === false) {
-		return [];
-	}
-	
-	$lines = array_filter(array_map('trim', explode("\n", $result)));
-	return array_slice($lines, 0, 10);
-}
-
-/**
- * 获取最小种子测试用例（AI生成失败时的后备）
- * @return array 种子测试用例
- */
-function argon_get_seed_test_cases() {
-	return [
-		['type' => 'spam', 'content' => '加微信免费领资料', 'expected' => 'spam', 'difficulty' => 'easy', 'category' => 'ad'],
-		['type' => 'normal', 'content' => '文章写得很好，学习了', 'expected' => 'normal', 'difficulty' => 'easy', 'category' => 'feedback'],
-		['type' => 'sensitive', 'content' => '政策越来越离谱', 'expected' => 'spam', 'difficulty' => 'hard', 'category' => 'political'],
-		['type' => 'borderline', 'content' => '希望政策更好', 'expected' => 'normal', 'difficulty' => 'hard', 'category' => 'political_normal']
-	];
-}
-
-/**
- * 运行AI对抗测试
- * @param string $mode 基础模式
- * @param int $prompt_index Prompt索引（可选，不指定则测试所有）
- * @return array 测试结果
- */
-function argon_run_adversarial_test($mode, $prompt_index = null) {
-	if (get_option('argon_ai_audit_genetic_prompt_enable', 'false') !== 'true') {
-		return ['error' => 'Genetic algorithm not enabled'];
-	}
-	
-	$pool = get_option('argon_ai_audit_prompt_pool', []);
-	
-	// 如果pool不存在或mode不存在，先初始化
-	if (!isset($pool[$mode])) {
-		argon_get_genetic_audit_prompt($mode); // 触发初始化
-		$pool = get_option('argon_ai_audit_prompt_pool', []);
-		if (!isset($pool[$mode])) {
-			return ['error' => 'Failed to initialize prompt pool'];
-		}
-	}
-	
-	$test_cases = argon_generate_adversarial_test_cases();
-	$results = [
-		'total' => 0,
-		'correct' => 0,
-		'false_positive' => 0,
-		'false_negative' => 0,
-		'scores' => [],
-		'false_positive_cases' => [],
-		'false_negative_cases' => [],
-		'correct_spam_cases' => [],
-		'correct_normal_cases' => []
-	];
-	
-	// 确定要测试的Prompt索引
-	$indices_to_test = ($prompt_index !== null) ? [$prompt_index] : array_keys($pool[$mode]['population']);
-	
-	foreach ($indices_to_test as $idx) {
-		if (!isset($pool[$mode]['population'][$idx])) {
-			continue;
-		}
-		
-		$prompt = $pool[$mode]['population'][$idx]['content'];
-		$prompt_results = [
-			'correct' => 0,
-			'total' => 0,
-			'details' => []
-		];
-		
-		foreach ($test_cases as $case) {
-			if (empty($case['content'])) {
-				continue;
-			}
-			
-			// 使用AI进行测试
-			$test_input = argon_build_adversarial_test_context($case);
-			$ai_result = argon_ai_query('spam_detection', $prompt, $test_input, [
-				'comment_id' => 0,
-				'test_mode' => true
-			]);
-			
-			$predicted = 'unknown';
-			if ($ai_result !== false && !empty($ai_result)) {
-				// 尝试解析JSON响应
-				$ai_response = json_decode($ai_result, true);
-				if (is_array($ai_response)) {
-					// 检查多种可能的字段名
-					if (isset($ai_response['is_spam'])) {
-						$predicted = $ai_response['is_spam'] ? 'spam' : 'normal';
-					} elseif (isset($ai_response['content_spam'])) {
-						$predicted = $ai_response['content_spam'] ? 'spam' : 'normal';
-					} elseif (isset($ai_response['result'])) {
-						$predicted = ($ai_response['result'] === 'spam' || $ai_response['result'] === true) ? 'spam' : 'normal';
-					}
-				} else {
-					// 如果不是JSON，尝试直接解析文本
-					$text = strtolower(trim($ai_result));
-					if (strpos($text, '"is_spam":true') !== false || strpos($text, '"is_spam": true') !== false) {
-						$predicted = 'spam';
-					} elseif (strpos($text, '"is_spam":false') !== false || strpos($text, '"is_spam": false') !== false) {
-						$predicted = 'normal';
-					} elseif (strpos($text, 'spam') !== false && strpos($text, 'true') !== false) {
-						$predicted = 'spam';
-					} elseif (strpos($text, 'normal') !== false || strpos($text, 'false') !== false) {
-						$predicted = 'normal';
-					}
-				}
-			}
-			
-			$expected = $case['expected'];
-			
-			$prompt_results['total']++;
-			$results['total']++;
-			
-			if ($predicted === $expected) {
-				$prompt_results['correct']++;
-				$results['correct']++;
-				// 收集正确拦截的案例
-				if ($predicted === 'spam') {
-					$results['correct_spam_cases'][] = $case;
-				} else {
-					$results['correct_normal_cases'][] = $case;
-				}
-			} else {
-				if ($predicted === 'spam' && $expected === 'normal') {
-					$results['false_positive']++;
-					$results['false_positive_cases'][] = $case;
-				} elseif ($predicted === 'normal' && $expected === 'spam') {
-					$results['false_negative']++;
-					$results['false_negative_cases'][] = $case;
-				}
-			}
-			
-			$prompt_results['details'][] = [
-				'case' => $case,
-				'predicted' => $predicted,
-				'expected' => $expected,
-				'match' => $predicted === $expected,
-				'ai_response' => $ai_result ? json_decode($ai_result, true) : null
-			];
-		}
-		
-		// 计算该Prompt的得分
-		$score = $prompt_results['total'] > 0
-			? ($prompt_results['correct'] / $prompt_results['total']) * 100
-			: 50;
-		
-		$results['scores'][$idx] = [
-			'score' => $score,
-			'correct' => $prompt_results['correct'],
-			'total' => $prompt_results['total'],
-			'details' => $prompt_results['details']
-		];
-		
-		// 更新对抗评分
-		argon_update_prompt_adversarial_fitness($mode, $idx, $score, $prompt_results['details']);
-	}
-	
-	// 提取并分析关键字
-	$keywords_analysis = argon_extract_adversarial_keywords($results);
-	$results['keywords_analysis'] = $keywords_analysis;
-	
-	// 更新最后运行时间
-	$pool = get_option('argon_ai_audit_prompt_pool', []);
-	$pool[$mode]['last_adversarial_run'] = time();
-	update_option('argon_ai_audit_prompt_pool', $pool);
-	
-	return $results;
-}
-
-/**
- * 构建对抗测试上下文
- * @param array $test_case 测试用例
- * @return string 测试上下文
- */
-function argon_build_adversarial_test_context($test_case) {
-	$context = sprintf(
-		"[对抗测试]\n用户名：测试用户\n邮箱：test@example.com\n网站：\n评论内容：%s\n\n测试类型：%s\n难度：%s",
-		$test_case['content'],
-		$test_case['category'] ?? 'unknown',
-		$test_case['difficulty'] ?? 'medium'
-	);
-	return $context;
-}
-
-/**
- * 从对抗测试结果中提取关键字
- * @param array $results 测试结果
- * @return array 关键字分析
- */
-function argon_extract_adversarial_keywords($results) {
-	$analysis = [
-		'false_positive_keywords' => [],
-		'false_negative_keywords' => [],
-		'correct_spam_keywords' => [],
-		'correct_normal_keywords' => []
-	];
-	
-	// 分析误判案例（正常内容被判为垃圾）
-	if (!empty($results['false_positive_cases'])) {
-		$fp_texts = array_map(function($case) {
-			return $case['content'];
-		}, $results['false_positive_cases']);
-		$analysis['false_positive_keywords'] = argon_extract_keywords_from_texts($fp_texts);
-	}
-	
-	// 分析漏判案例（垃圾内容被判为正常）
-	if (!empty($results['false_negative_cases'])) {
-		$fn_texts = array_map(function($case) {
-			return $case['content'];
-		}, $results['false_negative_cases']);
-		$analysis['false_negative_keywords'] = argon_extract_keywords_from_texts($fn_texts);
-	}
-	
-	// 分析正确拦截的垃圾内容
-	if (!empty($results['correct_spam_cases'])) {
-		$cs_texts = array_map(function($case) {
-			return $case['content'];
-		}, $results['correct_spam_cases']);
-		$analysis['correct_spam_keywords'] = argon_extract_keywords_from_texts($cs_texts);
-	}
-	
-	// 分析正确放行的正常内容
-	if (!empty($results['correct_normal_cases'])) {
-		$cn_texts = array_map(function($case) {
-			return $case['content'];
-		}, $results['correct_normal_cases']);
-		$analysis['correct_normal_keywords'] = argon_extract_keywords_from_texts($cn_texts);
-	}
-	
-	return $analysis;
-}
-
-/**
- * 从文本数组中提取关键词
- * @param array $texts 文本数组
- * @return array 关键词列表
- */
-function argon_extract_keywords_from_texts($texts) {
-	if (empty($texts)) {
-		return [];
-	}
-	
-	$all_words = [];
-	foreach ($texts as $text) {
-		// 分词（简单实现：按空格和标点分割）
-		$words = preg_split('/[\s,，。！？；：、]+/u', mb_strtolower($text, 'UTF-8'), -1, PREG_SPLIT_NO_EMPTY);
-		foreach ($words as $word) {
-			$word = trim($word);
-			if (mb_strlen($word, 'UTF-8') >= 2) {
-				$all_words[] = $word;
-			}
-		}
-	}
-	
-	// 统计词频
-	$word_counts = array_count_values($all_words);
-	arsort($word_counts);
-	
-	// 返回前10个高频词
-	return array_slice(array_keys($word_counts), 0, 10);
-}
-
-/**
- * 定时运行AI对抗测试（通过WordPress Cron）
- */
-function argon_schedule_adversarial_test() {
-	if (get_option('argon_ai_adversarial_test_enable', 'false') !== 'true') {
-		return;
-	}
-	
-	if (get_option('argon_ai_audit_genetic_prompt_enable', 'false') !== 'true') {
-		return;
-	}
-	
-	$pool = get_option('argon_ai_audit_prompt_pool', []);
-	if (empty($pool)) {
-		return;
-	}
-	
-	// 对每个模式运行测试
-	foreach (array_keys($pool) as $mode) {
-		// 只测试当前最佳Prompt，节省API调用
-		$best_index = isset($pool[$mode]['current_best_index']) ? $pool[$mode]['current_best_index'] : 0;
-		argon_run_adversarial_test($mode, $best_index);
-	}
-	
-	// 更新最后运行时间
-	update_option('argon_ai_adversarial_test_last_run', time());
-}
-
-/**
- * 手动触发AI对抗测试（AJAX处理）
- */
-function argon_ajax_run_adversarial_test() {
-	check_ajax_referer('argon_manage_unified_apis', 'nonce');
-	
-	if (!current_user_can('manage_options')) {
-		wp_send_json_error('Permission denied');
-	}
-	
-	$mode = isset($_POST['mode']) ? sanitize_text_field($_POST['mode']) : 'standard';
-	$prompt_index = isset($_POST['prompt_index']) ? intval($_POST['prompt_index']) : null;
-	
-	$results = argon_run_adversarial_test($mode, $prompt_index);
-	
-	if (isset($results['error'])) {
-		wp_send_json_error($results['error']);
-	}
-	
-	// 构建消息
-	$message = sprintf(
-		__('对抗测试完成：正确率 %.1f%% (%d/%d)，误判 %d，漏判 %d', 'argon'),
-		$results['total'] > 0 ? ($results['correct'] / $results['total']) * 100 : 0,
-		$results['correct'],
-		$results['total'],
-		$results['false_positive'],
-		$results['false_negative']
-	);
-	
-	// 添加关键字分析
-	if (!empty($results['keywords_analysis'])) {
-		$kw = $results['keywords_analysis'];
-		if (!empty($kw['correct_spam_keywords'])) {
-			$message .= '<br><strong>' . __('正确拦截高频词', 'argon') . ':</strong> ' . implode('、', array_slice($kw['correct_spam_keywords'], 0, 5));
-		}
-		if (!empty($kw['false_positive_keywords'])) {
-			$message .= '<br><strong>' . __('误判高频词', 'argon') . ':</strong> ' . implode('、', array_slice($kw['false_positive_keywords'], 0, 5));
-		}
-		if (!empty($kw['false_negative_keywords'])) {
-			$message .= '<br><strong>' . __('漏判高频词', 'argon') . ':</strong> ' . implode('、', array_slice($kw['false_negative_keywords'], 0, 5));
-		}
-	}
-	
-	wp_send_json_success([
-		'message' => $message,
-		'results' => $results
-	]);
-	
-	// 更新最后运行时间
-	update_option('argon_ai_adversarial_test_last_run', time());
-}
-add_action('wp_ajax_argon_run_adversarial_test', 'argon_ajax_run_adversarial_test');
-
-/**
- * 获取对抗测试详情（AJAX处理）
- */
-function argon_ajax_get_adversarial_detail() {
-	check_ajax_referer('argon_manage_unified_apis', 'nonce');
-	
-	if (!current_user_can('manage_options')) {
-		wp_send_json_error('Permission denied');
-	}
-	
-	$mode = isset($_POST['mode']) ? sanitize_text_field($_POST['mode']) : '';
-	$time = isset($_POST['time']) ? intval($_POST['time']) : 0;
-	
-	$pool = get_option('argon_ai_audit_prompt_pool', []);
-	
-	if (!isset($pool[$mode]['adversarial_history'])) {
-		wp_send_json_error(__('未找到对抗测试历史', 'argon'));
-	}
-	
-	// 查找匹配时间的测试记录
-	$found = null;
-	foreach ($pool[$mode]['adversarial_history'] as $record) {
-		if (isset($record['time']) && $record['time'] == $time) {
-			$found = $record;
-			break;
-		}
-	}
-	
-	if (!$found) {
-		wp_send_json_error(__('未找到该测试记录', 'argon'));
-	}
-	
-	// 构建返回数据
-	$detail = [
-		'time' => date('Y-m-d H:i:s', $found['time']),
-		'summary' => '',
-		'test_cases' => []
-	];
-	
-	if (isset($found['results']) && is_array($found['results'])) {
-		$total = count($found['results']);
-		$correct = 0;
-		$fp = 0;
-		$fn = 0;
-		
-		foreach ($found['results'] as $r) {
-			$case_detail = [
-				'content' => isset($r['case']['content']) ? esc_html($r['case']['content']) : '',
-				'expected' => isset($r['expected']) ? $r['expected'] : 'unknown',
-				'predicted' => isset($r['predicted']) ? $r['predicted'] : 'unknown',
-				'match' => isset($r['match']) ? $r['match'] : false,
-				'reason' => '',
-				'ai_opinion' => ''
-			];
-			
-			// 提取AI审查意见
-			if (isset($r['ai_response']) && is_array($r['ai_response'])) {
-				if (isset($r['ai_response']['reason'])) {
-					$case_detail['ai_opinion'] = esc_html($r['ai_response']['reason']);
-				}
-				if (isset($r['ai_response']['keywords']) && is_array($r['ai_response']['keywords'])) {
-					$case_detail['ai_keywords'] = implode('、', array_map('esc_html', $r['ai_response']['keywords']));
-				}
-			}
-			
-			if (isset($r['match']) && $r['match']) {
-				$correct++;
-			} else {
-				if (isset($r['predicted']) && isset($r['expected'])) {
-					if ($r['predicted'] === 'spam' && $r['expected'] === 'normal') {
-						$fp++;
-						$case_detail['reason'] = __('误判为垃圾', 'argon');
-					} elseif ($r['predicted'] === 'normal' && $r['expected'] === 'spam') {
-						$fn++;
-						$case_detail['reason'] = __('漏判垃圾内容', 'argon');
-					}
-				}
-			}
-			
-			$detail['test_cases'][] = $case_detail;
-		}
-		
-		$accuracy = $total > 0 ? ($correct / $total) * 100 : 0;
-		$detail['summary'] = sprintf(
-			__('正确率 %.1f%% (%d/%d)，误判 %d，漏判 %d', 'argon'),
-			$accuracy,
-			$correct,
-			$total,
-			$fp,
-			$fn
-		);
-	} else {
-		$detail['summary'] = __('无测试数据', 'argon');
-	}
-	
-	wp_send_json_success($detail);
-}
-add_action('wp_ajax_argon_get_adversarial_detail', 'argon_ajax_get_adversarial_detail');
-
-/**
- * 管理员编辑Prompt内容（AJAX处理）
- */
-function argon_ajax_edit_prompt_content() {
-	check_ajax_referer('argon_manage_unified_apis', 'nonce');
-	
-	if (!current_user_can('manage_options')) {
-		wp_send_json_error('Permission denied');
-	}
-	
-	$mode = isset($_POST['mode']) ? sanitize_text_field($_POST['mode']) : '';
-	$index = isset($_POST['index']) ? intval($_POST['index']) : 0;
-	$content = isset($_POST['content']) ? $_POST['content'] : '';
-	
-	if (empty($mode) || empty($content)) {
-		wp_send_json_error(__('参数错误', 'argon'));
-	}
-	
-	$pool = get_option('argon_ai_audit_prompt_pool', []);
-	if (!isset($pool[$mode]['population'][$index])) {
-		wp_send_json_error(__('Prompt不存在', 'argon'));
-	}
-	
-	// 更新Prompt内容
-	$old_version = isset($pool[$mode]['population'][$index]['version']) ? $pool[$mode]['population'][$index]['version'] : 1;
-	$pool[$mode]['population'][$index]['content'] = $content;
-	$pool[$mode]['population'][$index]['version'] = $old_version + 1;
-	$pool[$mode]['population'][$index]['last_edit_time'] = time();
-	$pool[$mode]['population'][$index]['last_edit_by'] = 'admin';
-	
-	// 初始化或重置管理员编辑后的评分
-	if (!isset($pool[$mode]['population'][$index]['admin_score'])) {
-		$pool[$mode]['population'][$index]['admin_score'] = 100;
-	}
-	
-	// 记录历史
-	if (!isset($pool[$mode]['history'])) {
-		$pool[$mode]['history'] = [];
-	}
-	$pool[$mode]['history'][] = [
-		'version' => $old_version + 1,
-		'action' => __('管理员干预', 'argon'),
-		'time' => time(),
-		'changes' => 'content_modified'
-	];
-	
-	// 只保留最近50条历史
-	if (count($pool[$mode]['history']) > 50) {
-		$pool[$mode]['history'] = array_slice($pool[$mode]['history'], -50);
-	}
-	
-	// 重新计算综合适应度
-	$pool[$mode]['population'][$index]['combined_fitness'] = argon_calculate_combined_fitness($pool[$mode]['population'][$index]);
-	
-	update_option('argon_ai_audit_prompt_pool', $pool);
-	
-	wp_send_json_success([
-		'message' => sprintf(__('Prompt已更新至 v%d', 'argon'), $old_version + 1),
-		'version' => $old_version + 1
-	]);
-}
-add_action('wp_ajax_argon_edit_prompt_content', 'argon_ajax_edit_prompt_content');
-
-/**
- * 更新怕死模式提示词（AJAX处理）
- */
-function argon_ajax_update_panic_prompt() {
-	check_ajax_referer('argon_panic_prompt_edit', 'nonce');
-	
-	if (!current_user_can('manage_options')) {
-		wp_send_json_error('Permission denied');
-	}
-	
-	$index = isset($_POST['index']) ? intval($_POST['index']) : 0;
-	$content = isset($_POST['content']) ? $_POST['content'] : '';
-	
-	if (empty($content)) {
-		wp_send_json_error(__('提示词内容不能为空', 'argon'));
-	}
-	
-	$gene_pool = get_option('argon_panic_mode_prompt_gene_pool', []);
-	if (!isset($gene_pool[$index])) {
-		wp_send_json_error(__('基因不存在', 'argon'));
-	}
-	
-	$gene_pool[$index]['prompt'] = $content;
-	$gene_pool[$index]['last_edit_time'] = time();
-	$gene_pool[$index]['last_edit_by'] = 'admin';
-	
-	update_option('argon_panic_mode_prompt_gene_pool', $gene_pool);
-	
-	wp_send_json_success(['message' => __('保存成功', 'argon')]);
-}
-add_action('wp_ajax_argon_update_panic_prompt', 'argon_ajax_update_panic_prompt');
-
-/**
- * 编辑关键词（AJAX处理）
- */
 function argon_ajax_edit_keyword() {
 	check_ajax_referer('argon_manage_unified_apis', 'nonce');
 	
@@ -12133,18 +10777,6 @@ function argon_ajax_edit_keyword() {
 	
 	update_option('argon_comment_spam_learned_keywords', $learned_keywords);
 	
-	// 记录历史
-	$history = get_option('argon_keyword_genetic_history', []);
-	$history[] = [
-		'action' => __('管理员干预', 'argon'),
-		'detail' => sprintf(__('编辑关键词: %s', 'argon'), $keyword),
-		'time' => time()
-	];
-	if (count($history) > 50) {
-		$history = array_slice($history, -50);
-	}
-	update_option('argon_keyword_genetic_history', $history);
-	
 	wp_send_json_success([
 		'message' => __('关键词已更新', 'argon')
 	]);
@@ -12175,18 +10807,6 @@ function argon_ajax_delete_keyword() {
 	
 	unset($learned_keywords[$keyword]);
 	update_option('argon_comment_spam_learned_keywords', $learned_keywords);
-	
-	// 记录历史
-	$history = get_option('argon_keyword_genetic_history', []);
-	$history[] = [
-		'action' => __('管理员干预', 'argon'),
-		'detail' => sprintf(__('删除关键词: %s', 'argon'), $keyword),
-		'time' => time()
-	];
-	if (count($history) > 50) {
-		$history = array_slice($history, -50);
-	}
-	update_option('argon_keyword_genetic_history', $history);
 	
 	wp_send_json_success([
 		'message' => __('关键词已删除', 'argon')
@@ -12415,31 +11035,16 @@ function argon_detect_spam_comment_sync($comment) {
 	$custom_prompt = get_option('argon_comment_spam_detection_prompt', '');
 	
 	// 选择 Prompt
-	global $argon_current_prompt_index;
-	$argon_current_prompt_index = -1;
-	
 	// 怕死模式：使用专项提示词
 	if ($panic_mode_triggered) {
 		$intensity = isset($panic_mode_triggered['intensity']) ? $panic_mode_triggered['intensity'] : 'strict';
 		$focus = isset($panic_mode_triggered['focus']) ? $panic_mode_triggered['focus'] : array('political');
-		
-		// 检查是否启用怕死模式提示词遗传
-		if (get_option('argon_panic_mode_genetic', 'true') === 'true') {
-			$prompt = argon_get_panic_mode_genetic_prompt($intensity, $focus);
-		} else {
-			$prompt = argon_get_panic_mode_prompt($intensity, $focus);
-		}
-	} elseif (get_option('argon_ai_audit_genetic_prompt_enable', 'false') === 'true') {
-		// 遗传算法优先：启用后覆盖所有其他prompt设置
-		$prompt = argon_get_genetic_audit_prompt($prompt_mode);
+		$prompt = argon_get_panic_mode_prompt($intensity, $focus);
 	} elseif ($prompt_mode === 'custom' && !empty($custom_prompt)) {
 		$prompt = $custom_prompt;
 	} else {
 		$prompt = argon_get_spam_detection_prompt($prompt_mode);
 	}
-	
-	// 如果使用了遗传算法，记录当前索引
-	$used_prompt_index = $argon_current_prompt_index;
 	
 	// 构建评论上下文信息
 	$comment_text = argon_build_comment_context($comment);
@@ -12489,10 +11094,6 @@ function argon_detect_spam_comment_sync($comment) {
 			'analysis' => isset($result['analysis']) ? $result['analysis'] : '',
 			'prompt_mode' => $prompt_mode
 		];
-		
-		if (isset($used_prompt_index) && $used_prompt_index !== -1) {
-			$unified_result['genetic_prompt_index'] = $used_prompt_index;
-		}
 		
 		// 保存检测结果
 		update_comment_meta($comment->comment_ID, '_argon_spam_detection_result', $unified_result);
@@ -12616,12 +11217,6 @@ function argon_ai_learn_keywords($comment_id, $admin_decision) {
 	// 如果 AI 和管理员判断一致，不需要学习 (AI 对了)
 	$is_correct = ($ai_decision === !$admin_decision);
 	
-	// 更新 Prompt 适应度
-	if (isset($detection_result['genetic_prompt_index'])) {
-		$prompt_mode = isset($detection_result['prompt_mode']) ? $detection_result['prompt_mode'] : 'standard';
-		argon_update_prompt_fitness($prompt_mode, $detection_result['genetic_prompt_index'], $is_correct);
-	}
-
 	if ($is_correct) {
 		return;
 	}
@@ -12739,8 +11334,6 @@ function argon_update_learned_keywords($keywords, $is_spam) {
 	
 	update_option('argon_comment_spam_detection_keywords', implode("\n", $current_keywords_array));
 
-	// 触发遗传修正
-	argon_genetic_correct_keywords();
 }
 
 /**
@@ -13366,7 +11959,7 @@ function argon_batch_detect_spam_comments($comments_data) {
 	if ($prompt_mode === 'custom' && !empty($custom_prompt)) {
 		$prompt = $custom_prompt . "\n\n请对每条评论返回检测结果。";
 	} else {
-		$prompt = argon_get_genetic_audit_prompt($prompt_mode);
+		$prompt = argon_get_spam_detection_prompt($prompt_mode);
 	}
 	
 	// 构建批量检测内容
@@ -14886,13 +13479,6 @@ class Argon_Spam_Learning_Module {
 			],
 			['%d', '%d', '%f', '%s', '%s', '%s', '%d', '%s', '%s']
 		);
-		
-		// 触发prompt适应度更新（如果使用了遗传算法）
-		if ($result !== false && isset($ai_result['genetic_prompt_index'])) {
-			$prompt_mode = isset($ai_result['prompt_mode']) ? $ai_result['prompt_mode'] : 'standard';
-			$is_correct = !$is_error; // 没有误判就是正确的
-			argon_update_prompt_fitness($prompt_mode, $ai_result['genetic_prompt_index'], $is_correct);
-		}
 		
 		// 如果是误判，触发关键词学习
 		if ($result !== false && $is_error) {

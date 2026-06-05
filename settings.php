@@ -3496,16 +3496,8 @@ function themeoptions_page(){
 						
 						// 提供商列表
 						$providers = [
-							'openai' => 'OpenAI (ChatGPT)',
-							'anthropic' => 'Anthropic (Claude)',
-							'deepseek' => 'DeepSeek',
-							'xiaomi' => __('小米 Mimo', 'argon'),
-							'qianwen' => __('通义千问', 'argon'),
-							'wenxin' => __('文心一言', 'argon'),
-							'doubao' => __('火山引擎', 'argon'),
-							'kimi' => 'Kimi (Moonshot)',
-							'zhipu' => __('智谱 AI (GLM)', 'argon'),
-							'siliconflow' => __('硅基流动 (SiliconFlow)', 'argon')
+							'openai_compatible' => __('OpenAI 兼容', 'argon'),
+							'anthropic_compatible' => __('Anthropic 兼容', 'argon')
 						];
 						?>
 						
@@ -3527,7 +3519,8 @@ function themeoptions_page(){
 										<?php foreach ($all_apis as $api): ?>
 											<tr data-api-id="<?php echo esc_attr($api['id']); ?>">
 												<td><strong><?php echo esc_html($api['name']); ?></strong></td>
-												<td><?php echo esc_html($providers[$api['provider']]); ?></td>
+												<?php $provider_key = argon_normalize_ai_provider(isset($api['provider']) ? $api['provider'] : 'openai_compatible'); ?>
+												<td><?php echo esc_html(isset($providers[$provider_key]) ? $providers[$provider_key] : argon_get_ai_provider_label($provider_key)); ?></td>
 												<td><?php echo !empty($api['model']) ? '<code>' . esc_html($api['model']) . '</code>' : ''; ?></td>
 												<td><code><?php echo esc_html(substr($api['api_key'], 0, 12)); ?>...</code></td>
 												<td><?php echo !empty($api['api_endpoint']) ? '<code>' . esc_html($api['api_endpoint']) . '</code>' : ''; ?></td>
@@ -3659,7 +3652,8 @@ function themeoptions_page(){
 							<option value=""><?php _e('请选择 API', 'argon'); ?></option>
 							<?php foreach ($all_apis as $api): ?>
 								<option value="<?php echo esc_attr($api['id']); ?>" <?php selected($summary_active_api, $api['id']); ?>>
-									<?php echo esc_html($api['name']); ?> (<?php echo esc_html($providers[$api['provider']]); ?>)
+									<?php $provider_key = argon_normalize_ai_provider(isset($api['provider']) ? $api['provider'] : 'openai_compatible'); ?>
+									<?php echo esc_html($api['name']); ?> (<?php echo esc_html(isset($providers[$provider_key]) ? $providers[$provider_key] : argon_get_ai_provider_label($provider_key)); ?>)
 								</option>
 							<?php endforeach; ?>
 						</select>
@@ -3718,7 +3712,8 @@ function themeoptions_page(){
 							<option value=""><?php _e('请选择 API', 'argon'); ?></option>
 							<?php foreach ($all_apis as $api): ?>
 								<option value="<?php echo esc_attr($api['id']); ?>" <?php selected($spam_active_api, $api['id']); ?>>
-									<?php echo esc_html($api['name']); ?> (<?php echo esc_html($providers[$api['provider']]); ?>)
+									<?php $provider_key = argon_normalize_ai_provider(isset($api['provider']) ? $api['provider'] : 'openai_compatible'); ?>
+									<?php echo esc_html($api['name']); ?> (<?php echo esc_html(isset($providers[$provider_key]) ? $providers[$provider_key] : argon_get_ai_provider_label($provider_key)); ?>)
 								</option>
 							<?php endforeach; ?>
 						</select>
@@ -4030,255 +4025,11 @@ function themeoptions_page(){
 				</tr>
 
 				<tr>
-					<th><label><?php _e('提示词遗传算法 (PGA)', 'argon');?></label></th>
-					<td>
-						<?php $argon_ai_audit_genetic_prompt_enable = get_option('argon_ai_audit_genetic_prompt_enable', 'false'); ?>
-						<label>
-							<input type="checkbox" name="argon_ai_audit_genetic_prompt_enable" value="true" <?php if ($argon_ai_audit_genetic_prompt_enable=='true'){echo 'checked';}?>/> 
-							<?php _e('启用 AI 审核提示词遗传算法', 'argon');?>
-						</label>
-						<p class="description">
-							<?php _e('开启后，系统会维护一个 Prompt 基因池。根据管理员的审核反馈（对/错），自动优胜劣汰，动态调整 Prompt 以达到最佳审核效果。', 'argon');?>
-						</p>
-						<?php if ($argon_ai_audit_genetic_prompt_enable == 'true'): ?>
-							<div class="argon-genetic-pool-status" style="margin-top: 10px; padding: 12px; background: #f8f9fe; border: 1px solid #d0d5dd; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-								<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid #e9ecef;">
-									<strong style="font-size: 14px; color: #1d2327;"><?php _e('提示词遗传算法基因池 (PGA)', 'argon'); ?></strong>
-									<span style="font-size: 11px; color: #999; background: #fff; padding: 3px 8px; border-radius: 3px;"><?php _e('双通道评分', 'argon'); ?></span>
-								</div>
-								<ul style="margin: 0; padding: 0; list-style: none;">
-									<?php
-									$pool = get_option('argon_ai_audit_prompt_pool', []);
-									if (!empty($pool) && is_array($pool)):
-										foreach ($pool as $mode => $data):
-											if (!isset($data['population']) || !is_array($data['population']) || empty($data['population'])) {
-												continue;
-											}
-											$count = count($data['population']);
-											$best_index = isset($data['current_best_index']) ? $data['current_best_index'] : 0;
-											if (!isset($data['population'][$best_index])) {
-												$best_index = 0;
-											}
-											$best = $data['population'][$best_index];
-											$admin_score = isset($best['admin_score']) ? $best['admin_score'] : 100;
-											$adversarial_score = isset($best['adversarial_score']) ? $best['adversarial_score'] : 100;
-											$combined_fitness = isset($best['combined_fitness']) ? $best['combined_fitness'] : (isset($best['fitness']) ? $best['fitness'] : 100);
-											$admin_count = isset($best['admin_feedback_count']) ? $best['admin_feedback_count'] : 0;
-											$adversarial_count = isset($best['adversarial_test_count']) ? $best['adversarial_test_count'] : 0;
-											$version = isset($best['version']) ? $best['version'] : 1;
-											$prompt_content = isset($best['content']) ? $best['content'] : '';
-											$history = isset($data['history']) ? $data['history'] : [];
-									?>
-											<li style="margin-bottom: 15px; padding: 12px; background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-												<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-													<div>
-														<strong style="font-size: 13px; color: #1d2327;"><code style="background: #f0f0f1; padding: 2px 6px; border-radius: 3px;"><?php echo esc_html($mode); ?></code></strong>
-														<span style="margin-left: 8px; font-size: 12px; color: #666; background: #e8f5e9; padding: 2px 6px; border-radius: 3px;">v<?php echo $version; ?></span>
-													</div>
-													<span style="font-size: 11px; color: #999;"><?php printf(__('%d 个变体', 'argon'), $count); ?></span>
-												</div>
-												
-												<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; padding: 8px; background: #f9f9f9; border-radius: 4px;">
-													<div style="text-align: center;">
-														<div style="font-size: 11px; color: #666; margin-bottom: 2px;"><?php _e('管理员通道', 'argon'); ?></div>
-														<div style="font-size: 16px; font-weight: 600; color: #2271b1;"><?php echo intval($admin_score); ?></div>
-														<div style="font-size: 10px; color: #999;"><?php echo $admin_count; ?> 次</div>
-													</div>
-													<div style="text-align: center;">
-														<div style="font-size: 11px; color: #666; margin-bottom: 2px;"><?php _e('AI对抗通道', 'argon'); ?></div>
-														<div style="font-size: 16px; font-weight: 600; color: #135e96;"><?php echo intval($adversarial_score); ?></div>
-														<div style="font-size: 10px; color: #999;"><?php echo $adversarial_count; ?> 次</div>
-													</div>
-													<div style="text-align: center;">
-														<div style="font-size: 11px; color: #666; margin-bottom: 2px;"><?php _e('综合适应度', 'argon'); ?></div>
-														<div style="font-size: 16px; font-weight: 600; color: #00a32a;"><?php echo intval($combined_fitness); ?></div>
-														<div style="font-size: 10px; color: #999;">-</div>
-													</div>
-												</div>
-												
-												<div style="display: flex; gap: 6px; flex-wrap: wrap;">
-													<button type="button" class="button button-small toggle-prompt-content" data-mode="<?php echo esc_attr($mode); ?>" style="flex: 1; min-width: 100px;">
-														<span class="dashicons dashicons-visibility" style="font-size: 14px; vertical-align: middle;"></span> <?php _e('查看', 'argon'); ?>
-													</button>
-													<button type="button" class="button button-small edit-prompt-btn" data-mode="<?php echo esc_attr($mode); ?>" data-index="<?php echo esc_attr($best_index); ?>" style="flex: 1; min-width: 100px;">
-														<span class="dashicons dashicons-edit" style="font-size: 14px; vertical-align: middle;"></span> <?php _e('编辑', 'argon'); ?>
-													</button>
-													<button type="button" class="button button-small toggle-history" data-mode="<?php echo esc_attr($mode); ?>" style="flex: 1; min-width: 100px;">
-														<span class="dashicons dashicons-backup" style="font-size: 14px; vertical-align: middle;"></span> <?php _e('历史', 'argon'); ?> (<?php echo count($history); ?>)
-													</button>
-												</div>
-												<div class="prompt-content-display" id="prompt-content-<?php echo esc_attr($mode); ?>" style="display: none; margin-top: 10px; padding: 12px; background: #fafafa; border: 1px solid #ddd; border-left: 3px solid #2271b1; border-radius: 4px; max-height: 300px; overflow-y: auto;">
-													<div style="font-size: 11px; color: #666; margin-bottom: 8px; font-weight: 600;"><?php _e('Prompt 内容', 'argon'); ?>:</div>
-													<pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word; font-size: 11px; color: #333; line-height: 1.6; font-family: 'Courier New', monospace;"><?php echo esc_html($prompt_content); ?></pre>
-												</div>
-												<?php if (!empty($history)): ?>
-												<div class="prompt-history-display" id="prompt-history-<?php echo esc_attr($mode); ?>" style="display: none; margin-top: 10px; padding: 12px; background: #f0f6fc; border: 1px solid #c3d9ff; border-left: 3px solid #0073aa; border-radius: 4px; max-height: 200px; overflow-y: auto;">
-													<div style="font-size: 11px; color: #1e4a7d; margin-bottom: 8px; font-weight: 600;"><?php _e('版本历史', 'argon'); ?>:</div>
-													<?php
-													$adversarial_history = isset($data['adversarial_history']) ? $data['adversarial_history'] : [];
-													foreach (array_reverse($history) as $idx => $h):
-													?>
-													<div style="padding: 5px 0; border-bottom: 1px solid #eee; font-size: 11px;">
-														<strong>v<?php echo isset($h['version']) ? $h['version'] : 1; ?></strong>
-														<span style="color: #666;"> - <?php echo isset($h['action']) ? esc_html($h['action']) : ''; ?></span>
-														<?php if (isset($h['changes']) && $h['changes'] === 'adversarial_test'): ?>
-														<button type="button" class="button button-small view-adversarial-detail" data-mode="<?php echo esc_attr($mode); ?>" data-time="<?php echo isset($h['time']) ? $h['time'] : 0; ?>" style="margin-left: 8px; padding: 0 6px; height: 18px; line-height: 16px; font-size: 10px;">
-															<?php _e('详情', 'argon'); ?>
-														</button>
-														<?php endif; ?>
-														<span style="color: #999; float: right;"><?php echo isset($h['time']) ? date('Y-m-d H:i', $h['time']) : ''; ?></span>
-													</div>
-													<?php endforeach; ?>
-												</div>
-												<?php endif; ?>
-											</li>
-									<?php 
-										endforeach;
-									else:
-									?>
-										<li><?php _e('暂未积累基因数据', 'argon'); ?></li>
-									<?php endif; ?>
-								</ul>
-								<div style="margin-top: 15px; padding-top: 12px; border-top: 1px solid #e9ecef; display: flex; gap: 8px; flex-wrap: wrap;">
-									<button type="button" class="button button-primary button-small" id="argon-run-adversarial-test" style="flex: 1; min-width: 140px;">
-										<span class="dashicons dashicons-update" style="font-size: 14px; vertical-align: middle;"></span> <?php _e('运行AI对抗测试', 'argon'); ?>
-									</button>
-									<button type="button" class="button button-small" id="argon-reset-prompt-pool" style="flex: 1; min-width: 120px; color: #d63638; border-color: #d63638;">
-										<span class="dashicons dashicons-trash" style="font-size: 14px; vertical-align: middle;"></span> <?php _e('重置基因池', 'argon'); ?>
-									</button>
-								</div>
-								<div id="argon-adversarial-test-result" style="display: none; margin-top: 10px; padding: 10px; background: #e7f7ff; border-left: 3px solid #0073aa; border-radius: 4px; font-size: 12px; line-height: 1.6;"></div>
-							</div>
-							
-							<!-- Prompt 编辑模态框 - 统一样式 -->
-							<div id="argon-prompt-edit-modal" style="display: none;">
-								<div class="argon-modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 100000; backdrop-filter: blur(2px);"></div>
-								<div class="argon-modal-content" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; padding: 24px; border-radius: 8px; width: 90%; max-width: 800px; max-height: 80vh; overflow-y: auto; z-index: 100001; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
-									<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #e9ecef;">
-										<h3 style="margin: 0; font-size: 16px; color: #1d2327;">
-											<span class="dashicons dashicons-edit" style="font-size: 18px; vertical-align: middle; color: #2271b1;"></span>
-											<?php _e('编辑 Prompt', 'argon'); ?>
-										</h3>
-										<span id="edit-modal-mode-info" style="font-size: 12px; color: #666; background: #f0f0f1; padding: 4px 10px; border-radius: 4px;"></span>
-									</div>
-									<input type="hidden" id="edit-prompt-mode" value="">
-									<input type="hidden" id="edit-prompt-index" value="">
-									<div style="margin-bottom: 12px;">
-										<label style="display: block; font-size: 12px; font-weight: 600; color: #1d2327; margin-bottom: 6px;">
-											<?php _e('Prompt 内容', 'argon'); ?>:
-										</label>
-										<textarea id="edit-prompt-content" rows="15" style="width: 100%; padding: 12px; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.6; border: 1px solid #ddd; border-radius: 4px; resize: vertical;"></textarea>
-									</div>
-									<div style="padding: 10px; background: #f0f6fc; border-left: 3px solid #0073aa; border-radius: 4px; margin-bottom: 16px;">
-										<p style="margin: 0; font-size: 12px; color: #1e4a7d; line-height: 1.5;">
-											<span class="dashicons dashicons-info" style="font-size: 16px; vertical-align: middle;"></span>
-											<?php _e('保存后版本号将自动增加，并记录为"管理员干预"。', 'argon'); ?>
-										</p>
-									</div>
-									<div style="display: flex; gap: 10px; justify-content: flex-end;">
-										<button type="button" class="button" id="cancel-prompt-edit" style="min-width: 100px;">
-											<?php _e('取消', 'argon'); ?>
-										</button>
-										<button type="button" class="button button-primary" id="save-prompt-edit" style="min-width: 100px;">
-											<span class="dashicons dashicons-saved" style="font-size: 14px; vertical-align: middle;"></span>
-											<?php _e('保存修改', 'argon'); ?>
-										</button>
-									</div>
-								</div>
-							</div>
-						<?php endif; ?>
-					</td>
-				</tr>
-
-				<tr>
-					<th><label><?php _e('关键词遗传修正 (KGC)', 'argon');?></label></th>
-					<td>
-						<?php $argon_ai_audit_genetic_keyword_correction_enable = get_option('argon_ai_audit_genetic_keyword_correction_enable', 'false'); ?>
-						<label>
-							<input type="checkbox" name="argon_ai_audit_genetic_keyword_correction_enable" value="true" <?php if ($argon_ai_audit_genetic_keyword_correction_enable=='true'){echo 'checked';}?>/> 
-							<?php _e('启用关键词缓存遗传修正', 'argon');?>
-						</label>
-						<p class="description">
-							<?php _e('开启后，系统会定期对学习到的关键词进行“进化”处理：自动衰减过期特征、淘汰低效词汇、修正误伤特征，使本地垃圾词库保持精简高效。', 'argon');?>
-						</p>
-					</td>
-				</tr>
-
-				<tr>
-					<th><label><?php _e('遗传变异率', 'argon');?></label></th>
-					<td>
-						<input type="number" name="argon_ai_audit_genetic_keyword_mutation_rate" min="1" max="50" value="<?php echo get_option('argon_ai_audit_genetic_keyword_mutation_rate', '5'); ?>" style="width: 80px;"/> %
-						<p class="description">
-							<?php _e('新 Prompt 变异产生的概率和关键词修正的幅度。建议维持在 5% 左右。', 'argon');?>
-						</p>
-					</td>
-				</tr>
-
-				<tr>
-					<th><label><?php _e('AI对抗测试', 'argon');?></label></th>
-					<td>
-						<?php $argon_ai_adversarial_test_enable = get_option('argon_ai_adversarial_test_enable', 'false'); ?>
-						<label>
-							<input type="checkbox" name="argon_ai_adversarial_test_enable" value="true" <?php if ($argon_ai_adversarial_test_enable=='true'){echo 'checked';}?>/> 
-							<?php _e('启用定时AI对抗测试', 'argon');?>
-						</label>
-						<p class="description">
-							<?php _e('开启后，系统会定期使用预设的对抗性测试用例对当前Prompt进行测试，评估其在各种边界情况下的表现。', 'argon');?>
-						</p>
-						
-						<?php if ($argon_ai_adversarial_test_enable == 'true'): ?>
-						<div style="margin-top: 10px; padding: 10px; background: #f8f9fe; border: 1px solid #e9ecef; border-radius: 4px;">
-							<label style="display: block; margin-bottom: 5px;">
-								<?php _e('测试间隔', 'argon'); ?>:
-								<select name="argon_ai_adversarial_test_interval" style="margin-left: 5px;">
-									<?php 
-									$current_interval = get_option('argon_ai_adversarial_test_interval', 'hourly');
-									$intervals = [
-										'hourly' => __('每小时', 'argon'),
-										'sixhourly' => __('每6小时', 'argon'),
-										'twicedaily' => __('每12小时', 'argon'),
-										'daily' => __('每天', 'argon'),
-										'weekly' => __('每周', 'argon')
-									];
-									foreach ($intervals as $value => $label):
-									?>
-									<option value="<?php echo esc_attr($value); ?>" <?php selected($current_interval, $value); ?>><?php echo esc_html($label); ?></option>
-									<?php endforeach; ?>
-								</select>
-							</label>
-							<p class="description" style="margin-top: 5px;">
-								<?php _e('注意：频繁的测试会增加AI API调用次数和费用。建议根据评论量选择合适的间隔。', 'argon');?>
-							</p>
-							<?php
-							$last_run = get_option('argon_ai_adversarial_test_last_run', 0);
-							if ($last_run > 0):
-							?>
-							<p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">
-								<?php printf(__('上次测试: %s', 'argon'), date('Y-m-d H:i:s', $last_run)); ?>
-							</p>
-							<?php endif; ?>
-						</div>
-						<?php endif; ?>
-					</td>
-				</tr>
-
-				<tr>
-					<th><label><?php _e('时事热点关键词', 'argon');?></label></th>
-					<td>
-						<textarea name="argon_adversarial_hot_topics" rows="3" cols="70" placeholder="<?php _e('多个关键词用英文逗号分隔', 'argon');?>"><?php echo get_option('argon_adversarial_hot_topics', ''); ?></textarea>
-						<p class="description">
-							<?php _e('手动配置当前时事热点关键词，用于生成更贴近实际的对抗测试用例。例如：疫情、地震、某某事件等。留空则系统自动从历史拦截记录中提取。', 'argon');?><br/>
-							<?php _e('这些关键词会被AI用于生成针对性的敏感内容和谣言测试用例，帮助系统更好地应对当前热点相关的违规内容。', 'argon');?>
-						</p>
-					</td>
-				</tr>
-
-				<tr>
 					<th><label><?php _e('关键词缓存状态', 'argon');?></label></th>
 					<td>
 						<?php
 						$learned_keywords = get_option('argon_comment_spam_learned_keywords', []);
-						$keyword_history = get_option('argon_keyword_genetic_history', []);
+						$keyword_history = [];
 						$high_confidence_count = 0;
 						if (!empty($learned_keywords)) {
 							foreach ($learned_keywords as $k => $v) {
@@ -4365,24 +4116,6 @@ function themeoptions_page(){
 							</div>
 							<?php endif; ?>
 							
-							<?php if (!empty($keyword_history)): ?>
-							<div style="margin-top: 10px;">
-								<button type="button" class="button button-small toggle-keyword-history">
-									<span class="dashicons dashicons-backup" style="margin-top: 2px; font-size: 14px;"></span> <?php _e('遗传修正历史', 'argon'); ?> (<?php echo count($keyword_history); ?>)
-								</button>
-							</div>
-							<div class="keyword-history-display" id="keyword-history-display" style="display: none; margin-top: 10px; padding: 10px; background: #fafafa; border: 1px solid #ddd; border-radius: 4px; max-height: 200px; overflow-y: auto;">
-								<?php foreach (array_reverse($keyword_history) as $h): ?>
-								<div style="padding: 5px 0; border-bottom: 1px solid #eee; font-size: 11px;">
-									<strong><?php echo isset($h['action']) ? esc_html($h['action']) : ''; ?></strong>
-									<span style="color: #666;"> - <?php echo isset($h['detail']) ? esc_html($h['detail']) : ''; ?></span>
-									<span style="color: #999; float: right;"><?php echo isset($h['time']) ? date('Y-m-d H:i', $h['time']) : ''; ?></span>
-								</div>
-								<?php endforeach; ?>
-							</div>
-						</div>
-						<?php endif; ?>
-						
 						<p class="description" style="margin-top: 10px;">
 							<?php _e('系统会自动从 AI 审计结果中提取共性特征并进行交叉训练和遗传修正。命中高置信度特征的评论将不再调用 AI，直接本地返回。', 'argon');?>
 						</p>
@@ -4960,179 +4693,6 @@ function themeoptions_page(){
 						}
 					});
 
-					// 查看对抗测试详情
-					$(document).on('click', '.view-adversarial-detail', function() {
-						let mode = $(this).data('mode');
-						let time = $(this).data('time');
-						let $btn = $(this);
-						let $parent = $btn.closest('div');
-						
-						// 如果已经展开，则收起
-						let $existing = $parent.find('.adversarial-detail-content');
-						if ($existing.length > 0) {
-							$existing.slideUp(300, function() { $(this).remove(); });
-							return;
-						}
-						
-						$btn.prop('disabled', true).text('<?php _e('加载中...', 'argon'); ?>');
-						
-						$.post(ajaxurl, {
-							action: 'argon_get_adversarial_detail',
-							nonce: '<?php echo wp_create_nonce('argon_manage_unified_apis'); ?>',
-							mode: mode,
-							time: time
-						}, function(response) {
-							if (response.success) {
-								let detail = response.data;
-								let html = '<div class="adversarial-detail-content" style="display:none; background: #f9f9f9; padding: 12px; border-radius: 4px; margin-top: 8px; border-left: 3px solid #0073aa;">';
-								html += '<div style="font-size: 11px; line-height: 1.6;">';
-								html += '<p style="margin: 4px 0;"><strong><?php _e('测试结果', 'argon'); ?>:</strong> ' + detail.summary + '</p>';
-								
-								if (detail.test_cases && detail.test_cases.length > 0) {
-									html += '<div style="margin-top: 8px;"><strong><?php _e('测试用例', 'argon'); ?>:</strong></div>';
-									detail.test_cases.forEach(function(tc, idx) {
-										let statusColor = tc.match ? '#00a32a' : '#d63638';
-										let statusIcon = tc.match ? '✓' : '✗';
-										html += '<div style="margin: 6px 0; padding: 8px; background: #fff; border-radius: 3px; border-left: 2px solid ' + statusColor + ';">';
-										html += '<div style="margin-bottom: 4px;"><span style="color: ' + statusColor + '; font-weight: 600;">' + statusIcon + ' <?php _e('用例', 'argon'); ?> ' + (idx + 1) + '</span></div>';
-										html += '<div style="margin: 2px 0;"><strong><?php _e('内容', 'argon'); ?>:</strong> ' + tc.content + '</div>';
-										html += '<div style="margin: 2px 0;"><strong><?php _e('预期', 'argon'); ?>:</strong> ' + tc.expected + ' | <strong><?php _e('实际', 'argon'); ?>:</strong> ' + tc.predicted + '</div>';
-										if (tc.reason) {
-											html += '<div style="margin: 2px 0; color: #666;"><strong><?php _e('判断', 'argon'); ?>:</strong> ' + tc.reason + '</div>';
-										}
-										if (tc.ai_opinion) {
-											html += '<div style="margin: 2px 0; color: #135e96;"><strong><?php _e('AI意见', 'argon'); ?>:</strong> ' + tc.ai_opinion + '</div>';
-										}
-										if (tc.ai_keywords) {
-											html += '<div style="margin: 2px 0; color: #999; font-size: 10px;"><strong><?php _e('关键词', 'argon'); ?>:</strong> ' + tc.ai_keywords + '</div>';
-										}
-										html += '</div>';
-									});
-								}
-								
-								html += '</div></div>';
-								
-								$parent.append(html);
-								$parent.find('.adversarial-detail-content').slideDown(300);
-							} else {
-								alert('<?php _e('加载失败', 'argon'); ?>: ' + (response.data || ''));
-							}
-							$btn.prop('disabled', false).text('<?php _e('详情', 'argon'); ?>');
-						}).fail(function() {
-							alert('<?php _e('请求失败', 'argon'); ?>');
-							$btn.prop('disabled', false).text('<?php _e('详情', 'argon'); ?>');
-						});
-					});
-
-					// 打开编辑Prompt模态框
-					$(document).on('click', '.edit-prompt-btn', function() {
-						let mode = $(this).data('mode');
-						let index = $(this).data('index');
-						let pool = <?php echo json_encode(get_option('argon_ai_audit_prompt_pool', [])); ?>;
-						
-						if (!pool || !pool[mode] || !pool[mode].population[index]) {
-							alert('<?php _e('无法加载Prompt数据', 'argon'); ?>');
-							return;
-						}
-						
-						let prompt = pool[mode].population[index];
-						$('#edit-prompt-mode').val(mode);
-						$('#edit-prompt-index').val(index);
-						$('#edit-prompt-content').val(prompt.content || '');
-						$('#edit-modal-mode-info').text('模式: ' + mode + ' | 版本: v' + (prompt.version || 1));
-						
-						$('#argon-prompt-edit-modal').fadeIn(300, function() {
-							$('#edit-prompt-content').focus();
-						});
-					});
-
-					// 关闭编辑模态框
-					$(document).on('click', '#cancel-prompt-edit, .argon-modal-overlay', function() {
-						$('#argon-prompt-edit-modal').fadeOut();
-					});
-
-					// 保存Prompt编辑
-					$(document).on('click', '#save-prompt-edit', function() {
-						let $btn = $(this);
-						let mode = $('#edit-prompt-mode').val();
-						let index = $('#edit-prompt-index').val();
-						let content = $('#edit-prompt-content').val().trim();
-						
-						if (!content) {
-							alert('<?php _e('Prompt内容不能为空', 'argon'); ?>');
-							return;
-						}
-						
-						$btn.prop('disabled', true).text('<?php _e('保存中...', 'argon'); ?>');
-						
-						$.post(ajaxurl, {
-							action: 'argon_edit_prompt_content',
-							nonce: '<?php echo wp_create_nonce('argon_manage_unified_apis'); ?>',
-							mode: mode,
-							index: index,
-							content: content
-						}, function(response) {
-							if (response.success) {
-								alert(response.data.message);
-								location.reload();
-							} else {
-								alert(response.data || '<?php _e('保存失败', 'argon'); ?>');
-								$btn.prop('disabled', false).text('<?php _e('保存修改', 'argon'); ?>');
-							}
-						}).fail(function() {
-							alert('<?php _e('请求失败，请稍后重试', 'argon'); ?>');
-							$btn.prop('disabled', false).text('<?php _e('保存修改', 'argon'); ?>');
-						});
-					});
-
-					// 重置基因池
-					$(document).on('click', '#argon-reset-prompt-pool', function() {
-						if (!confirm('<?php _e('确定要重置所有 Prompt 基因池吗？这将删除所有已学习的变体。', 'argon'); ?>')) {
-							return;
-						}
-						let $btn = $(this);
-						$btn.prop('disabled', true).text('<?php _e('正在重置...', 'argon'); ?>');
-						$.post(ajaxurl, {
-							action: 'argon_reset_prompt_pool',
-							nonce: '<?php echo wp_create_nonce('argon_manage_unified_apis'); ?>'
-						}, function(response) {
-							if (response.success) {
-								alert(response.data.message);
-								location.reload();
-							} else {
-								alert(response.data);
-								$btn.prop('disabled', false).text('<?php _e('重置基因池', 'argon'); ?>');
-							}
-						});
-					});
-
-					// 运行AI对抗测试
-					$(document).on('click', '#argon-run-adversarial-test', function() {
-						let $btn = $(this);
-						let $result = $('#argon-adversarial-test-result');
-						$btn.prop('disabled', true).text('<?php _e('测试中...', 'argon'); ?>');
-						$result.show().text('<?php _e('正在运行AI对抗测试，请稍候...', 'argon'); ?>');
-						
-						$.post(ajaxurl, {
-							action: 'argon_run_adversarial_test',
-							nonce: '<?php echo wp_create_nonce('argon_manage_unified_apis'); ?>',
-							mode: 'standard'
-						}, function(response) {
-							if (response.success) {
-								$result.html('<strong style="color: #0073aa;">✓ ' + response.data.message + '</strong>');
-								setTimeout(function() {
-									location.reload();
-								}, 2000);
-							} else {
-								$result.html('<strong style="color: #d63638;">✗ ' + response.data + '</strong>');
-								$btn.prop('disabled', false).text('<?php _e('运行AI对抗测试', 'argon'); ?>');
-							}
-						}).fail(function() {
-							$result.html('<strong style="color: #d63638;">✗ <?php _e('请求失败，请稍后重试', 'argon'); ?></strong>');
-							$btn.prop('disabled', false).text('<?php _e('运行AI对抗测试', 'argon'); ?>');
-						});
-					});
-
 					// 展开/折叠关键词列表
 					$(document).on('click', '.toggle-keyword-list', function() {
 						let $list = $('#keyword-list-display');
@@ -5140,16 +4700,6 @@ function themeoptions_page(){
 							$list.slideUp();
 						} else {
 							$list.slideDown();
-						}
-					});
-
-					// 展开/折叠关键词历史
-					$(document).on('click', '.toggle-keyword-history', function() {
-						let $history = $('#keyword-history-display');
-						if ($history.is(':visible')) {
-							$history.slideUp();
-						} else {
-							$history.slideDown();
 						}
 					});
 
@@ -5373,87 +4923,6 @@ function themeoptions_page(){
 					</td>
 				</tr>
 
-				<tr class="panic-mode-settings" style="<?php echo ($argon_panic_mode_enable !== 'true') ? 'display:none;' : ''; ?>">
-					<th><label><?php _e('启用提示词遗传', 'argon');?></label></th>
-					<td>
-						<?php $argon_panic_mode_genetic = get_option('argon_panic_mode_genetic', 'true'); ?>
-						<label>
-							<input type="checkbox" name="argon_panic_mode_genetic" value="true" <?php if ($argon_panic_mode_genetic=='true'){echo 'checked';}?>/>
-							<?php _e('启用怕死模式专项提示词自优化遗传', 'argon');?>
-						</label>
-						<p class="description">
-							<?php _e('开启后，系统会维护一个专项 Prompt 基因池，根据审核反馈自动优化提示词，提高识别准确率。', 'argon');?>
-						</p>
-						<?php if ($argon_panic_mode_genetic == 'true'): ?>
-							<div class="argon-panic-genetic-status" style="margin-top: 10px; padding: 12px; background: #fff9e6; border: 1px solid #ffd966; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-								<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid #ffe699;">
-									<strong style="font-size: 14px; color: #1d2327;"><?php _e('怕死模式遗传算法基因池', 'argon'); ?></strong>
-									<span style="font-size: 11px; color: #996600; background: #fff; padding: 3px 8px; border-radius: 3px;"><?php _e('敏感内容专项', 'argon'); ?></span>
-								</div>
-								<ul style="margin: 0; padding: 0; list-style: none;">
-									<?php
-									$panic_pool = get_option('argon_panic_mode_prompt_gene_pool', []);
-									if (!empty($panic_pool)):
-										foreach ($panic_pool as $index => $gene):
-											$score = isset($gene['score']) ? $gene['score'] : 0;
-											$accuracy = $gene['total_count'] > 0 ? round($score * 100, 2) : 0;
-											$correct = isset($gene['correct_count']) ? $gene['correct_count'] : 0;
-											$total = isset($gene['total_count']) ? $gene['total_count'] : 0;
-											$generations = isset($gene['generations']) ? $gene['generations'] : 0;
-											$prompt_content = isset($gene['prompt']) ? $gene['prompt'] : '';
-									?>
-											<li style="margin-bottom: 15px; padding: 12px; background: #fff; border: 1px solid #ffd966; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-												<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-													<div>
-														<strong style="font-size: 13px; color: #1d2327;"><code style="background: #fff3cd; padding: 2px 6px; border-radius: 3px;"><?php printf(__('基因 #%d', 'argon'), $index); ?></code></strong>
-														<span style="margin-left: 8px; font-size: 12px; color: #996600; background: #fff9e6; padding: 2px 6px; border-radius: 3px;"><?php printf(__('代数 %d', 'argon'), $generations); ?></span>
-													</div>
-												</div>
-												
-												<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; padding: 8px; background: #fffbf0; border-radius: 4px;">
-													<div style="text-align: center;">
-														<div style="font-size: 11px; color: #666; margin-bottom: 2px;"><?php _e('准确率', 'argon'); ?></div>
-														<div style="font-size: 16px; font-weight: 600; color: <?php echo $accuracy >= 80 ? '#00a32a' : ($accuracy >= 60 ? '#dba617' : '#d63638'); ?>;"><?php echo $accuracy; ?>%</div>
-														<div style="font-size: 10px; color: #999;">-</div>
-													</div>
-													<div style="text-align: center;">
-														<div style="font-size: 11px; color: #666; margin-bottom: 2px;"><?php _e('正确次数', 'argon'); ?></div>
-														<div style="font-size: 16px; font-weight: 600; color: #00a32a;"><?php echo $correct; ?></div>
-														<div style="font-size: 10px; color: #999;">次</div>
-													</div>
-													<div style="text-align: center;">
-														<div style="font-size: 11px; color: #666; margin-bottom: 2px;"><?php _e('总反馈', 'argon'); ?></div>
-														<div style="font-size: 16px; font-weight: 600; color: #2271b1;"><?php echo $total; ?></div>
-														<div style="font-size: 10px; color: #999;">次</div>
-													</div>
-												</div>
-												
-												<div style="display: flex; gap: 6px; flex-wrap: wrap;">
-													<button type="button" class="button button-small toggle-panic-prompt-content" data-index="<?php echo esc_attr($index); ?>" style="flex: 1; min-width: 100px;">
-														<span class="dashicons dashicons-visibility" style="font-size: 14px; vertical-align: middle;"></span> <?php _e('查看', 'argon'); ?>
-													</button>
-													<button type="button" class="button button-small edit-panic-prompt-btn" data-index="<?php echo esc_attr($index); ?>" style="flex: 1; min-width: 100px;">
-														<span class="dashicons dashicons-edit" style="font-size: 14px; vertical-align: middle;"></span> <?php _e('编辑', 'argon'); ?>
-													</button>
-												</div>
-												
-												<div class="panic-prompt-content-display" id="panic-prompt-content-<?php echo esc_attr($index); ?>" style="display: none; margin-top: 10px; padding: 12px; background: #fffbf0; border: 1px solid #ffd966; border-left: 3px solid #dba617; border-radius: 4px; max-height: 300px; overflow-y: auto;">
-													<div style="font-size: 11px; color: #996600; margin-bottom: 8px; font-weight: 600;"><?php _e('Prompt 内容', 'argon'); ?>:</div>
-													<pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word; font-size: 11px; color: #333; line-height: 1.6; font-family: 'Courier New', monospace;"><?php echo esc_html($prompt_content); ?></pre>
-												</div>
-											</li>
-									<?php
-										endforeach;
-									else:
-									?>
-										<li><?php _e('基因池未初始化', 'argon'); ?></li>
-									<?php endif; ?>
-								</ul>
-							</div>
-						<?php endif; ?>
-					</td>
-				</tr>
-
 				<script>
 				jQuery(document).ready(function($) {
 					// 怕死模式开关
@@ -5463,68 +4932,6 @@ function themeoptions_page(){
 						} else {
 							$('.panic-mode-settings').slideUp();
 						}
-					});
-
-					// 怕死模式：查看提示词内容 - 统一交互
-					$(document).on('click', '.toggle-panic-prompt-content', function() {
-						var index = $(this).data('index');
-						var $content = $('#panic-prompt-content-' + index);
-						var $icon = $(this).find('.dashicons');
-						var $btnText = $(this).contents().filter(function() { return this.nodeType === 3; });
-						
-						if ($content.is(':visible')) {
-							$content.slideUp(200);
-							$icon.removeClass('dashicons-visibility').addClass('dashicons-hidden');
-							$btnText.last().replaceWith(' <?php _e('查看', 'argon'); ?>');
-						} else {
-							$content.slideDown(200);
-							$icon.removeClass('dashicons-hidden').addClass('dashicons-visibility');
-							$btnText.last().replaceWith(' <?php _e('隐藏', 'argon'); ?>');
-						}
-					});
-
-					// 怕死模式：编辑提示词
-					$(document).on('click', '.edit-panic-prompt-btn', function() {
-						var index = $(this).data('index');
-						var content = $('#panic-prompt-content-' + index).find('pre').text();
-						
-						$('#edit-panic-prompt-index').val(index);
-						$('#edit-panic-prompt-content').val(content);
-						$('#edit-panic-modal-info').text('(基因 #' + index + ')');
-						$('#argon-panic-prompt-edit-modal').fadeIn(200);
-					});
-
-					// 保存怕死模式提示词编辑
-					$('#save-panic-prompt-edit').on('click', function() {
-						var index = $('#edit-panic-prompt-index').val();
-						var content = $('#edit-panic-prompt-content').val();
-						
-						if (!content.trim()) {
-							alert('<?php _e('提示词内容不能为空', 'argon'); ?>');
-							return;
-						}
-						
-						$(this).prop('disabled', true).text('<?php _e('保存中...', 'argon'); ?>');
-						
-						$.post(ajaxurl, {
-							action: 'argon_update_panic_prompt',
-							index: index,
-							content: content,
-							nonce: '<?php echo wp_create_nonce('argon_panic_prompt_edit'); ?>'
-						}, function(response) {
-							if (response.success) {
-								alert('<?php _e('保存成功', 'argon'); ?>');
-								location.reload();
-							} else {
-								alert('<?php _e('保存失败', 'argon'); ?>: ' + (response.data || ''));
-								$('#save-panic-prompt-edit').prop('disabled', false).text('<?php _e('保存修改', 'argon'); ?>');
-							}
-						});
-					});
-
-					// 取消编辑
-					$('#cancel-panic-prompt-edit, #argon-panic-prompt-edit-modal .argon-modal-overlay').on('click', function() {
-						$('#argon-panic-prompt-edit-modal').fadeOut(200);
 					});
 
 					// 添加日期范围
@@ -5576,43 +4983,6 @@ function themeoptions_page(){
 				});
 				</script>
 
-				<!-- 怕死模式 Prompt 编辑模态框 - 统一样式 -->
-				<div id="argon-panic-prompt-edit-modal" style="display: none;">
-					<div class="argon-modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 100000; backdrop-filter: blur(2px);"></div>
-					<div class="argon-modal-content" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; padding: 24px; border-radius: 8px; width: 90%; max-width: 800px; max-height: 80vh; overflow-y: auto; z-index: 100001; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
-						<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #ffe699;">
-							<div style="margin: 0; font-size: 16px; color: #1d2327; font-weight: 600;">
-								<span class="dashicons dashicons-edit" style="font-size: 18px; vertical-align: middle; color: #dba617;"></span>
-								<?php _e('编辑怕死模式 Prompt', 'argon'); ?>
-							</div>
-							<span id="edit-panic-modal-info" style="font-size: 12px; color: #996600; background: #fff9e6; padding: 4px 10px; border-radius: 4px;"></span>
-						</div>
-						<input type="hidden" id="edit-panic-prompt-index" value="">
-						<div style="margin-bottom: 12px;">
-							<label style="display: block; font-size: 12px; font-weight: 600; color: #1d2327; margin-bottom: 6px;">
-								<?php _e('Prompt 内容', 'argon'); ?>:
-							</label>
-							<textarea id="edit-panic-prompt-content" rows="15" style="width: 100%; padding: 12px; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.6; border: 1px solid #ffd966; border-radius: 4px; resize: vertical;"></textarea>
-						</div>
-						<div style="padding: 10px; background: #fff9e6; border-left: 3px solid #dba617; border-radius: 4px; margin-bottom: 16px;">
-							<p style="margin: 0; font-size: 12px; color: #996600; line-height: 1.5;">
-								<span class="dashicons dashicons-info" style="font-size: 16px; vertical-align: middle;"></span>
-								<?php _e('保存后将更新该基因的提示词内容。', 'argon'); ?>
-							</p>
-						</div>
-						<div style="display: flex; gap: 10px; justify-content: flex-end;">
-							<button type="button" class="button" id="cancel-panic-prompt-edit" style="min-width: 100px;">
-								<?php _e('取消', 'argon'); ?>
-							</button>
-							<button type="button" class="button button-primary" id="save-panic-prompt-edit" style="min-width: 100px;">
-								<span class="dashicons dashicons-saved" style="font-size: 14px; vertical-align: middle;"></span>
-								<?php _e('保存修改', 'argon'); ?>
-							</button>
-						</div>
-					</div>
-				</div>
-
-					</td></tr>
 
 <!-- ========== 13. 文章功能 ========== -->
 
@@ -8467,14 +7837,6 @@ function argon_update_themeoptions(){
 	argon_update_option('argon_comment_spam_detection_custom_prompt');
 	argon_update_option_checkbox('argon_comment_spam_blacklist_notify');
 	
-	// 遗传算法设置
-	argon_update_option_checkbox('argon_ai_audit_genetic_prompt_enable');
-	argon_update_option_checkbox('argon_ai_audit_genetic_keyword_correction_enable');
-	argon_update_option('argon_ai_audit_genetic_keyword_mutation_rate');
-	argon_update_option_checkbox('argon_ai_adversarial_test_enable');
-	argon_update_option('argon_ai_adversarial_test_interval');
-	argon_update_option('argon_adversarial_hot_topics');
-
 	// 怕死模式设置
 	argon_update_option_checkbox('argon_panic_mode_enable');
 	argon_update_option('argon_panic_mode_tags');
@@ -8508,8 +7870,6 @@ function argon_update_themeoptions(){
 		update_option('argon_panic_mode_focus', array());
 	}
 	
-	argon_update_option_checkbox('argon_panic_mode_genetic');
-
 	// 彩蛋系统配置保存
 	$available_eggs = argon_get_available_easter_eggs();
 	$configs = array();
