@@ -156,15 +156,23 @@ var argonPerformanceMonitor = null; // 性能监控实例
 if (typeof ArgonDebug === 'undefined') {
 	window.ArgonDebug = {
 		enabled: false,
-		init() {
+		init: function () {
 			if (typeof argonConfig !== 'undefined' && argonConfig.debug_mode) {
 				this.enabled = true;
 			}
 		},
-		log(...args) { if (this.enabled) console.log('[Argon]', ...args); },
-		warn(...args) { if (this.enabled) console.warn('[Argon]', ...args); },
-		error(...args) { if (this.enabled) console.error('[Argon]', ...args); },
-		info(...args) { if (this.enabled) console.info('[Argon]', ...args); }
+		_output: function (level, args) {
+			if (!this.enabled || typeof console === 'undefined' || !console[level]) {
+				return;
+			}
+			var outputArgs = Array.prototype.slice.call(args);
+			outputArgs.unshift('[Argon]');
+			console[level].apply(console, outputArgs);
+		},
+		log: function () { this._output('log', arguments); },
+		warn: function () { this._output('warn', arguments); },
+		error: function () { this._output('error', arguments); },
+		info: function () { this._output('info', arguments); }
 	};
 	ArgonDebug.init();
 }

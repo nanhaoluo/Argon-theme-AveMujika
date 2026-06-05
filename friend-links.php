@@ -872,52 +872,57 @@ if (typeof initGeetest4 === 'function') {
     };
     
     // 获取网站信息（服务器端）
-    document.getElementById('fetch-info')?.addEventListener('click', function() {
-        var url = document.getElementById('add-url').value.trim();
-        if (!url) return alert('<?php _e('请输入网址', 'argon'); ?>');
-        if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-        document.getElementById('add-url').value = url;
-        this.disabled = true; this.textContent = '...';
-        var btn = this;
-        
-        flinkAction('fetch_info', { url: url }, function(res) {
-            btn.disabled = false; btn.textContent = '<?php _e('获取', 'argon'); ?>';
-            if (res.success && res.data) {
-                if (res.data.title) document.getElementById('add-display-name').value = res.data.title;
-                // 优先使用作者头像，没有才用 favicon
-                if (res.data.description) document.getElementById('add-desc').value = res.data.description;
-                var avatar = res.data.image || res.data.author_avatar || res.data.site_image || res.data.favicon || '';
-                if (avatar) document.getElementById('add-avatar').value = avatar;
-            } else {
-                alert(res.message || '<?php _e('获取失败', 'argon'); ?>');
-            }
+    var fetchInfoBtn = document.getElementById('fetch-info');
+    if (fetchInfoBtn) {
+        fetchInfoBtn.addEventListener('click', function() {
+            var url = document.getElementById('add-url').value.trim();
+            if (!url) return alert('<?php _e('请输入网址', 'argon'); ?>');
+            if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+            document.getElementById('add-url').value = url;
+            this.disabled = true; this.textContent = '...';
+            var btn = this;
+
+            flinkAction('fetch_info', { url: url }, function(res) {
+                btn.disabled = false; btn.textContent = '<?php _e('获取', 'argon'); ?>';
+                if (res.success && res.data) {
+                    if (res.data.title) document.getElementById('add-display-name').value = res.data.title;
+                    if (res.data.description) document.getElementById('add-desc').value = res.data.description;
+                    var avatar = res.data.image || res.data.author_avatar || res.data.site_image || res.data.favicon || '';
+                    if (avatar) document.getElementById('add-avatar').value = avatar;
+                } else {
+                    alert(res.message || '<?php _e('获取失败', 'argon'); ?>');
+                }
+            });
         });
-    });
-    
+    }
+
     // 添加友链
-    document.getElementById('add-link-btn')?.addEventListener('click', function() {
-        var name = document.getElementById('add-name').value.trim();
-        var url = document.getElementById('add-url').value.trim();
-        if (!url) return alert('<?php _e('请填写网址', 'argon'); ?>');
-        if (!name) {
-            name = document.getElementById('add-display-name').value.trim();
-            if (!name) return alert('<?php _e('请填写名称', 'argon'); ?>');
-        }
-        this.disabled = true; this.textContent = '<?php _e('添加中...', 'argon'); ?>';
-        var btn = this;
-        flinkAction('add', {
-            name: name, 
-            url: url,
-            display_name: document.getElementById('add-display-name').value.trim(),
-            avatar: document.getElementById('add-avatar').value.trim(),
-            description: document.getElementById('add-desc').value.trim(),
-            category: document.getElementById('add-category').value.trim()
-        }, function(res) {
-            if (res.success) location.reload();
-            else { btn.disabled = false; btn.textContent = '<?php _e('添加', 'argon'); ?>'; alert(res.message || '<?php _e('添加失败', 'argon'); ?>'); }
+    var addLinkBtn = document.getElementById('add-link-btn');
+    if (addLinkBtn) {
+        addLinkBtn.addEventListener('click', function() {
+            var name = document.getElementById('add-name').value.trim();
+            var url = document.getElementById('add-url').value.trim();
+            if (!url) return alert('<?php _e('请填写网址', 'argon'); ?>');
+            if (!name) {
+                name = document.getElementById('add-display-name').value.trim();
+                if (!name) return alert('<?php _e('请填写名称', 'argon'); ?>');
+            }
+            this.disabled = true; this.textContent = '<?php _e('添加中...', 'argon'); ?>';
+            var btn = this;
+            flinkAction('add', {
+                name: name,
+                url: url,
+                display_name: document.getElementById('add-display-name').value.trim(),
+                avatar: document.getElementById('add-avatar').value.trim(),
+                description: document.getElementById('add-desc').value.trim(),
+                category: document.getElementById('add-category').value.trim()
+            }, function(res) {
+                if (res.success) location.reload();
+                else { btn.disabled = false; btn.textContent = '<?php _e('添加', 'argon'); ?>'; alert(res.message || '<?php _e('添加失败', 'argon'); ?>'); }
+            });
         });
-    });
-    
+    }
+
     // 审核操作
     document.querySelectorAll('.flink-approve').forEach(function(btn) {
         btn.addEventListener('click', function() {
@@ -934,17 +939,20 @@ if (typeof initGeetest4 === 'function') {
             flinkAction('reject', { id: id }, function(res) { if (res.success) location.reload(); });
         });
     });
-    
+
     // 检测所有友链
-    document.getElementById('check-all-btn')?.addEventListener('click', function() {
-        if (!confirm('<?php _e('将检测所有友链的状态，可能需要一些时间，确定继续？', 'argon'); ?>')) return;
-        this.disabled = true; this.textContent = '<?php _e('检测中...', 'argon'); ?>';
-        flinkAction('check_all', {}, function(res) {
-            if (res.success) location.reload();
-            else alert('<?php _e('检测失败', 'argon'); ?>');
+    var checkAllBtn = document.getElementById('check-all-btn');
+    if (checkAllBtn) {
+        checkAllBtn.addEventListener('click', function() {
+            if (!confirm('<?php _e('将检测所有友链的状态，可能需要一些时间，确定继续？', 'argon'); ?>')) return;
+            this.disabled = true; this.textContent = '<?php _e('检测中...', 'argon'); ?>';
+            flinkAction('check_all', {}, function(res) {
+                if (res.success) location.reload();
+                else alert('<?php _e('检测失败', 'argon'); ?>');
+            });
         });
-    });
-    
+    }
+
     // 编辑弹窗
     window.openEditModal = function(id) {
         flinkAction('get', { id: id }, function(res) {
@@ -959,7 +967,7 @@ if (typeof initGeetest4 === 'function') {
                 document.getElementById('edit-desc').value = link.description || '';
                 document.getElementById('edit-category').value = link.category || '';
                 document.getElementById('edit-hide-no-backlink').value = link.hide_no_backlink || '';
-                
+
                 // 显示状态信息
                 var statusHtml = '';
                 if (link.last_check) {
@@ -979,7 +987,7 @@ if (typeof initGeetest4 === 'function') {
                     statusHtml += '<?php _e('互链状态', 'argon'); ?>: <span class="badge badge-secondary"><?php _e('未填写友链页面', 'argon'); ?></span>';
                 }
                 document.getElementById('edit-status-info').innerHTML = statusHtml || '<?php _e('暂无检测记录', 'argon'); ?>';
-                
+
                 document.getElementById('edit-modal').classList.add('show');
             }
         });
@@ -988,100 +996,115 @@ if (typeof initGeetest4 === 'function') {
     window.closeEditModal = function() {
         document.getElementById('edit-modal').classList.remove('show');
     };
-    
-    document.getElementById('edit-modal')?.addEventListener('click', function(e) {
-        if (e.target === this) closeEditModal();
-    });
-    
+
+    var editModal = document.getElementById('edit-modal');
+    if (editModal) {
+        editModal.addEventListener('click', function(e) {
+            if (e.target === this) closeEditModal();
+        });
+    }
+
     // 更新信息（从网站获取最新数据）
-    document.getElementById('edit-fetch-btn')?.addEventListener('click', function() {
-        var url = document.getElementById('edit-url').value.trim();
-        if (!url) return alert('<?php _e('请先填写网址', 'argon'); ?>');
-        if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-        
-        this.disabled = true; this.textContent = '<?php _e('获取中...', 'argon'); ?>';
-        var btn = this;
-        
-        flinkAction('fetch_info', { url: url }, function(res) {
-            btn.disabled = false; btn.textContent = '<?php _e('更新信息', 'argon'); ?>';
-            if (res.success && res.data) {
-                var displayName = document.getElementById('edit-display-name');
-                var avatar = document.getElementById('edit-avatar');
-                var desc = document.getElementById('edit-desc');
+    var editFetchBtn = document.getElementById('edit-fetch-btn');
+    if (editFetchBtn) {
+        editFetchBtn.addEventListener('click', function() {
+            var url = document.getElementById('edit-url').value.trim();
+            if (!url) return alert('<?php _e('请先填写网址', 'argon'); ?>');
+            if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+
+            this.disabled = true; this.textContent = '<?php _e('获取中...', 'argon'); ?>';
+            var btn = this;
                 
-                // 直接替换数据
-                if (res.data.title) displayName.value = res.data.title;
-                var newAvatar = res.data.image || res.data.author_avatar || res.data.site_image || res.data.favicon || '';
-                if (newAvatar) avatar.value = newAvatar;
-                if (res.data.description) desc.value = res.data.description;
-                
-                // 显示获取结果
-                var statusInfo = document.getElementById('edit-status-info');
-                var infoHtml = '<div style="margin-top:10px;padding:10px;background:#e8f5e9;border-radius:6px;font-size:13px;">';
-                infoHtml += '<strong><?php _e('已更新', 'argon'); ?></strong>';
-                if (res.data.blocked_by_waf) {
-                    infoHtml += ' <span style="color:#e91e63;">(<?php _e('被WAF拦截', 'argon'); ?>)</span>';
+            flinkAction('fetch_info', { url: url }, function(res) {
+                btn.disabled = false; btn.textContent = '<?php _e('更新信息', 'argon'); ?>';
+                if (res.success && res.data) {
+                    var displayName = document.getElementById('edit-display-name');
+                    var avatar = document.getElementById('edit-avatar');
+                    var desc = document.getElementById('edit-desc');
+
+                    // 直接替换数据
+                    if (res.data.title) displayName.value = res.data.title;
+                    var newAvatar = res.data.image || res.data.author_avatar || res.data.site_image || res.data.favicon || '';
+                    if (newAvatar) avatar.value = newAvatar;
+                    if (res.data.description) desc.value = res.data.description;
+
+                    // 显示获取结果
+                    var statusInfo = document.getElementById('edit-status-info');
+                    var infoHtml = '<div style="margin-top:10px;padding:10px;background:#e8f5e9;border-radius:6px;font-size:13px;">';
+                    infoHtml += '<strong><?php _e('已更新', 'argon'); ?></strong>';
+                    if (res.data.blocked_by_waf) {
+                        infoHtml += ' <span style="color:#e91e63;">(<?php _e('被WAF拦截', 'argon'); ?>)</span>';
+                    }
+                    infoHtml += '</div>';
+                    statusInfo.innerHTML = infoHtml;
+                } else {
+                    alert((res.data && res.data.error_reason) || '<?php _e('获取失败', 'argon'); ?>');
                 }
-                infoHtml += '</div>';
-                statusInfo.innerHTML = infoHtml;
-            } else {
-                alert(res.data?.error_reason || '<?php _e('获取失败', 'argon'); ?>');
-            }
+            });
         });
-    });
-    
+    }
+
     // 检测互链
-    document.getElementById('edit-check-btn')?.addEventListener('click', function() {
-        var linksPage = document.getElementById('edit-links-page').value.trim();
-        if (!linksPage) {
-            return alert('<?php _e('请先填写对方的友链页面地址', 'argon'); ?>');
-        }
-        var id = document.getElementById('edit-id').value;
-        this.disabled = true; this.textContent = '<?php _e('检测中...', 'argon'); ?>';
-        var btn = this;
-        flinkAction('check_backlink', { id: id }, function(res) {
-            btn.disabled = false; btn.textContent = '<?php _e('检测互链', 'argon'); ?>';
-            if (res.success) {
-                openEditModal(id); // 刷新显示
+    var editCheckBtn = document.getElementById('edit-check-btn');
+    if (editCheckBtn) {
+        editCheckBtn.addEventListener('click', function() {
+            var linksPage = document.getElementById('edit-links-page').value.trim();
+            if (!linksPage) {
+                return alert('<?php _e('请先填写对方的友链页面地址', 'argon'); ?>');
             }
+            var id = document.getElementById('edit-id').value;
+            this.disabled = true; this.textContent = '<?php _e('检测中...', 'argon'); ?>';
+            var btn = this;
+            flinkAction('check_backlink', { id: id }, function(res) {
+                btn.disabled = false; btn.textContent = '<?php _e('检测互链', 'argon'); ?>';
+                if (res.success) {
+                    openEditModal(id); // 刷新显示
+                }
+            });
         });
-    });
-    
+    }
+
     // 保存编辑
-    document.getElementById('edit-save-btn')?.addEventListener('click', function() {
-        var id = document.getElementById('edit-id').value;
-        var name = document.getElementById('edit-name').value.trim();
-        var url = document.getElementById('edit-url').value.trim();
-        if (!name || !url) return alert('<?php _e('名称和网址不能为空', 'argon'); ?>');
-        
-        this.disabled = true; this.textContent = '<?php _e('保存中...', 'argon'); ?>';
-        var btn = this;
-        flinkAction('update', {
-            id: id,
-            name: name,
-            display_name: document.getElementById('edit-display-name').value.trim(),
-            url: url,
-            links_page: document.getElementById('edit-links-page').value.trim(),
-            avatar: document.getElementById('edit-avatar').value.trim(),
-            description: document.getElementById('edit-desc').value.trim(),
-            category: document.getElementById('edit-category').value.trim(),
-            hide_no_backlink: document.getElementById('edit-hide-no-backlink').value
-        }, function(res) {
-            if (res.success) location.reload();
-            else { btn.disabled = false; btn.textContent = '<?php _e('保存', 'argon'); ?>'; alert('<?php _e('保存失败', 'argon'); ?>'); }
+    var editSaveBtn = document.getElementById('edit-save-btn');
+    if (editSaveBtn) {
+        editSaveBtn.addEventListener('click', function() {
+            var id = document.getElementById('edit-id').value;
+            var name = document.getElementById('edit-name').value.trim();
+            var url = document.getElementById('edit-url').value.trim();
+            if (!name || !url) return alert('<?php _e('名称和网址不能为空', 'argon'); ?>');
+
+            this.disabled = true; this.textContent = '<?php _e('保存中...', 'argon'); ?>';
+            var btn = this;
+            flinkAction('update', {
+                id: id,
+                name: name,
+                display_name: document.getElementById('edit-display-name').value.trim(),
+                url: url,
+                links_page: document.getElementById('edit-links-page').value.trim(),
+                avatar: document.getElementById('edit-avatar').value.trim(),
+                description: document.getElementById('edit-desc').value.trim(),
+                category: document.getElementById('edit-category').value.trim(),
+                hide_no_backlink: document.getElementById('edit-hide-no-backlink').value
+            }, function(res) {
+                if (res.success) location.reload();
+                else { btn.disabled = false; btn.textContent = '<?php _e('保存', 'argon'); ?>'; alert('<?php _e('保存失败', 'argon'); ?>'); }
+            });
         });
-    });
-    
+    }
+
     // 删除
-    document.getElementById('edit-delete-btn')?.addEventListener('click', function() {
-        if (!confirm('<?php _e('确定删除这个友链？', 'argon'); ?>')) return;
-        var id = document.getElementById('edit-id').value;
-        this.disabled = true; this.textContent = '<?php _e('删除中...', 'argon'); ?>';
-        flinkAction('delete', { id: id }, function(res) {
-            if (res.success) location.reload();
-            else alert('<?php _e('删除失败', 'argon'); ?>');
+    var editDeleteBtn = document.getElementById('edit-delete-btn');
+    if (editDeleteBtn) {
+        editDeleteBtn.addEventListener('click', function() {
+            if (!confirm('<?php _e('确定删除这个友链？', 'argon'); ?>')) return;
+            var id = document.getElementById('edit-id').value;
+            this.disabled = true; this.textContent = '<?php _e('删除中...', 'argon'); ?>';
+            flinkAction('delete', { id: id }, function(res) {
+                if (res.success) location.reload();
+                else alert('<?php _e('删除失败', 'argon'); ?>');
+            });
         });
-    });
+    }
 })();
 <?php endif; ?>
 </script>
