@@ -5609,12 +5609,11 @@ function argon_fetch_site_info($url) {
         'error_reason' => '',
         'image_candidates' => array()
     );
-    $url = trim((string)$url);
-    if (!preg_match('/^https?:\/\//i', $url)) {
-        $url = 'https://' . $url;
-    }
-    $url = esc_url_raw($url);
-    if (empty($url)) {
+    $raw_url = trim((string)$url);
+    $has_scheme = preg_match('/^https?:\/\//i', $raw_url);
+    $url_candidates = $has_scheme ? array($raw_url) : array('https://' . $raw_url, 'http://' . $raw_url);
+    $url_candidates = array_values(array_unique(array_filter(array_map('esc_url_raw', $url_candidates))));
+    if (empty($url_candidates)) {
         $info['error_reason'] = __('请输入有效的网站地址', 'argon');
         return $info;
     }
@@ -5633,22 +5632,39 @@ function argon_fetch_site_info($url) {
         'Sec-Fetch-Mode' => 'navigate',
         'Sec-Fetch-Site' => 'none',
         'Sec-Fetch-User' => '?1',
-        'Upgrade-Insecure-Requests' => '1',
-        'Referer' => $url
+        'Upgrade-Insecure-Requests' => '1'
     );
-    
-    $response = wp_remote_get($url, array(
-        'timeout' => 20,
-        'sslverify' => false,
-        'user-agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'headers' => $browser_headers,
-        'redirection' => 5,
-        'reject_unsafe_urls' => true,
-        'limit_response_size' => 1048576
-    ));
-    
-    if (is_wp_error($response)) {
-        $info['error_reason'] = $response->get_error_message();
+
+    $response = null;
+    $url = '';
+    foreach ($url_candidates as $candidate_url) {
+        $request_headers = $browser_headers;
+        $request_headers['Referer'] = $candidate_url;
+        $candidate_response = wp_remote_get($candidate_url, array(
+            'timeout' => 20,
+            'sslverify' => false,
+            'user-agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'headers' => $request_headers,
+            'redirection' => 5,
+            'reject_unsafe_urls' => true,
+            'limit_response_size' => 1048576
+        ));
+        if (is_wp_error($candidate_response)) {
+            $info['error_reason'] = $candidate_response->get_error_message();
+            continue;
+        }
+        $response = $candidate_response;
+        $url = $candidate_url;
+        $candidate_code = wp_remote_retrieve_response_code($candidate_response);
+        if ($candidate_code >= 200 && $candidate_code < 400) {
+            break;
+        }
+    }
+
+    if (!$response || is_wp_error($response)) {
+        if (empty($info['error_reason'])) {
+            $info['error_reason'] = __('无法访问该网站', 'argon');
+        }
         return $info;
     }
     
@@ -5929,6 +5945,14 @@ function argon_extract_html_attrs($tag) {
             $attrs[strtolower($match[1])] = html_entity_decode($match[3], ENT_QUOTES, 'UTF-8');
         }
     }
+    if (preg_match_all('/([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*([^\s"\'=<>`]+)/', $tag, $matches, PREG_SET_ORDER)) {
+        foreach ($matches as $match) {
+            $key = strtolower($match[1]);
+            if (!isset($attrs[$key])) {
+                $attrs[$key] = html_entity_decode($match[2], ENT_QUOTES, 'UTF-8');
+            }
+        }
+    }
     return $attrs;
 }
 
@@ -6003,14 +6027,24 @@ function argon_extract_favicon_candidates($body, $scheme, $host, $base_path = ''
 }
 
 function argon_extract_srcset_first_url($srcset) {
+    $best_url = '';
+    $best_score = -1;
     $parts = explode(',', (string)$srcset);
     foreach ($parts as $part) {
         $bits = preg_split('/\s+/', trim($part));
-        if (!empty($bits[0])) {
-            return $bits[0];
+        if (empty($bits[0])) {
+            continue;
+        }
+        $score = 0;
+        if (!empty($bits[1]) && preg_match('/^([0-9.]+)(w|x)$/', $bits[1], $matches)) {
+            $score = (float)$matches[1] * ($matches[2] === 'x' ? 1000 : 1);
+        }
+        if ($best_url === '' || $score > $best_score) {
+            $best_url = $bits[0];
+            $best_score = $score;
         }
     }
-    return '';
+    return $best_url;
 }
 
 function argon_extract_site_image_candidates($body, $meta, $scheme, $host, $base_path, $base_url) {
@@ -6051,18 +6085,20 @@ function argon_extract_site_image_candidates($body, $meta, $scheme, $host, $base
     if (preg_match_all('/<img\b[^>]*>/i', $body, $img_matches)) {
         foreach ($img_matches[0] as $tag) {
             $attrs = argon_extract_html_attrs($tag);
+            $src = $attrs['src'] ?? ($attrs['data-src'] ?? ($attrs['data-original'] ?? ($attrs['data-lazy-src'] ?? '')));
+            if (empty($src) && !empty($attrs['srcset'])) {
+                $src = argon_extract_srcset_first_url($attrs['srcset']);
+            }
             $haystack = strtolower(implode(' ', array(
                 $attrs['class'] ?? '',
                 $attrs['id'] ?? '',
                 $attrs['alt'] ?? '',
-                $attrs['title'] ?? ''
+                $attrs['title'] ?? '',
+                $attrs['itemprop'] ?? '',
+                $src
             )));
             if (!preg_match('/avatar|author|profile|logo|brand|site-logo|site_icon|site-icon|headimg|portrait/i', $haystack)) {
                 continue;
-            }
-            $src = $attrs['src'] ?? ($attrs['data-src'] ?? ($attrs['data-original'] ?? ($attrs['data-lazy-src'] ?? '')));
-            if (empty($src) && !empty($attrs['srcset'])) {
-                $src = argon_extract_srcset_first_url($attrs['srcset']);
             }
             $normalized = argon_normalize_url($src, $scheme, $host, $base_path);
             if ($normalized !== '') {
@@ -6089,6 +6125,30 @@ function argon_extract_site_image_candidates($body, $meta, $scheme, $host, $base
     return array_values(array_unique(array_filter($candidates)));
 }
 
+function argon_collect_jsonld_image_value($value, &$candidates, $scheme, $host, $base_path) {
+    if (is_string($value)) {
+        $normalized = argon_normalize_url($value, $scheme, $host, $base_path);
+        if ($normalized !== '') {
+            $candidates[] = $normalized;
+        }
+        return;
+    }
+    if (!is_array($value)) {
+        return;
+    }
+    if (!empty($value['url']) && is_string($value['url'])) {
+        $normalized = argon_normalize_url($value['url'], $scheme, $host, $base_path);
+        if ($normalized !== '') {
+            $candidates[] = $normalized;
+        }
+    }
+    foreach ($value as $item) {
+        if (is_string($item) || is_array($item)) {
+            argon_collect_jsonld_image_value($item, $candidates, $scheme, $host, $base_path);
+        }
+    }
+}
+
 function argon_collect_jsonld_images($data, &$candidates, $scheme, $host, $base_path) {
     if (!is_array($data)) {
         return;
@@ -6097,22 +6157,7 @@ function argon_collect_jsonld_images($data, &$candidates, $scheme, $host, $base_
         if (empty($data[$key])) {
             continue;
         }
-        $value = $data[$key];
-        if (is_string($value)) {
-            $normalized = argon_normalize_url($value, $scheme, $host, $base_path);
-            if ($normalized !== '') {
-                $candidates[] = $normalized;
-            }
-        } elseif (is_array($value)) {
-            if (!empty($value['url']) && is_string($value['url'])) {
-                $normalized = argon_normalize_url($value['url'], $scheme, $host, $base_path);
-                if ($normalized !== '') {
-                    $candidates[] = $normalized;
-                }
-            } else {
-                argon_collect_jsonld_images($value, $candidates, $scheme, $host, $base_path);
-            }
-        }
+        argon_collect_jsonld_image_value($data[$key], $candidates, $scheme, $host, $base_path);
     }
     foreach ($data as $value) {
         if (is_array($value)) {
@@ -6248,6 +6293,7 @@ function argon_add_friend_link($data) {
         'author_avatar' => !empty($site_info['author_avatar']) ? esc_url_raw($site_info['author_avatar']) : '',
         'favicon' => !empty($site_info['favicon']) ? esc_url_raw($site_info['favicon']) : '',
         'site_image' => !empty($site_info['site_image']) ? esc_url_raw($site_info['site_image']) : '',
+        'image' => !empty($site_info['image']) ? esc_url_raw($site_info['image']) : '',
         'description' => !empty($data['description']) ? sanitize_text_field($data['description']) : (!empty($site_info['description']) ? mb_substr($site_info['description'], 0, 100) : ''),
         'category' => isset($data['category']) ? sanitize_text_field($data['category']) : '',
         'email' => isset($data['email']) ? sanitize_email($data['email']) : '',
@@ -6912,6 +6958,9 @@ function argon_check_partial_links() {
                 $update_data['site_image'] = $site_info['site_image'];
             }
             $best_image = argon_select_friend_link_image($site_info);
+            if (!empty($best_image)) {
+                $update_data['image'] = $best_image;
+            }
             if (!empty($best_image) && empty($link['user_avatar'])) {
                 $update_data['avatar'] = $best_image;
             }
