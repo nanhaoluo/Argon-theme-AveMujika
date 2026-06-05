@@ -885,7 +885,8 @@ if (typeof initGeetest4 === 'function') {
             if (res.success && res.data) {
                 if (res.data.title) document.getElementById('add-display-name').value = res.data.title;
                 // 优先使用作者头像，没有才用 favicon
-                var avatar = res.data.author_avatar || res.data.favicon || '';
+                if (res.data.description) document.getElementById('add-desc').value = res.data.description;
+                var avatar = res.data.image || res.data.author_avatar || res.data.site_image || res.data.favicon || '';
                 if (avatar) document.getElementById('add-avatar').value = avatar;
             } else {
                 alert(res.message || '<?php _e('获取失败', 'argon'); ?>');
@@ -1010,7 +1011,7 @@ if (typeof initGeetest4 === 'function') {
                 
                 // 直接替换数据
                 if (res.data.title) displayName.value = res.data.title;
-                var newAvatar = res.data.author_avatar || res.data.favicon || '';
+                var newAvatar = res.data.image || res.data.author_avatar || res.data.site_image || res.data.favicon || '';
                 if (newAvatar) avatar.value = newAvatar;
                 if (res.data.description) desc.value = res.data.description;
                 
