@@ -108,7 +108,6 @@ if ($rate_limit_check !== true) {
 	}
 	body.ai-verify-page #primary { width: 100% !important; max-width: 1000px !important; margin: 0 auto !important; float: none !important; }
 	body.ai-verify-page #content { margin-top: -50vh !important; }
-	body.ai-verify-page .site-footer { max-width: 1000px !important; margin: 0 auto !important; width: 100% !important; float: none !important; }
 	</style>
 	<script data-pjax>
 	document.body.classList.add('ai-verify-page');
@@ -120,7 +119,6 @@ if ($rate_limit_check !== true) {
 		<p style="color: var(--color-text-muted); margin-bottom: 24px;"><?php echo esc_html($rate_limit_check); ?></p>
 		<a href="<?php echo home_url('/ai-query'); ?>" class="btn btn-primary"><?php _e('返回查询页面', 'argon'); ?></a>
 	</article>
-	</main>
 	<?php
 	get_footer();
 	exit;
@@ -352,7 +350,6 @@ get_header();
 }
 body.ai-verify-page #primary { width: 100% !important; max-width: 1000px !important; margin: 0 auto !important; float: none !important; }
 body.ai-verify-page #content { margin-top: -50vh !important; }
-body.ai-verify-page .site-footer { max-width: 1000px !important; margin: 0 auto !important; width: 100% !important; float: none !important; }
 
 .ai-verify-header-card { text-align: center; padding: 40px 24px 32px; background: transparent !important; box-shadow: none !important; }
 .ai-verify-header-icon { width: 64px; height: 64px; margin: 0 auto 20px; background: var(--themecolor-gradient); border-radius: var(--card-radius); display: flex; align-items: center; justify-content: center; font-size: 28px; color: #fff; box-shadow: 0 4px 12px rgba(var(--themecolor-rgbstr), 0.2); transition: transform var(--animation-fast) var(--ease-standard); }
@@ -1348,8 +1345,6 @@ if (current_user_can('manage_options')):
 <?php
 endif; // current_user_can('manage_options')
 ?>
-
-</main>
 
 <?php
 get_footer();

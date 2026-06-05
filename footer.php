@@ -1,4 +1,8 @@
-					<footer id="footer" class="site-footer card shadow-sm border-0">
+				</main>
+
+			</div>
+
+			<footer id="footer" class="site-footer card shadow-sm border-0">
 
 						<?php
 
@@ -21,11 +25,7 @@
 						}
 						?>
 
-					</footer>
-
-				</main>
-
-			</div>
+			</footer>
 
 		</div>
 

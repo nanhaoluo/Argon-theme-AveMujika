@@ -3117,7 +3117,11 @@ html.darkmode .wp-block-calendar tbody td {
 
 	width: 100%;
 
-	float: right;
+	float: none;
+
+	clear: both;
+
+	box-sizing: border-box;
 
 	margin-bottom: 25px;
 

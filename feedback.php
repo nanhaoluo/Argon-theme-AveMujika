@@ -588,7 +588,6 @@ if ($feedback_card_opacity == '') {
 body.feedback-page #primary { width: 100% !important; max-width: 1040px !important; margin: 0 auto !important; float: none !important; }
 body.feedback-page #content { margin-top: -50vh !important; }
 body.feedback-page #main { max-width: 1040px !important; margin: 0 auto !important; }
-body.feedback-page .site-footer { max-width: 1040px !important; margin: 0 auto !important; box-sizing: border-box !important; }
 
 /* 头部卡片 */
 .feedback-header-card { text-align: center; padding: 40px 24px 32px; background: transparent !important; box-shadow: none !important; border: none !important; }

@@ -58,7 +58,4 @@ Template Name: 留言板 (请打开页面的评论功能)
 	margin-right: 10px;
 }
 </style>
-	</main>
-</div>
-<?php get_footer(); ?>
 <?php get_footer(); ?>
