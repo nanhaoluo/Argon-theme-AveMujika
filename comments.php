@@ -305,6 +305,9 @@ function resetGeetestCaptcha() {
 	if ($enable_qq_avatar == 'true'){
 		$current_commenter['comment_author_email'] = str_replace("@avatarqq.com", "", $current_commenter['comment_author_email']);
 	}
+	$captcha_enabled = argon_is_comment_captcha_enabled();
+	$captcha_type = get_option('argon_captcha_type', 'math');
+	$commentCaptchaSeed = ($captcha_enabled && $captcha_type !== 'geetest') ? get_comment_captcha_seed() : '';
 ?>
 <div id="post_comment" class="card shadow-sm comments-collapsed <?php if (is_user_logged_in()) {echo("logged");}?><?php if (!$name_and_email_required) {echo(" no-need-name-email");}?><?php if (!argon_is_comment_captcha_enabled()) {echo(" no-need-captcha");}?><?php if ($enable_qq_avatar == 'true') {echo(" enable-qq-avatar");}?>">
 	<div class="card-body">
@@ -344,12 +347,16 @@ function resetGeetestCaptcha() {
 				$col1_class = "col-md-4";
 				$col2_class = "col-md-5";
 				$col3_class = "col-md-3";
-				$captcha_enabled = argon_is_comment_captcha_enabled();
-				if ((get_option('argon_hide_name_email_site_input') == 'true') && ($name_and_email_required != true)){
+				$hide_identity_fields = is_user_logged_in() || ((get_option('argon_hide_name_email_site_input') == 'true') && ($name_and_email_required != true));
+				if ($hide_identity_fields){
 					if (!$captcha_enabled){
 						$col1_class = "d-none";
 						$col2_class = "d-none";
 						$col3_class = "d-none";
+					}elseif ($captcha_type === 'geetest'){
+						$col1_class = "col-md-4";
+						$col2_class = "col-md-4";
+						$col3_class = "col-md-4";
 					}else{
 						$col1_class = "d-none";
 						$col2_class = "d-none";
@@ -391,10 +398,9 @@ function resetGeetestCaptcha() {
 				<div class="<?php echo $col3_class;?>">
 					<div class="form-group">
 						<?php 
-						$captcha_type = get_option('argon_captcha_type', 'math');
 						if ($captcha_type === 'geetest') { ?>
 							<!-- Geetest 验证码容器 -->
-							<div id="geetest-captcha" class="mb-4"></div>
+							<div id="geetest-captcha" class="argon-comment-geetest mb-4"></div>
 							<input type="hidden" id="geetest_lot_number" name="lot_number" value="">
 							<input type="hidden" id="geetest_captcha_output" name="captcha_output" value="">
 							<input type="hidden" id="geetest_pass_token" name="pass_token" value="">
@@ -402,7 +408,7 @@ function resetGeetestCaptcha() {
 							<input type="hidden" id="argon_comment_nonce" value="<?php echo wp_create_nonce('argon_comment'); ?>">
 						<?php } else { ?>
 							<!-- 原有的数学验证码 -->
-							<div class="input-group input-group-alternative mb-4 post-comment-captcha-container" captcha="<?php echo get_comment_captcha(get_comment_captcha_seed());?>">
+							<div class="input-group input-group-alternative mb-4 post-comment-captcha-container" captcha="<?php echo esc_attr(get_comment_captcha($commentCaptchaSeed));?>">
 								<div class="input-group-prepend">
 									<span class="input-group-text"><i class="fa fa-key"></i></span>
 								</div>
@@ -437,7 +443,7 @@ function resetGeetestCaptcha() {
 					</div>
 				</div>
 			</div>
-			<div class="row hide-on-comment-editing" id="post_comment_extra_input" style="display: none";>
+			<div class="row hide-on-comment-editing" id="post_comment_extra_input" style="display: none;">
 				<div class="col-md-12" style="margin-bottom: -10px;">
 					<div class="form-group">
 						<div class="input-group input-group-alternative mb-4 post-comment-link-container">
@@ -492,8 +498,8 @@ function resetGeetestCaptcha() {
 					<?php } ?>
 				</div>
 			</div>
-			<input id="post_comment_captcha_seed" value="<?php echo $commentCaptchaSeed;?>" style="display: none;"></input>
-			<input id="post_comment_post_id" value="<?php echo get_the_ID();?>" style="display: none;"></input>
+			<input type="hidden" id="post_comment_captcha_seed" value="<?php echo esc_attr($commentCaptchaSeed);?>">
+			<input type="hidden" id="post_comment_post_id" value="<?php echo esc_attr(get_the_ID());?>">
 		</form>
 		<?php if (get_option("argon_comment_emotion_keyboard", "true") != "false"){ ?>
 			<?php get_template_part( 'template-parts/emotion-keyboard' ); ?>

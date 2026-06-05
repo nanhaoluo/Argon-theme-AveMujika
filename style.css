@@ -6285,6 +6285,20 @@ html.darkmode .post-comment-reply-preview {
 	box-shadow: none;
 }
 
+#post_comment .argon-comment-geetest {
+	min-height: 44px;
+	margin-bottom: 8px !important;
+}
+
+#post_comment .argon-comment-geetest > * {
+	max-width: 100%;
+}
+
+#post_comment .comment-btn,
+#post_comment #comment_emotion_btn {
+	margin-bottom: 4px;
+}
+
 #post_comment_content_hidden {
 
 	font-family: inherit !important;
