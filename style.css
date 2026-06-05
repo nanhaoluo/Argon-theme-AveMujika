@@ -4016,7 +4016,11 @@ html.filter-grayscale {
 
 	max-height: 25vh;
 
+	display: block;
+
 	object-fit: cover;
+
+	object-position: center center;
 
 	pointer-events: none;
 
@@ -4025,6 +4029,18 @@ html.filter-grayscale {
 /* 鍥剧墖鍔犺浇杩囨浮鏁堟灉 */
 .post-thumbnail {
 	transition: opacity 0.3s ease 0s;
+}
+
+article.post.card:not(.post-full):not(.post-preview-layout-2)>.post-header.post-header-with-thumbnail {
+	height: clamp(250px, 25vh, 360px);
+}
+
+article.post.card:not(.post-full):not(.post-preview-layout-2)>.post-header.post-header-with-thumbnail>.post-thumbnail {
+	height: 100%;
+	min-height: 0;
+	max-height: none;
+	object-fit: cover;
+	object-position: center center;
 }
 
 .single .post-thumbnail,
