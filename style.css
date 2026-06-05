@@ -2426,9 +2426,9 @@ html:not(.is-home) .cover-scroll-down {
 
 .leftbar-search-button.open {
 
-	padding: 0 15px 18px 15px;
+	padding: 0 15px 15px 15px;
 
-	margin-top: -9px;
+	margin-top: 0;
 
 }
 
@@ -2440,6 +2440,8 @@ html:not(.is-home) .cover-scroll-down {
 
 	height: 30px;
 
+	min-height: 30px;
+
 	padding: 0 !important;
 
 	display: flex;
@@ -2447,6 +2449,10 @@ html:not(.is-home) .cover-scroll-down {
 	align-items: center;
 
 	justify-content: center;
+
+	position: relative;
+
+	overflow: hidden;
 
 	transform: unset !important;
 
@@ -2466,7 +2472,7 @@ html.darkmode.amoled-dark #leftbar_search_container {
 
 .leftbar-search-button.open #leftbar_search_container {
 
-	height: 45px;
+	height: 30px;
 
 }
 
@@ -2487,6 +2493,10 @@ html.darkmode.amoled-dark #leftbar_search_container {
 	width: calc(100% + 2px);
 
 	height: calc(100% + 2px);
+
+	box-sizing: border-box;
+
+	margin: 0;
 
 	transition: all 0.3s cubic-bezier(0.4, 0, 0, 1);
 
@@ -11170,7 +11180,8 @@ html.darkmode.amoled-dark #content:after {
 		font-size: 13px;
 		background: var(--color-foreground);
 		color: var(--color-text-deeper);
-		transition: all var(--animation-fast) var(--ease-standard),
+		transition: border-color var(--animation-fast) var(--ease-standard),
+			box-shadow var(--animation-fast) var(--ease-standard),
 			transform var(--animation-fast) var(--ease-spring);
 		outline: none;
 	}
@@ -11198,7 +11209,9 @@ html.darkmode.amoled-dark #content:after {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		transition: all var(--animation-fast) var(--ease-spring);
+		transition: background-color var(--animation-fast) var(--ease-standard),
+			box-shadow var(--animation-fast) var(--ease-standard),
+			transform var(--animation-fast) var(--ease-spring);
 		flex-shrink: 0;
 		box-shadow: 0 2px 8px rgba(var(--themecolor-rgbstr), 0.3);
 	}
@@ -11233,11 +11246,13 @@ html.darkmode.amoled-dark #content:after {
 		background: var(--color-foreground);
 		border-radius: 10px;
 		margin-bottom: 6px;
-		transition: all var(--animation-fast) var(--ease-standard),
+		transition: background-color var(--animation-fast) var(--ease-standard),
+			opacity var(--animation-fast) var(--ease-standard),
 			transform var(--animation-fast) var(--ease-spring),
 			box-shadow var(--animation-fast) var(--ease-standard);
-		animation: mobileTodoSlideIn 0.35s var(--ease-emphasized-decelerate) both;
+		animation: mobileTodoSlideIn 0.2s var(--ease-emphasized-decelerate) both;
 		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+		will-change: transform, opacity;
 	}
 
 	@keyframes mobileTodoSlideIn {
@@ -11281,7 +11296,10 @@ html.darkmode.amoled-dark #content:after {
 		align-items: center;
 		justify-content: center;
 		cursor: pointer;
-		transition: all var(--animation-fast) var(--ease-spring);
+		transition: background-color var(--animation-fast) var(--ease-standard),
+			color var(--animation-fast) var(--ease-standard),
+			transform var(--animation-fast) var(--ease-spring),
+			box-shadow var(--animation-fast) var(--ease-standard);
 		flex-shrink: 0;
 		margin-left: 8px;
 		font-size: 11px;
@@ -11366,11 +11384,11 @@ html.darkmode.amoled-dark #content:after {
 		transform: scale(0.98);
 		max-height: 500px;
 		overflow: hidden;
-		transition: all var(--animation-normal) var(--ease-emphasized),
-			max-height var(--animation-normal) var(--ease-emphasized),
-			margin var(--animation-normal) var(--ease-emphasized),
-			padding var(--animation-normal) var(--ease-emphasized),
-			opacity var(--animation-normal) var(--ease-emphasized);
+		transition: opacity var(--animation-fast) var(--ease-standard),
+			transform var(--animation-fast) var(--ease-standard),
+			max-height var(--animation-fast) var(--ease-standard),
+			margin var(--animation-fast) var(--ease-standard),
+			padding var(--animation-fast) var(--ease-standard);
 	}
 
 	.mobile-todo-item.todo-completed.collapsed {
@@ -11389,7 +11407,11 @@ html.darkmode.amoled-dark #content:after {
 		margin-bottom: 0;
 		padding-top: 0;
 		padding-bottom: 0;
-		transition: all 0.4s var(--ease-emphasized-accelerate);
+		transition: opacity var(--animation-fast) var(--ease-standard),
+			transform var(--animation-fast) var(--ease-standard),
+			max-height var(--animation-fast) var(--ease-standard),
+			margin var(--animation-fast) var(--ease-standard),
+			padding var(--animation-fast) var(--ease-standard);
 	}
 
 	.mobile-todo-empty {
@@ -11421,7 +11443,8 @@ html.darkmode.amoled-dark #content:after {
 		font-size: 10px;
 		font-weight: 600;
 		cursor: pointer;
-		transition: all var(--animation-fast) var(--ease-standard);
+		transition: background-color var(--animation-fast) var(--ease-standard),
+			transform var(--animation-fast) var(--ease-standard);
 		margin-left: 6px;
 		flex-shrink: 0;
 	}
@@ -11455,11 +11478,13 @@ html.darkmode.amoled-dark #content:after {
 		background: var(--color-foreground);
 		border-radius: 10px;
 		cursor: pointer;
-		transition: all var(--animation-fast) var(--ease-standard);
+		transition: background-color var(--animation-fast) var(--ease-standard),
+			transform var(--animation-fast) var(--ease-standard);
 		user-select: none;
 		border-top: 1px dashed rgba(var(--themecolor-rgbstr), 0.2);
 		border-bottom: 1px dashed rgba(var(--themecolor-rgbstr), 0.2);
 		list-style: none;
+		contain: layout paint;
 	}
 
 	.mobile-todo-completed-divider:active {
@@ -13221,7 +13246,8 @@ html.navbar-absolute #leftbar_part3.sticky {
 	font-size: 10px;
 	font-weight: 600;
 	cursor: pointer;
-	transition: all var(--animation-fast) var(--ease-standard);
+	transition: background-color var(--animation-fast) var(--ease-standard),
+		transform var(--animation-fast) var(--ease-standard);
 	margin-left: 6px;
 }
 
@@ -13259,6 +13285,7 @@ html.navbar-absolute #leftbar_part3.sticky {
 	border-top: 1px dashed rgba(var(--themecolor-rgbstr), 0.2);
 	border-bottom: 1px dashed rgba(var(--themecolor-rgbstr), 0.2);
 	list-style: none;
+	contain: layout paint;
 }
 
 .todo-completed-divider:hover {
@@ -13381,8 +13408,11 @@ html.navbar-absolute #leftbar_part3.sticky {
 	background: var(--color-foreground, #f8f9fa);
 	border-radius: 8px;
 	margin-bottom: 6px;
-	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-	animation: todoSlideIn 0.3s ease;
+	transition: background-color var(--animation-fast) var(--ease-standard),
+		opacity var(--animation-fast) var(--ease-standard),
+		transform var(--animation-fast) var(--ease-standard);
+	animation: todoSlideIn 0.18s ease;
+	will-change: transform, opacity;
 }
 
 @keyframes todoSlideIn {
@@ -13424,7 +13454,9 @@ html.navbar-absolute #leftbar_part3.sticky {
 	align-items: center;
 	justify-content: center;
 	cursor: pointer;
-	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	transition: background-color var(--animation-fast) var(--ease-standard),
+		color var(--animation-fast) var(--ease-standard),
+		transform var(--animation-fast) var(--ease-standard);
 	flex-shrink: 0;
 	margin-left: 8px;
 	font-size: 11px;
@@ -13488,7 +13520,11 @@ html.navbar-absolute #leftbar_part3.sticky {
 	margin-bottom: 0;
 	padding-top: 0;
 	padding-bottom: 0;
-	transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+	transition: opacity var(--animation-fast) var(--ease-standard),
+		transform var(--animation-fast) var(--ease-standard),
+		max-height var(--animation-fast) var(--ease-standard),
+		margin var(--animation-fast) var(--ease-standard),
+		padding var(--animation-fast) var(--ease-standard);
 }
 
 .todo-item.todo-completed .todo-content {
@@ -13501,11 +13537,11 @@ html.navbar-absolute #leftbar_part3.sticky {
 	order: 1;
 	max-height: 500px;
 	overflow: hidden;
-	transition: all var(--animation-normal) var(--ease-emphasized),
-		max-height var(--animation-normal) var(--ease-emphasized),
-		margin var(--animation-normal) var(--ease-emphasized),
-		padding var(--animation-normal) var(--ease-emphasized),
-		opacity var(--animation-normal) var(--ease-emphasized);
+	transition: opacity var(--animation-fast) var(--ease-standard),
+		transform var(--animation-fast) var(--ease-standard),
+		max-height var(--animation-fast) var(--ease-standard),
+		margin var(--animation-fast) var(--ease-standard),
+		padding var(--animation-fast) var(--ease-standard);
 }
 
 .todo-item.todo-completed.collapsed {
@@ -13545,7 +13581,9 @@ html.navbar-absolute #leftbar_part3.sticky {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	transition: background-color var(--animation-fast) var(--ease-standard),
+		color var(--animation-fast) var(--ease-standard),
+		transform var(--animation-fast) var(--ease-standard);
 	flex-shrink: 0;
 	background: #f8d7da;
 	color: #dc3545;
@@ -14804,7 +14842,9 @@ article.post.card {
 
 .todo-item {
 	border-radius: var(--m3-shape-sm);
-	transition: all var(--m3-motion-duration-short) var(--m3-motion-standard);
+	transition: background-color var(--m3-motion-duration-short) var(--m3-motion-standard),
+		opacity var(--m3-motion-duration-short) var(--m3-motion-standard),
+		transform var(--m3-motion-duration-short) var(--m3-motion-standard);
 }
 
 .todo-item:hover {
@@ -16676,7 +16716,8 @@ html.darkmode.style-glass article.post.post-full.card {
 		background: var(--color-foreground);
 		color: var(--color-text-deeper);
 		outline: none;
-		transition: all var(--animation-fast);
+		transition: border-color var(--animation-fast) var(--ease-standard),
+			box-shadow var(--animation-fast) var(--ease-standard);
 	}
 
 	.mobile-todo-add-form input:focus {
@@ -16698,7 +16739,9 @@ html.darkmode.style-glass article.post.post-full.card {
 		justify-content: center;
 		flex-shrink: 0;
 		box-shadow: 0 3px 10px rgba(var(--themecolor-rgbstr), 0.3);
-		transition: all var(--animation-fast) var(--ease-spring);
+		transition: background-color var(--animation-fast) var(--ease-standard),
+			box-shadow var(--animation-fast) var(--ease-standard),
+			transform var(--animation-fast) var(--ease-spring);
 	}
 
 	.mobile-todo-add-form button:active {
@@ -16720,7 +16763,10 @@ html.darkmode.style-glass article.post.post-full.card {
 		background: var(--color-foreground);
 		border-radius: 12px;
 		margin-bottom: 6px;
-		transition: all var(--animation-fast);
+		transition: background-color var(--animation-fast) var(--ease-standard),
+			opacity var(--animation-fast) var(--ease-standard),
+			transform var(--animation-fast) var(--ease-standard);
+		will-change: transform, opacity;
 	}
 
 	.mobile-todo-content {
@@ -16742,7 +16788,9 @@ html.darkmode.style-glass article.post.post-full.card {
 		align-items: center;
 		justify-content: center;
 		margin-left: 8px;
-		transition: all var(--animation-fast) var(--ease-spring);
+		transition: background-color var(--animation-fast) var(--ease-standard),
+			color var(--animation-fast) var(--ease-standard),
+			transform var(--animation-fast) var(--ease-spring);
 	}
 
 	.mobile-todo-complete-btn {
@@ -18166,201 +18214,319 @@ html.darkmode .site-rss-btn:hover {
 
 /* ---------- Button in Post Meta ---------- */
 .post-meta-detail-immersive {
-    transition: color 0.2s ease, transform 0.2s cubic-bezier(0.2, 0, 0, 1);
-    display: inline-flex;
-    align-items: center;
-    position: relative;
-    user-select: none;
-    cursor: pointer;
-}
-.post-meta-detail-immersive:hover {
-    color: var(--themecolor) !important;
-}
-.post-meta-detail-immersive.active {
-    color: var(--themecolor) !important;
-    font-weight: 600;
-}
-.post-meta-detail-immersive i.fa {
-    transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1);
-}
-.post-meta-detail-immersive:active {
-    transform: scale(0.95);
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	position: relative;
+	user-select: none;
+	cursor: pointer;
+	outline: none;
+	transition:
+		color var(--animation-fast) var(--ease-standard),
+		opacity var(--animation-fast) var(--ease-standard),
+		transform var(--animation-fast) var(--ease-spring);
 }
 
-/* ---------- Global Element Transitions ---------- */
-/* Snappy, fast transitions: 0.35s duration, sharp material ease-in-out */
-#primary, #leftbar, #rightbar, .post-navigation, .related-posts, #comments, #post_comment, #footer, #toolbar, #banner, .page-information-card-container, #float_action_buttons {
-    transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-                transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-                max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-                margin 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-                padding 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-                max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-                width 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
+.post-meta-detail-immersive:hover {
+	color: var(--themecolor) !important;
+	opacity: 1;
+}
+
+.post-meta-detail-immersive:focus-visible {
+	color: var(--themecolor) !important;
+	box-shadow: 0 0 0 3px rgba(var(--themecolor-rgbstr), 0.16);
+	border-radius: 999px;
+}
+
+.post-meta-detail-immersive.active {
+	color: var(--themecolor) !important;
+	font-weight: 600;
+}
+
+.post-meta-detail-immersive i.fa {
+	transition: transform var(--animation-normal) var(--ease-spring);
+}
+
+.post-meta-detail-immersive.active i.fa {
+	transform: rotate(-8deg) scale(1.04);
+}
+
+.post-meta-detail-immersive:active {
+	transform: scale(0.95);
 }
 
 /* ---------- Immersive Mode Active State ---------- */
-
-/* Sidebar Disappears Swiftly */
-html.immersive-read #leftbar, html.immersive-read #rightbar {
-    opacity: 0 !important;
-    pointer-events: none !important;
-    width: 0 !important;
-    min-width: 0 !important;
-    max-width: 0 !important;
-    flex: 0 0 0% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: hidden !important;
-    transform: scale(0.96) translateX(-10px);
+html.immersive-read {
+	--immersive-max-width: min(920px, calc(100vw - 32px));
+	scroll-padding-top: 24px;
 }
 
-/* Toolbar slides up instantly */
-html.immersive-read #toolbar {
-    opacity: 0 !important;
-    pointer-events: none;
-    transform: translateY(-100%);
+html.immersive-read,
+html.immersive-read body {
+	overflow-x: hidden !important;
 }
 
-/* Banner minimizes gracefully */
-html.immersive-read #banner {
-    opacity: 0 !important;
-    max-height: 0 !important;
-    min-height: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    overflow: hidden;
-    pointer-events: none;
+html.immersive-read #content {
+	max-width: var(--immersive-max-width) !important;
+	margin-left: auto !important;
+	margin-right: auto !important;
+	margin-top: 0 !important;
 }
 
-/* Non-essential content collapses down firmly */
+html.immersive-read #primary {
+	position: relative;
+	z-index: 2;
+	width: 100% !important;
+	max-width: var(--immersive-max-width) !important;
+	margin: 0 auto !important;
+	padding: 18px 0 24px !important;
+	float: none !important;
+	transform-origin: top center;
+	animation: immersivePrimaryIn 320ms var(--ease-emphasized-decelerate) both;
+}
+
+html.immersive-read-leaving #primary {
+	animation: immersivePrimaryOut 160ms var(--ease-standard) both;
+}
+
+html.immersive-read #main {
+	padding-left: 0 !important;
+	padding-right: 0 !important;
+	overflow: visible;
+}
+
+html.immersive-read article.post.post-full.card {
+	position: relative;
+	z-index: 2;
+	width: 100% !important;
+	margin: 0 auto 24px !important;
+	padding: clamp(24px, 4vw, 48px) !important;
+	border: 1px solid rgba(var(--themecolor-rgbstr), 0.12) !important;
+	border-radius: min(var(--card-radius), 8px) !important;
+	background: var(--color-foreground) !important;
+	box-shadow: 0 18px 45px rgba(0, 0, 0, 0.08) !important;
+	backdrop-filter: none !important;
+	-webkit-backdrop-filter: none !important;
+	overflow: visible !important;
+}
+
+html.darkmode.immersive-read article.post.post-full.card {
+	border-color: rgba(255, 255, 255, 0.08) !important;
+	box-shadow: 0 18px 45px rgba(0, 0, 0, 0.28) !important;
+}
+
+html.immersive-read article.post.post-full.card .post-full-blur-overlay {
+	display: none !important;
+}
+
+html.immersive-read article.post.post-full.card > * {
+	position: relative;
+	z-index: 1;
+}
+
+html.immersive-read .post-header {
+	margin-bottom: clamp(18px, 3vw, 30px);
+}
+
+html.immersive-read .post-header.post-header-with-thumbnail {
+	margin: calc(clamp(24px, 4vw, 48px) * -1) calc(clamp(24px, 4vw, 48px) * -1) clamp(22px, 3vw, 34px);
+	border-radius: min(var(--card-radius), 8px) min(var(--card-radius), 8px) 0 0;
+}
+
+html.immersive-read .post-content {
+	font-size: 17px;
+	line-height: 1.9;
+	letter-spacing: 0;
+}
+
+html.immersive-read .post-content > :first-child {
+	margin-top: 0;
+}
+
+html.immersive-read #leftbar,
+html.immersive-read #rightbar,
+html.immersive-read #toolbar,
+html.immersive-read #banner,
+html.immersive-read #float_action_buttons,
 html.immersive-read .post-navigation,
 html.immersive-read .related-posts,
+html.immersive-read #post_actions_container,
 html.immersive-read #comments,
 html.immersive-read #post_comment,
 html.immersive-read #footer,
 html.immersive-read .page-information-card-container,
 html.immersive-read #share_container {
-    opacity: 0 !important;
-    pointer-events: none;
-    max-height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: hidden !important;
-    transform: translateY(15px);
+	display: none !important;
 }
 
-/* Drop float action buttons on the right */
-html.immersive-read #float_action_buttons {
-    opacity: 0 !important;
-    pointer-events: none;
-    transform: translateX(15px) scale(0.96);
-}
-
-/* Main Container adjusts crisply */
-html.immersive-read #primary {
-    width: 100% !important;
-    max-width: 900px !important;
-    margin: 0 auto !important;
-    float: none !important;
-    padding-top: 20px;
-}
-
-/* Clean up card boundaries */
-html.immersive-read article.post.post-full.card {
-    box-shadow: none !important;
-    border: none !important;
-    background: transparent !important;
-    backdrop-filter: none !important;
-    margin-bottom: 20px;
-}
-
-/* Font scale for sharp legibility */
-html.immersive-read .post-content {
-    font-size: 16.5px;
-    line-height: 1.85;
-    letter-spacing: 0.02em;
-}
-
-/* Lock scroll X */
-html.immersive-read body {
-    overflow-x: hidden !important;
-}
-
-/* Mask disable */
 html.immersive-read #sidebar_mask {
-    display: none !important;
+	display: none !important;
 }
 
-/* ---------- Exit Hover Button (Replacing the complex FAB) ---------- */
-/* We integrate the exit button cleanly into the floating area styling, using Argon's default button design language */
+@keyframes immersivePrimaryIn {
+	from {
+		opacity: 0;
+		transform: translate3d(0, 14px, 0) scale(0.985);
+	}
+
+	to {
+		opacity: 1;
+		transform: translate3d(0, 0, 0) scale(1);
+	}
+}
+
+@keyframes immersivePrimaryOut {
+	from {
+		opacity: 1;
+		transform: translate3d(0, 0, 0) scale(1);
+	}
+
+	to {
+		opacity: 0.92;
+		transform: translate3d(0, 6px, 0) scale(0.992);
+	}
+}
+
 .immersive-exit-btn-container {
-    position: fixed;
-    top: -50px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 99999;
-    transition: top 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
-    opacity: 0;
-    pointer-events: none;
+	position: fixed;
+	top: max(16px, env(safe-area-inset-top));
+	right: max(16px, env(safe-area-inset-right));
+	z-index: 100200;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transform: translate3d(0, -12px, 0) scale(0.98);
+	transition:
+		opacity var(--animation-normal) var(--ease-standard),
+		visibility var(--animation-normal) var(--ease-standard),
+		transform var(--animation-normal) var(--ease-emphasized-decelerate);
+}
+
+body.admin-bar .immersive-exit-btn-container {
+	top: calc(32px + max(16px, env(safe-area-inset-top)));
 }
 
 html.immersive-read .immersive-exit-btn-container.visible {
-    top: 20px;
-    opacity: 1;
-    pointer-events: auto;
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+	transform: translate3d(0, 0, 0) scale(1);
 }
 
-html.immersive-read .immersive-exit-btn-container.dimmed {
-    opacity: 0.15;
-}
-
-html.immersive-read .immersive-exit-btn-container.dimmed:hover {
-    opacity: 1;
+html.immersive-read-leaving .immersive-exit-btn-container {
+	opacity: 0;
+	pointer-events: none;
+	transform: translate3d(0, -12px, 0) scale(0.98);
 }
 
 .immersive-exit-btn-fast {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 6px 16px 6px 14px;
-    border-radius: 20px;
-    background: var(--color-foreground) !important;
-    color: var(--color-text) !important;
-    border: 1px solid var(--color-border);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    user-select: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-width: 44px;
+	min-height: 44px;
+	padding: 0 14px;
+	border: 1px solid rgba(var(--themecolor-rgbstr), 0.18);
+	border-radius: 999px;
+	background: var(--color-foreground) !important;
+	color: var(--color-text) !important;
+	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+	user-select: none;
+	transition:
+		background-color var(--animation-fast) var(--ease-standard),
+		border-color var(--animation-fast) var(--ease-standard),
+		color var(--animation-fast) var(--ease-standard),
+		box-shadow var(--animation-fast) var(--ease-standard),
+		transform var(--animation-fast) var(--ease-spring);
 }
+
 .immersive-exit-btn-fast i {
-    font-size: 12px;
-    transition: transform 0.2s ease;
+	font-size: 12px;
+	transition: transform var(--animation-fast) var(--ease-spring);
 }
 
 .immersive-exit-btn-fast:hover {
-    background: var(--color-foreground) !important;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
-    border-color: var(--themecolor);
-    color: var(--themecolor) !important;
+	border-color: var(--themecolor);
+	color: var(--themecolor) !important;
+	box-shadow: 0 12px 34px rgba(var(--themecolor-rgbstr), 0.2);
+	transform: translateY(-1px);
+}
+
+.immersive-exit-btn-fast:hover i {
+	transform: scale(1.08);
 }
 
 .immersive-exit-btn-fast:active {
-    transform: scale(0.96);
+	transform: scale(0.96);
+}
+
+.immersive-exit-btn-fast:focus-visible {
+	outline: none;
+	box-shadow:
+		0 0 0 3px rgba(var(--themecolor-rgbstr), 0.18),
+		0 12px 34px rgba(var(--themecolor-rgbstr), 0.2);
 }
 
 /* Mobile tweak */
 @media screen and (max-width: 900px) {
-    html.immersive-read #primary {
-        max-width: 100% !important;
-        padding-left: 0px;
-        padding-right: 0px;
-        padding-top: 10px;
-    }
-    html.immersive-read .post-content {
-        font-size: 16px;
-    }
+	html.immersive-read {
+		--immersive-max-width: calc(100vw - 20px);
+	}
+
+	html.immersive-read #content {
+		padding-left: 0 !important;
+		padding-right: 0 !important;
+	}
+
+	html.immersive-read #primary {
+		padding-top: 10px !important;
+		padding-bottom: 76px !important;
+	}
+
+	html.immersive-read article.post.post-full.card {
+		padding: 22px 18px !important;
+	}
+
+	html.immersive-read .post-header.post-header-with-thumbnail {
+		margin: -22px -18px 22px;
+	}
+
+	html.immersive-read .post-content {
+		font-size: 16px;
+		line-height: 1.86;
+	}
+
+	.immersive-exit-btn-container {
+		top: auto;
+		right: max(14px, env(safe-area-inset-right));
+		bottom: max(16px, env(safe-area-inset-bottom));
+		transform: translate3d(0, 14px, 0) scale(0.98);
+	}
+
+	body.admin-bar .immersive-exit-btn-container {
+		top: auto;
+	}
+
+	html.immersive-read-leaving .immersive-exit-btn-container {
+		transform: translate3d(0, 14px, 0) scale(0.98);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	html.immersive-read #primary,
+	html.immersive-read-leaving #primary {
+		animation: none !important;
+	}
+
+	.post-meta-detail-immersive,
+	.post-meta-detail-immersive i.fa,
+	.immersive-exit-btn-container,
+	.immersive-exit-btn-fast,
+	.immersive-exit-btn-fast i {
+		transition-duration: 0.01ms !important;
+	}
 }

@@ -4007,6 +4007,74 @@ $(document).on("click", "#blog_categories .tag", function () {
 	}
 
 	// 移动端折叠/展开已完成任务
+	var mobileTodoListNode = document.getElementById("mobile-todo-list");
+	var mobileTodoFrame = 0;
+	var mobileTodoState = collectMobileTodoState();
+	var mobileTodoEmptyText = (function () {
+		var empty = mobileTodoListNode ? mobileTodoListNode.querySelector(".mobile-todo-empty") : null;
+		return empty ? empty.textContent : "暂无待办事项";
+	})();
+	var scheduleMobileTodoFrame = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function (callback) {
+		return window.setTimeout(callback, 16);
+	};
+
+	function collectMobileTodoState() {
+		var state = { active: 0, completed: 0, total: 0 };
+		if (!mobileTodoListNode) return state;
+
+		var children = mobileTodoListNode.children;
+		for (var i = 0; i < children.length; i++) {
+			var child = children[i];
+			if (!child.classList || !child.classList.contains("mobile-todo-item")) continue;
+
+			state.total++;
+			if (child.classList.contains("todo-completed")) {
+				state.completed++;
+			} else {
+				state.active++;
+			}
+		}
+		return state;
+	}
+
+	function renderMobileTodoMeta() {
+		$("#mobile_todo_count").text(mobileTodoState.active);
+		$(".todo-count").text(mobileTodoState.active);
+
+		var divider = $("#mobile-todo-collapse-btn");
+		if (divider.length) {
+			divider.find(".mobile-todo-completed-count").text(mobileTodoState.completed);
+			divider.toggle(mobileTodoState.completed > 0);
+		}
+
+		if (!mobileTodoListNode) return;
+		var empty = mobileTodoListNode.querySelector(".mobile-todo-empty");
+		if (mobileTodoState.total === 0 && !empty) {
+			var emptyItem = document.createElement("li");
+			emptyItem.className = "mobile-todo-empty";
+			emptyItem.textContent = mobileTodoEmptyText;
+			mobileTodoListNode.appendChild(emptyItem);
+		} else if (mobileTodoState.total > 0 && empty) {
+			empty.remove();
+		}
+	}
+
+	updateMobileTodoCount = function (delta) {
+		if (delta) {
+			mobileTodoState.active = Math.max(0, mobileTodoState.active + (delta.active || 0));
+			mobileTodoState.completed = Math.max(0, mobileTodoState.completed + (delta.completed || 0));
+			mobileTodoState.total = Math.max(0, mobileTodoState.total + (delta.total || 0));
+		} else {
+			mobileTodoState = collectMobileTodoState();
+		}
+
+		if (mobileTodoFrame) return;
+		mobileTodoFrame = scheduleMobileTodoFrame(function () {
+			mobileTodoFrame = 0;
+			renderMobileTodoMeta();
+		});
+	};
+
 	$(document).on("click", "#mobile-todo-collapse-btn", function (e) {
 		e.stopPropagation();
 		var btn = $(this);
@@ -4065,7 +4133,7 @@ $(document).on("click", "#blog_categories .tag", function () {
 					list.prepend(newItem);
 
 					input.val("");
-					updateMobileTodoCount();
+					updateMobileTodoCount({ active: 1, total: 1 });
 
 					// 同步到桌面端
 					syncTodoToDesktop(res.data.id, content, "add");
@@ -4104,7 +4172,7 @@ $(document).on("click", "#blog_categories .tag", function () {
 					if (res.success) {
 						item.addClass("todo-completed");
 						btn.replaceWith('<button class="mobile-todo-delete-btn" title="删除"><i class="fa fa-trash"></i></button>');
-						updateMobileTodoCount();
+						updateMobileTodoCount({ active: -1, completed: 1 });
 						syncTodoToDesktop(id, "", "complete");
 					} else {
 						btn.prop("disabled", false);
@@ -4126,10 +4194,7 @@ $(document).on("click", "#blog_categories .tag", function () {
 						item.addClass("todo-completing");
 						setTimeout(function () {
 							item.remove();
-							updateMobileTodoCount();
-							if ($("#mobile-todo-list .mobile-todo-item").length === 0) {
-								$("#mobile-todo-list").html('<li class="mobile-todo-empty">暂无待办事项</li>');
-							}
+							updateMobileTodoCount({ completed: -1, total: -1 });
 						}, 350);
 						syncTodoToDesktop(id, "", "delete");
 					}
@@ -4140,7 +4205,7 @@ $(document).on("click", "#blog_categories .tag", function () {
 			if (window.mobileTodoConfig.needCaptcha) {
 				var captchaContainer = $(".mobile-todo-captcha-container");
 				if (captchaContainer.length > 0) {
-					captchaContainer.slideDown(200);
+					captchaContainer.stop(true, true).show();
 					mobilePendingUrgeBtn = btn;
 
 					if (window.mobileTodoConfig.captchaType === 'geetest') {
@@ -4160,7 +4225,7 @@ $(document).on("click", "#blog_categories .tag", function () {
 										doMobileUrgeGeetest(mobilePendingUrgeBtn, urgeId, result);
 									}
 								}).onError(function () {
-									captchaContainer.slideUp(200);
+									captchaContainer.stop(true, true).hide();
 									mobilePendingUrgeBtn = null;
 								});
 							});
@@ -4257,7 +4322,7 @@ $(document).on("click", "#blog_categories .tag", function () {
 
 		if (res.success) {
 			btn.addClass("urged").html('<i class="fa fa-check"></i>');
-			captchaContainer.slideUp(200);
+			captchaContainer.stop(true, true).hide();
 			mobilePendingUrgeBtn = null;
 
 			// 更新验证码文本
@@ -4311,12 +4376,15 @@ $(document).on("click", "#blog_categories .tag", function () {
 				'<button class="todo-complete-btn" title="完成"><i class="fa fa-check"></i></button>' +
 				'</li>');
 			desktopList.prepend(newItem);
+			if (window.argonTodoRefresh) window.argonTodoRefresh({ active: 1, total: 1 });
 		} else if (action === "complete") {
 			var item = desktopList.find('.todo-item[data-id="' + id + '"]');
 			item.addClass("todo-completed");
+			if (window.argonTodoRefresh) window.argonTodoRefresh({ active: -1, completed: 1 });
 			item.find(".todo-complete-btn").replaceWith('<button class="todo-delete-btn" title="删除"><i class="fa fa-trash"></i></button>');
 		} else if (action === "delete") {
 			desktopList.find('.todo-item[data-id="' + id + '"]').remove();
+			if (window.argonTodoRefresh) window.argonTodoRefresh({ completed: -1, total: -1 });
 		} else if (action === "urge") {
 			var urgeBtn = desktopList.find('.todo-item[data-id="' + id + '"] .todo-urge-btn');
 			urgeBtn.addClass("urged").prop("disabled", true).html('<i class="fa fa-check"></i>');

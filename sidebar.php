@@ -1005,6 +1005,15 @@ $author_desc = get_option('argon_sidebar_author_description');
 			var captchaType = '<?php echo get_option('argon_captcha_type', 'math'); ?>';
 			var pendingUrgeBtn = null;
 			var geetestCaptchaObj = null;
+			var todoList = document.getElementById('todo-list');
+			var scheduleFrame = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function(callback) {
+				return window.setTimeout(callback, 16);
+			};
+			var todoMetaFrame = 0;
+			var todoEmptyText = <?php echo wp_json_encode(__('暂无待办事项', 'argon')); ?>;
+			var firstEmpty = todoList ? todoList.querySelector('.todo-empty') : null;
+			if (firstEmpty) todoEmptyText = firstEmpty.textContent;
+			var todoState = collectTodoState();
 			
 			function updateCount() {
 				var count = document.querySelectorAll('.todo-item:not(.todo-completed)').length;
@@ -1044,8 +1053,99 @@ $author_desc = get_option('argon_sidebar_author_description');
 					emptyEl.remove();
 				}
 			}
-			
+
 			// 折叠/展开已完成任务
+			function collectTodoState() {
+				var state = { active: 0, completed: 0, total: 0 };
+				if (!todoList) return state;
+
+				for (var i = 0; i < todoList.children.length; i++) {
+					var child = todoList.children[i];
+					if (!child.classList || !child.classList.contains('todo-item')) continue;
+
+					state.total++;
+					if (child.classList.contains('todo-completed')) {
+						state.completed++;
+					} else {
+						state.active++;
+					}
+				}
+				return state;
+			}
+
+			function renderTodoMeta() {
+				if (!todoList) return;
+
+				var countEl = document.querySelector('.todo-count');
+				if (countEl) countEl.textContent = todoState.active;
+
+				var divider = document.getElementById('todo-collapse-btn');
+				if (divider) {
+					var completedCountEl = divider.querySelector('.todo-completed-count');
+					if (completedCountEl) {
+						completedCountEl.textContent = todoState.completed;
+					}
+					divider.style.display = todoState.completed > 0 ? 'flex' : 'none';
+				}
+
+				if (todoState.total > 4) {
+					todoList.classList.add('todo-list-scroll');
+				} else {
+					todoList.classList.remove('todo-list-scroll');
+				}
+
+				var emptyEl = todoList.querySelector('.todo-empty');
+				if (todoState.total === 0 && !emptyEl) {
+					var emptyItem = document.createElement('li');
+					emptyItem.className = 'todo-empty';
+					emptyItem.textContent = todoEmptyText;
+					todoList.appendChild(emptyItem);
+				} else if (todoState.total > 0 && emptyEl) {
+					emptyEl.remove();
+				}
+			}
+
+			updateCount = function(delta) {
+				if (delta) {
+					todoState.active = Math.max(0, todoState.active + (delta.active || 0));
+					todoState.completed = Math.max(0, todoState.completed + (delta.completed || 0));
+					todoState.total = Math.max(0, todoState.total + (delta.total || 0));
+				} else {
+					todoState = collectTodoState();
+				}
+
+				if (todoMetaFrame) return;
+				todoMetaFrame = scheduleFrame(function() {
+					todoMetaFrame = 0;
+					renderTodoMeta();
+				});
+			};
+
+			function createTodoButton(className, title, iconClass) {
+				var button = document.createElement('button');
+				button.className = className;
+				button.title = title;
+				var icon = document.createElement('i');
+				icon.className = iconClass;
+				button.appendChild(icon);
+				return button;
+			}
+
+			function createTodoItem(id, content) {
+				var li = document.createElement('li');
+				li.className = 'todo-item todo-new';
+				li.dataset.id = id;
+
+				var contentEl = document.createElement('span');
+				contentEl.className = 'todo-content';
+				contentEl.textContent = content;
+				li.appendChild(contentEl);
+				li.appendChild(createTodoButton('todo-complete-btn', '<?php echo esc_js(__('完成', 'argon')); ?>', 'fa fa-check'));
+				return li;
+			}
+
+			window.argonTodoRefresh = updateCount;
+
 			var collapseBtn = document.getElementById('todo-collapse-btn');
 			if (collapseBtn) {
 				collapseBtn.addEventListener('click', function(e) {
@@ -1089,19 +1189,15 @@ $author_desc = get_option('argon_sidebar_author_description');
 						.then(function(r) { return r.json(); })
 						.then(function(res) {
 							if (res.success) {
-								var list = document.getElementById('todo-list');
+								var list = todoList;
 								var emptyEl = list.querySelector('.todo-empty');
 								if (emptyEl) emptyEl.remove();
 								
-								var li = document.createElement('li');
-								li.className = 'todo-item';
-								li.dataset.id = res.data.id;
-								li.innerHTML = '<span class="todo-content">' + content + '</span>' +
-									'<button class="todo-complete-btn" title="<?php _e('完成', 'argon'); ?>"><i class="fa fa-check"></i></button>';
+								var li = createTodoItem(res.data.id, content);
 								list.insertBefore(li, list.firstChild);
 								
 								input.value = '';
-								updateCount();
+								updateCount({ active: 1, total: 1 });
 							}
 							addBtn.disabled = false;
 						});
@@ -1138,7 +1234,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 								newBtn.title = '<?php _e('删除', 'argon'); ?>';
 								newBtn.innerHTML = '<i class="fa fa-trash"></i>';
 								btn.parentNode.replaceChild(newBtn, btn);
-								updateCount();
+								updateCount({ active: -1, completed: 1 });
 							} else {
 								btn.disabled = false;
 							}
@@ -1157,7 +1253,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 								item.classList.add('todo-completing');
 								setTimeout(function() {
 									item.remove();
-									updateCount();
+									updateCount({ completed: -1, total: -1 });
 								}, 300);
 							}
 						});
