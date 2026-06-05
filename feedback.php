@@ -443,7 +443,23 @@ function argon_handle_feedback_submit($data) {
 	if ($submit_count !== false && $submit_count >= $max_submits) {
 		return ['success' => false, 'message' => __('提交过于频繁，请稍后再试', 'argon')];
 	}
-	
+
+	if (empty($data['feedback_submit_nonce']) || !wp_verify_nonce($data['feedback_submit_nonce'], 'argon_feedback_submit')) {
+		return ['success' => false, 'message' => __('安全验证失败，请刷新页面后重试', 'argon')];
+	}
+	if (!empty($data['feedback_homepage'])) {
+		return ['success' => false, 'message' => __('提交失败，请稍后重试', 'argon')];
+	}
+
+	$data['feedback_name'] = trim((string)($data['feedback_name'] ?? ''));
+	$data['feedback_email'] = trim((string)($data['feedback_email'] ?? ''));
+	$data['feedback_title'] = trim((string)($data['feedback_title'] ?? ''));
+	$data['feedback_content'] = trim((string)($data['feedback_content'] ?? ''));
+	$valid_types = ['bug', 'suggestion', 'question', 'other'];
+	if (!in_array(($data['feedback_type'] ?? 'suggestion'), $valid_types, true)) {
+		$data['feedback_type'] = 'other';
+	}
+
 	if (empty($data['feedback_email'])) return ['success' => false, 'message' => __('请填写邮箱', 'argon')];
 	if (empty($data['feedback_name'])) return ['success' => false, 'message' => __('请填写昵称', 'argon')];
 	if (empty($data['feedback_content'])) return ['success' => false, 'message' => __('请填写反馈内容', 'argon')];
@@ -498,7 +514,13 @@ function argon_handle_feedback_submit($data) {
 		} else {
 			set_transient($submit_limit_key, $submit_count + 1, $limit_period);
 		}
-		return ['success' => true, 'message' => __('反馈提交成功，感谢您的建议！', 'argon')];
+		return [
+			'success' => true,
+			'message' => __('反馈提交成功，感谢您的建议！', 'argon'),
+			'id' => $id,
+			'view_url' => function_exists('argon_get_feedback_auth_url') ? argon_get_feedback_auth_url($id) : '',
+			'is_public' => !empty($data['feedback_public']),
+		];
 	}
 	return ['success' => false, 'message' => __('提交失败，请稍后重试', 'argon')];
 }
@@ -563,10 +585,10 @@ if ($feedback_card_opacity == '') {
 	}
 	html.leftbar-opened body.feedback-page #leftbar { left: 0px; }
 }
-body.feedback-page #primary { width: 100% !important; max-width: 900px !important; margin: 0 auto !important; float: none !important; }
+body.feedback-page #primary { width: 100% !important; max-width: 1040px !important; margin: 0 auto !important; float: none !important; }
 body.feedback-page #content { margin-top: -50vh !important; }
-body.feedback-page #main { max-width: 900px !important; margin: 0 auto !important; }
-body.feedback-page .site-footer { max-width: 900px !important; margin: 0 auto !important; box-sizing: border-box !important; }
+body.feedback-page #main { max-width: 1040px !important; margin: 0 auto !important; }
+body.feedback-page .site-footer { max-width: 1040px !important; margin: 0 auto !important; box-sizing: border-box !important; }
 
 /* 头部卡片 */
 .feedback-header-card { text-align: center; padding: 40px 24px 32px; background: transparent !important; box-shadow: none !important; border: none !important; }
@@ -595,6 +617,13 @@ html.darkmode .feedback-admin-stat .stat-label { color: #aaa; }
 
 /* 表单样式 */
 .feedback-form-card { padding: 24px 28px; }
+.feedback-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.feedback-card-heading .feedback-form-title,
+.feedback-card-heading .feedback-list-title { margin-bottom: 0; }
+.feedback-kicker { margin: 0 0 4px; font-size: 12px; font-weight: 700; color: var(--themecolor); text-transform: uppercase; }
+.feedback-draft-state { display: none; align-items: center; gap: 6px; color: #059669; background: #d1fae5; border: 1px solid rgba(5, 150, 105, 0.16); border-radius: var(--card-radius-sm); padding: 6px 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.feedback-draft-state.show { display: inline-flex; }
+.feedback-form-intro { margin: -6px 0 20px; padding: 12px 14px; border-radius: var(--card-radius-sm); background: rgba(var(--themecolor-rgbstr), 0.06); color: #555; font-size: 13px; line-height: 1.65; }
 .feedback-form-title { font-size: 17px; font-weight: 600; margin: 0 0 20px; color: var(--color-text-deeper); display: flex; align-items: center; gap: 10px; }
 .feedback-form-title i { color: var(--themecolor); font-size: 18px; }
 .feedback-form .form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px; }
@@ -602,6 +631,7 @@ html.darkmode .feedback-admin-stat .stat-label { color: #aaa; }
 .feedback-form .form-group { margin-bottom: 0; }
 .feedback-form label { font-size: 14px; font-weight: 600; color: var(--color-text-deeper); margin-bottom: 6px; display: block; }
 .feedback-form label .required { color: #f5365c; margin-left: 2px; }
+.feedback-field-hint { color: #666; font-size: 12px; font-weight: 400; }
 .feedback-form input, .feedback-form textarea, .feedback-form select {
 	width: 100%; padding: 12px 14px; font-size: 14px;
 	border: 1.5px solid var(--color-border); border-radius: var(--card-radius-sm);
@@ -617,12 +647,26 @@ html.darkmode .feedback-admin-stat .stat-label { color: #aaa; }
 }
 .feedback-form textarea { resize: vertical; min-height: 140px; line-height: 1.6; }
 .feedback-form .char-count { font-size: 12px; color: #666; float: right; margin-top: 4px; }
+.feedback-form .char-count.warning { color: #d97706; }
+.feedback-form .char-count.danger { color: #dc2626; }
+.feedback-honeypot { position: absolute; left: -9999px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+.feedback-type-selector { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.feedback-type-option { position: relative; margin: 0; display: flex !important; align-items: center; gap: 8px; padding: 11px 12px; border: 1.5px solid var(--color-border); border-radius: var(--card-radius-sm); background: var(--color-widgets); cursor: pointer; transition: all var(--animation-fast) var(--ease-standard); min-height: 46px; }
+.feedback-type-option input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
+.feedback-type-option i { color: #777; width: 18px; text-align: center; transition: color var(--animation-fast) var(--ease-standard); }
+.feedback-type-option span { font-size: 13px; font-weight: 700; color: var(--color-text-deeper); }
+.feedback-type-option:hover { border-color: rgba(var(--themecolor-rgbstr), 0.42); background: rgba(var(--themecolor-rgbstr), 0.04); }
+.feedback-type-option:has(input:checked) { border-color: var(--themecolor); background: rgba(var(--themecolor-rgbstr), 0.1); box-shadow: 0 0 0 3px rgba(var(--themecolor-rgbstr), 0.08); }
+.feedback-type-option:has(input:checked) i { color: var(--themecolor); }
+.feedback-type-option.is-active { border-color: var(--themecolor); background: rgba(var(--themecolor-rgbstr), 0.1); box-shadow: 0 0 0 3px rgba(var(--themecolor-rgbstr), 0.08); }
+.feedback-type-option.is-active i { color: var(--themecolor); }
 .feedback-public-option { display: flex; align-items: center; gap: 10px; margin: 20px 0; padding: 14px 18px; background: rgba(var(--themecolor-rgbstr), 0.06); border-radius: var(--card-radius-sm); border: 1.5px solid rgba(var(--themecolor-rgbstr), 0.12); transition: all var(--animation-fast) var(--ease-standard); }
 .feedback-public-option:hover { background: rgba(var(--themecolor-rgbstr), 0.08); border-color: rgba(var(--themecolor-rgbstr), 0.18); }
 .feedback-public-option input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--themecolor); cursor: pointer; }
 .feedback-public-option label { font-size: 14px; color: var(--color-text-deeper); cursor: pointer; margin: 0; font-weight: 500; }
 .feedback-public-option .hint { font-size: 12px; color: #666; margin-left: auto; }
-.feedback-image-upload { display: flex; flex-wrap: wrap; gap: 12px; }
+.feedback-image-upload { display: flex; flex-wrap: wrap; gap: 12px; padding: 12px; border: 1.5px dashed var(--color-border); border-radius: var(--card-radius-sm); background: rgba(var(--themecolor-rgbstr), 0.025); transition: all var(--animation-fast) var(--ease-standard); }
+.feedback-image-upload.dragover { border-color: var(--themecolor); background: rgba(var(--themecolor-rgbstr), 0.08); }
 .feedback-image-preview { display: contents; }
 .feedback-image-item { position: relative; width: 100px; height: 100px; border-radius: var(--card-radius-sm); overflow: hidden; border: 2px solid var(--color-border); transition: all var(--animation-fast) var(--ease-standard); }
 .feedback-image-item:hover { border-color: var(--themecolor); transform: scale(1.05); }
@@ -644,12 +688,31 @@ html.darkmode .feedback-admin-stat .stat-label { color: #aaa; }
 .feedback-captcha-text:hover { background: var(--color-border-on-foreground); }
 .feedback-submit { margin-top: 20px; text-align: center; }
 .feedback-submit .btn { padding: 12px 40px; font-size: 15px; font-weight: 600; border-radius: var(--card-radius-sm); }
+.feedback-submit-actions { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.feedback-submit .btn:disabled { cursor: not-allowed; opacity: 0.72; }
+.feedback-submit-result { margin-top: 18px; padding: 14px 16px; border: 1.5px solid rgba(5, 150, 105, 0.24); background: #d1fae5; color: #065f46; border-radius: var(--card-radius-sm); text-align: left; }
+.feedback-submit-result[hidden] { display: none !important; }
+.feedback-submit-result-title { display: flex; align-items: center; gap: 8px; font-weight: 700; margin-bottom: 6px; }
+.feedback-submit-result p { margin: 0 0 10px; font-size: 13px; line-height: 1.6; }
+.feedback-submit-result-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.feedback-submit-result-actions .btn { padding: 8px 12px; font-size: 12px; }
 .feedback-divider { height: 1px; background: linear-gradient(to right, transparent, var(--color-border), transparent); margin: 32px 0; }
 
 /* 反馈列表 */
 .feedback-list-title { font-size: 17px; font-weight: 600; margin: 0 0 20px; color: var(--color-text-deeper); display: flex; align-items: center; gap: 10px; }
 .feedback-list-title i { color: var(--themecolor); font-size: 18px; }
 .feedback-list-title .count { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--themecolor); background: rgba(var(--themecolor-rgbstr), 0.1); padding: 4px 14px; border-radius: 14px; border: 1px solid rgba(var(--themecolor-rgbstr), 0.2); }
+.feedback-list-tools { display: grid; grid-template-columns: minmax(220px, 1fr) 150px 150px auto; gap: 10px; margin-bottom: 10px; align-items: center; }
+.feedback-search-box { position: relative; }
+.feedback-search-box i { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #888; font-size: 13px; pointer-events: none; }
+.feedback-search-box input,
+.feedback-list-tools select { width: 100%; height: 42px; border: 1.5px solid var(--color-border); border-radius: var(--card-radius-sm); background: var(--color-widgets); color: var(--color-text-deeper); font-size: 13px; box-sizing: border-box; transition: all var(--animation-fast) var(--ease-standard); }
+.feedback-search-box input { padding: 0 12px 0 36px; }
+.feedback-list-tools select { padding: 0 10px; }
+.feedback-search-box input:focus,
+.feedback-list-tools select:focus { border-color: var(--themecolor); outline: none; box-shadow: 0 0 0 3px rgba(var(--themecolor-rgbstr), 0.09); }
+.feedback-list-clear { height: 42px; min-width: 42px; padding: 0 12px !important; border-radius: var(--card-radius-sm) !important; }
+.feedback-list-summary { min-height: 20px; margin: 0 0 8px; color: #666; font-size: 12px; }
 .feedback-item { padding: 20px 0; background: transparent; border-radius: 0; margin-bottom: 0; position: relative; cursor: default; transition: all var(--animation-fast) var(--ease-standard); border: none; border-bottom: 1px solid var(--color-border-on-foreground); }
 .feedback-item:last-child { margin-bottom: 0; border-bottom: none; }
 .feedback-item.clickable { cursor: pointer; }
@@ -682,6 +745,8 @@ html.darkmode .feedback-admin-stat .stat-label { color: #aaa; }
 .feedback-badge.status-closed { background: #e5e7eb; color: #6b7280; }
 .feedback-item-title { font-size: 16px; font-weight: 600; color: var(--color-text-deeper); margin-bottom: 10px; line-height: 1.5; }
 .feedback-item-content { font-size: 14px; color: #555; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+.feedback-item-footer { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; color: #777; font-size: 12px; }
+.feedback-item-footer span { display: inline-flex; align-items: center; gap: 5px; }
 .feedback-item-reply { margin-top: 16px; padding: 14px 16px; background: rgba(var(--themecolor-rgbstr), 0.06); border-radius: var(--card-radius-sm); border-left: 3px solid var(--themecolor); transition: all var(--animation-fast) var(--ease-standard); }
 .feedback-item-reply:hover { background: rgba(var(--themecolor-rgbstr), 0.08); }
 .feedback-item-reply-header { font-size: 13px; font-weight: 600; color: var(--themecolor); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
@@ -689,6 +754,9 @@ html.darkmode .feedback-admin-stat .stat-label { color: #aaa; }
 .feedback-empty { padding: 60px 24px; text-align: center; }
 .feedback-empty i { font-size: 56px; color: var(--color-border); margin-bottom: 20px; display: block; opacity: 0.5; }
 .feedback-empty p { font-size: 15px; color: #666; margin: 0; line-height: 1.6; }
+.feedback-empty-filter { display: none; padding: 36px 16px; text-align: center; color: #666; border: 1px dashed var(--color-border); border-radius: var(--card-radius-sm); margin-top: 12px; }
+.feedback-empty-filter.show { display: block; }
+.feedback-empty-filter i { display: block; margin-bottom: 10px; font-size: 28px; color: var(--themecolor); opacity: 0.72; }
 .feedback-admin-card { padding: 20px 24px; }
 .feedback-admin-title { font-size: 16px; font-weight: 600; color: var(--themecolor); margin: 0 0 16px; display: flex; align-items: center; gap: 10px; }
 
@@ -727,6 +795,11 @@ html.darkmode .feedback-admin-stat .stat-label { color: #aaa; }
 /* 响应式 */
 @media (max-width: 768px) {
 	.feedback-form .form-row { grid-template-columns: 1fr; }
+	.feedback-card-heading { flex-direction: column; align-items: stretch; }
+	.feedback-draft-state { align-self: flex-start; }
+	.feedback-type-selector { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.feedback-list-tools { grid-template-columns: 1fr; }
+	.feedback-list-clear { width: 100%; }
 	.feedback-public-option { flex-wrap: wrap; }
 	.feedback-public-option .hint { width: 100%; margin-left: 26px; margin-top: 4px; }
 	.feedback-admin-stats { gap: 8px; }
@@ -738,10 +811,28 @@ html.darkmode .feedback-admin-stat .stat-label { color: #aaa; }
 	.feedback-image-item, .feedback-image-add-btn { width: 80px; height: 80px; }
 	.feedback-images-display img { max-width: 100px; max-height: 100px; }
 }
+@media (max-width: 420px) {
+	.feedback-form-card { padding: 20px 18px; }
+	.feedback-type-selector { grid-template-columns: 1fr; }
+	.feedback-header-card { padding-left: 12px; padding-right: 12px; }
+}
 
 /* 夜间模式 */
 html.darkmode .feedback-item { background: rgba(255, 255, 255, 0.03); }
 html.darkmode .feedback-modal { background: var(--color-background); }
+html.darkmode .feedback-form-intro,
+html.darkmode .feedback-list-summary,
+html.darkmode .feedback-field-hint,
+html.darkmode .feedback-item-footer,
+html.darkmode .feedback-empty-filter { color: #aaa; }
+html.darkmode .feedback-type-option,
+html.darkmode .feedback-search-box input,
+html.darkmode .feedback-list-tools select { background: var(--color-widgets); }
+html.darkmode .feedback-type-option:hover,
+html.darkmode .feedback-type-option:has(input:checked),
+html.darkmode .feedback-type-option.is-active { background: rgba(var(--themecolor-rgbstr), 0.16); }
+html.darkmode .feedback-submit-result { background: rgba(5, 150, 105, 0.18); color: #a7f3d0; border-color: rgba(5, 150, 105, 0.32); }
+html.darkmode .feedback-draft-state { background: rgba(5, 150, 105, 0.18); color: #a7f3d0; border-color: rgba(5, 150, 105, 0.32); }
 html.darkmode .feedback-badge.type-bug { background: rgba(220, 38, 38, 0.2); }
 html.darkmode .feedback-badge.type-suggestion { background: rgba(37, 99, 235, 0.2); }
 html.darkmode .feedback-badge.type-question { background: rgba(217, 119, 6, 0.2); }
@@ -907,8 +998,19 @@ html.darkmode .feedback-images-display img { border-color: #555; }
 <?php if (!$is_admin) : ?>
 <!-- 访客提交反馈表单 -->
 <article class="post card shadow-sm bg-white border-0 feedback-form-card" style="margin-bottom: 0;">
-	<h2 class="feedback-form-title"><i class="fa fa-pencil-square-o"></i><?php _e('提交反馈', 'argon'); ?></h2>
+	<div class="feedback-card-heading">
+		<div>
+			<p class="feedback-kicker"><?php _e('Feedback', 'argon'); ?></p>
+			<h2 class="feedback-form-title"><i class="fa fa-pencil-square-o"></i><?php _e('提交反馈', 'argon'); ?></h2>
+		</div>
+		<span class="feedback-draft-state" id="feedback-draft-state"><i class="fa fa-check-circle"></i><?php _e('草稿已保存', 'argon'); ?></span>
+	</div>
+	<p class="feedback-form-intro"><?php _e('描述越具体，越容易定位问题；截图会被压缩后上传，仅反馈管理员可查看私密内容。', 'argon'); ?></p>
 	<form class="feedback-form" id="feedback-form">
+		<input type="hidden" name="feedback_submit_nonce" value="<?php echo esc_attr(wp_create_nonce('argon_feedback_submit')); ?>">
+		<div class="feedback-honeypot" aria-hidden="true">
+			<label>Homepage <input type="text" name="feedback_homepage" tabindex="-1" autocomplete="off"></label>
+		</div>
 		<div class="form-row">
 			<div class="form-group">
 				<label><?php _e('昵称', 'argon'); ?> <span class="required">*</span></label>
@@ -921,23 +1023,35 @@ html.darkmode .feedback-images-display img { border-color: #555; }
 		</div>
 		<div class="form-row">
 			<div class="form-group">
-				<label><?php _e('网站', 'argon'); ?></label>
-				<input type="url" name="feedback_url" id="feedback-url" placeholder="<?php _e('选填', 'argon'); ?>" value="<?php echo esc_attr($saved_url); ?>">
+				<label><?php _e('标题', 'argon'); ?></label>
+				<input type="text" name="feedback_title" id="feedback-title" placeholder="<?php _e('简要描述您的反馈（选填）', 'argon'); ?>" maxlength="100">
 			</div>
 			<div class="form-group">
-				<label><?php _e('反馈类型', 'argon'); ?></label>
-				<select name="feedback_type" id="feedback-type">
-					<option value="suggestion"><?php _e('建议', 'argon'); ?></option>
-					<option value="bug"><?php _e('Bug 报告', 'argon'); ?></option>
-					<option value="question"><?php _e('问题咨询', 'argon'); ?></option>
-					<option value="other"><?php _e('其他', 'argon'); ?></option>
-				</select>
+				<label><?php _e('网站', 'argon'); ?></label>
+				<input type="url" name="feedback_url" id="feedback-url" placeholder="<?php _e('选填', 'argon'); ?>" value="<?php echo esc_attr($saved_url); ?>">
 			</div>
 		</div>
 		<div class="form-row full">
 			<div class="form-group">
-				<label><?php _e('标题', 'argon'); ?></label>
-				<input type="text" name="feedback_title" id="feedback-title" placeholder="<?php _e('简要描述您的反馈（选填）', 'argon'); ?>" maxlength="100">
+				<label><?php _e('反馈类型', 'argon'); ?></label>
+				<div class="feedback-type-selector" role="radiogroup" aria-label="<?php esc_attr_e('反馈类型', 'argon'); ?>">
+					<label class="feedback-type-option">
+						<input type="radio" name="feedback_type" value="suggestion" checked>
+						<i class="fa fa-lightbulb-o"></i><span><?php _e('建议', 'argon'); ?></span>
+					</label>
+					<label class="feedback-type-option">
+						<input type="radio" name="feedback_type" value="bug">
+						<i class="fa fa-bug"></i><span><?php _e('Bug', 'argon'); ?></span>
+					</label>
+					<label class="feedback-type-option">
+						<input type="radio" name="feedback_type" value="question">
+						<i class="fa fa-question-circle"></i><span><?php _e('问题', 'argon'); ?></span>
+					</label>
+					<label class="feedback-type-option">
+						<input type="radio" name="feedback_type" value="other">
+						<i class="fa fa-ellipsis-h"></i><span><?php _e('其他', 'argon'); ?></span>
+					</label>
+				</div>
 			</div>
 		</div>
 		<div class="form-row full">
@@ -948,7 +1062,7 @@ html.darkmode .feedback-images-display img { border-color: #555; }
 		</div>
 		<div class="form-row full">
 			<div class="form-group">
-				<label><?php _e('上传图片', 'argon'); ?> <span style="font-size:12px;color:#666;font-weight:400;"><?php _e('（选填，最多10张，单张最大250KB）', 'argon'); ?></span></label>
+				<label><?php _e('上传图片', 'argon'); ?> <span class="feedback-field-hint"><?php _e('（选填，最多10张，单张最大250KB）', 'argon'); ?></span></label>
 				<div class="feedback-image-upload">
 					<div class="feedback-image-preview" id="feedback-image-preview"></div>
 					<label class="feedback-image-add-btn" id="feedback-image-add-btn" for="feedback-image-input">
@@ -986,7 +1100,18 @@ html.darkmode .feedback-images-display img { border-color: #555; }
 		<?php endif; ?>
 		
 		<div class="feedback-submit">
-			<button type="submit" class="btn btn-primary" id="feedback-submit-btn"><i class="fa fa-paper-plane"></i> <?php _e('提交反馈', 'argon'); ?></button>
+			<div class="feedback-submit-actions">
+				<button type="submit" class="btn btn-primary" id="feedback-submit-btn"><i class="fa fa-paper-plane"></i> <?php _e('提交反馈', 'argon'); ?></button>
+				<button type="button" class="btn btn-secondary" id="feedback-clear-draft-btn"><i class="fa fa-trash-o"></i> <?php _e('清空', 'argon'); ?></button>
+			</div>
+			<div class="feedback-submit-result" id="feedback-submit-result" hidden>
+				<div class="feedback-submit-result-title"><i class="fa fa-check-circle"></i><span><?php _e('提交成功', 'argon'); ?></span></div>
+				<p id="feedback-submit-result-message"></p>
+				<div class="feedback-submit-result-actions">
+					<a class="btn btn-sm btn-primary" id="feedback-view-link" href="#" target="_blank" rel="noopener"><i class="fa fa-external-link"></i> <?php _e('查看详情', 'argon'); ?></a>
+					<button type="button" class="btn btn-sm btn-secondary" id="feedback-copy-link"><i class="fa fa-link"></i> <?php _e('复制链接', 'argon'); ?></button>
+				</div>
+			</div>
 		</div>
 	</form>
 </article>
@@ -997,14 +1122,57 @@ html.darkmode .feedback-images-display img { border-color: #555; }
 
 <!-- 公开反馈列表 -->
 <article class="post card shadow-sm bg-white border-0 feedback-form-card" style="margin-bottom: 16px;">
-	<h2 class="feedback-list-title"><i class="fa fa-comments-o"></i><?php _e('公开反馈', 'argon'); ?><span class="count"><?php echo count($public_feedbacks); ?></span></h2>
+	<div class="feedback-card-heading">
+		<h2 class="feedback-list-title"><i class="fa fa-comments-o"></i><?php _e('公开反馈', 'argon'); ?><span class="count" id="feedback-visible-count"><?php echo count($public_feedbacks); ?></span></h2>
+	</div>
 	<?php if (!empty($public_feedbacks)) : ?>
+		<div class="feedback-list-tools" id="feedback-list-tools">
+			<div class="feedback-search-box">
+				<i class="fa fa-search"></i>
+				<input type="search" id="feedback-search" placeholder="<?php esc_attr_e('搜索标题、内容或昵称', 'argon'); ?>" aria-label="<?php esc_attr_e('搜索公开反馈', 'argon'); ?>">
+			</div>
+			<select id="feedback-type-filter" aria-label="<?php esc_attr_e('筛选反馈类型', 'argon'); ?>">
+				<option value="all"><?php _e('全部类型', 'argon'); ?></option>
+				<option value="suggestion"><?php _e('建议', 'argon'); ?></option>
+				<option value="bug"><?php _e('Bug', 'argon'); ?></option>
+				<option value="question"><?php _e('问题', 'argon'); ?></option>
+				<option value="other"><?php _e('其他', 'argon'); ?></option>
+			</select>
+			<select id="feedback-status-filter" aria-label="<?php esc_attr_e('筛选反馈状态', 'argon'); ?>">
+				<option value="all"><?php _e('全部状态', 'argon'); ?></option>
+				<option value="pending"><?php _e('未查看', 'argon'); ?></option>
+				<option value="viewed"><?php _e('已查看', 'argon'); ?></option>
+				<option value="processing"><?php _e('进行中', 'argon'); ?></option>
+				<option value="resolved"><?php _e('已完成', 'argon'); ?></option>
+				<option value="closed"><?php _e('已关闭', 'argon'); ?></option>
+			</select>
+			<button type="button" class="btn btn-secondary feedback-list-clear" id="feedback-filter-reset" aria-label="<?php esc_attr_e('重置筛选', 'argon'); ?>"><i class="fa fa-undo"></i></button>
+		</div>
+		<div class="feedback-list-summary" id="feedback-list-summary"><?php printf(__('显示全部 %d 条公开反馈', 'argon'), count($public_feedbacks)); ?></div>
 		<?php foreach ($public_feedbacks as $fb) : 
 			$type = $fb['type'] ?? 'other';
 			$status = $fb['status'] ?? 'pending';
 			$avatar_url = get_avatar_url($fb['email'], ['size' => 80]);
+			$reply_count = 0;
+			$public_reply_count = 0;
+			$feedback_replies = $fb['replies'] ?? [];
+			if (empty($feedback_replies) && !empty($fb['reply'])) {
+				$feedback_replies = [[
+					'content' => $fb['reply'],
+					'time' => $fb['reply_at'] ?? time(),
+					'is_private' => false,
+				]];
+			}
+			if (!empty($feedback_replies)) {
+				foreach ($feedback_replies as $reply_item_for_count) {
+					$reply_count++;
+					if (empty($reply_item_for_count['is_private']) || $can_view_private) {
+						$public_reply_count++;
+					}
+				}
+			}
 		?>
-		<div class="feedback-item <?php echo $is_admin ? 'clickable' : ''; ?>" data-id="<?php echo esc_attr($fb['id']); ?>" <?php if ($is_admin) : ?>onclick="openFeedbackDetail('<?php echo esc_attr($fb['id']); ?>')"<?php endif; ?>>
+		<div class="feedback-item <?php echo $is_admin ? 'clickable' : ''; ?>" data-id="<?php echo esc_attr($fb['id']); ?>" data-type="<?php echo esc_attr($type); ?>" data-status="<?php echo esc_attr($status); ?>" data-search="<?php echo esc_attr(strtolower(wp_strip_all_tags(($fb['name'] ?? '') . ' ' . ($fb['title'] ?? '') . ' ' . ($fb['content'] ?? '')))); ?>" <?php if ($is_admin) : ?>onclick="openFeedbackDetail('<?php echo esc_attr($fb['id']); ?>')"<?php endif; ?>>
 			<div class="feedback-item-header">
 				<div class="feedback-item-avatar">
 					<?php if ($avatar_url) : ?><img src="<?php echo esc_url($avatar_url); ?>" alt=""><?php else : echo mb_substr($fb['name'], 0, 1); endif; ?>
@@ -1027,20 +1195,20 @@ html.darkmode .feedback-images-display img { border-color: #555; }
 			<?php if (!empty($fb['images'])) : ?>
 			<div class="feedback-images-display">
 				<?php foreach ($fb['images'] as $img_url) : ?>
-				<img src="<?php echo esc_url($img_url); ?>" alt="" onclick="window.open(this.src)">
+				<img src="<?php echo esc_url($img_url); ?>" alt="" onclick="event.stopPropagation(); window.open(this.src)">
 				<?php endforeach; ?>
 			</div>
 			<?php endif; ?>
+			<div class="feedback-item-footer">
+				<span><i class="fa fa-picture-o"></i><?php echo !empty($fb['images']) ? count($fb['images']) : 0; ?></span>
+				<span><i class="fa fa-reply"></i><?php echo $public_reply_count; ?></span>
+				<?php if ($is_admin && $reply_count !== $public_reply_count) : ?>
+				<span><i class="fa fa-lock"></i><?php echo $reply_count - $public_reply_count; ?></span>
+				<?php endif; ?>
+			</div>
 			<?php 
 			// 兼容旧数据格式
-			$replies = $fb['replies'] ?? [];
-			if (empty($replies) && !empty($fb['reply'])) {
-				$replies = [[
-					'content' => $fb['reply'],
-					'time' => $fb['reply_at'] ?? time(),
-					'is_private' => false,
-				]];
-			}
+			$replies = $feedback_replies;
 			if (!empty($replies)) :
 				foreach ($replies as $reply_item) :
 					if (!empty($reply_item['is_private']) && !$can_view_private) : ?>
@@ -1063,6 +1231,10 @@ html.darkmode .feedback-images-display img { border-color: #555; }
 			endif; ?>
 		</div>
 		<?php endforeach; ?>
+		<div class="feedback-empty-filter" id="feedback-empty-filter">
+			<i class="fa fa-filter"></i>
+			<?php _e('没有符合筛选条件的公开反馈', 'argon'); ?>
+		</div>
 	<?php else : ?>
 		<div class="feedback-empty">
 			<i class="fa fa-inbox"></i>
@@ -1119,8 +1291,8 @@ html.darkmode .feedback-images-display img { border-color: #555; }
 			<!-- 动态填充 -->
 		</div>
 		<div class="feedback-modal-footer">
-			<button type="button" class="btn btn-secondary btn-sm" onclick="setProcessing()"><?php _e('计划进行', 'argon'); ?></button>
-			<button type="button" class="btn btn-secondary btn-sm" onclick="submitReplyAndResolve()"><?php _e('确定', 'argon'); ?></button>
+			<button type="button" class="btn btn-secondary btn-sm" onclick="setProcessing(this)"><i class="fa fa-tasks"></i> <?php _e('标记进行中', 'argon'); ?></button>
+			<button type="button" class="btn btn-primary btn-sm" onclick="submitReplyAndResolve(this)"><i class="fa fa-check"></i> <?php _e('回复并完成', 'argon'); ?></button>
 			<button type="button" class="btn btn-secondary btn-sm" onclick="closeFeedbackDetail()"><?php _e('取消', 'argon'); ?></button>
 		</div>
 	</div>
@@ -1132,7 +1304,7 @@ html.darkmode .feedback-images-display img { border-color: #555; }
 <script data-pjax>
 var feedbackNonce = '<?php echo wp_create_nonce('argon_feedback_manage'); ?>';
 var feedbackUploadNonce = '<?php echo wp_create_nonce('argon_feedback_upload'); ?>';
-var feedbackAjaxUrl = '<?php echo esc_url($_SERVER['REQUEST_URI']); ?>';
+var feedbackAjaxUrl = <?php echo wp_json_encode(esc_url_raw($_SERVER['REQUEST_URI'])); ?>;
 var feedbackCaptchaType = '<?php echo esc_js($captcha_type); ?>';
 var feedbackCaptchaEnabled = <?php echo $captcha_enabled ? 'true' : 'false'; ?>;
 var currentFeedbackId = null;
@@ -1141,16 +1313,82 @@ var maxFeedbackImages = 10;
 var maxImageSize = 250 * 1024; // 250KB
 var maxImageDimension = 4096; // 最大分辨率
 var uploadingCount = 0; // 正在上传的图片数量
+var feedbackDraftKey = 'argon_feedback_form_draft';
+
+function getFeedbackActionUrl(action) {
+	let url = new URL(feedbackAjaxUrl, window.location.origin);
+	url.searchParams.set('action', action);
+	return url.toString();
+}
+
+function showFeedbackNotice(type, title, message) {
+	if (typeof iziToast !== 'undefined' && iziToast[type]) {
+		iziToast[type]({
+			title: title,
+			message: message || '',
+			position: 'topRight',
+			timeout: 3500
+		});
+		return;
+	}
+	alert(message ? title + '\n' + message : title);
+}
 
 function refreshFeedbackCaptcha() {
-	let currentUrl = window.location.pathname;
-	fetch(currentUrl + '?action=refresh_captcha')
+	fetch(getFeedbackActionUrl('refresh_captcha'))
 		.then(function(r) { return r.json(); })
 		.then(function(res) {
 			if (res.captcha) {
 				document.getElementById('feedback-captcha-text').textContent = res.captcha;
 			}
 		});
+}
+
+function initFeedbackListFilters() {
+	let search = document.getElementById('feedback-search');
+	let typeFilter = document.getElementById('feedback-type-filter');
+	let statusFilter = document.getElementById('feedback-status-filter');
+	let reset = document.getElementById('feedback-filter-reset');
+	let count = document.getElementById('feedback-visible-count');
+	let summary = document.getElementById('feedback-list-summary');
+	let empty = document.getElementById('feedback-empty-filter');
+	let items = Array.from(document.querySelectorAll('.feedback-item[data-search]'));
+	if (!items.length || !search || !typeFilter || !statusFilter) return;
+
+	function applyFilters() {
+		let keyword = search.value.trim().toLowerCase();
+		let selectedType = typeFilter.value;
+		let selectedStatus = statusFilter.value;
+		let visible = 0;
+		items.forEach(function(item) {
+			let matched = true;
+			if (keyword && (item.getAttribute('data-search') || '').indexOf(keyword) === -1) matched = false;
+			if (selectedType !== 'all' && item.getAttribute('data-type') !== selectedType) matched = false;
+			if (selectedStatus !== 'all' && item.getAttribute('data-status') !== selectedStatus) matched = false;
+			item.style.display = matched ? '' : 'none';
+			if (matched) visible++;
+		});
+		if (count) count.textContent = visible;
+		if (summary) {
+			summary.textContent = keyword || selectedType !== 'all' || selectedStatus !== 'all'
+				? '<?php _e('当前显示', 'argon'); ?> ' + visible + ' / ' + items.length + ' <?php _e('条公开反馈', 'argon'); ?>'
+				: '<?php printf(__('显示全部 %d 条公开反馈', 'argon'), count($public_feedbacks)); ?>';
+		}
+		if (empty) empty.classList.toggle('show', visible === 0);
+	}
+
+	search.addEventListener('input', applyFilters);
+	typeFilter.addEventListener('change', applyFilters);
+	statusFilter.addEventListener('change', applyFilters);
+	if (reset) {
+		reset.addEventListener('click', function() {
+			search.value = '';
+			typeFilter.value = 'all';
+			statusFilter.value = 'all';
+			applyFilters();
+		});
+	}
+	applyFilters();
 }
 
 <?php if ($captcha_enabled && $captcha_type === 'geetest' && !$is_admin) : ?>
@@ -1403,23 +1641,22 @@ function removeFeedbackImage(index) {
 	updateImagePreview();
 }
 
-document.getElementById('feedback-image-input')?.addEventListener('change', function(e) {
-	let files = Array.from(e.target.files);
+function handleFeedbackImageFiles(fileList) {
+	let files = Array.from(fileList || []);
 	let remaining = maxFeedbackImages - feedbackImages.length - uploadingCount;
+	if (remaining <= 0) {
+		showFeedbackNotice('warning', '<?php _e('最多上传 10 张图片', 'argon'); ?>');
+		return;
+	}
 	
 	if (files.length > remaining) {
-		if (typeof iziToast !== 'undefined') {
-			iziToast.warning({ 
-				title: '<?php _e('最多上传 10 张图片', 'argon'); ?>', 
-				position: 'topRight', 
-				timeout: 3000 
-			});
-		}
+		showFeedbackNotice('warning', '<?php _e('最多上传 10 张图片', 'argon'); ?>');
 		files = files.slice(0, remaining);
 	}
 	
 	files.forEach(function(file) {
 		if (!file.type.startsWith('image/')) {
+			showFeedbackNotice('warning', '<?php _e('只能上传图片文件', 'argon'); ?>');
 			return;
 		}
 		
@@ -1430,16 +1667,174 @@ document.getElementById('feedback-image-input')?.addEventListener('change', func
 			}
 		});
 	});
-	
-	e.target.value = '';
-});
+}
+
+var feedbackImageInput = document.getElementById('feedback-image-input');
+if (feedbackImageInput) {
+	feedbackImageInput.addEventListener('change', function(e) {
+		handleFeedbackImageFiles(e.target.files);
+		e.target.value = '';
+	});
+}
+
+function initFeedbackDropUpload() {
+	let upload = document.querySelector('.feedback-image-upload');
+	if (!upload) return;
+	['dragenter', 'dragover'].forEach(function(eventName) {
+		upload.addEventListener(eventName, function(e) {
+			e.preventDefault();
+			e.stopPropagation();
+			upload.classList.add('dragover');
+		});
+	});
+	['dragleave', 'drop'].forEach(function(eventName) {
+		upload.addEventListener(eventName, function(e) {
+			e.preventDefault();
+			e.stopPropagation();
+			upload.classList.remove('dragover');
+		});
+	});
+	upload.addEventListener('drop', function(e) {
+		handleFeedbackImageFiles(e.dataTransfer.files);
+	});
+}
+
+function updateFeedbackContentCount() {
+	let content = document.getElementById('feedback-content');
+	let counter = document.getElementById('content-count');
+	let wrapper = counter ? counter.parentElement : null;
+	if (!content || !counter) return;
+	let length = content.value.length;
+	counter.textContent = length;
+	if (wrapper) {
+		wrapper.classList.toggle('warning', length >= 1600 && length < 1900);
+		wrapper.classList.toggle('danger', length >= 1900);
+	}
+}
+
+function readFeedbackDraft() {
+	try {
+		return JSON.parse(localStorage.getItem(feedbackDraftKey) || '{}');
+	} catch (e) {
+		return {};
+	}
+}
+
+function saveFeedbackDraft() {
+	let form = document.getElementById('feedback-form');
+	if (!form) return;
+	let nameInput = document.getElementById('feedback-name');
+	let emailInput = document.getElementById('feedback-email');
+	let urlInput = document.getElementById('feedback-url');
+	let titleInput = document.getElementById('feedback-title');
+	let contentInput = document.getElementById('feedback-content');
+	let typeInput = form.querySelector('input[name="feedback_type"]:checked');
+	let publicInput = document.getElementById('feedback-public');
+	let data = {
+		name: nameInput ? nameInput.value : '',
+		email: emailInput ? emailInput.value : '',
+		url: urlInput ? urlInput.value : '',
+		title: titleInput ? titleInput.value : '',
+		content: contentInput ? contentInput.value : '',
+		type: typeInput ? typeInput.value : 'suggestion',
+		isPublic: publicInput ? publicInput.checked : false
+	};
+	if (!data.title && !data.content && !data.url) {
+		try { localStorage.removeItem(feedbackDraftKey); } catch (e) {}
+		return;
+	}
+	try {
+		localStorage.setItem(feedbackDraftKey, JSON.stringify(data));
+	} catch (e) {
+		return;
+	}
+	let state = document.getElementById('feedback-draft-state');
+	if (state) {
+		state.classList.add('show');
+		clearTimeout(state._timer);
+		state._timer = setTimeout(function() { state.classList.remove('show'); }, 1600);
+	}
+}
+
+function restoreFeedbackDraft() {
+	let form = document.getElementById('feedback-form');
+	if (!form) return;
+	let data = readFeedbackDraft();
+	if (!data || Object.keys(data).length === 0) return;
+	let nameInput = document.getElementById('feedback-name');
+	let emailInput = document.getElementById('feedback-email');
+	let urlInput = document.getElementById('feedback-url');
+	let titleInput = document.getElementById('feedback-title');
+	let contentInput = document.getElementById('feedback-content');
+	if (data.name && nameInput && !nameInput.value) nameInput.value = data.name;
+	if (data.email && emailInput && !emailInput.value) emailInput.value = data.email;
+	if (data.url && urlInput && !urlInput.value) urlInput.value = data.url;
+	if (data.title && titleInput) titleInput.value = data.title;
+	if (data.content && contentInput) contentInput.value = data.content;
+	if (data.type) {
+		let typeInput = form.querySelector('input[name="feedback_type"][value="' + data.type + '"]');
+		if (typeInput) typeInput.checked = true;
+	}
+	if (document.getElementById('feedback-public')) document.getElementById('feedback-public').checked = !!data.isPublic;
+	updateFeedbackContentCount();
+}
+
+function clearFeedbackDraft(resetForm) {
+	try { localStorage.removeItem(feedbackDraftKey); } catch (e) {}
+	if (resetForm) {
+		let form = document.getElementById('feedback-form');
+		if (form) form.reset();
+		feedbackImages = [];
+		updateImagePreview();
+		updateFeedbackContentCount();
+		let result = document.getElementById('feedback-submit-result');
+		if (result) result.hidden = true;
+	}
+	let state = document.getElementById('feedback-draft-state');
+	if (state) state.classList.remove('show');
+}
+
+function initFeedbackDraft() {
+	let form = document.getElementById('feedback-form');
+	if (!form) return;
+	restoreFeedbackDraft();
+	function syncTypeActiveState() {
+		form.querySelectorAll('.feedback-type-option').forEach(function(option) {
+			let input = option.querySelector('input[type="radio"]');
+			option.classList.toggle('is-active', !!input && input.checked);
+		});
+	}
+	syncTypeActiveState();
+	let timer = null;
+	form.addEventListener('input', function() {
+		updateFeedbackContentCount();
+		clearTimeout(timer);
+		timer = setTimeout(saveFeedbackDraft, 350);
+	});
+	form.addEventListener('change', function() {
+		syncTypeActiveState();
+		clearTimeout(timer);
+		timer = setTimeout(saveFeedbackDraft, 120);
+	});
+	let clearDraftBtn = document.getElementById('feedback-clear-draft-btn');
+	if (clearDraftBtn) {
+		clearDraftBtn.addEventListener('click', function() {
+			clearFeedbackDraft(true);
+			showFeedbackNotice('success', '<?php _e('已清空', 'argon'); ?>');
+		});
+	}
+}
 
 function submitFeedbackForm() {
 	let form = document.getElementById('feedback-form');
 	let btn = document.getElementById('feedback-submit-btn');
 	let originalText = btn.innerHTML;
+	let resultBox = document.getElementById('feedback-submit-result');
+	let resultMessage = document.getElementById('feedback-submit-result-message');
+	let viewLink = document.getElementById('feedback-view-link');
 	btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> <?php _e('提交中...', 'argon'); ?>';
 	btn.disabled = true;
+	if (resultBox) resultBox.hidden = true;
 	
 	let formData = new FormData(form);
 	formData.append('feedback_action', 'submit');
@@ -1455,26 +1850,33 @@ function submitFeedbackForm() {
 			btn.innerHTML = originalText;
 			btn.disabled = false;
 			if (res.success) {
-				if (typeof iziToast !== 'undefined') {
-					iziToast.success({ title: res.message, position: 'topRight', timeout: 3000 });
-				} else {
-					alert(res.message);
-				}
+				showFeedbackNotice('success', res.message);
 				form.reset();
 				document.getElementById('content-count').textContent = '0';
 				feedbackImages = [];
 				updateImagePreview();
+				clearFeedbackDraft(false);
+				if (resultBox && resultMessage) {
+					resultMessage.textContent = res.is_public
+						? '<?php _e('这条反馈已公开，刷新页面后也会出现在公开反馈列表中。', 'argon'); ?>'
+						: '<?php _e('这条反馈为私密内容，请保留专属链接以便查看后续回复。', 'argon'); ?>';
+					if (viewLink && res.view_url) {
+						viewLink.href = res.view_url;
+						viewLink.style.display = '';
+					} else if (viewLink) {
+						viewLink.style.display = 'none';
+					}
+					resultBox.hidden = false;
+				}
 				<?php if ($captcha_enabled && $captcha_type === 'geetest') : ?>
 				feedbackGeetestValidated = false;
 				if (feedbackGeetestCaptcha) feedbackGeetestCaptcha.reset();
 				<?php endif; ?>
-				setTimeout(function() { location.reload(); }, 1500);
+				<?php if ($captcha_enabled && $captcha_type !== 'geetest') : ?>
+				refreshFeedbackCaptcha();
+				<?php endif; ?>
 			} else {
-				if (typeof iziToast !== 'undefined') {
-					iziToast.error({ title: res.message, position: 'topRight', timeout: 5000 });
-				} else {
-					alert(res.message);
-				}
+				showFeedbackNotice('error', res.message || '<?php _e('提交失败，请稍后重试', 'argon'); ?>');
 				<?php if ($captcha_enabled) : ?>
 				if (feedbackCaptchaType === 'math') {
 					refreshFeedbackCaptcha();
@@ -1488,54 +1890,81 @@ function submitFeedbackForm() {
 		.catch(function() {
 			btn.innerHTML = originalText;
 			btn.disabled = false;
-			alert('<?php _e('提交失败，请稍后重试', 'argon'); ?>');
+			showFeedbackNotice('error', '<?php _e('提交失败，请稍后重试', 'argon'); ?>');
 		});
 }
 
-document.getElementById('feedback-form')?.addEventListener('submit', function(e) {
-	e.preventDefault();
-	
-	// 检查是否有图片正在上传
-	if (uploadingCount > 0) {
-		if (typeof iziToast !== 'undefined') {
-			iziToast.warning({ title: '<?php _e('请等待图片上传完成', 'argon'); ?>', position: 'topRight', timeout: 3000 });
-		} else {
-			alert('<?php _e('请等待图片上传完成', 'argon'); ?>');
-		}
-		return;
-	}
-	
-	let name = document.getElementById('feedback-name').value.trim();
-	let email = document.getElementById('feedback-email').value.trim();
-	let content = document.getElementById('feedback-content').value.trim();
-	
-	if (!name || !email || !content) {
-		if (typeof iziToast !== 'undefined') {
-			iziToast.warning({ title: '<?php _e('请填写必填项', 'argon'); ?>', position: 'topRight', timeout: 3000 });
-		} else {
-			alert('<?php _e('请填写必填项', 'argon'); ?>');
-		}
-		return;
-	}
-	
-	<?php if ($captcha_enabled && $captcha_type === 'geetest') : ?>
-	if (!feedbackGeetestValidated) {
-		if (feedbackGeetestCaptcha) {
-			feedbackGeetestCaptcha.showCaptcha();
-		} else {
+var feedbackForm = document.getElementById('feedback-form');
+if (feedbackForm) {
+	feedbackForm.addEventListener('submit', function(e) {
+		e.preventDefault();
+		
+		// 检查是否有图片正在上传
+		if (uploadingCount > 0) {
 			if (typeof iziToast !== 'undefined') {
-				iziToast.error({ title: '<?php _e('验证码加载中，请稍后重试', 'argon'); ?>', position: 'topRight', timeout: 3000 });
+				iziToast.warning({ title: '<?php _e('请等待图片上传完成', 'argon'); ?>', position: 'topRight', timeout: 3000 });
 			} else {
-				alert('<?php _e('验证码加载中，请稍后重试', 'argon'); ?>');
+				alert('<?php _e('请等待图片上传完成', 'argon'); ?>');
 			}
+			return;
 		}
-		return;
-	}
-	<?php endif; ?>
-	
-	submitFeedbackForm();
-});
+		
+		let name = document.getElementById('feedback-name').value.trim();
+		let email = document.getElementById('feedback-email').value.trim();
+		let content = document.getElementById('feedback-content').value.trim();
+		let emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+		
+		if (!name || !email || !content) {
+			showFeedbackNotice('warning', '<?php _e('请填写必填项', 'argon'); ?>');
+			return;
+		}
+		if (!emailPattern.test(email)) {
+			showFeedbackNotice('warning', '<?php _e('邮箱格式错误', 'argon'); ?>');
+			return;
+		}
+		
+		<?php if ($captcha_enabled && $captcha_type === 'geetest') : ?>
+		if (!feedbackGeetestValidated) {
+			if (feedbackGeetestCaptcha) {
+				feedbackGeetestCaptcha.showCaptcha();
+			} else {
+				showFeedbackNotice('error', '<?php _e('验证码加载中，请稍后重试', 'argon'); ?>');
+			}
+			return;
+		}
+		<?php endif; ?>
+		
+		submitFeedbackForm();
+	});
+}
+
+var feedbackCopyLink = document.getElementById('feedback-copy-link');
+if (feedbackCopyLink) {
+	feedbackCopyLink.addEventListener('click', function() {
+		let viewLink = document.getElementById('feedback-view-link');
+		let link = viewLink ? viewLink.href : '';
+		if (!link || link === '#') return;
+		if (navigator.clipboard && navigator.clipboard.writeText) {
+			navigator.clipboard.writeText(link).then(function() {
+				showFeedbackNotice('success', '<?php _e('链接已复制', 'argon'); ?>');
+			});
+			return;
+		}
+		let input = document.createElement('input');
+		input.value = link;
+		document.body.appendChild(input);
+		input.select();
+		document.execCommand('copy');
+		document.body.removeChild(input);
+		showFeedbackNotice('success', '<?php _e('链接已复制', 'argon'); ?>');
+	});
+}
+
+initFeedbackDraft();
+initFeedbackDropUpload();
 <?php endif; ?>
+
+initFeedbackListFilters();
 
 <?php if ($is_admin) : ?>
 var typeLabels = <?php echo json_encode($type_labels); ?>;
@@ -1554,7 +1983,12 @@ function openFeedbackDetail(id) {
 			if (res.success) {
 				renderFeedbackDetail(res.data);
 				document.getElementById('feedback-detail-modal').classList.add('show');
+			} else {
+				showFeedbackNotice('error', res.message || '<?php _e('反馈不存在', 'argon'); ?>');
 			}
+		})
+		.catch(function() {
+			showFeedbackNotice('error', '<?php _e('加载失败，请稍后重试', 'argon'); ?>');
 		});
 }
 
@@ -1593,7 +2027,7 @@ function renderFeedbackDetail(data) {
 		html += '<div class="feedback-detail-label"><?php _e('附件图片', 'argon'); ?> (' + data.images.length + ')</div>';
 		html += '<div class="feedback-images-display">';
 		data.images.forEach(function(img) {
-			html += '<img src="' + escapeHtml(img) + '" alt="" onclick="window.open(this.src)">';
+			html += '<img src="' + escapeHtml(img) + '" alt="" onclick="event.stopPropagation(); window.open(this.src)">';
 		});
 		html += '</div>';
 		html += '</div>';
@@ -1671,10 +2105,12 @@ function closeFeedbackDetail() {
 	currentFeedbackId = null;
 }
 
-function setProcessing() {
+function setProcessing(statusButton) {
 	if (!currentFeedbackId) return;
 	let reply = document.getElementById('detail-reply-content').value;
-	let isPrivate = document.getElementById('detail-reply-private')?.checked || false;
+	let privateInput = document.getElementById('detail-reply-private');
+	let isPrivate = privateInput ? privateInput.checked : false;
+	if (statusButton) statusButton.disabled = true;
 	
 	// 先保存回复（如果有）
 	let formData = new FormData();
@@ -1687,6 +2123,9 @@ function setProcessing() {
 	fetch(feedbackAjaxUrl, { method: 'POST', body: formData })
 		.then(function(r) { return r.json(); })
 		.then(function(res) {
+			if (!res.success) {
+				throw new Error(res.message || '<?php _e('保存留言失败', 'argon'); ?>');
+			}
 			// 设置状态为进行中
 			let statusData = new FormData();
 			statusData.append('feedback_action', 'update_status');
@@ -1695,16 +2134,26 @@ function setProcessing() {
 			statusData.append('status', 'processing');
 			return fetch(feedbackAjaxUrl, { method: 'POST', body: statusData });
 		})
-		.then(function() {
+		.then(function(r) { return r.json(); })
+		.then(function(res) {
+			if (!res.success) {
+				throw new Error(res.message || '<?php _e('状态更新失败', 'argon'); ?>');
+			}
 			closeFeedbackDetail();
 			location.reload();
+		})
+		.catch(function(err) {
+			if (statusButton) statusButton.disabled = false;
+			showFeedbackNotice('error', err.message || '<?php _e('操作失败，请稍后重试', 'argon'); ?>');
 		});
 }
 
-function submitReplyAndResolve() {
+function submitReplyAndResolve(actionButton) {
 	if (!currentFeedbackId) return;
 	let reply = document.getElementById('detail-reply-content').value;
-	let isPrivate = document.getElementById('detail-reply-private')?.checked || false;
+	let privateInput = document.getElementById('detail-reply-private');
+	let isPrivate = privateInput ? privateInput.checked : false;
+	if (actionButton) actionButton.disabled = true;
 	
 	let formData = new FormData();
 	formData.append('feedback_action', 'reply_and_resolve');
@@ -1719,7 +2168,13 @@ function submitReplyAndResolve() {
 			if (res.success) {
 				closeFeedbackDetail();
 				location.reload();
+			} else {
+				throw new Error(res.message || '<?php _e('操作失败，请稍后重试', 'argon'); ?>');
 			}
+		})
+		.catch(function(err) {
+			if (actionButton) actionButton.disabled = false;
+			showFeedbackNotice('error', err.message || '<?php _e('操作失败，请稍后重试', 'argon'); ?>');
 		});
 }
 
