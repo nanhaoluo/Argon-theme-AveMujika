@@ -2,7 +2,14 @@
 /*
 Template Name: 说说
 */
-query_posts("post_type=shuoshuo&post_status=publish&posts_per_page=-1");
+$paged = max(1, (int)get_query_var('paged'), (int)get_query_var('page'));
+$shuoshuo_query_args = array(
+	'post_type' => 'shuoshuo',
+	'post_status' => 'publish',
+	'posts_per_page' => get_option('posts_per_page'),
+	'paged' => $paged
+);
+query_posts($shuoshuo_query_args);
 ?>
 
 <?php get_header(); ?>
@@ -11,9 +18,10 @@ query_posts("post_type=shuoshuo&post_status=publish&posts_per_page=-1");
 	<div class="page-information-card card bg-gradient-secondary shadow-lg border-0">
 		<div class="card-body">
 			<h3 class="text-black"><?php _e('说说', 'argon');?></h3>
-			<?php if (the_archive_description() != ''){ ?>
+			<?php $archive_description = get_the_archive_description(); ?>
+			<?php if ($archive_description != ''){ ?>
 				<p class="text-black mt-3">
-					<?php the_archive_description(); ?>
+					<?php echo $archive_description; ?>
 				</p>
 			<?php } ?>
 			<p class="text-black mt-3 mb-0 opacity-8">
@@ -27,7 +35,7 @@ query_posts("post_type=shuoshuo&post_status=publish&posts_per_page=-1");
 <?php get_sidebar(); ?>
 
 <div id="primary" class="content-area">
-	<main id="main" class="site-main" role="main">
+	<main id="main" class="site-main shuoshuo-list" role="main">
 	<?php if ( have_posts() ) : ?>
 		<?php
 			while ( have_posts() ) :
@@ -43,5 +51,7 @@ query_posts("post_type=shuoshuo&post_status=publish&posts_per_page=-1");
 		get_template_part( 'template-parts/content', 'none-tag' );
 	endif;
 	?>
+
+<?php wp_reset_query(); ?>
 
 <?php get_footer(); ?>
