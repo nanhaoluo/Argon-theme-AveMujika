@@ -344,6 +344,12 @@ $author_desc = get_option('argon_sidebar_author_description');
 						<i class="fa fa-tags"></i>
 						<span><?php _e('标签', 'argon'); ?></span>
 					</button>
+					<?php if (get_option('argon_show_rss_link', 'false') == 'true') : ?>
+					<a class="leftbar-mobile-action leftbar-mobile-rss-action" href="<?php echo esc_url(get_feed_link('rss2')); ?>" target="_blank" rel="noopener" no-pjax aria-label="<?php esc_attr_e('RSS 订阅', 'argon'); ?>">
+						<i class="fa fa-rss"></i>
+						<span>RSS</span>
+					</a>
+					<?php endif; ?>
 				</div>
 			</div>
 		</div>
@@ -715,11 +721,32 @@ $author_desc = get_option('argon_sidebar_author_description');
 							</nav>
 
 							<?php if (get_option('argon_show_rss_link', 'false') == 'true') : ?>
-								<div class="site-rss">
-									<a href="<?php bloginfo('rss2_url'); ?>" target="_blank" class="site-rss-btn" data-toggle="tooltip" data-placement="bottom" title="<?php _e('RSS 订阅', 'argon'); ?>">
-										<i class="fa fa-rss"></i> <?php _e('RSS 订阅', 'argon'); ?>
-									</a>
-								</div>
+								<?php
+									$argon_rss2_url = get_feed_link('rss2');
+									$argon_atom_url = get_feed_link('atom');
+									$argon_comments_rss2_url = get_bloginfo('comments_rss2_url');
+								?>
+								<details class="site-rss">
+									<summary class="site-rss-btn" aria-label="<?php esc_attr_e('RSS 订阅选项', 'argon'); ?>">
+										<span class="site-rss-btn-icon"><i class="fa fa-rss" aria-hidden="true"></i></span>
+										<span class="site-rss-btn-text"><?php _e('RSS', 'argon'); ?></span>
+										<span class="site-rss-btn-caret"><i class="fa fa-angle-down" aria-hidden="true"></i></span>
+									</summary>
+									<div class="site-rss-menu" role="list">
+										<a href="<?php echo esc_url($argon_rss2_url); ?>" target="_blank" rel="noopener" no-pjax role="listitem">
+											<span class="site-rss-menu-label"><i class="fa fa-newspaper-o" aria-hidden="true"></i><?php _e('文章更新', 'argon'); ?></span>
+											<span class="site-rss-menu-meta">RSS 2.0</span>
+										</a>
+										<a href="<?php echo esc_url($argon_comments_rss2_url); ?>" target="_blank" rel="noopener" no-pjax role="listitem">
+											<span class="site-rss-menu-label"><i class="fa fa-comments-o" aria-hidden="true"></i><?php _e('评论更新', 'argon'); ?></span>
+											<span class="site-rss-menu-meta">RSS</span>
+										</a>
+										<a href="<?php echo esc_url($argon_atom_url); ?>" target="_blank" rel="noopener" no-pjax role="listitem">
+											<span class="site-rss-menu-label"><i class="fa fa-code" aria-hidden="true"></i>Atom</span>
+											<span class="site-rss-menu-meta">Feed</span>
+										</a>
+									</div>
+								</details>
 							<?php endif; ?>
 
 

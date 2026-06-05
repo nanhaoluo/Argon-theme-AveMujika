@@ -18401,53 +18401,216 @@ html.darkmode .argon-hidden-text-background:active {
 	filter: none;
 	-webkit-filter: none;
 	user-select: auto;
-}.site-rss {
-	margin-top: 20px;
-	margin-bottom: 5px;
+}
+
+.site-rss {
+	--rss-color: #f97316;
+	--rss-rgb: 249, 115, 22;
+	width: 100%;
+	margin: 14px auto 6px;
 	padding: 0 10px;
+	text-align: center;
 }
 
 .site-rss-btn {
-	width: 100%;
-	height: 38px;
-	display: flex;
+	width: auto;
+	min-width: 92px;
+	height: 34px;
+	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	color: var(--themecolor) !important;
-	background: transparent;
-	border-radius: var(--card-radius, 8px);
-	font-size: 14px;
-	font-weight: 600;
-	transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-	border: 1px solid var(--themecolor);
+	gap: 7px;
+	margin: 0 auto;
+	padding: 0 12px;
+	color: var(--rss-color) !important;
+	background: rgba(var(--rss-rgb), 0.1);
+	border: 1px solid rgba(var(--rss-rgb), 0.26);
+	border-radius: 999px;
+	font-size: 13px;
+	font-weight: 700;
+	line-height: 1;
+	cursor: pointer;
 	text-decoration: none !important;
+	list-style: none;
+	transition: color var(--animation-fast) var(--ease-standard),
+		background var(--animation-fast) var(--ease-standard),
+		border-color var(--animation-fast) var(--ease-standard),
+		box-shadow var(--animation-fast) var(--ease-standard),
+		transform var(--animation-fast) var(--ease-standard);
 }
 
-.site-rss-btn i {
-	margin-right: 8px;
-	font-size: 16px;
+.site-rss-btn::-webkit-details-marker {
+	display: none;
 }
 
-.site-rss-btn:hover {
-	background: var(--themecolor);
+.site-rss-btn::marker {
+	content: "";
+}
+
+.site-rss-btn-icon {
+	width: 20px;
+	height: 20px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	background: var(--rss-color);
+	color: #fff;
+	font-size: 11px;
+	box-shadow: 0 4px 10px rgba(var(--rss-rgb), 0.22);
+}
+
+.site-rss-btn-text {
+	letter-spacing: 0;
+}
+
+.site-rss-btn-caret {
+	display: inline-flex;
+	align-items: center;
+	font-size: 13px;
+	opacity: 0.72;
+	transition: transform var(--animation-fast) var(--ease-standard);
+}
+
+.site-rss[open] .site-rss-btn-caret {
+	transform: rotate(180deg);
+}
+
+.site-rss-btn:hover,
+.site-rss[open] .site-rss-btn {
+	background: var(--rss-color);
+	border-color: var(--rss-color);
 	color: #fff !important;
-	transform: translateY(-2px);
-	box-shadow: 0 6px 15px rgba(var(--themecolor-rgbstr), 0.25);
+	transform: translateY(-1px);
+	box-shadow: 0 8px 18px rgba(var(--rss-rgb), 0.2);
+}
+
+.site-rss-btn:hover .site-rss-btn-icon,
+.site-rss[open] .site-rss-btn-icon {
+	background: rgba(255, 255, 255, 0.22);
+	box-shadow: none;
 }
 
 .site-rss-btn:active {
 	transform: scale(0.98);
 }
 
-html.darkmode .site-rss-btn {
-	background: transparent;
-	border-color: var(--themecolor);
-	color: var(--themecolor) !important;
+.site-rss-btn:focus-visible,
+.site-rss-menu a:focus-visible {
+	outline: none;
+	box-shadow: 0 0 0 3px rgba(var(--rss-rgb), 0.2);
 }
 
-html.darkmode .site-rss-btn:hover {
-	background: var(--themecolor);
+.site-rss-menu {
+	width: min(100%, 230px);
+	display: grid;
+	gap: 5px;
+	margin: 8px auto 0;
+	padding: 8px;
+	border: 1px solid var(--color-border-on-foreground-deeper);
+	border-radius: min(var(--card-radius, 8px), 8px);
+	background: rgba(255, 255, 255, var(--card-opacity, 0.88));
+	backdrop-filter: blur(var(--card-blur, 16px)) saturate(var(--card-saturate, 160%));
+	-webkit-backdrop-filter: blur(var(--card-blur, 16px)) saturate(var(--card-saturate, 160%));
+	box-shadow: 0 10px 24px rgba(31, 35, 40, 0.08);
+	text-align: left;
+	animation: site-rss-menu-in var(--animation-fast) var(--ease-standard) both;
+}
+
+.site-rss-menu a {
+	min-height: 34px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 8px 9px;
+	border-radius: min(var(--card-radius, 8px), 8px);
+	color: #525f7f !important;
+	text-decoration: none !important;
+	transition: color var(--animation-fast) var(--ease-standard),
+		background var(--animation-fast) var(--ease-standard),
+		transform var(--animation-fast) var(--ease-standard);
+}
+
+.site-rss-menu a:hover {
+	background: rgba(var(--rss-rgb), 0.1);
+	color: var(--color-text-deeper) !important;
+	transform: translateX(1px);
+}
+
+.site-rss-menu-label {
+	min-width: 0;
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	font-size: 12px;
+	font-weight: 700;
+	white-space: nowrap;
+}
+
+.site-rss-menu-label i {
+	width: 16px;
+	color: var(--rss-color);
+	text-align: center;
+}
+
+.site-rss-menu-meta {
+	flex: 0 0 auto;
+	color: #8898aa;
+	font-size: 11px;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+html.darkmode .site-rss {
+	--rss-color: #fb923c;
+	--rss-rgb: 251, 146, 60;
+}
+
+html.darkmode .site-rss-menu {
+	background: rgba(66, 66, 66, var(--card-opacity, 0.88));
+	border-color: rgba(255, 255, 255, 0.08);
+	box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+html.darkmode .site-rss-menu a {
+	color: #d9d9d9 !important;
+}
+
+html.darkmode .site-rss-menu a:hover {
 	color: #fff !important;
+	background: rgba(var(--rss-rgb), 0.16);
+}
+
+html.darkmode .site-rss-menu-meta {
+	color: #aaa;
+}
+
+.leftbar-mobile-actions {
+	flex-wrap: wrap;
+}
+
+.leftbar-mobile-action {
+	text-decoration: none !important;
+}
+
+.leftbar-mobile-rss-action {
+	color: #f97316 !important;
+}
+
+.leftbar-mobile-rss-action:active {
+	color: #f97316 !important;
+}
+
+@keyframes site-rss-menu-in {
+	from {
+		opacity: 0;
+		transform: translateY(-4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 /* =========================================================================
    Immersive Reading Mode
