@@ -51,6 +51,8 @@ License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
 	--themecolor-gradient: linear-gradient(150deg, var(--themecolor-light) 15%, var(--themecolor) 70%, var(--themecolor-dark0) 94%);
 
+	--argon-special-page-width: 1040px;
+
 
 
 	--color-tint-70:
@@ -18455,8 +18457,8 @@ html.darkmode .argon-hidden-text-background:active {
 }
 
 .site-rss {
-	--rss-color: #f97316;
-	--rss-rgb: 249, 115, 22;
+	--rss-color: var(--themecolor);
+	--rss-rgb: var(--themecolor-rgbstr);
 	width: 100%;
 	margin: 14px auto 6px;
 	padding: 0 10px;
@@ -18613,11 +18615,6 @@ html.darkmode .argon-hidden-text-background:active {
 	white-space: nowrap;
 }
 
-html.darkmode .site-rss {
-	--rss-color: #fb923c;
-	--rss-rgb: 251, 146, 60;
-}
-
 html.darkmode .site-rss-menu {
 	background: rgba(66, 66, 66, var(--card-opacity, 0.88));
 	border-color: rgba(255, 255, 255, 0.08);
@@ -18646,11 +18643,11 @@ html.darkmode .site-rss-menu-meta {
 }
 
 .leftbar-mobile-rss-action {
-	color: #f97316 !important;
+	color: var(--themecolor) !important;
 }
 
 .leftbar-mobile-rss-action:active {
-	color: #f97316 !important;
+	color: var(--themecolor) !important;
 }
 
 @keyframes site-rss-menu-in {
