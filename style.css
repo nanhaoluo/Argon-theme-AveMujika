@@ -8,7 +8,7 @@ Author URI: https://solstice23.top/
 
 Description: 杞荤泩銆佺畝娲併€佺編瑙傜殑 Wordpress 涓婚
 
-Version: 1.5.4
+Version: 1.5.5
 
 License: GNU General Public License v3.0
 
@@ -19004,9 +19004,16 @@ html.immersive-read-leaving .immersive-exit-btn-container {
 	}
 }
 
-/* Article preview thumbnail crop frames */
-article.post.card:not(.post-full)>.post-header.post-header-with-thumbnail {
+/* Article thumbnail crop frames */
+.post-header.post-header-with-thumbnail {
 	overflow: hidden;
+	height: clamp(250px, 25vh, 360px);
+}
+
+.single .post-header.post-header-with-thumbnail,
+.page .post-header.post-header-with-thumbnail,
+article.post.post-full>.post-header.post-header-with-thumbnail {
+	height: clamp(250px, 30vh, 420px);
 }
 
 article.post.card:not(.post-full):not(.post-preview-layout-2):not(.post-preview-layout-3)>.post-header.post-header-with-thumbnail {
@@ -19017,7 +19024,9 @@ article.post.card.post-preview-layout-3>.post-header.post-header-with-thumbnail 
 	height: clamp(200px, 20vh, 320px);
 }
 
-article.post.card:not(.post-full)>.post-header.post-header-with-thumbnail>img.post-thumbnail {
+.post-header.post-header-with-thumbnail>img.post-thumbnail {
+	position: absolute;
+	inset: 0;
 	display: block;
 	width: 100% !important;
 	height: 100% !important;
