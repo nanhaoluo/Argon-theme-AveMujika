@@ -1,8 +1,23 @@
 				</main>
 
-			</div>
+			<?php
+				$footer_layout = get_option('argon_page_layout', 'double');
+				$footer_classes = array('site-footer', 'card', 'shadow-sm', 'border-0');
+				if ($footer_layout == 'single') {
+					$footer_classes[] = 'site-footer-no-sidebar';
+				} else {
+					$footer_classes[] = 'site-footer-with-sidebar';
+					if ($footer_layout == 'triple') {
+						$footer_classes[] = 'site-footer-triple-sidebar';
+					} else if ($footer_layout == 'double-reverse') {
+						$footer_classes[] = 'site-footer-sidebar-right';
+					} else {
+						$footer_classes[] = 'site-footer-sidebar-left';
+					}
+				}
+			?>
 
-			<footer id="footer" class="site-footer card shadow-sm border-0">
+			<footer id="footer" class="<?php echo esc_attr(implode(' ', $footer_classes)); ?>">
 
 						<?php
 
@@ -26,6 +41,8 @@
 						?>
 
 			</footer>
+
+			</div>
 
 		</div>
 
