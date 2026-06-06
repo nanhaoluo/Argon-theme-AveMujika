@@ -3311,7 +3311,7 @@ const PageLoader = (function () {
 		FADE_DURATION: 350,            // 淡出动画时长
 		PROGRESS_STEP: 0.1,            // 进度条步进
 		PROGRESS_INTERVAL: 200,        // 进度更新间隔
-		SKELETON_DELAY: 150            // 骨架屏延迟显示
+		SKELETON_DELAY: 260            // 骨架屏延迟显示
 	};
 
 	// 状态管理
@@ -3341,9 +3341,7 @@ const PageLoader = (function () {
 				</div>
 				<div class="loader-skeleton" aria-hidden="true">
 					<div class="skeleton-page">
-						<div class="skeleton-top"></div>
 						<div class="skeleton-row skeleton-row-wide"></div>
-						<div class="skeleton-row"></div>
 						<div class="skeleton-row skeleton-row-short"></div>
 					</div>
 				</div>

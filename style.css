@@ -17882,13 +17882,24 @@ html.darkmode .page-loader-backdrop {
 
 .page-loader-content {
 	position: relative;
-	width: min(360px, calc(100vw - 48px));
+	width: min(320px, calc(100vw - 48px));
+	min-height: 86px;
 	padding: 22px 24px;
-	border: 1px solid rgba(var(--themecolor-rgbstr), 0.12);
+	border: 1px solid rgba(var(--themecolor-rgbstr), 0.1);
 	border-radius: var(--card-radius, 8px);
-	background: rgba(255, 255, 255, 0.9);
-	box-shadow: 0 14px 36px rgba(0, 0, 0, 0.08);
+	background: rgba(255, 255, 255, 0.92);
+	box-shadow: 0 14px 32px rgba(0, 0, 0, 0.07);
 	color: var(--color-text-deeper, #212529);
+	transform: translateY(6px) scale(0.985);
+	opacity: 0;
+	transition:
+		opacity 220ms var(--ease-standard, ease),
+		transform 260ms var(--ease-standard, ease);
+}
+
+.page-loader.is-visible .page-loader-content {
+	opacity: 1;
+	transform: translateY(0) scale(1);
 }
 
 html.darkmode .page-loader-content {
@@ -17904,6 +17915,16 @@ html.darkmode .page-loader-content {
 	justify-content: space-between;
 	gap: 16px;
 	margin-bottom: 14px;
+	opacity: 0;
+	transform: translateY(4px);
+	transition:
+		opacity 180ms var(--ease-standard, ease) 90ms,
+		transform 220ms var(--ease-standard, ease) 90ms;
+}
+
+.page-loader.is-visible .loader-text {
+	opacity: 1;
+	transform: translateY(0);
 }
 
 .loader-title {
@@ -17928,6 +17949,12 @@ html.darkmode .loader-subtitle {
 	overflow: hidden;
 	border-radius: 999px;
 	background: rgba(var(--themecolor-rgbstr), 0.12);
+	opacity: 0;
+	transition: opacity 180ms var(--ease-standard, ease) 120ms;
+}
+
+.page-loader.is-visible .loader-progress {
+	opacity: 1;
 }
 
 .loader-progress-bar {
@@ -17943,23 +17970,22 @@ html.darkmode .loader-subtitle {
 	overflow: hidden;
 	opacity: 0;
 	transition:
-		max-height var(--animation-normal, 250ms) var(--ease-standard, ease),
-		opacity var(--animation-normal, 250ms) var(--ease-standard, ease),
-		margin-top var(--animation-normal, 250ms) var(--ease-standard, ease);
+		max-height 220ms var(--ease-standard, ease),
+		opacity 180ms var(--ease-standard, ease),
+		margin-top 220ms var(--ease-standard, ease);
 }
 
 .page-loader.show-skeleton .loader-skeleton {
-	max-height: 120px;
-	margin-top: 18px;
+	max-height: 54px;
+	margin-top: 16px;
 	opacity: 1;
 }
 
 .skeleton-page {
 	display: grid;
-	gap: 10px;
+	gap: 9px;
 }
 
-.skeleton-top,
 .skeleton-row {
 	height: 12px;
 	border-radius: 999px;
@@ -17971,12 +17997,6 @@ html.darkmode .loader-subtitle {
 	);
 	background-size: 220% 100%;
 	animation: el-skeleton-loading 1.4s ease-in-out infinite;
-}
-
-.skeleton-top {
-	width: 38%;
-	height: 16px;
-	margin-bottom: 2px;
 }
 
 .skeleton-row-wide {
@@ -17991,7 +18011,6 @@ html.darkmode .loader-subtitle {
 	width: 56%;
 }
 
-html.darkmode .skeleton-top,
 html.darkmode .skeleton-row {
 	background: linear-gradient(
 		90deg,
@@ -18020,12 +18039,14 @@ html.darkmode .skeleton-row {
 
 @media (prefers-reduced-motion: reduce) {
 	.page-loader,
+	.page-loader-content,
+	.loader-text,
+	.loader-progress,
 	.loader-progress-bar,
 	.loader-skeleton {
 		transition: none !important;
 	}
 
-	.skeleton-top,
 	.skeleton-row {
 		animation: none !important;
 	}
