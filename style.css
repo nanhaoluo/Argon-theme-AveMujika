@@ -8209,7 +8209,7 @@ html.darkmode .argon-tabpanel .nav-pills .nav-link {
 
 
 
-/*nprogress 鍔犺浇杩涘害?/
+/*nprogress loading progress*/
 
 #nprogress {
 
@@ -17808,8 +17808,8 @@ html.darkmode {
 
 /* 5. 椤甸潰杩囨浮鍜屾诞鍔ㄦ寜閽姩?*/
 :root {
-	--pjax-transition-duration: 0ms;
-	--pjax-transition-distance: 0px;
+	--pjax-transition-duration: 220ms;
+	--pjax-transition-distance: 10px;
 }
 
 #primary.pjax-loading {
@@ -17822,20 +17822,23 @@ html.darkmode {
 }
 
 .page-transition-content {
-	transition: none;
-	will-change: auto;
+	transition:
+		opacity var(--pjax-transition-duration) var(--ease-standard),
+		transform var(--pjax-transition-duration) var(--ease-standard),
+		filter var(--pjax-transition-duration) var(--ease-standard);
+	will-change: opacity, transform, filter;
 }
 
 html.page-transition-leave.page-transition-active .page-transition-content {
-	opacity: 1;
-	transform: none;
-	filter: none;
-	pointer-events: auto;
+	opacity: 0.72;
+	transform: translate3d(0, calc(var(--pjax-transition-distance) * -1), 0);
+	filter: blur(1px);
+	pointer-events: none;
 }
 
 html.page-transition-enter .page-transition-content {
-	opacity: 1;
-	transform: none;
+	opacity: 0;
+	transform: translate3d(0, var(--pjax-transition-distance), 0);
 }
 
 html.page-transition-enter.page-transition-active .page-transition-content {

@@ -4737,6 +4737,56 @@ var ArgonPjaxPrefetch = (function () {
 		});
 	}
 
+	function getPjaxContainers() {
+		return pjaxContainers.length ? pjaxContainers : ['#primary'];
+	}
+
+	function setTopProgress(progress) {
+		if (typeof PageLoader !== 'undefined') {
+			PageLoader.setProgress(progress);
+		}
+		if (typeof NProgress !== 'undefined') {
+			if (!NProgress.status) {
+				NProgress.remove();
+				NProgress.start();
+			}
+			NProgress.set(Math.max(0.08, Math.min(0.994, progress / 100)));
+		}
+	}
+
+	function beginNavigationProgress(root, progress) {
+		pjaxLoading = true;
+		if (typeof startPageExitTransition === 'function') {
+			startPageExitTransition();
+		}
+		if (typeof PageLoader !== 'undefined') {
+			PageLoader.show(root || document);
+		}
+		setTopProgress(progress || 12);
+	}
+
+	function stopNavigationProgress() {
+		pjaxLoading = false;
+		if (typeof endPageTransition === 'function') {
+			endPageTransition();
+		}
+		if (typeof NProgress !== 'undefined') {
+			NProgress.done();
+		}
+		if (typeof PageLoader !== 'undefined') {
+			PageLoader.hide();
+		}
+	}
+
+	function emitPjaxClick(target, opts) {
+		if (!target || typeof jQuery === 'undefined') {
+			return true;
+		}
+		var clickEvent = jQuery.Event('pjax:click');
+		jQuery(target).trigger(clickEvent, [opts, jQuery(target)]);
+		return !clickEvent.isDefaultPrevented();
+	}
+
 	function prefetch(input) {
 		if (typeof jQuery === 'undefined' || !jQuery.ajax) {
 			return null;
@@ -4783,6 +4833,9 @@ var ArgonPjaxPrefetch = (function () {
 	}
 
 	function navigate(input, options) {
+		if (typeof jQuery === 'undefined' || !jQuery.pjax) {
+			return false;
+		}
 		var url = getSameOriginUrl(input && input.url ? input.url : input);
 		if (!url || pendingNavigation) {
 			return !!pendingNavigation;
@@ -4791,50 +4844,48 @@ var ArgonPjaxPrefetch = (function () {
 		var opts = jQuery.extend({}, options || {}, { url: url });
 		opts.target = opts.target || input;
 		if (!opts.container) {
-			opts.container = pjaxContainers.length ? pjaxContainers : ['#primary'];
+			opts.container = getPjaxContainers();
 		}
 		if (!opts.fragment) {
-			opts.fragment = pjaxContainers.length ? pjaxContainers : ['#primary'];
+			opts.fragment = getPjaxContainers();
+		}
+		if (!emitPjaxClick(input && input.nodeType ? input : opts.target, opts)) {
+			return false;
 		}
 		pendingNavigation = normalizeUrl(url);
-		pjaxLoading = true;
-		if (typeof PageLoader !== 'undefined') {
-			PageLoader.show(document);
-			PageLoader.setProgress(12);
-		}
-		if (typeof NProgress !== 'undefined') {
-			NProgress.remove();
-			NProgress.start();
-			NProgress.set(0.18);
+		if (!pjaxLoading) {
+			beginNavigationProgress(document, 18);
+		} else {
+			setTopProgress(18);
 		}
 
 		function runPjax() {
+			var navigationKey = pendingNavigation;
 			pendingNavigation = null;
 			try {
+				if (readCache(navigationKey)) {
+					setTopProgress(52);
+				}
 				jQuery.pjax(opts);
 			} catch (err) {
-				pjaxLoading = false;
-				if (typeof NProgress !== 'undefined') {
-					NProgress.done();
-				}
+				stopNavigationProgress();
 				window.location.href = url;
 			}
 		}
 
 		var cached = readCache(pendingNavigation);
 		if (cached) {
+			setTopProgress(42);
 			runPjax();
 			return true;
 		}
 		var request = prefetch(url);
 		if (request && request.done) {
+			setTopProgress(28);
 			request.done(function () {
-				if (typeof PageLoader !== 'undefined') {
-					PageLoader.setProgress(42);
-				}
-				if (typeof NProgress !== 'undefined') {
-					NProgress.set(0.46);
-				}
+				setTopProgress(46);
+			}).fail(function () {
+				setTopProgress(34);
 			}).always(runPjax);
 		} else {
 			runPjax();
@@ -4863,7 +4914,10 @@ var ArgonPjaxPrefetch = (function () {
 	return {
 		bind: bind,
 		prefetch: prefetch,
-		navigate: navigate
+		navigate: navigate,
+		beginNavigationProgress: beginNavigationProgress,
+		stopNavigationProgress: stopNavigationProgress,
+		setTopProgress: setTopProgress
 	};
 })();
 
@@ -5218,9 +5272,9 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 		{ fragment: (pjaxContainers.length ? pjaxContainers : ['#primary']), timeout: $.pjax.defaults.timeout }
 	)
 		.on('pjax:click', function (e, f, g) {
-			NProgress.remove();
-			NProgress.start();
-			pjaxLoading = true;
+			if (!pjaxLoading) {
+				ArgonPjaxPrefetch.beginNavigationProgress(document, 18);
+			}
 		}).on('pjax:afterGetContainers', function (e, f, g) {
 			pjaxScrollTop = 0;
 			if ($("html").hasClass("banner-as-cover")) {
@@ -5229,13 +5283,12 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 				}
 			}
 		}).on('pjax:send', function () {
-			PageLoader.setProgress(62);
-			NProgress.set(0.618);
+			ArgonPjaxPrefetch.setTopProgress(62);
 		}).on('pjax:beforeReplace', function (e, dom) {
+			ArgonPjaxPrefetch.setTopProgress(72);
 			// ========== 需求 1.1-1.4: 清理旧页面的所有资源 ==========
 			// 调用统一的资源清理管理器
 			// 清理内容：Lazyload Observer、Zoomify、Tippy 实例、动态标签
-			PageLoader.setProgress(72);
 			cleanupPjaxResources();
 
 			// 更新 UI 状态
@@ -5255,8 +5308,8 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 			// ========== 需求 1.5, 1.6: 重新初始化所有功能模块 ==========
 			pjaxLoading = false;
 			PageLoader.trackResources(document);
-			PageLoader.setProgress(82);
-			NProgress.inc();
+			ArgonPjaxPrefetch.setTopProgress(82);
+			startPageEnterTransition();
 
 			// ========== 需求 4.1-4.5: 执行新页面中的内联脚本 ==========
 			try {
@@ -5328,12 +5381,11 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 				}
 			}
 
+			ArgonPjaxPrefetch.setTopProgress(96);
+			PageLoader.hide();
 			NProgress.done();
-			PageLoader.hide();
 		}).on('pjax:error', function () {
-			endPageTransition();
-			pjaxLoading = false;
-			PageLoader.hide();
+			ArgonPjaxPrefetch.stopNavigationProgress();
 		}).on('pjax:end', function () {
 			// ========== 需求 1.7: 执行特定任务 ==========
 

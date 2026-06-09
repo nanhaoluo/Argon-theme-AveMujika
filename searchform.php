@@ -1,4 +1,4 @@
-<form id="argon_serach_form" method="get" action="<?php echo get_option('home'); ?>">
+<form id="argon_serach_form" method="get" action="<?php echo esc_url(home_url('/', 'relative')); ?>">
 	<div class="form-group mb-3">
 		<div class="input-group input-group-alternative">
 			<div class="input-group-prepend">
