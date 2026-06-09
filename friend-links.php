@@ -389,7 +389,7 @@ html.darkmode body.flinks-page {
     --flinks-warning-text: #facc15;
 }
 
-.flinks-header-card { text-align: center; padding: 40px 24px 32px; background: transparent !important; box-shadow: none !important; }
+.flinks-header-card { text-align: center; padding: 40px 24px 30px; background: transparent !important; box-shadow: none !important; }
 .flinks-header-icon { width: 64px; height: 64px; margin: 0 auto 20px; background: var(--themecolor-gradient); border-radius: var(--card-radius); display: flex; align-items: center; justify-content: center; font-size: 28px; color: #fff; box-shadow: 0 4px 12px rgba(var(--themecolor-rgbstr), 0.2); transition: transform var(--animation-fast) var(--ease-standard); }
 .flinks-header-icon:hover { transform: translateY(-2px); }
 .flinks-title { font-size: 24px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper); background: none !important; }
@@ -398,34 +398,28 @@ html.darkmode body.flinks-page {
 .flinks-stats { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
 .flinks-stat { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: rgba(var(--themecolor-rgbstr), 0.08); border-radius: var(--card-radius-sm); font-size: 13px; font-weight: 500; color: var(--themecolor); transition: all var(--animation-fast) var(--ease-standard); }
 .flinks-stat:hover { background: rgba(var(--themecolor-rgbstr), 0.12); }
-
-.flinks-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 16px; margin-bottom: 16px; background: var(--flinks-surface-soft); border: 1px solid var(--color-border-on-foreground); border-radius: var(--card-radius); }
-.flinks-search { position: relative; flex: 1 1 260px; margin: 0; color: var(--flinks-text-soft); }
-.flinks-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; }
-.flinks-search input { width: 100%; min-height: 38px; padding: 8px 12px 8px 34px; border: 1px solid var(--color-border); border-radius: var(--card-radius-sm); background: var(--flinks-input-bg); color: var(--flinks-input-text); font-size: 13px; outline: none; box-sizing: border-box; }
-.flinks-search input::placeholder, .flinks-add-form input::placeholder, .flink-modal input::placeholder, .flinks-form .form-control::placeholder { color: var(--flinks-placeholder); }
-.flinks-search input:focus { border-color: var(--themecolor); box-shadow: 0 0 0 2px rgba(var(--themecolor-rgbstr), 0.14); }
-.flinks-filter { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.flinks-filter-btn { min-height: 34px; padding: 7px 12px; border: 1px solid var(--color-border); border-radius: var(--card-radius-sm); background: var(--color-foreground); color: var(--flinks-text-muted); font-size: 12px; font-weight: 600; cursor: pointer; transition: all var(--animation-fast) var(--ease-standard); }
-.flinks-filter-btn:hover, .flinks-filter-btn.active { border-color: rgba(var(--themecolor-rgbstr), 0.45); background: rgba(var(--themecolor-rgbstr), 0.1); color: var(--themecolor); }
-.flinks-toolbar-count { margin-left: auto; color: var(--flinks-text-soft); font-size: 12px; font-weight: 600; white-space: nowrap; }
-.flinks-filter-empty[hidden], .flink-card.is-hidden, .flinks-category-card.is-hidden { display: none !important; }
+.flinks-header-actions { display: flex; justify-content: center; margin-top: 18px; }
+.flinks-header-action { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; padding: 8px 18px; border-radius: var(--card-radius-sm); background: rgba(var(--themecolor-rgbstr), 0.1); color: var(--themecolor); font-size: 13px; font-weight: 600; text-decoration: none !important; transition: all var(--animation-fast) var(--ease-standard); }
+.flinks-header-action:hover { background: rgba(var(--themecolor-rgbstr), 0.16); color: var(--themecolor); transform: translateY(-1px); }
+.flinks-header-action:focus-visible, .flinks-apply-header:focus-visible, .flink-card:focus-visible { outline: 2px solid rgba(var(--themecolor-rgbstr), 0.42); outline-offset: 2px; }
+.flinks-add-form input::placeholder, .flink-modal input::placeholder, .flinks-form .form-control::placeholder { color: var(--flinks-placeholder); }
 
 .flinks-welcome-text { font-size: 14px; color: var(--flinks-text-muted); line-height: 1.6; margin-bottom: 16px; padding: 12px 16px; background: var(--flinks-surface-soft); border-radius: var(--card-radius-sm); border-left: 3px solid var(--themecolor); }
 
-.flinks-category-card { padding: 24px 28px; }
-.flinks-category-header { display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--color-border-on-foreground); }
+.flinks-list { display: flex; flex-direction: column; gap: 16px; margin-bottom: 16px; }
+.flinks-category-card { padding: 0; overflow: hidden; }
+.flinks-category-header { display: flex; align-items: center; gap: 12px; padding: 18px 24px; margin-bottom: 0; border-bottom: 1px solid var(--color-border-on-foreground); background: var(--flinks-surface-soft); }
 .flinks-category-title { font-size: 17px; font-weight: 600; margin: 0; color: var(--color-text-deeper); display: flex; align-items: center; gap: 8px; background: none !important; }
 .flinks-category-title::before, .flinks-category-title::after { display: none !important; }
 .flinks-category-title i { color: var(--themecolor); font-size: 16px; }
-.flinks-category-count { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--themecolor); background: rgba(var(--themecolor-rgbstr), 0.1); padding: 4px 12px; border-radius: var(--card-radius-sm); }
+.flinks-category-count { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--themecolor); background: rgba(var(--themecolor-rgbstr), 0.1); padding: 5px 12px; border-radius: var(--card-radius-sm); white-space: nowrap; }
 
-.flinks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
-.flink-card { display: flex; align-items: flex-start; gap: 14px; padding: 16px; background: transparent; border-radius: var(--card-radius); text-decoration: none !important; color: inherit; border: none; transition: all var(--animation-fast) var(--ease-standard); min-height: 88px; position: relative; }
+.flinks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 4px; padding: 14px; }
+.flink-card { display: flex; align-items: flex-start; gap: 14px; padding: 14px; background: transparent; border-radius: var(--card-radius-sm); text-decoration: none !important; color: inherit; border: 1px solid transparent; transition: all var(--animation-fast) var(--ease-standard); min-height: 88px; position: relative; }
 .flink-card:hover { 
-	box-shadow: 0 4px 12px rgba(var(--themecolor-rgbstr), 0.1); 
 	transform: translateY(-2px); 
 	background: var(--flinks-surface-hover);
+	border-color: rgba(var(--themecolor-rgbstr), 0.16);
 }
 .flink-card.editable { cursor: default; }
 .flink-card .flink-edit-btn { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: var(--card-radius-sm); background: rgba(var(--themecolor-rgbstr), 0.1); color: var(--themecolor); border: none; cursor: pointer; display: none; align-items: center; justify-content: center; font-size: 12px; transition: all var(--animation-fast) var(--ease-standard); }
@@ -455,22 +449,24 @@ html.darkmode body.flinks-page {
 .flink-name .sub-name { font-size: 13px; font-weight: 400; color: var(--flinks-text-soft); }
 .flink-verified { color: #22c55e; font-size: 13px; flex-shrink: 0; }
 .flink-desc { font-size: 13px; color: var(--flinks-text-muted); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 4px; }
-.flink-url { font-size: 12px; color: var(--flinks-text-faint); margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.flink-url { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--flinks-text-faint); margin-top: 6px; white-space: nowrap; overflow: hidden; }
+.flink-url-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.flink-open-icon { flex-shrink: 0; opacity: 0; transform: translateX(-3px); transition: all var(--animation-fast) var(--ease-standard); color: var(--themecolor); }
+.flink-card:hover .flink-open-icon { opacity: 0.85; transform: translateX(0); }
 
 .flinks-empty { padding: 60px 24px; text-align: center; }
 .flinks-empty i { font-size: 48px; color: var(--color-border); margin-bottom: 16px; display: block; }
 .flinks-empty p { font-size: 15px; color: var(--flinks-text-muted); margin: 0; }
-.flinks-filter-empty { margin-bottom: 16px; }
 
 /* 申请区域 */
-.flinks-apply-card { padding: 16px 22px; }
-.flinks-apply-header { display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; padding: 4px 0; }
-.flinks-apply-header:hover { opacity: 0.8; }
+.flinks-apply-card { padding: 0; overflow: hidden; }
+.flinks-apply-header { display: flex; align-items: center; justify-content: space-between; width: 100%; cursor: pointer; user-select: none; padding: 16px 22px; border: 0; background: var(--flinks-surface-soft); font-family: var(--font); text-align: left; }
+.flinks-apply-header:hover { background: var(--flinks-surface-hover); }
 .flinks-apply-title { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; color: var(--themecolor); }
 .flinks-apply-arrow { color: var(--themecolor); font-size: 14px; transition: transform var(--animation-normal) var(--ease-standard); }
 .flinks-apply-arrow.open { transform: rotate(180deg); }
-.flinks-apply-content { max-height: 0; overflow: hidden; transition: max-height var(--animation-slow) var(--ease-standard); }
-.flinks-apply-content.open { max-height: 1200px; }
+.flinks-apply-content { max-height: 0; overflow: hidden; padding: 0 22px; transition: max-height var(--animation-slow) var(--ease-standard), padding-bottom var(--animation-normal) var(--ease-standard); }
+.flinks-apply-content.open { max-height: 2600px; padding-bottom: 18px; }
 
 .flinks-requirements { background: rgba(var(--themecolor-rgbstr), 0.05); border-radius: var(--card-radius); padding: 10px 12px; margin: 10px 0 8px; border: none; border-left: 3px solid var(--themecolor); font-size: 13px; line-height: 1.5; }
 .flinks-requirements, .flinks-requirements p, .flinks-requirements li { color: var(--flinks-text-muted); }
@@ -574,22 +570,25 @@ html.darkmode body.flinks-page {
 
 @media (max-width: 768px) {
     .flinks-header-card { padding: 30px 16px 24px; }
+    .flinks-header-action { width: 100%; max-width: 220px; }
+    .flinks-list { gap: 12px; }
+    .flinks-category-header { padding: 15px 16px; }
+    .flinks-category-title { font-size: 16px; min-width: 0; }
     .flinks-grid { grid-template-columns: 1fr; }
     .flinks-mysite-grid { grid-template-columns: 1fr; }
     .flinks-add-form .form-row { grid-template-columns: 1fr; }
     .flink-card { min-height: auto; }
-    .flinks-toolbar { align-items: stretch; }
-    .flinks-filter, .flinks-toolbar-count { width: 100%; margin-left: 0; }
-    .flinks-filter-btn { flex: 1 1 auto; }
+    .flinks-apply-header { padding: 15px 16px; }
+    .flinks-apply-content { padding-left: 16px; padding-right: 16px; }
     .flink-modal { width: calc(100% - 24px); padding: 16px; }
     .flink-modal .form-grid { grid-template-columns: 1fr; }
     .flink-modal .form-actions .btn { flex: 1 1 calc(50% - 4px); }
 }
 
-html.darkmode .flink-card { background: rgba(255, 255, 255, 0.03); }
+html.darkmode .flink-card { background: transparent; }
 html.darkmode .flink-card:hover { background: rgba(255, 255, 255, 0.05); }
 html.darkmode .flink-modal { background: var(--color-background); }
-html.darkmode .flinks-filter-btn, html.darkmode .flinks-add-form input { background: var(--color-background); }
+html.darkmode .flinks-add-form input { background: var(--color-background); }
 
 .flink-avatar[data-color="1"] { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
 .flink-avatar[data-color="2"] { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
@@ -660,6 +659,11 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
         <div class="flinks-stat"><i class="fa fa-folder-open"></i><span><?php echo count($links); ?> <?php _e('个分类', 'argon'); ?></span></div>
         <?php endif; ?>
     </div>
+    <?php if ($show_apply_form && !$is_admin) : ?>
+    <div class="flinks-header-actions">
+        <a class="flinks-header-action" href="#apply-section" id="flinks-apply-link"><i class="fa fa-plus-circle"></i><span><?php _e('申请友链', 'argon'); ?></span></a>
+    </div>
+    <?php endif; ?>
 </div>
 
 <!-- 管理面板（仅管理员可见） -->
@@ -723,33 +727,15 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
 
 <!-- 友链列表 -->
 <?php if (!empty($links)) : ?>
-<div class="flinks-toolbar">
-    <label class="flinks-search" for="flinks-search-input">
-        <i class="fa fa-search"></i>
-        <input type="search" id="flinks-search-input" placeholder="<?php esc_attr_e('搜索名称、描述或域名', 'argon'); ?>" autocomplete="off">
-    </label>
-    <div class="flinks-filter" aria-label="<?php esc_attr_e('友链分类筛选', 'argon'); ?>">
-        <button type="button" class="flinks-filter-btn active" data-filter="__all"><?php _e('全部', 'argon'); ?></button>
-        <?php foreach ($links as $category => $category_links) : ?>
-        <button type="button" class="flinks-filter-btn" data-filter="<?php echo esc_attr($category); ?>">
-            <?php echo empty($category) ? __('默认', 'argon') : esc_html($category); ?>
-        </button>
-        <?php endforeach; ?>
-    </div>
-    <div class="flinks-toolbar-count" id="flinks-visible-count" data-total="<?php echo esc_attr($total_links); ?>"><?php echo $total_links; ?> <?php _e('个站点', 'argon'); ?></div>
-</div>
-<article class="post card shadow-sm bg-white border-0 flinks-empty flinks-filter-empty" id="flinks-filter-empty" hidden>
-    <i class="fa fa-search"></i>
-    <p><?php _e('没有匹配的友链', 'argon'); ?></p>
-</article>
+<div class="flinks-list">
     <?php $color_index = 0; foreach ($links as $category => $category_links) : ?>
-    <article class="post card shadow-sm bg-white border-0 flinks-category-card" style="margin-bottom: 16px;" data-category="<?php echo esc_attr($category); ?>">
+    <article class="post card shadow-sm bg-white border-0 flinks-category-card" data-category="<?php echo esc_attr($category); ?>">
         <div class="flinks-category-header">
             <h2 class="flinks-category-title">
                 <i class="fa fa-<?php echo empty($category) ? 'star' : 'folder-open'; ?>"></i>
                 <?php echo empty($category) ? __('友情链接', 'argon') : esc_html($category); ?>
             </h2>
-            <span class="flinks-category-count"><?php echo count($category_links); ?></span>
+            <span class="flinks-category-count"><i class="fa fa-link"></i><?php echo count($category_links); ?> <?php _e('个站点', 'argon'); ?></span>
         </div>
         <div class="flinks-grid">
             <?php foreach ($category_links as $link) : 
@@ -780,7 +766,7 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
                     }
                 }
             ?>
-            <a href="<?php echo esc_url($link['url']); ?>" class="flink-card <?php echo $is_admin ? 'editable' : ''; ?>" target="_blank" rel="noopener noreferrer" data-id="<?php echo esc_attr($link['id']); ?>" data-category="<?php echo esc_attr($category); ?>" data-search="<?php echo esc_attr($main_name . ' ' . $sub_name . ' ' . $desc . ' ' . $host . ' ' . $category); ?>">
+            <a href="<?php echo esc_url($link['url']); ?>" class="flink-card <?php echo $is_admin ? 'editable' : ''; ?>" target="_blank" rel="noopener noreferrer" data-id="<?php echo esc_attr($link['id']); ?>">
                 <?php echo $status_badge; ?>
                 <?php if ($is_admin) : ?><button type="button" class="flink-edit-btn" onclick="event.preventDefault();event.stopPropagation();openEditModal('<?php echo esc_attr($link['id']); ?>')"><i class="fa fa-pencil"></i></button><?php endif; ?>
                 <div class="flink-avatar" data-letter="<?php echo esc_attr($first_letter); ?>" data-color="<?php echo $color_index; ?>">
@@ -793,13 +779,17 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
                         <?php if (!empty($link['verified'])) : ?><i class="fa fa-check-circle flink-verified"></i><?php endif; ?>
                     </div>
                     <div class="flink-desc"><?php echo esc_html($desc); ?></div>
-                    <div class="flink-url"><i class="fa fa-link" style="margin-right:4px;font-size:10px;"></i><?php echo esc_html($host); ?></div>
+                    <div class="flink-url">
+                        <span class="flink-url-text"><i class="fa fa-link" style="margin-right:4px;font-size:10px;"></i><?php echo esc_html($host); ?></span>
+                        <i class="fa fa-external-link flink-open-icon" aria-hidden="true"></i>
+                    </div>
                 </div>
             </a>
             <?php endforeach; ?>
         </div>
     </article>
     <?php endforeach; ?>
+</div>
 <?php else : ?>
 <article class="post card shadow-sm bg-white border-0 flinks-empty" style="margin-bottom: 16px;">
     <i class="fa fa-inbox"></i>
@@ -810,10 +800,10 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
 <!-- 申请友链 -->
 <?php if ($show_apply_form && !$is_admin) : ?>
 <article class="post card shadow-sm bg-white border-0 flinks-apply-card" style="margin-bottom: 16px;" id="apply-section">
-    <div class="flinks-apply-header" onclick="toggleApplyForm()">
+    <button type="button" class="flinks-apply-header" onclick="toggleApplyForm()" aria-expanded="<?php echo $apply_result ? 'true' : 'false'; ?>">
         <div class="flinks-apply-title"><i class="fa fa-plus-circle"></i><span><?php _e('申请友链', 'argon'); ?></span></div>
         <i class="fa fa-chevron-down flinks-apply-arrow <?php echo $apply_result ? 'open' : ''; ?>"></i>
-    </div>
+    </button>
     <div class="flinks-apply-content <?php echo $apply_result ? 'open' : ''; ?>">
         <?php if ($apply_result) : ?>
         <div class="alert alert-<?php echo $apply_result['success'] ? 'success' : 'danger'; ?>" style="margin-top:10px;padding:8px 12px;font-size:13px;"><?php echo esc_html($apply_result['message']); ?></div>
@@ -969,7 +959,20 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
 function toggleApplyForm() {
     var c = document.querySelector('.flinks-apply-content');
     var a = document.querySelector('.flinks-apply-arrow');
-    if (c && a) { c.classList.toggle('open'); a.classList.toggle('open'); }
+    var h = document.querySelector('.flinks-apply-header');
+    if (c && a) {
+        var isOpen = c.classList.toggle('open');
+        a.classList.toggle('open', isOpen);
+        if (h) h.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    }
+}
+function openApplyForm() {
+    var c = document.querySelector('.flinks-apply-content');
+    var a = document.querySelector('.flinks-apply-arrow');
+    var h = document.querySelector('.flinks-apply-header');
+    if (c) c.classList.add('open');
+    if (a) a.classList.add('open');
+    if (h) h.setAttribute('aria-expanded', 'true');
 }
 function copyText(t) {
     navigator.clipboard ? navigator.clipboard.writeText(t).then(showCopyTip) : (function() {
@@ -995,54 +998,17 @@ function refreshCaptcha() {
         });
 }
 
-function bindFlinksFilter() {
-    var search = document.getElementById('flinks-search-input');
-    var cards = Array.prototype.slice.call(document.querySelectorAll('.flink-card'));
-    var sections = Array.prototype.slice.call(document.querySelectorAll('.flinks-category-card'));
-    var buttons = Array.prototype.slice.call(document.querySelectorAll('.flinks-filter-btn'));
-    var empty = document.getElementById('flinks-filter-empty');
-    var count = document.getElementById('flinks-visible-count');
-    var activeCategory = '__all';
-    var total = cards.length;
-
-    if (!cards.length) return;
-
-    function applyFilter() {
-        var query = search ? search.value.trim().toLowerCase() : '';
-        var visible = 0;
-        cards.forEach(function(card) {
-            var category = card.getAttribute('data-category') || '';
-            var text = (card.getAttribute('data-search') || card.textContent || '').toLowerCase();
-            var categoryMatch = activeCategory === '__all' || category === activeCategory;
-            var searchMatch = !query || text.indexOf(query) !== -1;
-            var show = categoryMatch && searchMatch;
-            card.classList.toggle('is-hidden', !show);
-            if (show) visible++;
-        });
-        sections.forEach(function(section) {
-            var hasVisible = !!section.querySelector('.flink-card:not(.is-hidden)');
-            section.classList.toggle('is-hidden', !hasVisible);
-        });
-        if (empty) empty.hidden = visible !== 0;
-        if (count) count.textContent = visible + ' / ' + total + ' <?php _e('个站点', 'argon'); ?>';
-    }
-
-    if (search) search.addEventListener('input', applyFilter);
-    buttons.forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var filter = this.getAttribute('data-filter');
-            activeCategory = filter === null ? '__all' : filter;
-            buttons.forEach(function(item) { item.classList.toggle('active', item === btn); });
-            applyFilter();
-        });
+var applyLink = document.getElementById('flinks-apply-link');
+if (applyLink) {
+    applyLink.addEventListener('click', function() {
+        openApplyForm();
     });
-    applyFilter();
 }
-bindFlinksFilter();
 
 <?php if ($apply_result) : ?>
 document.addEventListener('DOMContentLoaded', function() {
     var s = document.getElementById('apply-section');
+    openApplyForm();
     if (s) s.scrollIntoView({ behavior: 'smooth', block: 'center' });
     
     // 清除 URL 中的申请结果参数
