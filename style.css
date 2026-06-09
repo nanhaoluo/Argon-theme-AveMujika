@@ -13253,18 +13253,28 @@ a:active .color-curtain {
 
 /* 鍩虹榛戝箷鏍峰紡 */
 .heimu,
+a.heimu,
 .heimu a,
 a .heimu,
-.heimu a.new {
+.heimu a.new,
+a.heimu.new {
 	background-color: #252525 !important;
+	background-image: none !important;
+	background-position: initial !important;
+	background-repeat: initial !important;
+	background-size: auto !important;
 	color: #252525 !important;
 	text-shadow: none !important;
+	text-decoration: none !important;
 	transition: color 0.2s ease, background-color 0.2s ease;
 	cursor: pointer;
 }
 
 .heimu a {
+	background-color: inherit !important;
+	background-image: none !important;
 	color: inherit !important;
+	text-decoration: none !important;
 	transition: inherit;
 }
 
@@ -13281,7 +13291,10 @@ a .heimu,
 a:hover .heimu,
 .heimu:active a,
 a:active .heimu {
+	background-color: transparent !important;
+	background-image: none !important;
 	color: inherit !important;
+	text-decoration: none !important;
 }
 
 .heimu:hover .new,
@@ -13298,6 +13311,7 @@ article .post-content .heimu,
 article .entry-content .heimu,
 .article-content .heimu {
 	background-color: #252525 !important;
+	background-image: none !important;
 	color: #252525 !important;
 }
 
@@ -13309,14 +13323,18 @@ article .entry-content .heimu:active,
 .article-content .heimu:active {
 	color: var(--color-text-deeper) !important;
 	background-color: transparent !important;
+	background-image: none !important;
 }
 
 /* 澶滈棿妯″紡 */
 html.darkmode .heimu,
+html.darkmode a.heimu,
 html.darkmode .heimu a,
 html.darkmode a .heimu,
-html.darkmode .heimu a.new {
+html.darkmode .heimu a.new,
+html.darkmode a.heimu.new {
 	background-color: #1a1a1a !important;
+	background-image: none !important;
 	color: #1a1a1a !important;
 }
 
@@ -13324,14 +13342,22 @@ html.darkmode .heimu:hover,
 html.darkmode .heimu:active {
 	color: var(--color-text-deeper) !important;
 	background-color: transparent !important;
+	background-image: none !important;
 }
 
 html.darkmode .heimu a {
+	background-color: inherit !important;
+	background-image: none !important;
 	color: inherit !important;
 }
 
 html.darkmode .heimu:hover a,
+html.darkmode .heimu:active a,
+html.darkmode a:hover .heimu,
+html.darkmode a:active .heimu,
 html.darkmode .color-curtain:hover a {
+	background-color: transparent !important;
+	background-image: none !important;
 	color: inherit !important;
 }
 
@@ -13352,8 +13378,17 @@ html.darkmode .comment-content .color-curtain:active {
 
 /* 绂佺敤閾炬帴涓嬪垝绾垮姩鐢伙紙闃叉鍐茬獊?*/
 article .post-content .heimu a:before,
+article .post-content a.heimu:before,
+article .post-content a.heimu::before,
+article .post-content a.heimu::after,
 article .entry-content .heimu a:before,
+article .entry-content a.heimu:before,
+article .entry-content a.heimu::before,
+article .entry-content a.heimu::after,
 .article-content .heimu a:before,
+.article-content a.heimu:before,
+.article-content a.heimu::before,
+.article-content a.heimu::after,
 article .post-content .color-curtain a:before,
 article .post-content .text-blur a:before,
 article .post-content .huhua a:before {
@@ -18656,8 +18691,11 @@ html.darkmode .argon-hidden-text-background:active {
 
 /* Special inline effects used in posts, comments, and shuoshuo content. */
 .post-content .heimu,
+.post-content a.heimu,
 .comment-item-text .heimu,
+.comment-item-text a.heimu,
 .shuoshuo-content .heimu,
+.shuoshuo-content a.heimu,
 .post-content .color-curtain,
 .comment-item-text .color-curtain,
 .shuoshuo-content .color-curtain,
@@ -18667,6 +18705,10 @@ html.darkmode .argon-hidden-text-background:active {
 	display: inline;
 	padding: 0 2px;
 	border-radius: 2px;
+	background-image: none !important;
+	background-position: initial !important;
+	background-repeat: initial !important;
+	background-size: auto !important;
 	text-shadow: none !important;
 	text-decoration: none !important;
 	cursor: pointer;
@@ -18674,21 +18716,31 @@ html.darkmode .argon-hidden-text-background:active {
 }
 
 .post-content .heimu,
+.post-content a.heimu,
 .comment-item-text .heimu,
+.comment-item-text a.heimu,
 .shuoshuo-content .heimu,
+.shuoshuo-content a.heimu,
 .post-content .argon-hidden-text-background,
 .comment-item-text .argon-hidden-text-background,
 .shuoshuo-content .argon-hidden-text-background {
 	background-color: #252525 !important;
+	background-image: none !important;
 	color: #252525 !important;
 }
 
 .post-content .heimu:hover,
 .post-content .heimu:active,
+.post-content a.heimu:hover,
+.post-content a.heimu:active,
 .comment-item-text .heimu:hover,
 .comment-item-text .heimu:active,
+.comment-item-text a.heimu:hover,
+.comment-item-text a.heimu:active,
 .shuoshuo-content .heimu:hover,
 .shuoshuo-content .heimu:active,
+.shuoshuo-content a.heimu:hover,
+.shuoshuo-content a.heimu:active,
 .post-content .argon-hidden-text-background:hover,
 .post-content .argon-hidden-text-background:active,
 .comment-item-text .argon-hidden-text-background:hover,
@@ -18696,6 +18748,7 @@ html.darkmode .argon-hidden-text-background:active {
 .shuoshuo-content .argon-hidden-text-background:hover,
 .shuoshuo-content .argon-hidden-text-background:active {
 	background-color: transparent !important;
+	background-image: none !important;
 	color: var(--color-text-deeper) !important;
 }
 
@@ -18766,31 +18819,47 @@ html.darkmode .argon-hidden-text-background:active {
 }
 
 .post-content .heimu a,
+.post-content a.heimu,
 .post-content .color-curtain a,
 .post-content .text-blur a,
 .post-content .huhua a,
 .comment-item-text .heimu a,
+.comment-item-text a.heimu,
 .comment-item-text .color-curtain a,
 .comment-item-text .text-blur a,
 .comment-item-text .huhua a,
 .shuoshuo-content .heimu a,
+.shuoshuo-content a.heimu,
 .shuoshuo-content .color-curtain a,
 .shuoshuo-content .text-blur a,
 .shuoshuo-content .huhua a {
+	background-color: inherit !important;
+	background-image: none !important;
+	background-position: initial !important;
+	background-size: auto !important;
 	color: inherit !important;
 	text-decoration: inherit !important;
 	transition: inherit !important;
 }
 
 .post-content .heimu a:before,
+.post-content a.heimu:before,
+.post-content a.heimu::before,
+.post-content a.heimu::after,
 .post-content .color-curtain a:before,
 .post-content .text-blur a:before,
 .post-content .huhua a:before,
 .comment-item-text .heimu a:before,
+.comment-item-text a.heimu:before,
+.comment-item-text a.heimu::before,
+.comment-item-text a.heimu::after,
 .comment-item-text .color-curtain a:before,
 .comment-item-text .text-blur a:before,
 .comment-item-text .huhua a:before,
 .shuoshuo-content .heimu a:before,
+.shuoshuo-content a.heimu:before,
+.shuoshuo-content a.heimu::before,
+.shuoshuo-content a.heimu::after,
 .shuoshuo-content .color-curtain a:before,
 .shuoshuo-content .text-blur a:before,
 .shuoshuo-content .huhua a:before {
@@ -18799,21 +18868,31 @@ html.darkmode .argon-hidden-text-background:active {
 }
 
 html.darkmode .post-content .heimu,
+html.darkmode .post-content a.heimu,
 html.darkmode .comment-item-text .heimu,
+html.darkmode .comment-item-text a.heimu,
 html.darkmode .shuoshuo-content .heimu,
+html.darkmode .shuoshuo-content a.heimu,
 html.darkmode .post-content .argon-hidden-text-background,
 html.darkmode .comment-item-text .argon-hidden-text-background,
 html.darkmode .shuoshuo-content .argon-hidden-text-background {
 	background-color: #1a1a1a !important;
+	background-image: none !important;
 	color: #1a1a1a !important;
 }
 
 html.darkmode .post-content .heimu:hover,
 html.darkmode .post-content .heimu:active,
+html.darkmode .post-content a.heimu:hover,
+html.darkmode .post-content a.heimu:active,
 html.darkmode .comment-item-text .heimu:hover,
 html.darkmode .comment-item-text .heimu:active,
+html.darkmode .comment-item-text a.heimu:hover,
+html.darkmode .comment-item-text a.heimu:active,
 html.darkmode .shuoshuo-content .heimu:hover,
 html.darkmode .shuoshuo-content .heimu:active,
+html.darkmode .shuoshuo-content a.heimu:hover,
+html.darkmode .shuoshuo-content a.heimu:active,
 html.darkmode .post-content .argon-hidden-text-background:hover,
 html.darkmode .post-content .argon-hidden-text-background:active,
 html.darkmode .comment-item-text .argon-hidden-text-background:hover,
@@ -18821,6 +18900,7 @@ html.darkmode .comment-item-text .argon-hidden-text-background:active,
 html.darkmode .shuoshuo-content .argon-hidden-text-background:hover,
 html.darkmode .shuoshuo-content .argon-hidden-text-background:active {
 	background-color: transparent !important;
+	background-image: none !important;
 	color: var(--color-text-deeper) !important;
 }
 
