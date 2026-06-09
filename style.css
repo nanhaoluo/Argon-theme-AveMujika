@@ -13063,6 +13063,7 @@ article .post-content .huhua a:before {
 	font-size: 11px;
 	font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
 	color: inherit;
+	text-decoration: none;
 	opacity: 0.7;
 	transition: opacity 0.2s ease;
 	vertical-align: middle;
@@ -13072,6 +13073,8 @@ article .post-content .huhua a:before {
 
 .git-version-badge:hover {
 	opacity: 1;
+	color: inherit;
+	text-decoration: none;
 }
 
 .git-version-badge .git-icon {
@@ -15256,6 +15259,7 @@ article .post-content a:hover {
 	font-size: 11px;
 	font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
 	color: inherit;
+	text-decoration: none;
 	opacity: 0.7;
 	transition: opacity 0.2s ease;
 	vertical-align: middle;
@@ -15265,6 +15269,8 @@ article .post-content a:hover {
 
 .git-version-badge:hover {
 	opacity: 1;
+	color: inherit;
+	text-decoration: none;
 }
 
 .git-version-badge .git-icon {

@@ -6801,6 +6801,28 @@ function themeoptions_page(){
 
 					</tr>
 
+					<tr>
+
+						<th><label><?php _e('Git 徽章', 'argon');?></label></th>
+
+						<td>
+
+							<select name="argon_show_git_badge">
+
+								<?php $argon_show_git_badge = get_option('argon_show_git_badge', 'true'); ?>
+
+								<option value="true" <?php if ($argon_show_git_badge=='true'){echo 'selected';} ?>><?php _e('显示', 'argon');?></option>
+
+								<option value="false" <?php if ($argon_show_git_badge=='false'){echo 'selected';} ?>><?php _e('隐藏', 'argon');?></option>
+
+							</select>
+
+							<p class="description"><?php _e('控制页脚 Git 版本徽章是否显示；显示时点击徽章会跳转到 GitHub 仓库。', 'argon');?></p>
+
+						</td>
+
+					</tr>
+
 
 					<!-- ========== 8. 高级设置 ========== -->
 					<tr><th class="subtitle"><h2 id="category-8">8. 高级设置</h2></th></tr>
@@ -7611,6 +7633,8 @@ function argon_update_themeoptions(){
 		}
 
 		argon_update_option('argon_hide_footer_author');
+
+		argon_update_option('argon_show_git_badge');
 
 		argon_update_option('argon_card_radius');
 
