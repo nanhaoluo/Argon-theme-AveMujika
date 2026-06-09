@@ -4693,6 +4693,23 @@ html.darkmode #leftbar_catalog::-webkit-scrollbar-thumb {
 
 }
 
+#leftbar_catalog .catalog-link:hover,
+#leftbar_catalog .catalog-link.active,
+#leftbar_catalog .index-link:hover,
+#leftbar_catalog .index-link:focus,
+#leftbar_catalog .index-item.current>.index-link {
+	background-color: rgba(var(--themecolor-rgbstr), 0.12) !important;
+	color: var(--themecolor) !important;
+	border-left-color: var(--themecolor) !important;
+	box-shadow: none !important;
+}
+
+#leftbar_catalog .catalog-link.active {
+	background: rgba(var(--themecolor-rgbstr), 0.14) !important;
+	color: var(--themecolor) !important;
+	font-weight: 600;
+}
+
 #leftbar_catalog .index-link:hover {
 
 	background-color: rgba(var(--themecolor-rgbstr), 0.09);

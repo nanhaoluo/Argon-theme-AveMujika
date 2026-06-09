@@ -3093,6 +3093,7 @@ function panguInit() {
 	}
 }
 initArgonLongContentVirtualizer();
+patchHeadIndexForVirtualContent();
 panguInit();
 
 /*Clamp.js*/
@@ -4198,14 +4199,62 @@ function patchHeadIndexForVirtualContent() {
 	jQuery.fn.headIndex = function (options) {
 		var virtualizer = window.ArgonLongContentVirtualizer;
 		if (!virtualizer || !virtualizer.isReady || !virtualizer.isReady() || !options || options.articleWrapSelector !== "#post_content") {
-			return originalHeadIndex.apply(this, arguments);
+			var result = originalHeadIndex.apply(this, arguments);
+			this.each(function () {
+				decorateHeadIndexFollowScroll(jQuery(this).data("headIndex"));
+			});
+			return result;
 		}
 		return this.each(function () {
 			var instance = createVirtualHeadIndexInstance(options, virtualizer);
+			decorateHeadIndexFollowScroll(instance);
 			jQuery(this).data("headIndex", instance);
 		});
 	};
 	argonVirtualHeadIndexPatched = true;
+	decorateHeadIndexFollowScroll(jQuery(document).data("headIndex"));
+}
+
+function decorateHeadIndexFollowScroll(instance) {
+	if (!instance || instance._argonFollowScrollPatched) {
+		return;
+	}
+	instance._argonFollowScrollPatched = true;
+	instance.mouseHovered = false;
+	if (typeof instance.scrollCurrentIntoView === "function") {
+		instance.scrollCurrentIntoView = function (indexItem) {
+			scrollCatalogItemIntoView(this.indexScrollBox || jQuery(this.settings && this.settings.indexScrollBoxSelector), indexItem);
+		};
+	}
+}
+
+function scrollCatalogItemIntoView(indexScrollBox, indexItem) {
+	var scrollBox = jQuery(indexScrollBox).eq(0);
+	var item = jQuery(indexItem).eq(0);
+	var scrollNode = scrollBox[0];
+	var itemNode = item[0];
+	if (!scrollNode || !itemNode) {
+		return;
+	}
+	var boxHeight = scrollBox.innerHeight();
+	var itemHeight = item.outerHeight();
+	if (boxHeight <= 0 || itemHeight <= 0) {
+		return;
+	}
+	var itemTop;
+	if (scrollNode.getBoundingClientRect && itemNode.getBoundingClientRect) {
+		itemTop = itemNode.getBoundingClientRect().top - scrollNode.getBoundingClientRect().top;
+	} else {
+		itemTop = item.position().top;
+	}
+	var scrollTop = scrollBox.scrollTop();
+	var maxScroll = Math.max(0, scrollNode.scrollHeight - boxHeight);
+	var target = scrollTop + itemTop - (boxHeight / 2) + (itemHeight / 2);
+	target = Math.max(0, Math.min(target, maxScroll));
+	if (Math.abs(target - scrollTop) < 4) {
+		return;
+	}
+	scrollBox.stop(true).animate({ scrollTop: target }, 220, "easeOutExpo");
 }
 
 function createVirtualHeadIndexInstance(options, virtualizer) {
@@ -4224,7 +4273,6 @@ function createVirtualHeadIndexInstance(options, virtualizer) {
 	var indexScrollBox = jQuery(settings.indexScrollBoxSelector);
 	var scrollBody = jQuery(settings.scrollSelector);
 	var manual = false;
-	var mouseHovered = false;
 	var tree = buildVirtualHeaderTree(headers);
 
 	function buildCatalogHtml(items) {
@@ -4269,13 +4317,11 @@ function createVirtualHeadIndexInstance(options, virtualizer) {
 			current(indexItem);
 			scrollTo(href);
 		});
-		indexScrollBox.off("mouseover.virtualHeadIndex mouseleave.virtualHeadIndex");
-		indexScrollBox.on("mouseover.virtualHeadIndex", function () { mouseHovered = true; });
-		indexScrollBox.on("mouseleave.virtualHeadIndex", function () { mouseHovered = false; });
 	}
 
 	function current(indexItem) {
 		if (!indexItem.length || indexItem.hasClass("current")) {
+			scrollCatalogItemIntoView(indexScrollBox, indexItem);
 			return;
 		}
 		indexBox.find("li.current").removeClass("current");
@@ -4294,18 +4340,7 @@ function createVirtualHeadIndexInstance(options, virtualizer) {
 			indexBox.find("ul." + settings.subItemBoxClass).not(".open").slideUp();
 		}
 		indexItem.addClass("current");
-		if (mouseHovered) {
-			return;
-		}
-		var relativeTop = indexItem.position().top;
-		var containerScrollTop = indexScrollBox.scrollTop();
-		var containerHeight = indexScrollBox.height();
-		if (relativeTop < 20 + indexItem.height()) {
-			indexScrollBox.stop().animate({ scrollTop: Math.max(0, containerScrollTop + relativeTop - 20 - indexItem.height()) }, "normal", "easeOutExpo");
-		}
-		if (relativeTop > containerHeight - 10) {
-			indexScrollBox.stop().animate({ scrollTop: containerScrollTop + relativeTop - containerHeight + 10 + indexItem.height() }, "normal", "easeOutExpo");
-		}
+		scrollCatalogItemIntoView(indexScrollBox, indexItem);
 	}
 
 	function scrollTo(href) {
@@ -4342,7 +4377,6 @@ function createVirtualHeadIndexInstance(options, virtualizer) {
 
 	function clean() {
 		indexBox.off("click.headindex");
-		indexScrollBox.off("mouseover.virtualHeadIndex mouseleave.virtualHeadIndex");
 		jQuery(settings.scrollWrap || window).off("scroll.virtualHeadIndex resize.virtualHeadIndex");
 	}
 
@@ -5006,6 +5040,7 @@ var PageLoader = (function () {
 		show: show,
 		hide: hide,
 		setProgress: setProgress,
+		trackResources: trackResources,
 		destroy: destroy
 	};
 })();
@@ -5134,11 +5169,13 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 				}
 			}
 		}).on('pjax:send', function () {
+			PageLoader.setProgress(62);
 			NProgress.set(0.618);
 		}).on('pjax:beforeReplace', function (e, dom) {
 			// ========== 需求 1.1-1.4: 清理旧页面的所有资源 ==========
 			// 调用统一的资源清理管理器
 			// 清理内容：Lazyload Observer、Zoomify、Tippy 实例、动态标签
+			PageLoader.setProgress(72);
 			cleanupPjaxResources();
 
 			// 更新 UI 状态
@@ -5157,6 +5194,8 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 		}).on('pjax:complete', function () {
 			// ========== 需求 1.5, 1.6: 重新初始化所有功能模块 ==========
 			pjaxLoading = false;
+			PageLoader.trackResources(document);
+			PageLoader.setProgress(82);
 			NProgress.inc();
 
 			// ========== 需求 4.1-4.5: 执行新页面中的内联脚本 ==========
@@ -5230,9 +5269,11 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 			}
 
 			NProgress.done();
+			PageLoader.hide();
 		}).on('pjax:error', function () {
 			endPageTransition();
 			pjaxLoading = false;
+			PageLoader.hide();
 		}).on('pjax:end', function () {
 			// ========== 需求 1.7: 执行特定任务 ==========
 
