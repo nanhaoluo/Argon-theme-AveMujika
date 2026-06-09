@@ -11101,22 +11101,11 @@ html.darkmode.amoled-dark #content:after {
 
 	/* 鑿滃崟椤规稛婕晥?*/
 	.leftbar-mobile-menu-item>a::before {
-		content: "";
-		position: absolute;
-		top: 50%;
-		left: 50%;
-		width: 0;
-		height: 0;
-		background: rgba(var(--themecolor-rgbstr), 0.15);
-		border-radius: 50%;
-		transform: translate(-50%, -50%);
-		transition: width 0.4s var(--ease-standard), height 0.4s var(--ease-standard);
-		pointer-events: none;
+		content: none;
 	}
 
 	.leftbar-mobile-menu-item>a:active::before {
-		width: 200%;
-		height: 200%;
+		content: none;
 	}
 
 	.leftbar-mobile-menu-item>a:active {
@@ -11253,22 +11242,11 @@ html.darkmode.amoled-dark #content:after {
 
 	/* 搴曢儴鎸夐挳娑熸吉鏁堟灉 */
 	.leftbar-mobile-action::before {
-		content: "";
-		position: absolute;
-		top: 50%;
-		left: 50%;
-		width: 0;
-		height: 0;
-		background: rgba(var(--themecolor-rgbstr), 0.2);
-		border-radius: 50%;
-		transform: translate(-50%, -50%);
-		transition: width 0.35s var(--ease-standard), height 0.35s var(--ease-standard);
-		pointer-events: none;
+		content: none;
 	}
 
 	.leftbar-mobile-action:active::before {
-		width: 180%;
-		height: 180%;
+		content: none;
 	}
 
 	.leftbar-mobile-action:active {
@@ -11316,26 +11294,11 @@ html.darkmode.amoled-dark #content:after {
 
 	/* 鎶樺彔澶撮儴娑熸吉鏁堟灉 */
 	.leftbar-mobile-collapse-header::before {
-		content: "";
-		position: absolute;
-		top: 50%;
-		left: 50%;
-		width: 0;
-		height: 0;
-		background: rgba(var(--themecolor-rgbstr), 0.15);
-		border-radius: 50%;
-		transform: translate(-50%, -50%);
-		transition: width 0.6s var(--ease-emphasized-decelerate),
-			height 0.6s var(--ease-emphasized-decelerate),
-			opacity 0.4s var(--ease-standard);
-		pointer-events: none;
-		opacity: 0;
+		content: none;
 	}
 
 	.leftbar-mobile-collapse-header:active::before {
-		width: 300%;
-		height: 300%;
-		opacity: 1;
+		content: none;
 	}
 
 	.leftbar-mobile-collapse-header:active {
@@ -16222,25 +16185,75 @@ html.darkmode article.post.card {
 }
 
 .btn-ripple::after {
-	content: '';
+	content: none;
+}
+
+.argon-ripple-target {
+	overflow: hidden;
+	isolation: isolate;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.argon-click-ripple {
 	position: absolute;
-	width: 100%;
-	height: 100%;
-	top: 0;
-	left: 0;
+	left: 50%;
+	top: 50%;
+	width: 0;
+	height: 0;
 	pointer-events: none;
-	background-image: radial-gradient(circle, rgba(255, 255, 255, 0.3) 10%, transparent 10.01%);
-	background-repeat: no-repeat;
-	background-position: 50%;
-	transform: scale(10, 10);
+	border-radius: 50%;
+	background: var(--argon-ripple-color, rgba(var(--themecolor-rgbstr), 0.24));
+	transform: translate(-50%, -50%) scale(0);
 	opacity: 0;
-	transition: opacity 350ms var(--ease-standard);
+	animation: argon-click-ripple 520ms linear forwards;
+	will-change: transform, opacity;
+	z-index: 0;
+}
+
+.btn-primary .argon-click-ripple,
+.btn-outline-primary .argon-click-ripple,
+.leftbar-mobile-close .argon-click-ripple,
+.mobile-todo-add-form button .argon-click-ripple {
+	--argon-ripple-color: rgba(255, 255, 255, 0.34);
+}
+
+.mobile-todo-complete-btn .argon-click-ripple {
+	--argon-ripple-color: rgba(40, 167, 69, 0.28);
+}
+
+.mobile-todo-urge-btn .argon-click-ripple {
+	--argon-ripple-color: rgba(var(--themecolor-rgbstr), 0.28);
+}
+
+.mobile-todo-delete-btn .argon-click-ripple {
+	--argon-ripple-color: rgba(220, 53, 69, 0.26);
+}
+
+@keyframes argon-click-ripple {
+	0% {
+		transform: translate(-50%, -50%) scale(0);
+		opacity: 0.28;
+	}
+
+	62% {
+		transform: translate(-50%, -50%) scale(1);
+		opacity: 0.28;
+	}
+
+	100% {
+		transform: translate(-50%, -50%) scale(1);
+		opacity: 0;
+	}
 }
 
 .btn-ripple:active::after {
-	transform: scale(10, 10);
-	opacity: 1;
-	transition: transform 0s, opacity 0s;
+	content: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.argon-click-ripple {
+		animation-duration: 180ms;
+	}
 }
 
 /* 杈撳叆?Apple 椋庢牸 */

@@ -5463,6 +5463,91 @@ $(document).on("keydown", function (e) {
 	}
 });
 
+/*Click ripple*/
+!function () {
+	var rippleSelector = [
+		".btn-ripple",
+		".leftbar-mobile-menu-item > a",
+		".leftbar-mobile-action",
+		".leftbar-mobile-collapse-header",
+		".leftbar-mobile-close",
+		"#leftbar_mobile_catalog .index-link",
+		".mobile-todo-add-form button",
+		".mobile-todo-complete-btn",
+		".mobile-todo-urge-btn",
+		".mobile-todo-delete-btn",
+		".mobile-todo-collapse-btn",
+		".mobile-todo-completed-divider"
+	].join(", ");
+	var eventName = window.PointerEvent ? "pointerdown.argonRipple" : "touchstart.argonRipple mousedown.argonRipple";
+	var lastTouchTime = 0;
+
+	function getRipplePoint(event) {
+		var originalEvent = event.originalEvent || event;
+		var point = originalEvent;
+		if (originalEvent.touches && originalEvent.touches.length > 0) {
+			point = originalEvent.touches[0];
+			lastTouchTime = Date.now();
+		} else if (originalEvent.changedTouches && originalEvent.changedTouches.length > 0) {
+			point = originalEvent.changedTouches[0];
+			lastTouchTime = Date.now();
+		} else if (event.type === "mousedown" && Date.now() - lastTouchTime < 450) {
+			return null;
+		}
+		if (typeof point.clientX !== "number" || typeof point.clientY !== "number") {
+			return null;
+		}
+		return {
+			x: point.clientX,
+			y: point.clientY
+		};
+	}
+
+	function addClickRipple(event) {
+		if (event.button && event.button !== 0) {
+			return;
+		}
+		var target = $(event.target).closest(rippleSelector)[0];
+		if (!target || target.disabled || target.getAttribute("aria-disabled") === "true" || target.classList.contains("disabled")) {
+			return;
+		}
+		if (!target.classList.contains("btn-ripple") && window.matchMedia && !window.matchMedia("(max-width: 900px)").matches) {
+			return;
+		}
+		var point = getRipplePoint(event);
+		if (!point) {
+			return;
+		}
+		var rect = target.getBoundingClientRect();
+		if (rect.width <= 0 || rect.height <= 0) {
+			return;
+		}
+		var x = point.x - rect.left;
+		var y = point.y - rect.top;
+		var maxX = Math.max(x, rect.width - x);
+		var maxY = Math.max(y, rect.height - y);
+		var diameter = Math.ceil(Math.sqrt(maxX * maxX + maxY * maxY) * 2);
+		var ripple = document.createElement("span");
+		ripple.className = "argon-click-ripple";
+		ripple.style.width = diameter + "px";
+		ripple.style.height = diameter + "px";
+		ripple.style.left = x + "px";
+		ripple.style.top = y + "px";
+		target.classList.add("argon-ripple-target");
+		if (window.getComputedStyle && window.getComputedStyle(target).position === "static") {
+			target.style.position = "relative";
+		}
+		target.appendChild(ripple);
+		setTimeout(function () {
+			if (ripple.parentNode) {
+				ripple.parentNode.removeChild(ripple);
+			}
+		}, 560);
+	}
+
+	$(document).on(eventName, addClickRipple);
+}();
+
 /*侧栏 & 顶栏菜单手机适配*/
 !function () {
 	$(document).on("click", "#fabtn_open_sidebar, #open_sidebar", function () {
