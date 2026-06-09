@@ -58,20 +58,11 @@
 		?>
 	</header>
 
-	<!-- 简约的顶部退出按钮 -->
-	<div id="immersive_exit_btn" class="immersive-exit-btn-container">
-		<button class="immersive-exit-btn-fast" type="button" aria-label="<?php esc_attr_e('退出沉浸模式', 'argon'); ?>">
-			<i class="fa fa-compress" aria-hidden="true"></i><span><?php _e('退出', 'argon'); ?></span>
-		</button>
-	</div>
-
 	<!-- 沉浸式阅读 JS -->
 	<script>
 	(function() {
 		var root = document.documentElement;
 		var toggleBtn = document.getElementById('immersive_read_toggle');
-		var exitTopBtn = document.getElementById('immersive_exit_btn');
-		var exitButton = exitTopBtn ? exitTopBtn.querySelector('button') : null;
 		if (!toggleBtn) return;
 
 		var isActive = root.classList.contains('immersive-read');
@@ -122,10 +113,6 @@
 			root.classList.add('immersive-read', 'immersive-read-entering');
 			updateToggle(true);
 
-			if (exitTopBtn) {
-				exitTopBtn.classList.add('visible');
-			}
-
 			requestAnimationFrame(scrollArticleIntoView);
 			transitionTimer = setTimeout(function() {
 				root.classList.remove('immersive-read-entering');
@@ -141,10 +128,6 @@
 			root.classList.remove('immersive-read-entering');
 			root.classList.add('immersive-read-leaving');
 			updateToggle(false);
-
-			if (exitTopBtn) {
-				exitTopBtn.classList.remove('visible');
-			}
 
 			transitionTimer = setTimeout(function() {
 				root.classList.remove('immersive-read', 'immersive-read-leaving');
@@ -162,13 +145,6 @@
 			e.preventDefault();
 			isActive ? exitImmersive() : enterImmersive();
 		});
-
-		if (exitButton) {
-			exitButton.addEventListener('click', function(e) {
-				e.preventDefault();
-				exitImmersive();
-			});
-		}
 
 		// Esc 快捷键支持
 		document.addEventListener('keydown', function(e) {
