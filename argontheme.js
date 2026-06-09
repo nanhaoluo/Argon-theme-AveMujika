@@ -629,6 +629,20 @@ $(document).on("change", ".search-filter", function (e) {
 		}
 	}
 
+	function isLeftbarCatalogActive() {
+		let catalogTab = document.getElementById('leftbar_tab_catalog');
+		return !!(catalogTab && catalogTab.classList.contains('active'));
+	}
+
+	function getNaturalScrollHeight(element) {
+		if (!element) return 0;
+		let previousMaxHeight = element.style.maxHeight;
+		element.style.maxHeight = 'none';
+		let height = element.scrollHeight;
+		element.style.maxHeight = previousMaxHeight;
+		return height;
+	}
+
 	function requestLeftbarStickyStatusUpdate() {
 		if (leftbarStickyUpdateFrame) return;
 		let scheduleFrame = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function (callback) {
@@ -673,14 +687,34 @@ $(document).on("change", ".search-filter", function (e) {
 					part3MaxHeight = Math.max(minPart3Height, availableHeight - part2Height - 10);
 				}
 
-				setLeftbarRootProperty('--leftbar-part2-inner-height', Math.round(part2Height) + 'px');
-				setLeftbarRootProperty('--leftbar-part2-height', Math.round(part2Height + 10) + 'px');
-				setLeftbarRootProperty('--leftbar-part3-height', part3MaxHeight + 'px');
-				setLeftbarRootProperty('--leftbar-part3-max-height', part3MaxHeight + 'px');
+				let gapBetweenParts = 10;
+				let catalogActive = isLeftbarCatalogActive();
+				let part3Body = leftbarPart3.querySelector('.card-body') || leftbarPart3;
+				part3NaturalHeight = getNaturalScrollHeight(part3Body);
+				leftbarPart2.classList.toggle('leftbar-tab-catalog-active', catalogActive);
+				if (catalogActive) {
+					let sharedHeight = availableHeight - gapBetweenParts;
+					if (part3NaturalHeight + minPart2Height <= sharedHeight) {
+						part3MaxHeight = part3NaturalHeight;
+						part2Height = sharedHeight - part3NaturalHeight;
+					} else {
+						part2Height = Math.max(minPart2Height, sharedHeight * 0.6);
+						part3MaxHeight = Math.max(minPart3Height, sharedHeight - part2Height);
+					}
+				} else {
+					part2Height = leftbarPart2.offsetHeight;
+					part3MaxHeight = Math.min(part3NaturalHeight, Math.max(minPart3Height, availableHeight - part2Height - gapBetweenParts));
+				}
+
+				setLeftbarRootProperty('--leftbar-part2-inner-height', catalogActive ? Math.round(part2Height) + 'px' : 'auto');
+				setLeftbarRootProperty('--leftbar-part2-height', Math.round(part2Height + gapBetweenParts) + 'px');
+				setLeftbarRootProperty('--leftbar-part3-height', Math.round(part3MaxHeight) + 'px');
+				setLeftbarRootProperty('--leftbar-part3-max-height', Math.round(part3MaxHeight) + 'px');
 			}
 		} else {
 			//滚动条在顶部 不浮动状态
 			leftbarPart2.classList.remove('sticky');
+			leftbarPart2.classList.remove('leftbar-tab-catalog-active');
 			if (leftbarPart3) leftbarPart3.classList.remove('sticky');
 		}
 		if (part1OffsetTop + part1OuterHeight + 10 - scrollTop <= 20) {//侧栏下部分是否可以随 Headroom 一起向上移动
@@ -715,6 +749,10 @@ $(document).on("change", ".search-filter", function (e) {
 		if (leftbarPart2) ro.observe(leftbarPart2);
 		if (leftbarPart3) ro.observe(leftbarPart3);
 	}
+	$(document).on('shown.bs.tab click', '#leftbar_part2 [data-toggle="tab"]', function () {
+		requestLeftbarStickyStatusUpdate();
+		window.setTimeout(requestLeftbarStickyStatusUpdate, 180);
+	});
 }();
 
 /*Headroom*/

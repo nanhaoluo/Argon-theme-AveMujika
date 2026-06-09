@@ -2593,40 +2593,27 @@ html.navbar-absolute #leftbar_part2.sticky {
 	flex: 1 1 auto;
 }
 
-#leftbar_part2.sticky #leftbar_part2_inner {
+#leftbar_part2.sticky.leftbar-tab-catalog-active #leftbar_part2_inner {
 	height: var(--leftbar-part2-inner-height, auto);
-	max-height: calc(100vh - 110px - var(--leftbar-part3-height, 0px));
 	overflow: hidden;
 	display: flex;
 	flex-direction: column;
 }
 
-#leftbar_part2.sticky #leftbar_part2_inner>div:not(.nav-wrapper) {
+#leftbar_part2.sticky.leftbar-tab-catalog-active #leftbar_part2_inner>div:not(.nav-wrapper) {
 	min-height: 0;
 	flex: 1;
 }
 
-#leftbar_part2.sticky #leftbar_part2_inner>div:not(.nav-wrapper)>.tab-content {
+#leftbar_part2.sticky.leftbar-tab-catalog-active #leftbar_part2_inner>div:not(.nav-wrapper)>.tab-content {
 	height: 100%;
-	overflow: hidden;
-}
-
-#leftbar_part2.sticky #leftbar_tab_overview {
-	height: 100%;
-	max-height: 100%;
-	overflow-y: auto;
-	overflow-x: hidden;
-}
-
-#leftbar_part2.sticky #leftbar_tab_overview:not(.active) {
-	height: 0;
-	max-height: 0;
 	overflow: hidden;
 }
 
 /* 鍙湁鏂囩珷鐩綍鏍囩闇€瑕佹粴鍔?*/
-#leftbar_part2.sticky #leftbar_tab_catalog {
-	max-height: calc(100vh - 200px - var(--leftbar-part3-height, 0px));
+#leftbar_part2.sticky.leftbar-tab-catalog-active #leftbar_tab_catalog {
+	height: 100%;
+	max-height: 100%;
 	overflow-y: auto;
 	scrollbar-color: rgba(var(--themecolor-rgbstr), 0.35) transparent;
 }
@@ -11869,17 +11856,7 @@ html.darkmode.amoled-dark #content:after {
 		height: -moz-max-content;
 	}
 
-	#leftbar_part2.sticky #leftbar_part2_inner>div:not(.nav-wrapper),
-	#leftbar_part2.sticky #leftbar_part2_inner>div:not(.nav-wrapper)>.tab-content {
-		height: auto;
-		overflow: visible;
-	}
 
-	#leftbar_part2.sticky #leftbar_tab_overview {
-		height: auto;
-		max-height: none;
-		overflow: visible;
-	}
 
 	#leftbar_part2_inner:before {
 		content: "";
@@ -13327,6 +13304,10 @@ article .post-content .huhua a:before {
 	padding: 12px 16px;
 	max-height: 50vh;
 	overflow-y: auto;
+}
+
+#leftbar_part3.sticky .card-body {
+	max-height: var(--leftbar-part3-max-height, 50vh);
 }
 
 #leftbar_part3 .card-body::-webkit-scrollbar {
