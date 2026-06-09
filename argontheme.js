@@ -673,7 +673,8 @@ $(document).on("change", ".search-filter", function (e) {
 					part3MaxHeight = Math.max(minPart3Height, availableHeight - part2Height - 10);
 				}
 
-				setLeftbarRootProperty('--leftbar-part2-height', leftbarPart2.offsetHeight + 10 + 'px');
+				setLeftbarRootProperty('--leftbar-part2-inner-height', Math.round(part2Height) + 'px');
+				setLeftbarRootProperty('--leftbar-part2-height', Math.round(part2Height + 10) + 'px');
 				setLeftbarRootProperty('--leftbar-part3-height', part3MaxHeight + 'px');
 				setLeftbarRootProperty('--leftbar-part3-max-height', part3MaxHeight + 'px');
 			}

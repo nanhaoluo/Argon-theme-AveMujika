@@ -2579,7 +2579,34 @@ html.navbar-absolute #leftbar_part2.sticky {
 }
 
 #leftbar_part2.sticky #leftbar_part2_inner {
+	height: var(--leftbar-part2-inner-height, auto);
 	max-height: calc(100vh - 110px - var(--leftbar-part3-height, 0px));
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+#leftbar_part2.sticky #leftbar_part2_inner>div:not(.nav-wrapper) {
+	min-height: 0;
+	flex: 1;
+}
+
+#leftbar_part2.sticky #leftbar_part2_inner>div:not(.nav-wrapper)>.tab-content {
+	height: 100%;
+	overflow: hidden;
+}
+
+#leftbar_part2.sticky #leftbar_tab_overview {
+	height: 100%;
+	max-height: 100%;
+	overflow-y: auto;
+	overflow-x: hidden;
+}
+
+#leftbar_part2.sticky #leftbar_tab_overview:not(.active) {
+	height: 0;
+	max-height: 0;
+	overflow: hidden;
 }
 
 /* 鍙湁鏂囩珷鐩綍鏍囩闇€瑕佹粴鍔?*/
@@ -11799,9 +11826,23 @@ html.darkmode.amoled-dark #content:after {
 	}
 
 	#leftbar_part2_inner {
+		display: block;
+		overflow: visible;
 		max-height: unset;
 		height: max-content;
 		height: -moz-max-content;
+	}
+
+	#leftbar_part2.sticky #leftbar_part2_inner>div:not(.nav-wrapper),
+	#leftbar_part2.sticky #leftbar_part2_inner>div:not(.nav-wrapper)>.tab-content {
+		height: auto;
+		overflow: visible;
+	}
+
+	#leftbar_part2.sticky #leftbar_tab_overview {
+		height: auto;
+		max-height: none;
+		overflow: visible;
 	}
 
 	#leftbar_part2_inner:before {
