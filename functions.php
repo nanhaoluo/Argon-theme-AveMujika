@@ -2845,8 +2845,8 @@ function argon_apply_comment_macros($text){
 		$title = isset($m[2]) ? trim($m[2]) : '你知道的太多了';
 		return '<span class="heimu"' . (strlen($title) ? ' title="' . htmlspecialchars($title, ENT_QUOTES) . '"' : '') . '>' . htmlspecialchars($content) . '</span>';
 	}, $text);
-	// 胡话：{{胡话|内容}} 或 {{胡话|内容|提示}}
-	$text = preg_replace_callback('/\{\{胡话\|([\s\S]*?)\}\}/u', function($m){
+	// 胡话/糊话：{{胡话|内容}}、{{糊话|内容}} 或带提示
+	$text = preg_replace_callback('/\{\{(?:胡话|糊话)\|([\s\S]*?)\}\}/u', function($m){
 		$parts = explode('|', $m[1]);
 		$content = isset($parts[0]) ? trim($parts[0]) : '';
 		$tip = isset($parts[1]) ? trim($parts[1]) : '只为博君一笑，不必照单全收XD';
@@ -4654,9 +4654,9 @@ function shortcode_hidden($attr,$content=""){
 	$tip = isset( $attr['tip'] ) ? $attr['tip'] : '';
 	$type = isset( $attr['type'] ) ? $attr['type'] : 'blur';
 	if ($type == "background"){
-		$out .= " argon-hidden-text-background";
+		$out .= " argon-hidden-text-background heimu";
 	}else{
-		$out .= " argon-hidden-text-blur";
+		$out .= " argon-hidden-text-blur text-blur";
 	}
 	$out .= "'";
 	if ($tip != ''){

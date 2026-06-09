@@ -8,7 +8,7 @@ Author URI: https://solstice23.top/
 
 Description: 杞荤泩銆佺畝娲併€佺編瑙傜殑 Wordpress 涓婚
 
-Version: 1.5.5
+Version: 1.5.6
 
 License: GNU General Public License v3.0
 
@@ -7583,6 +7583,13 @@ html.darkmode .emotion-keyboard {
 	background: transparent;
 	color: inherit;
 	border-radius: 0px;
+}
+
+.argon-hidden-text.argon-hidden-text-background:active,
+.argon-hidden-text.argon-hidden-text-blur:active {
+	filter: none;
+	background: transparent;
+	color: inherit;
 }
 
 /*鐭唬?Github*/
@@ -18481,6 +18488,176 @@ html.darkmode .argon-hidden-text-background:active {
 	filter: none;
 	-webkit-filter: none;
 	user-select: auto;
+}
+
+/* Special inline effects used in posts, comments, and shuoshuo content. */
+.post-content .heimu,
+.comment-item-text .heimu,
+.shuoshuo-content .heimu,
+.post-content .color-curtain,
+.comment-item-text .color-curtain,
+.shuoshuo-content .color-curtain,
+.post-content .argon-hidden-text-background,
+.comment-item-text .argon-hidden-text-background,
+.shuoshuo-content .argon-hidden-text-background {
+	display: inline;
+	padding: 0 2px;
+	border-radius: 2px;
+	text-shadow: none !important;
+	text-decoration: none !important;
+	cursor: pointer;
+	transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.post-content .heimu,
+.comment-item-text .heimu,
+.shuoshuo-content .heimu,
+.post-content .argon-hidden-text-background,
+.comment-item-text .argon-hidden-text-background,
+.shuoshuo-content .argon-hidden-text-background {
+	background-color: #252525 !important;
+	color: #252525 !important;
+}
+
+.post-content .heimu:hover,
+.post-content .heimu:active,
+.comment-item-text .heimu:hover,
+.comment-item-text .heimu:active,
+.shuoshuo-content .heimu:hover,
+.shuoshuo-content .heimu:active,
+.post-content .argon-hidden-text-background:hover,
+.post-content .argon-hidden-text-background:active,
+.comment-item-text .argon-hidden-text-background:hover,
+.comment-item-text .argon-hidden-text-background:active,
+.shuoshuo-content .argon-hidden-text-background:hover,
+.shuoshuo-content .argon-hidden-text-background:active {
+	background-color: transparent !important;
+	color: var(--color-text-deeper) !important;
+}
+
+.post-content .color-curtain,
+.comment-item-text .color-curtain,
+.shuoshuo-content .color-curtain {
+	background-color: var(--curtain-bg, #252525) !important;
+	color: var(--curtain-bg, #252525) !important;
+}
+
+.post-content .color-curtain:hover,
+.post-content .color-curtain:active,
+.comment-item-text .color-curtain:hover,
+.comment-item-text .color-curtain:active,
+.shuoshuo-content .color-curtain:hover,
+.shuoshuo-content .color-curtain:active {
+	color: var(--curtain-fg, #fff) !important;
+}
+
+.post-content .text-blur,
+.comment-item-text .text-blur,
+.shuoshuo-content .text-blur,
+.post-content .argon-hidden-text-blur,
+.comment-item-text .argon-hidden-text-blur,
+.shuoshuo-content .argon-hidden-text-blur {
+	display: inline;
+	filter: blur(4px) !important;
+	-webkit-filter: blur(4px) !important;
+	cursor: pointer;
+	user-select: none;
+	transition: filter var(--text-blur-transition-time, 0.2s) ease, color var(--text-blur-transition-time, 0.2s) ease;
+}
+
+.post-content .text-blur:hover,
+.post-content .text-blur:active,
+.comment-item-text .text-blur:hover,
+.comment-item-text .text-blur:active,
+.shuoshuo-content .text-blur:hover,
+.shuoshuo-content .text-blur:active,
+.post-content .argon-hidden-text-blur:hover,
+.post-content .argon-hidden-text-blur:active,
+.comment-item-text .argon-hidden-text-blur:hover,
+.comment-item-text .argon-hidden-text-blur:active,
+.shuoshuo-content .argon-hidden-text-blur:hover,
+.shuoshuo-content .argon-hidden-text-blur:active {
+	filter: none !important;
+	-webkit-filter: none !important;
+	color: var(--text-blur-color, inherit) !important;
+	user-select: auto;
+}
+
+.post-content .huhua,
+.comment-item-text .huhua,
+.shuoshuo-content .huhua {
+	color: #9ea3a9 !important;
+	text-decoration: line-through !important;
+	text-shadow: none !important;
+	transition: color 0.2s ease;
+}
+
+.post-content .huhua:hover,
+.post-content .huhua:active,
+.comment-item-text .huhua:hover,
+.comment-item-text .huhua:active,
+.shuoshuo-content .huhua:hover,
+.shuoshuo-content .huhua:active {
+	color: #7f858b !important;
+}
+
+.post-content .heimu a,
+.post-content .color-curtain a,
+.post-content .text-blur a,
+.post-content .huhua a,
+.comment-item-text .heimu a,
+.comment-item-text .color-curtain a,
+.comment-item-text .text-blur a,
+.comment-item-text .huhua a,
+.shuoshuo-content .heimu a,
+.shuoshuo-content .color-curtain a,
+.shuoshuo-content .text-blur a,
+.shuoshuo-content .huhua a {
+	color: inherit !important;
+	text-decoration: inherit !important;
+	transition: inherit !important;
+}
+
+.post-content .heimu a:before,
+.post-content .color-curtain a:before,
+.post-content .text-blur a:before,
+.post-content .huhua a:before,
+.comment-item-text .heimu a:before,
+.comment-item-text .color-curtain a:before,
+.comment-item-text .text-blur a:before,
+.comment-item-text .huhua a:before,
+.shuoshuo-content .heimu a:before,
+.shuoshuo-content .color-curtain a:before,
+.shuoshuo-content .text-blur a:before,
+.shuoshuo-content .huhua a:before {
+	display: none !important;
+	content: none !important;
+}
+
+html.darkmode .post-content .heimu,
+html.darkmode .comment-item-text .heimu,
+html.darkmode .shuoshuo-content .heimu,
+html.darkmode .post-content .argon-hidden-text-background,
+html.darkmode .comment-item-text .argon-hidden-text-background,
+html.darkmode .shuoshuo-content .argon-hidden-text-background {
+	background-color: #1a1a1a !important;
+	color: #1a1a1a !important;
+}
+
+html.darkmode .post-content .heimu:hover,
+html.darkmode .post-content .heimu:active,
+html.darkmode .comment-item-text .heimu:hover,
+html.darkmode .comment-item-text .heimu:active,
+html.darkmode .shuoshuo-content .heimu:hover,
+html.darkmode .shuoshuo-content .heimu:active,
+html.darkmode .post-content .argon-hidden-text-background:hover,
+html.darkmode .post-content .argon-hidden-text-background:active,
+html.darkmode .comment-item-text .argon-hidden-text-background:hover,
+html.darkmode .comment-item-text .argon-hidden-text-background:active,
+html.darkmode .shuoshuo-content .argon-hidden-text-background:hover,
+html.darkmode .shuoshuo-content .argon-hidden-text-background:active {
+	background-color: transparent !important;
+	color: var(--color-text-deeper) !important;
 }
 
 .site-rss {
