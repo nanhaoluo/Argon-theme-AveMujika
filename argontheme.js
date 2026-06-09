@@ -5471,7 +5471,11 @@ $(document).on("keydown", function (e) {
 		".leftbar-mobile-action",
 		".leftbar-mobile-collapse-header",
 		".leftbar-mobile-close",
-		"#leftbar_part3",
+		"#todo-add-btn",
+		"#todo-collapse-btn",
+		"#leftbar_part3 .todo-complete-btn",
+		"#leftbar_part3 .todo-urge-btn",
+		"#leftbar_part3 .todo-delete-btn",
 		"#leftbar_mobile_catalog .index-link",
 		".mobile-todo-add-form button",
 		".mobile-todo-complete-btn",
@@ -5515,7 +5519,7 @@ $(document).on("keydown", function (e) {
 		if (!target || target.disabled || target.getAttribute("aria-disabled") === "true" || target.classList.contains("disabled")) {
 			return;
 		}
-		var alwaysRipple = target.classList.contains("btn-ripple") || target.id === "leftbar_part3";
+		var alwaysRipple = target.classList.contains("btn-ripple") || target.closest("#leftbar_part3");
 		if (!alwaysRipple && window.matchMedia && !window.matchMedia("(max-width: 900px)").matches) {
 			return;
 		}

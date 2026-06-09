@@ -13548,7 +13548,6 @@ article .post-content .huhua a:before {
 #leftbar_part3 {
 	margin-top: 10px;
 	transition: top 0.3s ease, transform 0.3s ease;
-	overflow: hidden;
 }
 
 #leftbar_part3.sticky {
@@ -16230,7 +16229,11 @@ html.darkmode article.post.card {
 	--argon-ripple-color: rgba(220, 53, 69, 0.26);
 }
 
-#leftbar_part3 .argon-click-ripple {
+#leftbar_part3 .todo-complete-btn .argon-click-ripple,
+#leftbar_part3 .todo-urge-btn .argon-click-ripple,
+#leftbar_part3 .todo-delete-btn .argon-click-ripple,
+#leftbar_part3 #todo-add-btn .argon-click-ripple,
+#leftbar_part3 #todo-collapse-btn .argon-click-ripple {
 	--argon-ripple-color: rgba(var(--themecolor-rgbstr), 0.18);
 }
 
