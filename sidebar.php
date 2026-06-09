@@ -494,7 +494,15 @@ $author_desc = get_option('argon_sidebar_author_description');
 
 					$nowActiveTab = 1;/*默认激活的标签*/
 
-					if (have_catalog()){
+					$has_leftbar_catalog = have_catalog();
+
+					$has_leftbar_tools = is_active_sidebar('leftbar-tools');
+
+					$show_sidebar_rss = get_option('argon_show_rss_link', 'false') == 'true';
+
+					$has_leftbar_tab_switcher = $has_leftbar_catalog || $has_leftbar_tools;
+
+					if ($has_leftbar_catalog){
 
 						$nowActiveTab = 0;
 
@@ -502,11 +510,13 @@ $author_desc = get_option('argon_sidebar_author_description');
 
 				?>
 
-				<div class="nav-wrapper<?php if (get_option('argon_show_rss_link', 'false') == 'true') { echo ' has-sidebar-rss'; }?>" style="padding-top: 5px;<?php if (!have_catalog() && !is_active_sidebar('leftbar-tools') && get_option('argon_show_rss_link', 'false') != 'true') { echo ' display:none;'; }?>">
+				<div class="nav-wrapper<?php if ($show_sidebar_rss) { echo ' has-sidebar-rss'; } if (!$has_leftbar_tab_switcher) { echo ' sidebar-overview-only'; }?>" style="padding-top: 5px;<?php if (!$has_leftbar_tab_switcher && !$show_sidebar_rss) { echo ' display:none;'; }?>">
+
+					<?php if ($has_leftbar_tab_switcher) { ?>
 
 	                <ul class="nav nav-pills nav-fill" role="tablist">
 
-						<?php if (have_catalog()) { ?>
+						<?php if ($has_leftbar_catalog) { ?>
 
 							<li class="nav-item sidebar-tab-switcher">
 
@@ -522,7 +532,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 
 						</li>
 
-						<?php if ( is_active_sidebar( 'leftbar-tools' ) ){?>
+						<?php if ( $has_leftbar_tools ){?>
 
 							<li class="nav-item sidebar-tab-switcher">
 
@@ -534,7 +544,9 @@ $author_desc = get_option('argon_sidebar_author_description');
 
 					</ul>
 
-					<?php if (get_option('argon_show_rss_link', 'false') == 'true') : ?>
+					<?php } ?>
+
+					<?php if ($show_sidebar_rss) : ?>
 						<?php
 							$argon_rss2_url = get_feed_link('rss2');
 							$argon_atom_url = get_feed_link('atom');

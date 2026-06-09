@@ -2593,6 +2593,10 @@ html.navbar-absolute #leftbar_part2.sticky {
 	flex: 1 1 auto;
 }
 
+.nav-wrapper.sidebar-overview-only {
+	justify-content: flex-end;
+}
+
 #leftbar_part2.sticky.leftbar-tab-catalog-active #leftbar_part2_inner {
 	height: var(--leftbar-part2-inner-height, auto);
 	overflow: hidden;

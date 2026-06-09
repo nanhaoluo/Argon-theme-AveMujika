@@ -3862,6 +3862,31 @@ $(document).on("click", "#blog_categories .tag", function () {
 	$("#blog_categories button.close").trigger("click");
 });
 
+/*Close RSS dropdown on outside click*/
+$(document).on("click", function (e) {
+	var target = e.target;
+	$(".site-rss[open]").each(function () {
+		if (!this.contains(target)) {
+			this.removeAttribute("open");
+		}
+	});
+});
+
+$(document).on("click", ".site-rss .site-rss-btn", function () {
+	var currentDetails = $(this).closest(".site-rss")[0];
+	$(".site-rss[open]").each(function () {
+		if (this !== currentDetails) {
+			this.removeAttribute("open");
+		}
+	});
+});
+
+$(document).on("keydown", function (e) {
+	if (e.key === "Escape") {
+		$(".site-rss[open]").removeAttr("open");
+	}
+});
+
 /*侧栏 & 顶栏菜单手机适配*/
 !function () {
 	$(document).on("click", "#fabtn_open_sidebar, #open_sidebar", function () {
