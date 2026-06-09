@@ -8,7 +8,7 @@ Author URI: https://solstice23.top/
 
 Description: 杞荤泩銆佺畝娲併€佺編瑙傜殑 Wordpress 涓婚
 
-Version: 1.5.6
+Version: 1.5.7
 
 License: GNU General Public License v3.0
 
@@ -7963,11 +7963,11 @@ html.darkmode .argon-tabpanel .nav-pills .nav-link {
 
 #nprogress .bar {
 
-	background: rgba(255, 255, 255, 0.67);
+	background: var(--themecolor, #5e72e4);
 
 	position: fixed;
 
-	z-index: 1031;
+	z-index: 2147483001;
 
 	top: 0;
 
@@ -7981,7 +7981,7 @@ html.darkmode .argon-tabpanel .nav-pills .nav-link {
 
 body.leftbar-can-headroom.headroom---unpinned #nprogress .bar {
 
-	background: rgba(var(--themecolor-rgbstr), 0.67);
+	background: var(--themecolor, #5e72e4);
 
 }
 
@@ -17497,39 +17497,34 @@ html.darkmode {
 
 /* 5. 椤甸潰杩囨浮鍜屾诞鍔ㄦ寜閽姩?*/
 :root {
-	--pjax-transition-duration: 260ms;
-	--pjax-transition-distance: 14px;
+	--pjax-transition-duration: 0ms;
+	--pjax-transition-distance: 0px;
 }
 
 #primary.pjax-loading {
-	opacity: 0.6;
-	pointer-events: none;
+	opacity: 1;
+	pointer-events: auto;
 }
 
 #primary {
-	transition:
-		opacity var(--animation-normal) var(--ease-standard),
-		transform var(--pjax-transition-duration) var(--ease-emphasized-decelerate);
+	transition: none;
 }
 
 .page-transition-content {
-	transition:
-		opacity var(--pjax-transition-duration) var(--ease-standard),
-		transform var(--pjax-transition-duration) var(--ease-emphasized-decelerate),
-		filter var(--pjax-transition-duration) var(--ease-standard);
-	will-change: opacity, transform, filter;
+	transition: none;
+	will-change: auto;
 }
 
 html.page-transition-leave.page-transition-active .page-transition-content {
-	opacity: 0;
-	transform: translate3d(0, calc(var(--pjax-transition-distance) * -0.45), 0) scale(0.992);
-	filter: blur(2px);
-	pointer-events: none;
+	opacity: 1;
+	transform: none;
+	filter: none;
+	pointer-events: auto;
 }
 
 html.page-transition-enter .page-transition-content {
-	opacity: 0;
-	transform: translate3d(0, var(--pjax-transition-distance), 0);
+	opacity: 1;
+	transform: none;
 }
 
 html.page-transition-enter.page-transition-active .page-transition-content {
@@ -17911,7 +17906,10 @@ article img:not([loading="lazy"]),
 /* ---------- 椤甸潰鍔犺浇楠ㄦ灦灞忚繘搴︽潯 ---------- */
 .page-loader {
 	position: fixed;
-	inset: 0;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 2px;
 	z-index: 2147483000;
 	display: block;
 	pointer-events: none;
@@ -17932,23 +17930,19 @@ article img:not([loading="lazy"]),
 }
 
 .page-loader-backdrop {
-	position: absolute;
-	inset: 0;
-	background: rgba(244, 245, 247, 0.82);
-	-webkit-backdrop-filter: blur(10px);
-	backdrop-filter: blur(10px);
+	display: none;
 }
 
 html.darkmode .page-loader-backdrop {
-	background: rgba(30, 30, 32, 0.82);
+	display: none;
 }
 
 .loader-progress {
-	position: fixed;
+	position: absolute;
 	top: 0;
 	left: 0;
 	right: 0;
-	z-index: 1;
+	z-index: 2147483001;
 	height: 2px;
 	overflow: hidden;
 	border-radius: 0;

@@ -3334,6 +3334,220 @@ var pjaxContainerSelectors = ['#primary', '#leftbar_part1_menu', '#leftbar_part2
 var pjaxContainers = pjaxContainerSelectors.filter(function (selector) {
 	return document.querySelector(selector);
 });
+var argonPjaxLinkSelector = "a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):not([download]):not(.reference-link):not(.reference-list-backlink):not([href^='#'])";
+
+var ArgonPjaxPrefetch = (function () {
+	var CACHE_TTL = 45000;
+	var MAX_CACHE_ITEMS = 8;
+	var cache = {};
+	var cacheOrder = [];
+	var inflight = {};
+	var pendingNavigation = null;
+	var transportInstalled = false;
+
+	function normalizeUrl(url) {
+		try {
+			var parsed = new URL(url, window.location.href);
+			parsed.hash = '';
+			parsed.searchParams.delete('_pjax');
+			parsed.searchParams.delete('_');
+			return parsed.href.replace(/\?$/, '');
+		} catch (e) {
+			var link = document.createElement('a');
+			link.href = url;
+			link.hash = '';
+			return link.href;
+		}
+	}
+
+	function getSameOriginUrl(input) {
+		var href = typeof input === 'string' ? input : (input && input.href);
+		if (!href) {
+			return null;
+		}
+		try {
+			var url = new URL(href, window.location.href);
+			if (url.protocol !== window.location.protocol || url.hostname !== window.location.hostname || url.port !== window.location.port) {
+				return null;
+			}
+			if (url.pathname === window.location.pathname && url.search === window.location.search && url.hash) {
+				return null;
+			}
+			return url.href;
+		} catch (e) {
+			return null;
+		}
+	}
+
+	function readCache(key) {
+		var item = cache[key];
+		if (!item) {
+			return null;
+		}
+		if (Date.now() - item.time > CACHE_TTL) {
+			delete cache[key];
+			return null;
+		}
+		return item;
+	}
+
+	function remember(key, item) {
+		cache[key] = item;
+		cacheOrder = cacheOrder.filter(function (cachedKey) {
+			return cachedKey !== key;
+		});
+		cacheOrder.push(key);
+		while (cacheOrder.length > MAX_CACHE_ITEMS) {
+			delete cache[cacheOrder.shift()];
+		}
+	}
+
+	function installTransport() {
+		if (transportInstalled || typeof jQuery === 'undefined' || !jQuery.ajaxTransport) {
+			return;
+		}
+		transportInstalled = true;
+		jQuery.ajaxTransport('+html', function (options) {
+			if (!options || (options.type || 'GET').toUpperCase() !== 'GET') {
+				return;
+			}
+			var cached = readCache(normalizeUrl(options.url));
+			if (!cached) {
+				return;
+			}
+			return {
+				send: function (headers, complete) {
+					window.setTimeout(function () {
+						complete(cached.status || 200, cached.statusText || 'success', { text: cached.html }, cached.headers || 'Content-Type: text/html');
+					}, 0);
+				},
+				abort: function () { }
+			};
+		});
+	}
+
+	function prefetch(input) {
+		if (typeof jQuery === 'undefined' || !jQuery.ajax) {
+			return null;
+		}
+		var url = getSameOriginUrl(input);
+		if (!url) {
+			return null;
+		}
+		installTransport();
+		var key = normalizeUrl(url);
+		var cached = readCache(key);
+		if (cached) {
+			var done = jQuery.Deferred();
+			done.resolve(cached);
+			return done.promise();
+		}
+		if (inflight[key]) {
+			return inflight[key];
+		}
+		var request = jQuery.ajax({
+			url: key,
+			type: 'GET',
+			dataType: 'html',
+			cache: true,
+			global: false,
+			timeout: 6000,
+			headers: {
+				'X-PJAX': 'true',
+				'X-PJAX-Container': pjaxContainers.join(',')
+			}
+		}).done(function (html, status, xhr) {
+			remember(key, {
+				html: html,
+				status: xhr && xhr.status ? xhr.status : 200,
+				statusText: xhr && xhr.statusText ? xhr.statusText : status,
+				headers: xhr && xhr.getAllResponseHeaders ? xhr.getAllResponseHeaders() : 'Content-Type: text/html',
+				time: Date.now()
+			});
+		}).always(function () {
+			delete inflight[key];
+		});
+		inflight[key] = request;
+		return request;
+	}
+
+	function navigate(input, options) {
+		var url = getSameOriginUrl(input && input.url ? input.url : input);
+		if (!url || pendingNavigation) {
+			return !!pendingNavigation;
+		}
+		installTransport();
+		var opts = jQuery.extend({}, options || {}, { url: url });
+		opts.target = opts.target || input;
+		if (!opts.container) {
+			opts.container = pjaxContainers.length ? pjaxContainers : ['#primary'];
+		}
+		if (!opts.fragment) {
+			opts.fragment = pjaxContainers.length ? pjaxContainers : ['#primary'];
+		}
+		pendingNavigation = normalizeUrl(url);
+		pjaxLoading = true;
+		if (typeof NProgress !== 'undefined') {
+			NProgress.remove();
+			NProgress.start();
+			NProgress.set(0.18);
+		}
+
+		function runPjax() {
+			pendingNavigation = null;
+			try {
+				jQuery.pjax(opts);
+			} catch (err) {
+				pjaxLoading = false;
+				if (typeof NProgress !== 'undefined') {
+					NProgress.done();
+				}
+				window.location.href = url;
+			}
+		}
+
+		var cached = readCache(pendingNavigation);
+		if (cached) {
+			runPjax();
+			return true;
+		}
+		var request = prefetch(url);
+		if (request && request.done) {
+			request.done(function () {
+				if (typeof NProgress !== 'undefined') {
+					NProgress.set(0.46);
+				}
+			}).always(runPjax);
+		} else {
+			runPjax();
+		}
+		return true;
+	}
+
+	function bind() {
+		if (typeof jQuery === 'undefined') {
+			return;
+		}
+		installTransport();
+		jQuery(document).on('click.argonPjaxPrefetch', argonPjaxLinkSelector, function (event) {
+			if (event.which > 1 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.isDefaultPrevented()) {
+				return;
+			}
+			if (navigate(this, { target: this })) {
+				event.preventDefault();
+			}
+		});
+		jQuery(document).on('mouseenter focusin touchstart', argonPjaxLinkSelector, function () {
+			prefetch(this);
+		});
+	}
+
+	return {
+		bind: bind,
+		prefetch: prefetch,
+		navigate: navigate
+	};
+})();
 
 // ==========================================================================
 // 现代化页面加载系统
@@ -3368,7 +3582,7 @@ var PageLoader = (function () {
 		var el = document.createElement('div');
 		el.id = CONFIG.OVERLAY_ID;
 		el.className = 'page-loader is-visible';
-		el.innerHTML = '<div class="page-loader-backdrop"></div><div class="loader-progress" aria-hidden="true"><div class="loader-progress-bar"></div></div>';
+		el.innerHTML = '<div class="loader-progress" aria-hidden="true"><div class="loader-progress-bar"></div></div>';
 		return el;
 	}
 
@@ -3516,8 +3730,10 @@ var PageLoader = (function () {
 		state.pendingHide = false;
 		el.classList.remove('is-hiding');
 		el.classList.add('is-visible');
+		state.trackedTotal = 0;
+		state.trackedDone = 0;
+		state.trackedNodes = [];
 		updateProgress(0);
-		trackResources(root || document);
 	}
 
 	function hide() {
@@ -3573,10 +3789,11 @@ var PageLoader = (function () {
  * 向后兼容的函数
  */
 function showLoadingOverlay() {
-	PageLoader.show();
+	PageLoader.setProgress(0);
 }
 
 function hideLoadingOverlay() {
+	PageLoader.setProgress(100);
 	PageLoader.hide();
 }
 
@@ -3674,8 +3891,9 @@ $.pjax.defaults.fragment = pjaxContainers;
  * - pjax:end: 需求 1.7 (特定任务处理)
  */
 if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
+	ArgonPjaxPrefetch.bind();
 	$(document).pjax(
-		"a[href]:not([no-pjax]):not(.no-pjax):not([target='_blank']):not([download]):not(.reference-link):not(.reference-list-backlink):not([href^='#'])",
+		argonPjaxLinkSelector,
 		pjaxContainers.length ? pjaxContainers[0] : '#primary',
 		{ fragment: (pjaxContainers.length ? pjaxContainers : ['#primary']), timeout: $.pjax.defaults.timeout }
 	)
@@ -3683,7 +3901,6 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 			NProgress.remove();
 			NProgress.start();
 			pjaxLoading = true;
-			showLoadingOverlay();
 		}).on('pjax:afterGetContainers', function (e, f, g) {
 			pjaxScrollTop = 0;
 			if ($("html").hasClass("banner-as-cover")) {
@@ -3693,8 +3910,6 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 			}
 		}).on('pjax:send', function () {
 			NProgress.set(0.618);
-			PageLoader.setProgress(38);
-			startPageExitTransition();
 		}).on('pjax:beforeReplace', function (e, dom) {
 			// ========== 需求 1.1-1.4: 清理旧页面的所有资源 ==========
 			// 调用统一的资源清理管理器
@@ -3718,8 +3933,6 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 			// ========== 需求 1.5, 1.6: 重新初始化所有功能模块 ==========
 			pjaxLoading = false;
 			NProgress.inc();
-			PageLoader.setProgress(70);
-			startPageEnterTransition();
 
 			// ========== 需求 4.1-4.5: 执行新页面中的内联脚本 ==========
 			try {
@@ -3772,13 +3985,6 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 			try { foldLongShuoshuo(); } catch (err) { ArgonDebug.error('foldLongShuoshuo failed:', err); }
 			try { handleHashNavigation(); } catch (err) { ArgonDebug.error('handleHashNavigation failed:', err); }
 			try { initArticleSkeletons(); } catch (err) { ArgonDebug.error('initArticleSkeletons failed:', err); }
-			try {
-				PageLoader.show(document.querySelector(pjaxContainers[0] || '#primary') || document);
-				PageLoader.setProgress(86);
-			} catch (err) {
-				ArgonDebug.error('PageLoader PJAX tracking failed:', err);
-			}
-
 			$("html").trigger("resize");
 
 			// 恢复滚动位置
@@ -3797,9 +4003,7 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 			}
 
 			NProgress.done();
-			hideLoadingOverlay();
 		}).on('pjax:error', function () {
-			hideLoadingOverlay();
 			endPageTransition();
 			pjaxLoading = false;
 		}).on('pjax:end', function () {
@@ -5284,12 +5488,7 @@ setInterval(function(){
 	// 5. PJAX loading animation
 	function initPjaxAnimations() {
 		if (typeof jQuery === 'undefined') return;
-		jQuery(document).on('pjax:start', function () {
-			jQuery('#primary').addClass('pjax-loading');
-			PageLoader.setProgress(30);
-		});
 		jQuery(document).on('pjax:end', function () {
-			jQuery('#primary').removeClass('pjax-loading');
 			setTimeout(function () { initArticleSkeletons(); initImageLoadAnimation(); initScrollAnimations(); initSmoothScroll(); }, 100);
 		});
 	}

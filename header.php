@@ -785,7 +785,6 @@ if ($bg_opacity == '') {
 <?php /*wp_body_open();*/ ?>
 
 <div id="page-loader" class="page-loader is-visible" data-page-bg="<?php echo esc_url($argon_loader_page_bg); ?>" data-page-bg-dark="<?php echo esc_url($argon_loader_page_bg_dark); ?>" aria-hidden="true">
-	<div class="page-loader-backdrop"></div>
 	<div class="loader-progress" aria-hidden="true">
 		<div class="loader-progress-bar"></div>
 	</div>
