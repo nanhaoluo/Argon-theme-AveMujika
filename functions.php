@@ -1649,6 +1649,242 @@ function get_article_reading_time_meta($post_content_full){
 	';
 	return $res;
 }
+function argon_the_content_virtualized($content = null, $before_html = '') {
+	$html = $content === null ? apply_filters('the_content', get_the_content()) : $content;
+	if ($before_html !== '') {
+		$html = $before_html . $html;
+	}
+	$text = preg_replace('/\s+/', '', wp_strip_all_tags($html));
+	$text_length = function_exists('mb_strlen') ? mb_strlen($text, 'UTF-8') : strlen($text);
+	$threshold = (int) apply_filters('argon_virtual_content_threshold', 12000);
+
+	if ($text_length < $threshold || stripos($html, '<script') !== false) {
+		echo $html;
+		return;
+	}
+
+	$sections = argon_build_virtual_content_sections($html);
+	if (count($sections) < 3) {
+		echo $html;
+		return;
+	}
+
+	echo '<script type="application/json" class="argon-virtual-content-source">';
+	echo wp_json_encode($sections, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP);
+	echo '</script>';
+	echo '<noscript>' . $html . '</noscript>';
+}
+
+function argon_build_virtual_content_sections($html) {
+	if (!class_exists('DOMDocument')) {
+		return array();
+	}
+
+	$dom = new DOMDocument();
+	$previous = libxml_use_internal_errors(true);
+	$loaded = $dom->loadHTML('<?xml encoding="utf-8" ?><div id="argon-virtual-root">' . $html . '</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+	libxml_clear_errors();
+	libxml_use_internal_errors($previous);
+	if (!$loaded) {
+		return array();
+	}
+
+	$root = $dom->getElementById('argon-virtual-root');
+	if (!$root) {
+		return array();
+	}
+
+	$sections = array();
+	$buffer = array();
+	$text_count = 0;
+	$headers = array();
+	$children = array();
+	foreach ($root->childNodes as $child) {
+		foreach (argon_expand_virtual_content_node($dom, $child) as $expanded_child) {
+			$children[] = $expanded_child;
+		}
+	}
+
+	foreach ($children as $node) {
+		if ($node->nodeType !== XML_ELEMENT_NODE) {
+			if (trim($node->textContent) === '') {
+				continue;
+			}
+		}
+
+		$tag = $node->nodeType === XML_ELEMENT_NODE ? strtolower($node->nodeName) : '';
+		$node_text = preg_replace('/\s+/', '', $node->textContent);
+		$node_text_length = function_exists('mb_strlen') ? mb_strlen($node_text, 'UTF-8') : strlen($node_text);
+		$is_heading = preg_match('/^h[1-6]$/', $tag);
+		$is_heavy = in_array($tag, array('pre', 'table', 'figure', 'iframe', 'video', 'img'), true);
+		$should_break = !empty($buffer) && ($is_heading || $text_count + $node_text_length > 1800 || count($buffer) >= 18 || ($is_heavy && count($buffer) >= 3));
+
+		if ($should_break) {
+			argon_push_virtual_content_section($sections, $buffer, $text_count, $headers);
+			$buffer = array();
+			$text_count = 0;
+			$headers = array();
+		}
+
+		argon_collect_virtual_content_headers($node, count($sections), $headers);
+		$buffer[] = argon_dom_node_html($dom, $node);
+		$text_count += $node_text_length;
+
+		if ($is_heavy) {
+			argon_push_virtual_content_section($sections, $buffer, $text_count, $headers);
+			$buffer = array();
+			$text_count = 0;
+			$headers = array();
+		}
+	}
+
+	argon_push_virtual_content_section($sections, $buffer, $text_count, $headers);
+	return $sections;
+}
+
+function argon_expand_virtual_content_node($dom, $node) {
+	if (!$node || $node->nodeType !== XML_ELEMENT_NODE) {
+		return array($node);
+	}
+
+	$tag = strtolower($node->nodeName);
+	if (!in_array($tag, array('p', 'li', 'div', 'blockquote'), true) || $node->hasAttribute('id')) {
+		return array($node);
+	}
+	if ($node->childNodes->length !== 1 || $node->firstChild->nodeType !== XML_TEXT_NODE) {
+		return array($node);
+	}
+
+	$text = $node->textContent;
+	$plain = preg_replace('/\s+/', '', $text);
+	$length = function_exists('mb_strlen') ? mb_strlen($plain, 'UTF-8') : strlen($plain);
+	if ($length <= 2200) {
+		return array($node);
+	}
+
+	$parts = argon_split_virtual_content_text($text, 1800);
+	if (count($parts) < 2) {
+		return array($node);
+	}
+
+	$result = array();
+	foreach ($parts as $part) {
+		$clone = $node->cloneNode(false);
+		$clone->appendChild($dom->createTextNode($part));
+		$result[] = $clone;
+	}
+	return $result;
+}
+
+function argon_split_virtual_content_text($text, $limit) {
+	$chunks = array();
+	$source = (string) $text;
+	while (argon_virtual_content_strlen($source) > $limit) {
+		$cut = argon_find_virtual_content_text_cut($source, $limit);
+		$chunks[] = argon_virtual_content_substr($source, 0, $cut);
+		$source = argon_virtual_content_substr($source, $cut);
+	}
+	if ($source !== '') {
+		$chunks[] = $source;
+	}
+	return $chunks;
+}
+
+function argon_find_virtual_content_text_cut($text, $limit) {
+	$max = min(argon_virtual_content_strlen($text), $limit);
+	$min = max(1, (int) floor($limit * 0.55));
+	for ($i = $max; $i >= $min; $i--) {
+		if (preg_match('/[\s,.;:!?]/', argon_virtual_content_substr($text, $i - 1, 1))) {
+			return $i;
+		}
+	}
+	return $max;
+}
+
+function argon_virtual_content_strlen($text) {
+	return function_exists('mb_strlen') ? mb_strlen($text, 'UTF-8') : strlen($text);
+}
+
+function argon_virtual_content_substr($text, $start, $length = null) {
+	if (function_exists('mb_substr')) {
+		return $length === null ? mb_substr($text, $start, null, 'UTF-8') : mb_substr($text, $start, $length, 'UTF-8');
+	}
+	return $length === null ? substr($text, $start) : substr($text, $start, $length);
+}
+
+function argon_push_virtual_content_section(&$sections, $buffer, $text_count, $headers) {
+	if (empty($buffer)) {
+		return;
+	}
+	$html = implode('', $buffer);
+	$sections[] = array(
+		'html' => $html,
+		'headers' => $headers,
+		'nodeIds' => argon_collect_virtual_content_ids($html),
+		'textCount' => $text_count,
+		'estimatedHeight' => argon_estimate_virtual_content_section_height($html, $text_count),
+	);
+}
+
+function argon_estimate_virtual_content_section_height($html, $text_count) {
+	$height = max(120, (int) ceil($text_count / 42) * 32);
+
+	if (preg_match_all('/<(pre|table)\b/i', $html, $matches)) {
+		$height += count($matches[0]) * 220;
+	}
+	if (preg_match_all('/<(img|figure|iframe|video)\b/i', $html, $matches)) {
+		$height += count($matches[0]) * 320;
+	}
+	if (preg_match_all('/<h[1-6]\b/i', $html, $matches)) {
+		$height += count($matches[0]) * 64;
+	}
+	if (preg_match_all('/<(p|li|blockquote|div)\b/i', $html, $matches)) {
+		$height += count($matches[0]) * 18;
+	}
+
+	return $height;
+}
+
+function argon_collect_virtual_content_headers($node, $section_index, &$headers) {
+	if (!$node || $node->nodeType !== XML_ELEMENT_NODE) {
+		return;
+	}
+
+	$heading_nodes = array();
+	if (preg_match('/^h[1-6]$/', strtolower($node->nodeName))) {
+		$heading_nodes[] = $node;
+	}
+	if ($node->hasChildNodes()) {
+		foreach ($node->getElementsByTagName('*') as $child) {
+			if (preg_match('/^h[1-6]$/', strtolower($child->nodeName))) {
+				$heading_nodes[] = $child;
+			}
+		}
+	}
+
+	foreach ($heading_nodes as $heading) {
+		if (!$heading->hasAttribute('id')) {
+			$heading->setAttribute('id', 'argon-virtual-heading-' . $section_index . '-' . (count($headers) + 1));
+		}
+		$headers[] = array(
+			'id' => $heading->getAttribute('id'),
+			'level' => (int) substr($heading->nodeName, 1),
+			'text' => trim($heading->textContent),
+			'sectionIndex' => $section_index,
+		);
+	}
+}
+
+function argon_collect_virtual_content_ids($html) {
+	if (!preg_match_all('/\sid=(["\'])(.*?)\1/i', $html, $matches)) {
+		return array();
+	}
+	return array_values(array_unique($matches[2]));
+}
+
+function argon_dom_node_html($dom, $node) {
+	return $dom->saveHTML($node);
+}
 //当前文章是否隐藏 阅读时间 Meta
 function is_readingtime_meta_hidden(){
 	if (strpos(get_the_content() , "[hide_reading_time][/hide_reading_time]") !== False){

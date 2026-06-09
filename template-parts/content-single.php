@@ -212,14 +212,19 @@
 			</div>
 		<?php
 			}else{
-				echo argon_get_post_outdated_info();
+				$post_outdated_info = argon_get_post_outdated_info();
 
 				global $post_references, $post_reference_keys_first_index, $post_reference_contents_first_index;
 				$post_references = array();
 				$post_reference_keys_first_index = array();
 				$post_reference_contents_first_index = array();
 
-				the_content();
+				if (function_exists('argon_the_content_virtualized')){
+					argon_the_content_virtualized(null, $post_outdated_info);
+				}else{
+					echo $post_outdated_info;
+					the_content();
+				}
 			}
 		?>
 	</div>

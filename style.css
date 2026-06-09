@@ -4194,6 +4194,44 @@ article.post.card:not(.post-full):not(.post-preview-layout-2)>.post-header.post-
 
 }
 
+.post-content.argon-long-content-virtual {
+
+	contain: layout paint style;
+
+}
+
+.argon-virtual-section {
+
+	position: relative;
+
+	overflow-anchor: none;
+
+}
+
+.argon-virtual-section:not(.argon-virtual-section-mounted)::before {
+
+	content: "";
+
+	position: absolute;
+
+	left: 0;
+
+	right: 0;
+
+	top: 12px;
+
+	height: 1px;
+
+	background: transparent;
+
+}
+
+.argon-virtual-section-mounted {
+
+	min-height: 0 !important;
+
+}
+
 .post-content p {
 
 	font-weight: normal;

@@ -2558,9 +2558,10 @@ showPostOutdateToast();
 // 全局 Zoomify 实例数组，用于清理
 var zoomifyInstances = [];
 
-function zoomifyInit() {
+function zoomifyInit(scope) {
+	var scopedRoot = scope || null;
 	// 清理旧的 Zoomify 实例
-	if (zoomifyInstances.length > 0) {
+	if (!scopedRoot && zoomifyInstances.length > 0) {
 		zoomifyInstances.forEach(function (instance) {
 			try {
 				if (instance && typeof instance.destroy === 'function') {
@@ -2575,7 +2576,8 @@ function zoomifyInit() {
 		return;
 	}
 	if (typeof $.fn.zoomify === 'function') {
-		$("article img:not(.zoomify-initialized)").each(function () {
+		var $images = scopedRoot ? $(scopedRoot).find("img:not(.zoomify-initialized)") : $("article img:not(.zoomify-initialized)");
+		$images.each(function () {
 			let $img = $(this);
 			$img.addClass('zoomify-initialized');
 			try {
@@ -2636,9 +2638,10 @@ var lazyloadObserver = null;
 // 全局滚动监听 handler，用于降级方案清理
 var lazyloadScrollHandler = null;
 
-function lazyloadInit() {
+function lazyloadInit(scope) {
+	var scopedRoot = scope || null;
 	// 清理旧的 Observer（防止重复初始化）
-	if (lazyloadObserver) {
+	if (!scopedRoot && lazyloadObserver) {
 		try {
 			lazyloadObserver.disconnect();
 			lazyloadObserver = null;
@@ -2650,7 +2653,7 @@ function lazyloadInit() {
 	}
 
 	// 清理旧的滚动监听器（降级方案）
-	if (lazyloadScrollHandler) {
+	if (!scopedRoot && lazyloadScrollHandler) {
 		try {
 			window.removeEventListener('scroll', lazyloadScrollHandler);
 			window.removeEventListener('resize', lazyloadScrollHandler);
@@ -2665,11 +2668,11 @@ function lazyloadInit() {
 	// 检查是否启用懒加载
 	if (argonConfig.lazyload === false || argonConfig.lazyload === 'false') {
 		// 未启用懒加载时，直接加载所有图片
-		loadAllImagesImmediately();
+		loadAllImagesImmediately(scopedRoot);
 		return;
 	}
 
-	let images = document.querySelectorAll('img.lazyload[data-src]');
+	let images = scopedRoot && scopedRoot.querySelectorAll ? scopedRoot.querySelectorAll('img.lazyload[data-src]') : document.querySelectorAll('img.lazyload[data-src]');
 	if (images.length === 0) {
 		ArgonDebug.log('没有需要懒加载的图片');
 		return;
@@ -2683,34 +2686,47 @@ function lazyloadInit() {
 	// 使用 IntersectionObserver 实现懒加载
 	if ('IntersectionObserver' in window) {
 		try {
-			lazyloadObserver = new IntersectionObserver(function (entries) {
+			let activeLazyloadObserver = new IntersectionObserver(function (entries) {
 				entries.forEach(function (entry) {
 					if (entry.isIntersecting) {
 						let img = entry.target;
-						loadImageOptimized(img, effect);
-						lazyloadObserver.unobserve(img);
+						loadImageOptimized(img, effect, activeLazyloadObserver);
+						activeLazyloadObserver.unobserve(img);
 					}
 				});
 			}, {
 				rootMargin: threshold + 'px 0px'
 			});
+			if (scopedRoot) {
+				scopedRoot._argonLazyloadObserver = activeLazyloadObserver;
+			} else {
+				lazyloadObserver = activeLazyloadObserver;
+			}
 
 			images.forEach(function (img) {
 				// 重置图片状态
 				img.style.opacity = '';
 				img.style.transform = '';
 				img.style.transition = '';
-				lazyloadObserver.observe(img);
+				activeLazyloadObserver.observe(img);
 			});
 
 			ArgonDebug.log('使用 IntersectionObserver 实现懒加载');
 		} catch (e) {
 			ArgonDebug.error('IntersectionObserver 初始化失败，使用降级方案:', e);
+			if (scopedRoot) {
+				loadAllImagesImmediately(scopedRoot);
+				return;
+			}
 			lazyloadFallback(images, effect, threshold);
 		}
 	} else {
 		// 降级方案：使用滚动监听
 		ArgonDebug.log('浏览器不支持 IntersectionObserver，使用滚动监听降级方案');
+		if (scopedRoot) {
+			loadAllImagesImmediately(scopedRoot);
+			return;
+		}
 		lazyloadFallback(images, effect, threshold);
 	}
 }
@@ -2721,12 +2737,13 @@ function lazyloadInit() {
  * @param {HTMLImageElement} img - 图片元素
  * @param {string} effect - 加载效果类型 ('fadeIn' 或'slideDown')
  */
-function loadImageOptimized(img, effect) {
+function loadImageOptimized(img, effect, observer) {
 	let src = img.getAttribute('data-src');
 	if (!src) {
 		// 如果没有 data-src，取消 Observer 监听
-		if (lazyloadObserver) {
-			lazyloadObserver.unobserve(img);
+		let observerToUse = observer || lazyloadObserver;
+		if (observerToUse) {
+			observerToUse.unobserve(img);
 		}
 		return;
 	}
@@ -2776,8 +2793,9 @@ function loadImageOptimized(img, effect) {
 			img.className = img.className.replace(/\blazyload-style-\d+\b/g, '').trim();
 
 			// 取消 Observer 监听
-			if (lazyloadObserver) {
-				lazyloadObserver.unobserve(img);
+			let observerToUse = observer || lazyloadObserver;
+			if (observerToUse) {
+				observerToUse.unobserve(img);
 			}
 		});
 	};
@@ -2874,8 +2892,8 @@ function lazyloadFallback(images, effect, threshold) {
  * 立即加载所有图片（懒加载禁用时）
  * 不应用任何加载效果，直接替换 src
  */
-function loadAllImagesImmediately() {
-	let images = document.querySelectorAll('img.lazyload[data-src]');
+function loadAllImagesImmediately(scope) {
+	let images = scope && scope.querySelectorAll ? scope.querySelectorAll('img.lazyload[data-src]') : document.querySelectorAll('img.lazyload[data-src]');
 	images.forEach(function (img) {
 		let src = img.getAttribute('data-src');
 		if (src) {
@@ -2906,9 +2924,20 @@ if (document.readyState === 'loading') {
 }
 
 /*Pangu.js*/
+var highlightObserver = null;
+var argonVirtualHeadIndexPatched = false;
+
 function panguInit() {
+	var virtualizer = window.ArgonLongContentVirtualizer;
 	if (argonConfig.pangu.indexOf("article") >= 0) {
-		pangu.spacingElementByClassName('post-content');
+		if (virtualizer && virtualizer.isReady && virtualizer.isReady()) {
+			var mountedSections = document.querySelectorAll('#post_content .argon-virtual-section-mounted');
+			for (var i = 0; i < mountedSections.length; i++) {
+				pangu.spacingNode(mountedSections[i]);
+			}
+		} else {
+			pangu.spacingElementByClassName('post-content');
+		}
 	}
 	if (argonConfig.pangu.indexOf("comment") >= 0) {
 		pangu.spacingElementById('comments');
@@ -2917,6 +2946,7 @@ function panguInit() {
 		pangu.spacingElementByClassName('shuoshuo-content');
 	}
 }
+initArgonLongContentVirtualizer();
 panguInit();
 
 /*Clamp.js*/
@@ -2928,16 +2958,18 @@ function clampInit() {
 clampInit();
 
 /*Tippy.js*/
-function tippyInit() {
+function tippyInit(scope) {
 	//Reference Popover
-	tippy('sup.reference[data-content]:not(.tippy-initialized)', {
+	var target = scope && scope.querySelectorAll ? scope.querySelectorAll('sup.reference[data-content]:not(.tippy-initialized)') : 'sup.reference[data-content]:not(.tippy-initialized)';
+	tippy(target, {
 		content: (reference) => reference.getAttribute('data-content'),
 		allowHTML: true,
 		interactive: true, theme: 'light scroll-y',
 		delay: [100, 250],
 		animation: 'fade'
 	});
-	$("sup.reference[data-content]:not(.tippy-initialized)").addClass("tippy-initialized");
+	var $target = scope ? $(scope).find("sup.reference[data-content]:not(.tippy-initialized)") : $("sup.reference[data-content]:not(.tippy-initialized)");
+	$target.addClass("tippy-initialized");
 }
 tippyInit();
 
@@ -3154,6 +3186,11 @@ function cleanupPjaxResources() {
 
 	// 按顺序清理各类资源
 	cleanupLazyloadObserver();
+	disconnectHighlightObserver();
+	if (window.ArgonLongContentVirtualizer && typeof window.ArgonLongContentVirtualizer.destroy === "function") {
+		window.ArgonLongContentVirtualizer.destroy(false);
+		window.ArgonLongContentVirtualizer = null;
+	}
 	cleanupZoomifyInstances();
 	cleanupTippyInstances(); cleanupDynamicStyles();
 	cleanupDynamicScripts();
@@ -3201,6 +3238,9 @@ function handleHashNavigation() {
 	if (!location.hash || location.hash === "#") {
 		return;
 	}
+	if (window.ArgonLongContentVirtualizer && typeof window.ArgonLongContentVirtualizer.renderTarget === "function") {
+		window.ArgonLongContentVirtualizer.renderTarget(location.hash.slice(1));
+	}
 	let target = null;
 	try {
 		target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
@@ -3218,6 +3258,1019 @@ function handleHashNavigation() {
 	try { highlightJsRender(); } catch (err) { ArgonDebug.error('highlightJsRender failed:', err); }
 	try { lazyloadInit(); } catch (err) { ArgonDebug.error('lazyloadInit failed:', err); }
 }
+
+// ==========================================================================
+// Long article virtual rendering
+// ==========================================================================
+if (typeof highlightObserver === "undefined") {
+	var highlightObserver = null;
+}
+if (typeof argonVirtualHeadIndexPatched === "undefined") {
+	var argonVirtualHeadIndexPatched = false;
+}
+
+function disconnectHighlightObserver() {
+	if (highlightObserver) {
+		try {
+			highlightObserver.disconnect();
+		} catch (e) { }
+		highlightObserver = null;
+	}
+}
+
+function initArgonLongContentVirtualizer() {
+	var content = document.getElementById("post_content");
+	if (!content || content.getAttribute("data-argon-virtual-ready") === "true") {
+		return;
+	}
+	if (postPasswordRequiredOnPage()) {
+		return;
+	}
+	if (!("querySelectorAll" in content) || !("appendChild" in content)) {
+		return;
+	}
+
+	var sourceSections = getArgonVirtualContentSource(content);
+	if (sourceSections && sourceSections.length < 3) {
+		restoreVirtualSourceFallback(content);
+		return;
+	}
+	if (!sourceSections && content.querySelector("script:not(.argon-virtual-content-source)")) {
+		return;
+	}
+	if (!sourceSections && content.querySelector("script.argon-virtual-content-source")) {
+		restoreVirtualSourceFallback(content);
+		return;
+	}
+
+	var existingBlocks = content.children.length;
+	var textLength = (content.textContent || "").replace(/\s+/g, "").length;
+	var heavyNodes = content.querySelectorAll("pre, table, blockquote, figure, img, iframe, video, .wp-block, .katex, .MathJax, script").length;
+	if (!sourceSections && textLength < 12000 && existingBlocks < 120 && heavyNodes < 30) {
+		return;
+	}
+
+	if (window.ArgonLongContentVirtualizer && typeof window.ArgonLongContentVirtualizer.destroy === "function") {
+		window.ArgonLongContentVirtualizer.destroy(false);
+	}
+
+	window.ArgonLongContentVirtualizer = createArgonLongContentVirtualizer(content, {
+		sourceSections: sourceSections,
+		targetTextLength: 1800,
+		maxPlainTextBlockLength: 2200,
+		maxNodesPerSection: 18,
+		keepRange: 2,
+		rootMargin: "1200px 0px 1200px 0px"
+	});
+	window.ArgonLongContentVirtualizer.init();
+}
+
+function getArgonVirtualContentSource(content) {
+	var source = content.querySelector("script.argon-virtual-content-source[type='application/json']");
+	if (!source) {
+		return null;
+	}
+	try {
+		var parsed = JSON.parse(source.textContent || "[]");
+		return normalizeArgonVirtualSourceSections(parsed);
+	} catch (e) {
+		ArgonDebug.warn("Long content virtual source parse failed:", e);
+		return null;
+	}
+}
+
+function restoreVirtualSourceFallback(content) {
+	var fallback = content ? content.querySelector("noscript") : null;
+	if (!fallback) {
+		return false;
+	}
+	content.innerHTML = fallback.textContent || fallback.innerHTML;
+	return true;
+}
+
+function normalizeArgonVirtualSourceSections(sourceSections) {
+	if (!sourceSections || !sourceSections.length) {
+		return null;
+	}
+	var sections = [];
+	for (var i = 0; i < sourceSections.length; i++) {
+		var item = sourceSections[i] || {};
+		var html = typeof item.html === "string" ? item.html : "";
+		if (!html) {
+			continue;
+		}
+		sections.push({
+			index: sections.length,
+			html: html,
+			headers: item.headers && item.headers.length ? item.headers : [],
+			nodeIds: item.nodeIds && item.nodeIds.length ? item.nodeIds : [],
+			textCount: item.textCount || 0,
+			placeholder: null,
+			mounted: false,
+			estimatedHeight: item.estimatedHeight || Math.max(120, Math.ceil((item.textCount || 0) / 42) * 32)
+		});
+	}
+	return sections.length >= 2 ? sections : null;
+}
+
+function postPasswordRequiredOnPage() {
+	var content = document.getElementById("post_content");
+	return !!(content && content.querySelector(".post-password-form"));
+}
+
+function createArgonLongContentVirtualizer(content, options) {
+	var sections = [];
+	var headers = [];
+	var observer = null;
+	var scrollHandler = null;
+	var resizeHandler = null;
+	var scheduled = false;
+	var destroyed = false;
+
+	function init() {
+		if (options.sourceSections && options.sourceSections.length) {
+			sections = options.sourceSections;
+			headers = collectSourceHeaders(sections);
+		} else {
+			var nodes = [];
+			var children = content.children;
+			for (var i = 0; i < children.length; i++) {
+				nodes.push(children[i]);
+			}
+			nodes = expandVirtualSourceNodes(nodes);
+			if (nodes.length < 2) {
+				return;
+			}
+			sections = buildSections(nodes);
+		}
+		if (sections.length < 3) {
+			return;
+		}
+
+		content.setAttribute("data-argon-virtual-ready", "true");
+		content.classList.add("argon-long-content-virtual");
+		renderShell();
+		patchHeadIndexForVirtualContent();
+		setupObserver();
+		renderAroundIndex(0, true);
+		scheduleUpdate();
+	}
+
+	function buildSections(nodes) {
+		var result = [];
+		var buffer = [];
+		var textCount = 0;
+		var sectionHeaders = [];
+
+		for (var i = 0; i < nodes.length; i++) {
+			var node = nodes[i];
+			var tag = (node.tagName || "").toLowerCase();
+			var nodeTextLength = (node.textContent || "").replace(/\s+/g, "").length;
+			var shouldBreakBefore = buffer.length > 0 && isHeading(tag) && (textCount >= 700 || buffer.length >= 5);
+			var isHeavy = isHeavyVirtualNode(node, tag);
+			var reachedLimit = buffer.length > 0 && (textCount + nodeTextLength > options.targetTextLength || buffer.length >= options.maxNodesPerSection);
+
+			if (shouldBreakBefore || reachedLimit || (isHeavy && buffer.length >= 3)) {
+				pushSection(result, buffer, textCount, sectionHeaders);
+				buffer = [];
+				textCount = 0;
+				sectionHeaders = [];
+			}
+
+			collectSectionHeadings(node, result.length, sectionHeaders);
+
+			buffer.push(node);
+			textCount += nodeTextLength;
+
+			if (isHeavy) {
+				pushSection(result, buffer, textCount, sectionHeaders);
+				buffer = [];
+				textCount = 0;
+				sectionHeaders = [];
+			}
+		}
+
+		pushSection(result, buffer, textCount, sectionHeaders);
+		return result;
+	}
+
+	function expandVirtualSourceNodes(nodes) {
+		var expanded = [];
+		for (var i = 0; i < nodes.length; i++) {
+			var node = nodes[i];
+			var chunks = splitPlainTextVirtualNode(node);
+			for (var j = 0; j < chunks.length; j++) {
+				expanded.push(chunks[j]);
+			}
+		}
+		return expanded;
+	}
+
+	function splitPlainTextVirtualNode(node) {
+		var tag = (node.tagName || "").toLowerCase();
+		var text = node.textContent || "";
+		var textLength = text.replace(/\s+/g, "").length;
+		if (
+			textLength <= options.maxPlainTextBlockLength ||
+			!canSplitPlainTextVirtualNode(node, tag)
+		) {
+			return [node];
+		}
+
+		var parts = splitVirtualTextIntoChunks(text, options.targetTextLength);
+		if (parts.length < 2) {
+			return [node];
+		}
+
+		var result = [];
+		for (var i = 0; i < parts.length; i++) {
+			var clone = node.cloneNode(false);
+			clone.textContent = parts[i];
+			result.push(clone);
+		}
+		return result;
+	}
+
+	function canSplitPlainTextVirtualNode(node, tag) {
+		if (!/^(p|li|div|blockquote)$/.test(tag) || node.id || !node.childNodes || node.childNodes.length !== 1) {
+			return false;
+		}
+		return node.childNodes[0].nodeType === 3;
+	}
+
+	function splitVirtualTextIntoChunks(text, limit) {
+		var chunks = [];
+		var source = String(text || "");
+		while (source.length > limit) {
+			var cut = findVirtualTextCut(source, limit);
+			chunks.push(source.slice(0, cut));
+			source = source.slice(cut);
+		}
+		if (source.length) {
+			chunks.push(source);
+		}
+		return chunks;
+	}
+
+	function findVirtualTextCut(text, limit) {
+		var max = Math.min(text.length, limit);
+		var min = Math.max(1, Math.floor(limit * 0.55));
+		for (var i = max; i >= min; i--) {
+			if (/[\s,.;:!?]/.test(text.charAt(i - 1))) {
+				return i;
+			}
+		}
+		return max;
+	}
+
+	function isHeavyVirtualNode(node, tag) {
+		return tag === "pre" ||
+			tag === "table" ||
+			tag === "figure" ||
+			tag === "iframe" ||
+			tag === "video" ||
+			tag === "img" ||
+			(node.classList && (
+				node.classList.contains("wp-block") ||
+				node.classList.contains("katex") ||
+				node.classList.contains("MathJax")
+			));
+	}
+
+	function collectSourceHeaders(sourceSections) {
+		var result = [];
+		for (var i = 0; i < sourceSections.length; i++) {
+			sourceSections[i].index = i;
+			sourceSections[i].mounted = false;
+			sourceSections[i].placeholder = null;
+			var sectionHeaders = sourceSections[i].headers || [];
+			for (var h = 0; h < sectionHeaders.length; h++) {
+				sectionHeaders[h].sectionIndex = i;
+				result.push(sectionHeaders[h]);
+			}
+		}
+		return result;
+	}
+
+	function pushSection(result, nodes, textCount, sectionHeaders) {
+		if (!nodes.length) {
+			return;
+		}
+		result.push({
+			index: result.length,
+			html: nodesToHtml(nodes),
+			headers: sectionHeaders.slice(),
+			nodeIds: collectNodeIds(nodes),
+			textCount: textCount,
+			placeholder: null,
+			mounted: false,
+			estimatedHeight: estimateSectionHeight(nodes, textCount)
+		});
+	}
+
+	function isHeading(tag) {
+		return /^h[1-6]$/.test(tag);
+	}
+
+	function collectSectionHeadings(node, sectionIndex, sectionHeaders) {
+		var headingNodes = [];
+		if (isHeading((node.tagName || "").toLowerCase())) {
+			headingNodes.push(node);
+		}
+		if (node.querySelectorAll) {
+			var nestedHeadings = node.querySelectorAll("h1, h2, h3, h4, h5, h6");
+			for (var i = 0; i < nestedHeadings.length; i++) {
+				headingNodes.push(nestedHeadings[i]);
+			}
+		}
+		for (var h = 0; h < headingNodes.length; h++) {
+			if (!headingNodes[h].id) {
+				headingNodes[h].id = "argon-virtual-heading-" + sectionIndex + "-" + (sectionHeaders.length + 1);
+			}
+			var headingInfo = {
+				id: headingNodes[h].id,
+				level: Number(headingNodes[h].tagName.charAt(1)),
+				text: headingNodes[h].innerText || headingNodes[h].textContent || "",
+				sectionIndex: sectionIndex
+			};
+			sectionHeaders.push(headingInfo);
+			headers.push(headingInfo);
+		}
+	}
+
+	function nodesToHtml(nodes) {
+		var html = [];
+		for (var i = 0; i < nodes.length; i++) {
+			html.push(nodes[i].outerHTML);
+		}
+		return html.join("");
+	}
+
+	function collectNodeIds(nodes) {
+		var ids = [];
+		for (var i = 0; i < nodes.length; i++) {
+			if (nodes[i].id) {
+				ids.push(nodes[i].id);
+			}
+			var childrenWithId = nodes[i].querySelectorAll ? nodes[i].querySelectorAll("[id]") : [];
+			for (var j = 0; j < childrenWithId.length; j++) {
+				ids.push(childrenWithId[j].id);
+			}
+		}
+		return ids;
+	}
+
+	function estimateSectionHeight(nodes, textCount) {
+		var height = Math.max(120, Math.ceil(textCount / 42) * 32);
+		for (var i = 0; i < nodes.length; i++) {
+			var tag = (nodes[i].tagName || "").toLowerCase();
+			if (tag === "pre" || tag === "table") {
+				height += 220;
+			} else if (tag === "img" || tag === "figure" || tag === "iframe" || tag === "video") {
+				height += 320;
+			} else if (isHeading(tag)) {
+				height += 64;
+			} else {
+				height += 18;
+			}
+		}
+		return height;
+	}
+
+	function renderShell() {
+		content.innerHTML = "";
+		for (var i = 0; i < sections.length; i++) {
+			var placeholder = document.createElement("section");
+			placeholder.className = "argon-virtual-section";
+			placeholder.setAttribute("data-argon-virtual-index", String(i));
+			placeholder.style.minHeight = sections[i].estimatedHeight + "px";
+			sections[i].placeholder = placeholder;
+			content.appendChild(placeholder);
+		}
+	}
+
+	function setupObserver() {
+		if ("IntersectionObserver" in window) {
+			observer = new IntersectionObserver(function (entries) {
+				for (var i = 0; i < entries.length; i++) {
+					var section = getSectionFromNode(entries[i].target);
+					if (!section) {
+						continue;
+					}
+					if (entries[i].isIntersecting) {
+						renderAroundIndex(section.index);
+					}
+				}
+				pruneSections();
+			}, { rootMargin: options.rootMargin, threshold: 0 });
+
+			for (var s = 0; s < sections.length; s++) {
+				observer.observe(sections[s].placeholder);
+			}
+		} else {
+			scrollHandler = throttleVirtualUpdate(scheduleUpdate, 80);
+			window.addEventListener("scroll", scrollHandler, { passive: true });
+		}
+
+		resizeHandler = throttleVirtualUpdate(function () {
+			for (var i = 0; i < sections.length; i++) {
+				if (sections[i].mounted) {
+					updateSectionHeight(sections[i]);
+				}
+			}
+			scheduleUpdate();
+		}, 160);
+		window.addEventListener("resize", resizeHandler, { passive: true });
+	}
+
+	function scheduleUpdate() {
+		if (scheduled || destroyed) {
+			return;
+		}
+		scheduled = true;
+		requestAnimationFrame(function () {
+			scheduled = false;
+			var index = getNearestVisibleSectionIndex();
+			renderAroundIndex(index);
+			pruneSections();
+		});
+	}
+
+	function getNearestVisibleSectionIndex() {
+		var viewportMid = window.innerHeight / 2;
+		var nearestIndex = 0;
+		var nearestDistance = Infinity;
+		for (var i = 0; i < sections.length; i++) {
+			var rect = sections[i].placeholder.getBoundingClientRect();
+			var sectionMid = rect.top + rect.height / 2;
+			var distance = Math.abs(sectionMid - viewportMid);
+			if (distance < nearestDistance) {
+				nearestDistance = distance;
+				nearestIndex = i;
+			}
+		}
+		return nearestIndex;
+	}
+
+	function renderAroundIndex(index, forceFirst) {
+		var start = Math.max(0, index - options.keepRange);
+		var end = Math.min(sections.length - 1, index + options.keepRange);
+		if (forceFirst) {
+			end = Math.min(sections.length - 1, Math.max(end, 2));
+		}
+		for (var i = start; i <= end; i++) {
+			mountSection(sections[i]);
+		}
+	}
+
+	function mountSection(section) {
+		if (!section || section.mounted || destroyed) {
+			return;
+		}
+		var placeholder = section.placeholder;
+		placeholder.classList.add("argon-virtual-section-mounted");
+		placeholder.style.overflowAnchor = "auto";
+		placeholder.innerHTML = section.html;
+		section.mounted = true;
+		updateSectionHeight(section);
+		prepareRenderedSection(section);
+	}
+
+	function prepareRenderedSection(section) {
+		if (window.__argonVirtualPreparing) {
+			return;
+		}
+		window.__argonVirtualPreparing = true;
+		try {
+			if (typeof lazyloadInit === "function") {
+				lazyloadInit(section.placeholder);
+			}
+			if (typeof zoomifyInit === "function") {
+				zoomifyInit(section.placeholder);
+			}
+			if (typeof highlightJsRender === "function") {
+				highlightJsRender(section.placeholder);
+			}
+			if (typeof tippyInit === "function") {
+				tippyInit(section.placeholder);
+			}
+			renderMathForVirtualSection(section.placeholder);
+			watchSectionMediaLoad(section);
+		} catch (e) {
+			ArgonDebug.warn("Long content section init failed:", e);
+		}
+		window.__argonVirtualPreparing = false;
+	}
+
+	function watchSectionMediaLoad(section) {
+		if (!section || !section.placeholder || !section.placeholder.querySelectorAll) {
+			return;
+		}
+		var media = section.placeholder.querySelectorAll("img, iframe, video");
+		for (var i = 0; i < media.length; i++) {
+			if (media[i]._argonVirtualHeightBound) {
+				continue;
+			}
+			media[i]._argonVirtualHeightBound = true;
+			var update = function () {
+				updateSectionHeight(section);
+				scheduleUpdate();
+			};
+			media[i].addEventListener("load", update, { once: true });
+			media[i].addEventListener("loadedmetadata", update, { once: true });
+			if ((media[i].tagName || "").toLowerCase() === "img" && media[i].complete) {
+				update();
+			}
+			if ((media[i].tagName || "").toLowerCase() === "video" && media[i].readyState > 0) {
+				update();
+			}
+		}
+	}
+
+	function pruneSections() {
+		var visibleIndex = getNearestVisibleSectionIndex();
+		var keepStart = Math.max(0, visibleIndex - options.keepRange - 1);
+		var keepEnd = Math.min(sections.length - 1, visibleIndex + options.keepRange + 1);
+		for (var i = 0; i < sections.length; i++) {
+			if (i < keepStart || i > keepEnd) {
+				unmountSection(sections[i]);
+			}
+		}
+	}
+
+	function unmountSection(section) {
+		if (!section || !section.mounted) {
+			return;
+		}
+		updateSectionHeight(section);
+		cleanupSectionRuntime(section.placeholder);
+		while (section.placeholder.firstChild) {
+			section.placeholder.removeChild(section.placeholder.firstChild);
+		}
+		section.placeholder.classList.remove("argon-virtual-section-mounted");
+		section.placeholder.style.overflowAnchor = "";
+		section.mounted = false;
+	}
+
+	function updateSectionHeight(section) {
+		var height = section.placeholder.scrollHeight;
+		if (height > 0) {
+			section.estimatedHeight = Math.max(section.estimatedHeight || 0, 80, height);
+			section.placeholder.style.minHeight = section.estimatedHeight + "px";
+		}
+	}
+
+	function getSectionFromNode(node) {
+		var index = parseInt(node.getAttribute("data-argon-virtual-index"), 10);
+		if (isNaN(index)) {
+			return null;
+		}
+		return sections[index] || null;
+	}
+
+	function findSectionById(id) {
+		if (!id) {
+			return null;
+		}
+		try {
+			id = decodeURIComponent(id);
+		} catch (e) { }
+		for (var i = 0; i < sections.length; i++) {
+			for (var h = 0; h < sections[i].headers.length; h++) {
+				if (sections[i].headers[h].id === id) {
+					return sections[i];
+				}
+			}
+			for (var n = 0; n < sections[i].nodeIds.length; n++) {
+				if (sections[i].nodeIds[n] === id) {
+					return sections[i];
+				}
+			}
+		}
+		return null;
+	}
+
+	function renderTarget(id) {
+		var section = findSectionById(id);
+		if (!section) {
+			return false;
+		}
+		renderAroundIndex(section.index);
+		mountSection(section);
+		return true;
+	}
+
+	function getHeaders() {
+		return headers.slice();
+	}
+
+	function getHeaderOffset(header, offset) {
+		var section = findSectionById(header.id);
+		if (section && section.mounted) {
+			var target = document.getElementById(header.id);
+			if (target) {
+				return $(target).offset().top - (offset || 0);
+			}
+		}
+		if (section && section.placeholder) {
+			return $(section.placeholder).offset().top - (offset || 0);
+		}
+		var fallback = $("#" + escapeJqueryId(header.id));
+		return fallback.length ? fallback.offset().top - (offset || 0) : 0;
+	}
+
+	function destroy(restoreContent) {
+		destroyed = true;
+		if (observer) {
+			try {
+				observer.disconnect();
+			} catch (e) { }
+			observer = null;
+		}
+		if (scrollHandler) {
+			window.removeEventListener("scroll", scrollHandler);
+			scrollHandler = null;
+		}
+		if (resizeHandler) {
+			window.removeEventListener("resize", resizeHandler);
+			resizeHandler = null;
+		}
+		if (content && content.getAttribute("data-argon-virtual-ready") === "true") {
+			content.classList.remove("argon-long-content-virtual");
+			content.removeAttribute("data-argon-virtual-ready");
+			if (restoreContent) {
+				var restoredHtml = [];
+				for (var i = 0; i < sections.length; i++) {
+					restoredHtml.push(sections[i].html);
+				}
+				content.innerHTML = restoredHtml.join("");
+			} else {
+				content.innerHTML = "";
+			}
+		}
+	}
+
+	return {
+		init: init,
+		destroy: destroy,
+		getHeaders: getHeaders,
+		getHeaderOffset: getHeaderOffset,
+		renderTarget: renderTarget,
+		renderAroundIndex: renderAroundIndex,
+		isReady: function () { return content.getAttribute("data-argon-virtual-ready") === "true"; }
+	};
+}
+
+function throttleVirtualUpdate(callback, wait) {
+	var last = 0;
+	var timer = null;
+	return function () {
+		var now = Date.now();
+		var remaining = wait - (now - last);
+		if (remaining <= 0) {
+			if (timer) {
+				clearTimeout(timer);
+				timer = null;
+			}
+			last = now;
+			callback();
+		} else if (!timer) {
+			timer = setTimeout(function () {
+				timer = null;
+				last = Date.now();
+				callback();
+			}, remaining);
+		}
+	};
+}
+
+	function cleanupSectionRuntime(root) {
+	if (!root) {
+		return;
+	}
+	if (root._argonLazyloadObserver) {
+		try {
+			root._argonLazyloadObserver.disconnect();
+		} catch (e) { }
+		root._argonLazyloadObserver = null;
+	}
+	var zoomImages = root.querySelectorAll("img.zoomify-initialized");
+	for (var z = 0; z < zoomImages.length; z++) {
+		try {
+			var instance = $(zoomImages[z]).data("zoomify");
+			if (instance && typeof instance.destroy === "function") {
+				instance.destroy();
+			}
+			$(zoomImages[z]).removeData("zoomify");
+			zoomImages[z].classList.remove("zoomify-initialized");
+		} catch (e) { }
+	}
+	if (zoomImages.length && zoomifyInstances && zoomifyInstances.length) {
+		zoomifyInstances = zoomifyInstances.filter(function (instance) {
+			for (var i = 0; i < zoomImages.length; i++) {
+				if (instance && instance.$element && instance.$element[0] === zoomImages[i]) {
+					return false;
+				}
+			}
+			return true;
+		});
+	}
+	if (highlightObserver) {
+		var codeBlocks = root.querySelectorAll("pre > code");
+		for (var i = 0; i < codeBlocks.length; i++) {
+			try {
+				highlightObserver.unobserve(codeBlocks[i]);
+			} catch (e) { }
+		}
+	}
+	if (typeof ClipboardJS !== "undefined") {
+		var copyButtons = root.querySelectorAll(".hljs-control-copy");
+		for (var c = 0; c < copyButtons.length; c++) {
+			if (copyButtons[c]._clipboard && typeof copyButtons[c]._clipboard.destroy === "function") {
+				copyButtons[c]._clipboard.destroy();
+				copyButtons[c]._clipboard = null;
+			}
+		}
+	}
+	var renderedCodeBlocks = root.querySelectorAll("pre.hljs-codeblock > code[hljs-codeblock-inner]");
+	for (var r = 0; r < renderedCodeBlocks.length; r++) {
+		renderedCodeBlocks[r].removeAttribute("hljs-codeblock-inner");
+	}
+	var tips = root.querySelectorAll("[data-tippy-root], .tippy-initialized");
+	for (var t = 0; t < tips.length; t++) {
+		if (tips[t]._tippy && typeof tips[t]._tippy.destroy === "function") {
+			tips[t]._tippy.destroy();
+		}
+		tips[t].classList.remove("tippy-initialized");
+	}
+}
+
+function renderMathForVirtualSection(root) {
+	try {
+		if (typeof MathJax !== "undefined") {
+			if (MathJax.Hub && typeof MathJax.Hub.Queue === "function") {
+				MathJax.Hub.Queue(["Typeset", MathJax.Hub, root]);
+			} else if (typeof MathJax.typesetPromise === "function") {
+				MathJax.typesetPromise([root]);
+			} else if (typeof MathJax.typeset === "function") {
+				MathJax.typeset([root]);
+			}
+		}
+	} catch (e) { }
+	try {
+		if (typeof renderMathInElement !== "undefined") {
+			renderMathInElement(root, {
+				delimiters: [
+					{ left: "$$", right: "$$", display: true },
+					{ left: "$", right: "$", display: false },
+					{ left: "\\(", right: "\\)", display: false }
+				]
+			});
+		}
+	} catch (e) { }
+}
+
+function patchHeadIndexForVirtualContent() {
+	if (argonVirtualHeadIndexPatched || typeof jQuery === "undefined" || !jQuery.fn || typeof jQuery.fn.headIndex !== "function") {
+		return;
+	}
+
+	var originalHeadIndex = jQuery.fn.headIndex;
+	jQuery.fn.headIndex = function (options) {
+		var virtualizer = window.ArgonLongContentVirtualizer;
+		if (!virtualizer || !virtualizer.isReady || !virtualizer.isReady() || !options || options.articleWrapSelector !== "#post_content") {
+			return originalHeadIndex.apply(this, arguments);
+		}
+		return this.each(function () {
+			var instance = createVirtualHeadIndexInstance(options, virtualizer);
+			jQuery(this).data("headIndex", instance);
+		});
+	};
+	argonVirtualHeadIndexPatched = true;
+}
+
+function createVirtualHeadIndexInstance(options, virtualizer) {
+	var settings = jQuery.extend(true, {
+		indexBoxSelector: "#leftbar_catalog",
+		indexScrollBoxSelector: "#leftbar_part2_inner",
+		scrollSelector: "body,html",
+		subItemBoxClass: "index-subItem-box",
+		itemClass: "index-item",
+		linkClass: "index-link",
+		offset: 0,
+		defaultExpanded: false
+	}, options || {});
+	var headers = virtualizer.getHeaders();
+	var indexBox = jQuery(settings.indexBoxSelector);
+	var indexScrollBox = jQuery(settings.indexScrollBoxSelector);
+	var scrollBody = jQuery(settings.scrollSelector);
+	var manual = false;
+	var mouseHovered = false;
+	var tree = buildVirtualHeaderTree(headers);
+
+	function buildCatalogHtml(items) {
+		var html = [];
+		for (var i = 0; i < items.length; i++) {
+			html.push("<li class='" + settings.itemClass + "'><a no-pjax class='" + settings.linkClass + "' href='#" + items[i].item.id + "'>" + escapeCatalogText(items[i].item.text || "") + "</a>");
+			if (items[i].children.length) {
+				html.push("<ul class='" + settings.subItemBoxClass + (settings.defaultExpanded ? " open" : "") + "'>");
+				html.push(buildCatalogHtml(items[i].children));
+				html.push("</ul>");
+			}
+			html.push("</li>");
+		}
+		return html.join("");
+	}
+
+	function init() {
+		if (!indexBox.length || !headers.length) {
+			return;
+		}
+		indexBox.html("<ul>" + buildCatalogHtml(tree) + "</ul>");
+		if (settings.defaultExpanded) {
+			indexBox.find("ul." + settings.subItemBoxClass).show().addClass("open");
+		}
+		bindEvents();
+		updateCurrent();
+	}
+
+	function bindEvents() {
+		var manualTimer = null;
+		indexBox.off("click.headindex").on("click.headindex", "." + settings.linkClass, function (event) {
+			event.preventDefault();
+			var href = this.getAttribute("href") || "";
+			var indexItem = jQuery(this).parent("." + settings.itemClass);
+			manual = true;
+			if (manualTimer) {
+				clearTimeout(manualTimer);
+			}
+			manualTimer = setTimeout(function () {
+				manual = false;
+			}, 400);
+			current(indexItem);
+			scrollTo(href);
+		});
+		indexScrollBox.off("mouseover.virtualHeadIndex mouseleave.virtualHeadIndex");
+		indexScrollBox.on("mouseover.virtualHeadIndex", function () { mouseHovered = true; });
+		indexScrollBox.on("mouseleave.virtualHeadIndex", function () { mouseHovered = false; });
+	}
+
+	function current(indexItem) {
+		if (!indexItem.length || indexItem.hasClass("current")) {
+			return;
+		}
+		indexBox.find("li.current").removeClass("current");
+		if (!settings.defaultExpanded) {
+			indexBox.find("ul.open").removeClass("open");
+		}
+		var subBox = indexItem.children("." + settings.subItemBoxClass);
+		if (subBox.length) {
+			subBox.addClass("open").slideDown();
+		}
+		var parentsBox = indexItem.parents("ul." + settings.subItemBoxClass);
+		if (parentsBox.length) {
+			parentsBox.addClass("open").slideDown();
+		}
+		if (!settings.defaultExpanded) {
+			indexBox.find("ul." + settings.subItemBoxClass).not(".open").slideUp();
+		}
+		indexItem.addClass("current");
+		if (mouseHovered) {
+			return;
+		}
+		var relativeTop = indexItem.position().top;
+		var containerScrollTop = indexScrollBox.scrollTop();
+		var containerHeight = indexScrollBox.height();
+		if (relativeTop < 20 + indexItem.height()) {
+			indexScrollBox.stop().animate({ scrollTop: Math.max(0, containerScrollTop + relativeTop - 20 - indexItem.height()) }, "normal", "easeOutExpo");
+		}
+		if (relativeTop > containerHeight - 10) {
+			indexScrollBox.stop().animate({ scrollTop: containerScrollTop + relativeTop - containerHeight + 10 + indexItem.height() }, "normal", "easeOutExpo");
+		}
+	}
+
+	function scrollTo(href) {
+		var id = href.charAt(0) === "#" ? href.slice(1) : href;
+		virtualizer.renderTarget(id);
+		var header = findVirtualHeaderById(headers, id);
+		if (!header) {
+			return;
+		}
+		var target = document.getElementById(header.id);
+		var top = target ? $(target).offset().top - settings.offset : virtualizer.getHeaderOffset(header, settings.offset);
+		scrollBody.stop().animate({ scrollTop: top + 8 }, "normal", "easeOutExpo");
+	}
+
+	function updateCurrent() {
+		if (manual || !headers.length) {
+			return;
+		}
+		var scrollTop = scrollBody.scrollTop();
+		var currentHeader = headers[0];
+		for (var i = 0; i < headers.length; i++) {
+			var top = virtualizer.getHeaderOffset(headers[i], settings.offset);
+			if (top <= scrollTop + 8) {
+				currentHeader = headers[i];
+			} else {
+				break;
+			}
+		}
+		var currentLink = indexBox.find("a." + settings.linkClass).filter(function () {
+			return (this.getAttribute("href") || "") === "#" + currentHeader.id;
+		});
+		current(currentLink.parent("li." + settings.itemClass));
+	}
+
+	function clean() {
+		indexBox.off("click.headindex");
+		indexScrollBox.off("mouseover.virtualHeadIndex mouseleave.virtualHeadIndex");
+		jQuery(settings.scrollWrap || window).off("scroll.virtualHeadIndex resize.virtualHeadIndex");
+	}
+
+	init();
+	jQuery(settings.scrollWrap || window).off("scroll.virtualHeadIndex resize.virtualHeadIndex").on("scroll.virtualHeadIndex resize.virtualHeadIndex", throttleVirtualUpdate(updateCurrent, 80));
+	return {
+		updateCurrent: updateCurrent,
+		scrollTo: scrollTo,
+		current: current,
+		clean: clean,
+		ignoreScrollEvent: function (ignore) {
+			manual = !!ignore;
+			if (!manual) {
+				updateCurrent();
+			}
+		}
+	};
+}
+
+function buildVirtualHeaderTree(headers) {
+	var tree = [];
+	var current = null;
+	for (var i = 0; i < headers.length; i++) {
+		var item = { item: headers[i], parent: null, children: [] };
+		item.item.h = Number(item.item.level);
+		if (!current) {
+			tree.push(item);
+			current = item;
+			continue;
+		}
+		if (current.item.h < item.item.h) {
+			item.parent = current;
+			current.children.push(item);
+			current = item;
+			continue;
+		}
+		if (current.item.h === item.item.h) {
+			item.parent = current.parent;
+			((current.parent && current.parent.children) || tree).push(item);
+			current = item;
+			continue;
+		}
+		while (current && current.item.h > item.item.h) {
+			current = current.parent;
+		}
+		if (!current) {
+			tree.push(item);
+			current = item;
+		} else {
+			i--;
+		}
+	}
+	return tree;
+}
+
+function findVirtualHeaderById(headers, id) {
+	try {
+		id = decodeURIComponent(id);
+	} catch (e) { }
+	for (var i = 0; i < headers.length; i++) {
+		if (headers[i].id === id) {
+			return headers[i];
+		}
+	}
+	return null;
+}
+
+function escapeJqueryId(id) {
+	if (jQuery.escapeSelector) {
+		return jQuery.escapeSelector(id);
+	}
+	return String(id).replace(/([ !"#$%&'()*+,./:;<=>?@\[\\\]^`{|}~])/g, "\\$1");
+}
+
+function escapeCatalogText(text) {
+	return String(text).replace(/[&<>"']/g, function (char) {
+		return {
+			"&": "&amp;",
+			"<": "&lt;",
+			">": "&gt;",
+			'"': "&quot;",
+			"'": "&#39;"
+		}[char];
+	});
+}
+
+initArgonLongContentVirtualizer();
 
 // ==========================================================================
 // 内联脚本执行器 (Inline Script Executor)
@@ -3971,6 +5024,7 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 			} catch (err) { }
 
 			// 初始化各个功能模块（添加错误处理确保单个模块失败不影响其他模块）
+			try { initArgonLongContentVirtualizer(); } catch (err) { ArgonDebug.error('initArgonLongContentVirtualizer failed:', err); }
 			try { waterflowInit(); } catch (err) { ArgonDebug.error('waterflowInit failed:', err); }
 			try { lazyloadInit(); } catch (err) { ArgonDebug.error('lazyloadInit failed:', err); }
 			try { zoomifyInit(); } catch (err) { ArgonDebug.error('zoomifyInit failed:', err); }
@@ -3985,6 +5039,7 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 			try { foldLongShuoshuo(); } catch (err) { ArgonDebug.error('foldLongShuoshuo failed:', err); }
 			try { handleHashNavigation(); } catch (err) { ArgonDebug.error('handleHashNavigation failed:', err); }
 			try { initArticleSkeletons(); } catch (err) { ArgonDebug.error('initArticleSkeletons failed:', err); }
+
 			$("html").trigger("resize");
 
 			// 恢复滚动位置
@@ -4039,6 +5094,9 @@ $(document).on("click", ".reference-link , .reference-list-backlink", function (
 	e.preventDefault();
 	var href = $(this).attr("href");
 	if (!href || href === "#") { return; }
+	if (window.ArgonLongContentVirtualizer && typeof window.ArgonLongContentVirtualizer.renderTarget === "function") {
+		window.ArgonLongContentVirtualizer.renderTarget(href.slice(1));
+	}
 	var $target;
 	try {
 		$target = $(href);
@@ -4170,8 +5228,26 @@ $(document).on("keydown", function (e) {
 		if ($postContent.length === 0) return;
 
 		// 直接生成目录，不依赖 headIndex 插件
-		var $headers = $postContent.find('h1, h2, h3, h4, h5, h6');
-		if ($headers.length === 0) {
+		var headerItems = [];
+		if (window.ArgonLongContentVirtualizer && window.ArgonLongContentVirtualizer.isReady && window.ArgonLongContentVirtualizer.isReady()) {
+			headerItems = window.ArgonLongContentVirtualizer.getHeaders();
+		} else {
+			var $headers = $postContent.find('h1, h2, h3, h4, h5, h6');
+			$headers.each(function (index) {
+				var $h = $(this);
+				var id = $h.attr('id');
+				if (!id) {
+					id = 'mobile-heading-' + index;
+					$h.attr('id', id);
+				}
+				headerItems.push({
+					id: id,
+					text: $h.text().trim(),
+					level: parseInt(this.tagName.charAt(1), 10)
+				});
+			});
+		}
+		if (headerItems.length === 0) {
 			$mobileContainer.html('<div class="no-catalog">暂无目录</div>');
 			return;
 		}
@@ -4180,19 +5256,10 @@ $(document).on("keydown", function (e) {
 		var toc = [];
 		var stack = [{ level: 0, children: toc }];
 
-		$headers.each(function (index) {
-			var $h = $(this);
-			var level = parseInt(this.tagName.charAt(1));
-			var text = $h.text().trim();
-			var id = $h.attr('id');
-
-			// 确保标题有ID
-			if (!id) {
-				id = 'mobile-heading-' + index;
-				$h.attr('id', id);
-			}
-
-			var item = { id: id, text: text, level: level, children: [] };
+		for (var headerIndex = 0; headerIndex < headerItems.length; headerIndex++) {
+			var heading = headerItems[headerIndex];
+			var level = parseInt(heading.level, 10);
+			var item = { id: heading.id, text: heading.text, level: level, children: [] };
 
 			// 找到合适的父级
 			while (stack.length > 1 && stack[stack.length - 1].level >= level) {
@@ -4200,7 +5267,7 @@ $(document).on("keydown", function (e) {
 			}
 			stack[stack.length - 1].children.push(item);
 			stack.push({ level: level, children: item.children });
-		});
+		}
 
 		// 递归生成 HTML
 		function buildHtml(items, isRoot) {
@@ -4227,6 +5294,9 @@ $(document).on("keydown", function (e) {
 			e.preventDefault();
 			var targetId = $(this).attr('href');
 			if (targetId && targetId !== "#") {
+				if (window.ArgonLongContentVirtualizer && typeof window.ArgonLongContentVirtualizer.renderTarget === "function") {
+					window.ArgonLongContentVirtualizer.renderTarget(targetId.slice(1));
+				}
 				var $target;
 				try {
 					$target = $(targetId);
@@ -4261,16 +5331,27 @@ $(document).on("keydown", function (e) {
 		if ($mobileContainer.length === 0 || $postContent.length === 0) return;
 
 		var scrollTop = $(window).scrollTop();
-		var $headers = $postContent.find('h1, h2, h3, h4, h5, h6');
+		var virtualizer = window.ArgonLongContentVirtualizer;
+		var headers = [];
 		var currentId = null;
 
-		$headers.each(function () {
-			var $h = $(this);
-			var top = $h.offset().top - 100;
+		if (virtualizer && virtualizer.isReady && virtualizer.isReady()) {
+			headers = virtualizer.getHeaders();
+			for (var i = 0; i < headers.length; i++) {
+				var top = virtualizer.getHeaderOffset(headers[i], 100);
+				if (scrollTop >= top) {
+					currentId = headers[i].id;
+				}
+			}
+		} else {
+			$postContent.find('h1, h2, h3, h4, h5, h6').each(function () {
+				var $h = $(this);
+				var top = $h.offset().top - 100;
 			if (scrollTop >= top) {
 				currentId = $h.attr('id');
 			}
-		});
+			});
+		}
 
 		if (currentId) {
 			$mobileContainer.find('.index-item').removeClass('current');
@@ -5181,7 +6262,88 @@ function shouldSkipHighlightJsBlock(block) {
 		/\bline-numbers\b/.test(className);
 }
 
-function highlightJsRender() {
+
+function renderArgonCodeBlock(block) {
+	if ($(block).hasClass("no-hljs")) {
+		return;
+	}
+	if ($(block).attr("hljs-codeblock-inner") !== undefined || $(block).parent().hasClass("hljs-codeblock")) {
+		return;
+	}
+	if (shouldSkipHighlightJsBlock(block)) {
+		return;
+	}
+	$(block).parent().attr("id", randomString());
+	hljs.highlightBlock(block);
+	hljs.lineNumbersBlock(block, { singleLine: true });
+	$(block).parent().addClass("hljs-codeblock");
+	if (argonConfig.code_highlight.hide_linenumber) {
+		$(block).parent().addClass("hljs-hide-linenumber");
+	}
+	if (argonConfig.code_highlight.break_line) {
+		$(block).parent().addClass("hljs-break-line");
+	}
+	if (argonConfig.code_highlight.transparent_linenumber) {
+		$(block).parent().addClass("hljs-transparent-linenumber");
+	}
+	$(block).attr("hljs-codeblock-inner", "");
+	let copyBtnID = "copy_btn_" + randomString();
+	$(block).parent().append(`<div class="hljs-control hljs hljs-title">
+			<div class="hljs-control-btn hljs-control-toggle-linenumber" tooltip-hide-linenumber="` + __("隐藏行号") + `" tooltip-show-linenumber="` + __("显示行号") + `">
+				<i class="fa fa-list"></i>
+			</div>
+			<div class="hljs-control-btn hljs-control-toggle-break-line" tooltip-enable-breakline="` + __("开启折行") + `" tooltip-disable-breakline="` + __("关闭折行") + `">
+				<i class="fa fa-align-left"></i>
+			</div>
+			<div class="hljs-control-btn hljs-control-copy" id=` + copyBtnID + ` tooltip="` + __("复制") + `">
+				<i class="fa fa-clipboard"></i>
+			</div>
+			<div class="hljs-control-btn hljs-control-fullscreen" tooltip-fullscreen="` + __("全屏") + `" tooltip-exit-fullscreen="` + __("退出全屏") + `">
+				<i class="fa fa-arrows-alt"></i>
+			</div>
+		</div>`);
+	let clipboard = new ClipboardJS("#" + copyBtnID, {
+		text: function (trigger) {
+			return getCodeFromBlock($(block).parent()[0]);
+		}
+	});
+	var copyButton = document.getElementById(copyBtnID);
+	if (copyButton) {
+		copyButton._clipboard = clipboard;
+	}
+	clipboard.on('success', function (e) {
+		iziToast.show({
+			title: __("复制成功"),
+			message: __("代码已复制到剪贴板"),
+			class: 'shadow',
+			position: 'topRight',
+			backgroundColor: '#2dce89',
+			titleColor: '#ffffff',
+			messageColor: '#ffffff',
+			iconColor: '#ffffff',
+			progressBarColor: '#ffffff',
+			icon: 'fa fa-check',
+			timeout: 5000
+		});
+	});
+	clipboard.on('error', function (e) {
+		iziToast.show({
+			title: __("复制失败"),
+			message: __("请手动复制代码"),
+			class: 'shadow',
+			position: 'topRight',
+			backgroundColor: '#f5365c',
+			titleColor: '#ffffff',
+			messageColor: '#ffffff',
+			iconColor: '#ffffff',
+			progressBarColor: '#ffffff',
+			icon: 'fa fa-close',
+			timeout: 5000
+		});
+	});
+}
+
+function highlightJsRender(scope) {
 	if (typeof (hljs) == "undefined") {
 		return;
 	}
@@ -5191,7 +6353,8 @@ function highlightJsRender() {
 	if (!argonConfig.code_highlight.enable) {
 		return;
 	}
-	$("article pre.code").each(function (index, block) {
+	var $scope = scope ? $(scope) : $("article");
+	$scope.find("pre.code").addBack("pre.code").each(function (index, block) {
 		if ($(block).hasClass("no-hljs")) {
 			return;
 		}
@@ -5200,77 +6363,27 @@ function highlightJsRender() {
 		}
 		$(block).html("<code>" + $(block).html() + "</code>");
 	});
-	$("article pre > code").each(function (index, block) {
-		if ($(block).hasClass("no-hljs")) {
-			return;
+	var blocks = $scope.find("pre > code").addBack("pre > code").filter(function () {
+		return !$(this).hasClass("no-hljs");
+	});
+	if (!scope && window.ArgonLongContentVirtualizer && window.ArgonLongContentVirtualizer.isReady && window.ArgonLongContentVirtualizer.isReady() && "IntersectionObserver" in window) {
+		if (!highlightObserver) {
+			highlightObserver = new IntersectionObserver(function (entries) {
+				entries.forEach(function (entry) {
+					if (entry.isIntersecting) {
+						renderArgonCodeBlock(entry.target);
+						highlightObserver.unobserve(entry.target);
+					}
+				});
+			}, { rootMargin: "800px 0px 800px 0px", threshold: 0 });
 		}
-		if (shouldSkipHighlightJsBlock(block)) {
-			return;
-		}
-		$(block).parent().attr("id", randomString());
-		hljs.highlightBlock(block);
-		hljs.lineNumbersBlock(block, { singleLine: true });
-		$(block).parent().addClass("hljs-codeblock");
-		if (argonConfig.code_highlight.hide_linenumber) {
-			$(block).parent().addClass("hljs-hide-linenumber");
-		}
-		if (argonConfig.code_highlight.break_line) {
-			$(block).parent().addClass("hljs-break-line");
-		}
-		if (argonConfig.code_highlight.transparent_linenumber) {
-			$(block).parent().addClass("hljs-transparent-linenumber");
-		}
-		$(block).attr("hljs-codeblock-inner", "");
-		let copyBtnID = "copy_btn_" + randomString();
-		$(block).parent().append(`<div class="hljs-control hljs hljs-title">
-				<div class="hljs-control-btn hljs-control-toggle-linenumber" tooltip-hide-linenumber="` + __("隐藏行号") + `" tooltip-show-linenumber="` + __("显示行号") + `">
-					<i class="fa fa-list"></i>
-				</div>
-				<div class="hljs-control-btn hljs-control-toggle-break-line" tooltip-enable-breakline="` + __("开启折行") + `" tooltip-disable-breakline="` + __("关闭折行") + `">
-					<i class="fa fa-align-left"></i>
-				</div>
-				<div class="hljs-control-btn hljs-control-copy" id=` + copyBtnID + ` tooltip="` + __("复制") + `">
-					<i class="fa fa-clipboard"></i>
-				</div>
-				<div class="hljs-control-btn hljs-control-fullscreen" tooltip-fullscreen="` + __("全屏") + `" tooltip-exit-fullscreen="` + __("退出全屏") + `">
-					<i class="fa fa-arrows-alt"></i>
-				</div>
-			</div>`);
-		let clipboard = new ClipboardJS("#" + copyBtnID, {
-			text: function (trigger) {
-				return getCodeFromBlock($(block).parent()[0]);
-			}
+		blocks.each(function (index, block) {
+			highlightObserver.observe(block);
 		});
-		clipboard.on('success', function (e) {
-			iziToast.show({
-				title: __("复制成功"),
-				message: __("代码已复制到剪贴板"),
-				class: 'shadow',
-				position: 'topRight',
-				backgroundColor: '#2dce89',
-				titleColor: '#ffffff',
-				messageColor: '#ffffff',
-				iconColor: '#ffffff',
-				progressBarColor: '#ffffff',
-				icon: 'fa fa-check',
-				timeout: 5000
-			});
-		});
-		clipboard.on('error', function (e) {
-			iziToast.show({
-				title: __("复制失败"),
-				message: __("请手动复制代码"),
-				class: 'shadow',
-				position: 'topRight',
-				backgroundColor: '#f5365c',
-				titleColor: '#ffffff',
-				messageColor: '#ffffff',
-				iconColor: '#ffffff',
-				progressBarColor: '#ffffff',
-				icon: 'fa fa-close',
-				timeout: 5000
-			});
-		});
+		return;
+	}
+	blocks.each(function (index, block) {
+		renderArgonCodeBlock(block);
 	});
 }
 $(document).ready(function () {
@@ -5336,6 +6449,7 @@ $(document).ready(function () {
 	// ==========================================================================
 	// 原有初始化代码
 	// ==========================================================================
+	initArgonLongContentVirtualizer();
 	highlightJsRender();
 	waterflowInit();
 });
