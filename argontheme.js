@@ -5471,6 +5471,7 @@ $(document).on("keydown", function (e) {
 		".leftbar-mobile-action",
 		".leftbar-mobile-collapse-header",
 		".leftbar-mobile-close",
+		"#leftbar_part3",
 		"#leftbar_mobile_catalog .index-link",
 		".mobile-todo-add-form button",
 		".mobile-todo-complete-btn",
@@ -5507,11 +5508,15 @@ $(document).on("keydown", function (e) {
 		if (event.button && event.button !== 0) {
 			return;
 		}
+		if ($(event.target).closest("input, textarea, select, label").length > 0) {
+			return;
+		}
 		var target = $(event.target).closest(rippleSelector)[0];
 		if (!target || target.disabled || target.getAttribute("aria-disabled") === "true" || target.classList.contains("disabled")) {
 			return;
 		}
-		if (!target.classList.contains("btn-ripple") && window.matchMedia && !window.matchMedia("(max-width: 900px)").matches) {
+		var alwaysRipple = target.classList.contains("btn-ripple") || target.id === "leftbar_part3";
+		if (!alwaysRipple && window.matchMedia && !window.matchMedia("(max-width: 900px)").matches) {
 			return;
 		}
 		var point = getRipplePoint(event);
