@@ -398,10 +398,8 @@ html.darkmode body.flinks-page {
 .flinks-stats { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
 .flinks-stat { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: rgba(var(--themecolor-rgbstr), 0.08); border-radius: var(--card-radius-sm); font-size: 13px; font-weight: 500; color: var(--themecolor); transition: all var(--animation-fast) var(--ease-standard); }
 .flinks-stat:hover { background: rgba(var(--themecolor-rgbstr), 0.12); }
-.flinks-header-actions { display: flex; justify-content: center; margin-top: 18px; }
-.flinks-header-action { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; padding: 8px 18px; border-radius: var(--card-radius-sm); background: rgba(var(--themecolor-rgbstr), 0.1); color: var(--themecolor); font-size: 13px; font-weight: 600; text-decoration: none !important; transition: all var(--animation-fast) var(--ease-standard); }
-.flinks-header-action:hover { background: rgba(var(--themecolor-rgbstr), 0.16); color: var(--themecolor); transform: translateY(-1px); }
-.flinks-header-action:focus-visible, .flinks-apply-header:focus-visible, .flink-card:focus-visible { outline: 2px solid rgba(var(--themecolor-rgbstr), 0.42); outline-offset: 2px; }
+.flinks-apply-header:focus { outline: none; box-shadow: none; }
+.flinks-apply-header:focus-visible, .flink-card:focus-visible { outline: 2px solid rgba(var(--themecolor-rgbstr), 0.28); outline-offset: 2px; }
 .flinks-add-form input::placeholder, .flink-modal input::placeholder, .flinks-form .form-control::placeholder { color: var(--flinks-placeholder); }
 
 .flinks-welcome-text { font-size: 14px; color: var(--flinks-text-muted); line-height: 1.6; margin-bottom: 16px; padding: 12px 16px; background: var(--flinks-surface-soft); border-radius: var(--card-radius-sm); border-left: 3px solid var(--themecolor); }
@@ -570,7 +568,6 @@ html.darkmode body.flinks-page {
 
 @media (max-width: 768px) {
     .flinks-header-card { padding: 30px 16px 24px; }
-    .flinks-header-action { width: 100%; max-width: 220px; }
     .flinks-list { gap: 12px; }
     .flinks-category-header { padding: 15px 16px; }
     .flinks-category-title { font-size: 16px; min-width: 0; }
@@ -659,11 +656,6 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
         <div class="flinks-stat"><i class="fa fa-folder-open"></i><span><?php echo count($links); ?> <?php _e('个分类', 'argon'); ?></span></div>
         <?php endif; ?>
     </div>
-    <?php if ($show_apply_form && !$is_admin) : ?>
-    <div class="flinks-header-actions">
-        <a class="flinks-header-action" href="#apply-section" id="flinks-apply-link"><i class="fa fa-plus-circle"></i><span><?php _e('申请友链', 'argon'); ?></span></a>
-    </div>
-    <?php endif; ?>
 </div>
 
 <!-- 管理面板（仅管理员可见） -->
@@ -996,13 +988,6 @@ function refreshCaptcha() {
                 document.getElementById('flink-captcha-text').textContent = res.captcha;
             }
         });
-}
-
-var applyLink = document.getElementById('flinks-apply-link');
-if (applyLink) {
-    applyLink.addEventListener('click', function() {
-        openApplyForm();
-    });
 }
 
 <?php if ($apply_result) : ?>

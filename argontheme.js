@@ -2453,9 +2453,9 @@ $(document).on("submit", ".post-password-form", function () {
 }();
 
 /*URL 和# 根据 ID 定位*/
-function gotoHash(hash, durtion, easing = 'easeOutExpo') {
+function getHashTarget(hash) {
 	if (!hash || hash === "#") {
-		return;
+		return null;
 	}
 	var target = null;
 	var decodedId = "";
@@ -2471,9 +2471,14 @@ function gotoHash(hash, durtion, easing = 'easeOutExpo') {
 		try {
 			target = document.querySelector(hash);
 		} catch (err) {
-			return;
+			return null;
 		}
 	}
+	return target;
+}
+
+function gotoHash(hash, durtion, easing = 'easeOutExpo') {
+	var target = getHashTarget(hash);
 	if (!target) {
 		return;
 	}
@@ -3197,23 +3202,14 @@ function resetGT4Captcha() {
 }
 
 function handleHashNavigation() {
-	if (!location.hash || location.hash === "#") {
+	var hash = location.hash;
+	if (!hash || hash === "#") {
 		return;
 	}
 	if (window.ArgonLongContentVirtualizer && typeof window.ArgonLongContentVirtualizer.renderTarget === "function") {
-		window.ArgonLongContentVirtualizer.renderTarget(location.hash.slice(1));
+		window.ArgonLongContentVirtualizer.renderTarget(hash.slice(1));
 	}
-	let target = null;
-	try {
-		target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
-	} catch (e) { }
-	if (!target) {
-		try {
-			target = document.querySelector(location.hash);
-		} catch (e) {
-			return;
-		}
-	}
+	let target = getHashTarget(hash);
 	if (!target) {
 		return;
 	}
@@ -4529,6 +4525,10 @@ var ArgonPjaxPrefetch = (function () {
 		}
 		pendingNavigation = normalizeUrl(url);
 		pjaxLoading = true;
+		if (typeof PageLoader !== 'undefined') {
+			PageLoader.show(document);
+			PageLoader.setProgress(12);
+		}
 		if (typeof NProgress !== 'undefined') {
 			NProgress.remove();
 			NProgress.start();
@@ -4556,6 +4556,9 @@ var ArgonPjaxPrefetch = (function () {
 		var request = prefetch(url);
 		if (request && request.done) {
 			request.done(function () {
+				if (typeof PageLoader !== 'undefined') {
+					PageLoader.setProgress(42);
+				}
 				if (typeof NProgress !== 'undefined') {
 					NProgress.set(0.46);
 				}
@@ -4776,6 +4779,7 @@ var PageLoader = (function () {
 		state.trackedDone = 0;
 		state.trackedNodes = [];
 		updateProgress(0);
+		trackResources(root || document);
 	}
 
 	function hide() {
@@ -6576,13 +6580,7 @@ setInterval(function(){
 			anchor.dataset.smoothScrollInit = 'true';
 			anchor.addEventListener('click', function (e) {
 				var targetId = this.getAttribute('href');
-				if (!targetId || targetId === '#') return;
-				var target;
-				try {
-					target = document.querySelector(targetId);
-				} catch (err) {
-					return;
-				}
+				var target = getHashTarget(targetId);
 				if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 			});
 		});
