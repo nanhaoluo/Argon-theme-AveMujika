@@ -8,8 +8,7 @@ if (typeof window.Prism === 'undefined') {
 	window.Prism = {
 		highlightAll: function () { },
 		highlightElement: function () { },
-		plugins: {},
-		_argonFallback: true
+		plugins: {}
 	};
 }
 if (typeof window.Prism.plugins === 'undefined') {
@@ -4879,59 +4878,21 @@ function getCodeFromBlock(block) {
 	return res;
 }
 
-function isPrismManagedCodeBlock(block) {
+function shouldSkipHighlightJsBlock(block) {
 	let $block = $(block);
 	let $pre = $block.is("pre") ? $block : $block.parent("pre");
 	if ($pre.length == 0) {
 		return false;
 	}
 	let className = (($pre.attr("class") || "") + " " + ($block.attr("class") || ""));
-	let hasRealPrism = typeof window.Prism !== "undefined" &&
-		(typeof window.Prism.highlightElement == "function" || typeof window.Prism.highlightAll == "function") &&
-		(!window.Prism._argonFallback ||
-			window.Prism.languages ||
-			(window.Prism.plugins && (window.Prism.plugins.toolbar || window.Prism.plugins.lineNumbers)));
-	return $pre.closest(".code-toolbar").length > 0 ||
+	return $block.is("[hljs-codeblock-inner]") ||
+		$pre.hasClass("hljs-codeblock") ||
+		$block.find("table.hljs-ln").length > 0 ||
+		$pre.children(".hljs-control").length > 0 ||
+		$pre.closest(".code-toolbar").length > 0 ||
 		$pre.siblings(".toolbar").length > 0 ||
 		$pre.find(".line-numbers-rows").length > 0 ||
-		/\bline-numbers\b/.test(className) ||
-		(hasRealPrism && /\b(?:language-|lang-)/.test(className));
-}
-
-function isArgonManagedCodeBlock(block) {
-	let $block = $(block);
-	let $pre = $block.parent("pre");
-	return $block.is("[hljs-codeblock-inner]") ||
-		$block.attr("data-argon-hljs-rendered") == "true" ||
-		$block.find("table.hljs-ln").length > 0 ||
-		$pre.children(".hljs-control").length > 0;
-}
-
-function restorePrismManagedCodeBlock(block) {
-	let $block = $(block);
-	let $pre = $block.parent("pre");
-	let lines = [];
-	$block.find(".hljs-ln-code").each(function () {
-		let line = $(this).clone();
-		line.find(".line-numbers-rows").remove();
-		lines.push(line.text());
-	});
-	while (lines.length > 0 && $.trim(lines[lines.length - 1]) == "") {
-		lines.pop();
-	}
-	if (lines.length > 0) {
-		$block.text(lines.join("\n"));
-	}
-	$block.removeAttr("hljs-codeblock-inner data-argon-hljs-rendered");
-	$block.removeClass("hljs");
-	$pre.removeClass("hljs-codeblock hljs-hide-linenumber hljs-break-line hljs-transparent-linenumber hljs-codeblock-fullscreen");
-	$pre.children(".hljs-control").remove();
-	if ($pre.attr("id")) {
-		delete codeOfBlocks[$pre.attr("id")];
-	}
-	if (typeof window.Prism !== "undefined" && !window.Prism._argonFallback && typeof window.Prism.highlightElement == "function") {
-		window.Prism.highlightElement($block[0]);
-	}
+		/\bline-numbers\b/.test(className);
 }
 
 function highlightJsRender() {
@@ -4948,23 +4909,16 @@ function highlightJsRender() {
 		if ($(block).hasClass("no-hljs")) {
 			return;
 		}
-		if (isPrismManagedCodeBlock(block) || $(block).children("code").length > 0 || $(block).attr("data-argon-hljs-wrapped") == "true") {
+		if (shouldSkipHighlightJsBlock(block) || $(block).children("code").length > 0) {
 			return;
 		}
 		$(block).html("<code>" + $(block).html() + "</code>");
-		$(block).attr("data-argon-hljs-wrapped", "true");
 	});
 	$("article pre > code").each(function (index, block) {
 		if ($(block).hasClass("no-hljs")) {
 			return;
 		}
-		if (isPrismManagedCodeBlock(block)) {
-			if (isArgonManagedCodeBlock(block)) {
-				restorePrismManagedCodeBlock(block);
-			}
-			return;
-		}
-		if (isArgonManagedCodeBlock(block)) {
+		if (shouldSkipHighlightJsBlock(block)) {
 			return;
 		}
 		$(block).parent().attr("id", randomString());
@@ -4981,7 +4935,6 @@ function highlightJsRender() {
 			$(block).parent().addClass("hljs-transparent-linenumber");
 		}
 		$(block).attr("hljs-codeblock-inner", "");
-		$(block).attr("data-argon-hljs-rendered", "true");
 		let copyBtnID = "copy_btn_" + randomString();
 		$(block).parent().append(`<div class="hljs-control hljs hljs-title">
 				<div class="hljs-control-btn hljs-control-toggle-linenumber" tooltip-hide-linenumber="` + __("隐藏行号") + `" tooltip-show-linenumber="` + __("显示行号") + `">
