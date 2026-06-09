@@ -1064,6 +1064,20 @@ if (argonConfig.waterflow_columns != "1") {
 }();
 
 /*浮动按钮栏相关(回顶部)*/
+function expandPostComments() {
+	var commentsArea = $("#comments");
+	var postCommentArea = $("#post_comment");
+	var toggleBtn = $("#comments_toggle");
+	commentsArea.removeClass("comments-collapsed");
+	postCommentArea.removeClass("comments-collapsed");
+	if (toggleBtn.length > 0) {
+		toggleBtn.addClass("expanded");
+		toggleBtn.find("i").removeClass("fa-comments").addClass("fa-comment-o");
+		toggleBtn.find(".btn-inner--text").text(__("????"));
+	}
+}
+window.expandPostComments = expandPostComments;
+
 !function () {
 	// 确保 DOM 和 jQuery 已加载
 	if (typeof jQuery === 'undefined') {
@@ -1927,6 +1941,11 @@ if (argonConfig.waterflow_columns != "1") {
 				if ($("#geetest-captcha").length > 0) {
 					resetGeetestCommentCaptcha();
 				}
+				if (typeof window.expandPostComments === "function") {
+					window.expandPostComments();
+				} else {
+					$("#comments, #post_comment").removeClass("comments-collapsed");
+				}
 
 				// 显示成功提示
 				setTimeout(function () {
@@ -1952,7 +1971,7 @@ if (argonConfig.waterflow_columns != "1") {
 
 				// 插入新评论
 				try {
-					result.html = result.html.replace(/<(\/).noscript>/g, "");
+					result.html = String(result.html || "").replace(/<(\/).noscript>/g, "");
 					let parentID = result.parentID;
 					if (parentID == "" || parentID == null) {
 						parentID = 0;
@@ -1976,10 +1995,13 @@ if (argonConfig.waterflow_columns != "1") {
 					}
 					calcHumanTimesOnPage();
 
-					// 滚动到新评论
-					$("body,html").animate({
-						scrollTop: $("#comment-" + result.id).offset().top - 100
-					}, 500, 'easeOutExpo');
+					// ??????
+					var newComment = $("#comment-" + result.id);
+					if (newComment.length > 0) {
+						$("body,html").animate({
+							scrollTop: newComment.offset().top - 100
+						}, 500, 'easeOutExpo');
+					}
 				} catch (e) {
 					ArgonDebug.warn('Comment insertion error:', e);
 				}
@@ -3459,6 +3481,7 @@ function initArgonLongContentVirtualizer() {
 			maxPlainTextBlockLength: 2200,
 			maxNodesPerSection: 18,
 			keepRange: 2,
+			viewportBuffer: 900,
 			rootMargin: "1200px 0px 1200px 0px"
 		});
 		window.ArgonLongContentVirtualizer.init();
@@ -3827,10 +3850,9 @@ function createArgonLongContentVirtualizer(content, options) {
 			for (var s = 0; s < sections.length; s++) {
 				observer.observe(sections[s].placeholder);
 			}
-		} else {
-			scrollHandler = throttleVirtualUpdate(scheduleUpdate, 80);
-			window.addEventListener("scroll", scrollHandler, { passive: true });
 		}
+		scrollHandler = throttleVirtualUpdate(scheduleUpdate, 80);
+		window.addEventListener("scroll", scrollHandler, { passive: true });
 
 		resizeHandler = throttleVirtualUpdate(function () {
 			for (var i = 0; i < sections.length; i++) {
@@ -3875,6 +3897,9 @@ function createArgonLongContentVirtualizer(content, options) {
 	function renderAroundIndex(index, forceFirst) {
 		var start = Math.max(0, index - options.keepRange);
 		var end = Math.min(sections.length - 1, index + options.keepRange);
+		var visibleRange = getViewportSectionRange();
+		start = Math.min(start, visibleRange.start);
+		end = Math.max(end, visibleRange.end);
 		if (forceFirst) {
 			end = Math.min(sections.length - 1, Math.max(end, 2));
 		}
@@ -3890,6 +3915,7 @@ function createArgonLongContentVirtualizer(content, options) {
 		var placeholder = section.placeholder;
 		placeholder.classList.add("argon-virtual-section-mounted");
 		placeholder.style.overflowAnchor = "auto";
+		placeholder.style.minHeight = "";
 		placeholder.innerHTML = section.html;
 		section.mounted = true;
 		updateSectionHeight(section);
@@ -3951,11 +3977,40 @@ function createArgonLongContentVirtualizer(content, options) {
 		var visibleIndex = getNearestVisibleSectionIndex();
 		var keepStart = Math.max(0, visibleIndex - options.keepRange - 1);
 		var keepEnd = Math.min(sections.length - 1, visibleIndex + options.keepRange + 1);
+		var visibleRange = getViewportSectionRange();
+		keepStart = Math.min(keepStart, visibleRange.start);
+		keepEnd = Math.max(keepEnd, visibleRange.end);
 		for (var i = 0; i < sections.length; i++) {
 			if (i < keepStart || i > keepEnd) {
 				unmountSection(sections[i]);
 			}
 		}
+	}
+
+	function getViewportSectionRange() {
+		var buffer = options.viewportBuffer || 800;
+		var topLimit = -buffer;
+		var bottomLimit = window.innerHeight + buffer;
+		var start = sections.length - 1;
+		var end = 0;
+		var found = false;
+		for (var i = 0; i < sections.length; i++) {
+			var rect = sections[i].placeholder.getBoundingClientRect();
+			if (rect.bottom >= topLimit && rect.top <= bottomLimit) {
+				start = Math.min(start, i);
+				end = Math.max(end, i);
+				found = true;
+			}
+		}
+		if (!found) {
+			var nearest = getNearestVisibleSectionIndex();
+			start = nearest;
+			end = nearest;
+		}
+		return {
+			start: Math.max(0, start - 1),
+			end: Math.min(sections.length - 1, end + 1)
+		};
 	}
 
 	function unmountSection(section) {
@@ -3969,14 +4024,19 @@ function createArgonLongContentVirtualizer(content, options) {
 		}
 		section.placeholder.classList.remove("argon-virtual-section-mounted");
 		section.placeholder.style.overflowAnchor = "";
+		section.placeholder.style.minHeight = section.estimatedHeight + "px";
 		section.mounted = false;
 	}
 
 	function updateSectionHeight(section) {
 		var height = section.placeholder.scrollHeight;
 		if (height > 0) {
-			section.estimatedHeight = Math.max(section.estimatedHeight || 0, 80, height);
-			section.placeholder.style.minHeight = section.estimatedHeight + "px";
+			section.estimatedHeight = Math.max(80, height);
+			if (section.mounted) {
+				section.placeholder.style.minHeight = "";
+			} else {
+				section.placeholder.style.minHeight = section.estimatedHeight + "px";
+			}
 		}
 	}
 
@@ -5338,27 +5398,68 @@ $(document).on("click", "#blog_categories .tag", function () {
 });
 
 /*Close RSS dropdown on outside click*/
+function setSiteRssOpen(details, open) {
+	if (!details) {
+		return;
+	}
+	var scheduleFrame = window.requestAnimationFrame || function (callback) {
+		return setTimeout(callback, 16);
+	};
+	if (open) {
+		if (details._argonRssTimer) {
+			clearTimeout(details._argonRssTimer);
+			details._argonRssTimer = null;
+		}
+		details.setAttribute("open", "");
+		details.classList.remove("site-rss-closing");
+		details.classList.add("site-rss-opening");
+		scheduleFrame(function () {
+			details.classList.add("site-rss-opened");
+			details.classList.remove("site-rss-opening");
+		});
+		return;
+	}
+	if (!details.hasAttribute("open")) {
+		return;
+	}
+	details.classList.remove("site-rss-opening", "site-rss-opened");
+	details.classList.add("site-rss-closing");
+	if (details._argonRssTimer) {
+		clearTimeout(details._argonRssTimer);
+	}
+	details._argonRssTimer = setTimeout(function () {
+		details.removeAttribute("open");
+		details.classList.remove("site-rss-closing");
+		details._argonRssTimer = null;
+	}, 220);
+}
+
 $(document).on("click", function (e) {
 	var target = e.target;
 	$(".site-rss[open]").each(function () {
 		if (!this.contains(target)) {
-			this.removeAttribute("open");
+			setSiteRssOpen(this, false);
 		}
 	});
 });
 
-$(document).on("click", ".site-rss .site-rss-btn", function () {
+$(document).on("click", ".site-rss .site-rss-btn", function (e) {
+	e.preventDefault();
 	var currentDetails = $(this).closest(".site-rss")[0];
+	var shouldOpen = !(currentDetails && currentDetails.hasAttribute("open") && !currentDetails.classList.contains("site-rss-closing"));
 	$(".site-rss[open]").each(function () {
 		if (this !== currentDetails) {
-			this.removeAttribute("open");
+			setSiteRssOpen(this, false);
 		}
 	});
+	setSiteRssOpen(currentDetails, shouldOpen);
 });
 
 $(document).on("keydown", function (e) {
 	if (e.key === "Escape") {
-		$(".site-rss[open]").removeAttr("open");
+		$(".site-rss[open]").each(function () {
+			setSiteRssOpen(this, false);
+		});
 	}
 });
 

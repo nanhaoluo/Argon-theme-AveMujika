@@ -18980,6 +18980,11 @@ html.darkmode .shuoshuo-content .argon-hidden-text-background:active {
 	color: #fff;
 	font-size: 11px;
 	box-shadow: 0 4px 10px rgba(var(--rss-rgb), 0.22);
+	transform: rotate(0deg) scale(1);
+	transition: background var(--animation-fast) var(--ease-standard),
+		color var(--animation-fast) var(--ease-standard),
+		box-shadow var(--animation-fast) var(--ease-standard),
+		transform var(--animation-normal) var(--ease-emphasized);
 }
 
 .site-rss-sidebar .site-rss-btn-icon {
@@ -19040,13 +19045,24 @@ html.darkmode .shuoshuo-content .argon-hidden-text-background:active {
 }
 
 .site-rss-btn:hover .site-rss-btn-icon,
-.site-rss[open] .site-rss-btn-icon {
+.site-rss[open] .site-rss-btn-icon,
+.site-rss-closing .site-rss-btn-icon {
 	background: rgba(255, 255, 255, 0.22);
 	box-shadow: none;
 }
 
+.site-rss-opened .site-rss-btn-icon,
+.site-rss-opening .site-rss-btn-icon {
+	transform: rotate(90deg) scale(1.04);
+}
+
+.site-rss-closing .site-rss-btn-icon {
+	transform: rotate(0deg) scale(0.96);
+}
+
 .site-rss-sidebar .site-rss-btn:hover .site-rss-btn-icon,
-.site-rss-sidebar[open] .site-rss-btn-icon {
+.site-rss-sidebar[open] .site-rss-btn-icon,
+.site-rss-sidebar.site-rss-closing .site-rss-btn-icon {
 	background: var(--rss-color);
 	color: #fff;
 }
@@ -19074,7 +19090,25 @@ html.darkmode .shuoshuo-content .argon-hidden-text-background:active {
 	-webkit-backdrop-filter: blur(var(--card-blur, 16px)) saturate(var(--card-saturate, 160%));
 	box-shadow: 0 10px 24px rgba(31, 35, 40, 0.08);
 	text-align: left;
-	animation: site-rss-menu-in var(--animation-fast) var(--ease-standard) both;
+	opacity: 0;
+	transform: translateY(-6px) scale(0.98);
+	transform-origin: top center;
+	pointer-events: none;
+	transition: opacity var(--animation-fast) var(--ease-standard),
+		transform var(--animation-fast) var(--ease-emphasized);
+}
+
+.site-rss-opened .site-rss-menu,
+.site-rss-opening .site-rss-menu {
+	opacity: 1;
+	transform: translateY(0) scale(1);
+	pointer-events: auto;
+}
+
+.site-rss-closing .site-rss-menu {
+	opacity: 0;
+	transform: translateY(-5px) scale(0.98);
+	pointer-events: none;
 }
 
 .site-rss-sidebar .site-rss-menu {
