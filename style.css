@@ -2628,6 +2628,7 @@ html.navbar-absolute #leftbar_part2.sticky {
 #leftbar_part2.sticky #leftbar_tab_catalog {
 	max-height: calc(100vh - 200px - var(--leftbar-part3-height, 0px));
 	overflow-y: auto;
+	scrollbar-color: rgba(var(--themecolor-rgbstr), 0.35) transparent;
 }
 
 #leftbar_tab_catalog::-webkit-scrollbar {
@@ -2640,12 +2641,13 @@ html.navbar-absolute #leftbar_part2.sticky {
 
 #leftbar_tab_catalog::-webkit-scrollbar-thumb {
 	border-width: 1px;
-	background-color: rgba(0, 0, 0, 0.2);
+	background-color: rgba(var(--themecolor-rgbstr), 0.32);
+	border-radius: 3px;
 }
 
 html.darkmode #leftbar_tab_catalog::-webkit-scrollbar-thumb {
 	border-width: 1px;
-	background-color: rgba(255, 255, 255, 0.2);
+	background-color: rgba(var(--themecolor-rgbstr), 0.45);
 }
 
 #leftbar_tab_catalog::-webkit-scrollbar-button {
@@ -4629,7 +4631,11 @@ html.darkmode #leftbar_catalog::-webkit-scrollbar-thumb {
 
 #leftbar_catalog .index-item.current>.index-link {
 
+	background-color: rgba(var(--themecolor-rgbstr), 0.12);
+
 	color: var(--themecolor);
+
+	border-left-color: var(--themecolor);
 
 	font-weight: bold;
 
@@ -4637,7 +4643,9 @@ html.darkmode #leftbar_catalog::-webkit-scrollbar-thumb {
 
 #leftbar_catalog .index-link:hover {
 
-	background-color: var(--color-border-on-foreground-deeper);
+	background-color: rgba(var(--themecolor-rgbstr), 0.09);
+
+	color: var(--themecolor);
 
 }
 
@@ -11266,6 +11274,11 @@ html.darkmode.amoled-dark #content:after {
 		transform: translateY(-50%) scaleY(1);
 	}
 
+	#leftbar_mobile_catalog .index-link:hover {
+		background: rgba(var(--themecolor-rgbstr), 0.08);
+		color: var(--themecolor);
+	}
+
 	#leftbar_mobile_catalog .index-link:active {
 		background: rgba(var(--themecolor-rgbstr), 0.12);
 		transform: scale(0.97);
@@ -17117,6 +17130,11 @@ html.darkmode.style-glass article.post.post-full.card {
 	html.darkmode #leftbar_mobile_catalog .index-item.current>.index-link {
 		color: var(--themecolor-light);
 		background: rgba(var(--themecolor-rgbstr), 0.15);
+	}
+
+	html.darkmode #leftbar_mobile_catalog .index-link:hover {
+		color: var(--themecolor-light);
+		background: rgba(var(--themecolor-rgbstr), 0.14);
 	}
 
 	html.darkmode #leftbar_mobile_catalog .index-link:active {

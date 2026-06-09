@@ -585,7 +585,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 												$(document).headIndex({
 													articleWrapSelector: '#post_content',
 													indexBoxSelector: '#leftbar_catalog',
-													indexScrollBoxSelector: '#leftbar_part2_inner',
+													indexScrollBoxSelector: '#leftbar_tab_catalog',
 													scrollSelector: 'body,html',
 													scrollWrap: window,
 													subItemBoxClass: "index-subItem-box",
