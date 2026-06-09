@@ -109,7 +109,12 @@
             
             current: function(indexItem) {
                 var subBox, currentClass = 'current';
-                if (indexItem.length === 0 || indexItem.hasClass(currentClass)) {
+                if (indexItem.length === 0) {
+                    return;
+                }
+
+                if (indexItem.hasClass(currentClass)) {
+                    this.scrollCurrentIntoView(indexItem);
                     return;
                 }
                 
@@ -142,30 +147,44 @@
                 }
                 
                 indexItem.addClass(currentClass);
-                
-                // 自动滚动目录容器，让当前项保持在可视区域
-                
+                this.scrollCurrentIntoView(indexItem);
+            },
+
+            scrollCurrentIntoView: function(indexItem) {
                 if (this.mouseHovered) {
                     return;
                 }
-                
-                var relativeOffsetTopToWrapper = indexItem.position().top;
-                var indexScrollBoxScrollTop = this.indexScrollBox.scrollTop();
-                var indexScrollBoxHeight = this.indexScrollBox.height();
-                
-                if (relativeOffsetTopToWrapper < 20 + indexItem.height()) {
-                    var target = indexScrollBoxScrollTop + relativeOffsetTopToWrapper - 20 - indexItem.height();
-                    if (target < 30) {
-                        target = 0;
-                    }
-                    this.indexScrollBox.stop().animate({scrollTop: target}, 'normal', 'easeOutExpo');
+
+                var scrollBox = this.indexScrollBox.eq(0);
+                var scrollNode = scrollBox[0];
+                var itemNode = indexItem[0];
+                if (!scrollNode || !itemNode) {
+                    return;
                 }
-                
-                if (relativeOffsetTopToWrapper > indexScrollBoxHeight - 10) {
-                    this.indexScrollBox.stop().animate({
-                        scrollTop: indexScrollBoxScrollTop + relativeOffsetTopToWrapper - indexScrollBoxHeight + 10 + indexItem.height()
-                    }, 'normal', 'easeOutExpo');
+
+                var boxHeight = scrollBox.innerHeight();
+                var itemHeight = indexItem.outerHeight();
+                if (boxHeight <= 0 || itemHeight <= 0) {
+                    return;
                 }
+
+                var itemTop;
+                if (scrollNode.getBoundingClientRect && itemNode.getBoundingClientRect) {
+                    itemTop = itemNode.getBoundingClientRect().top - scrollNode.getBoundingClientRect().top;
+                } else {
+                    itemTop = indexItem.position().top;
+                }
+
+                var scrollTop = scrollBox.scrollTop();
+                var target = scrollTop + itemTop - (boxHeight / 2) + (itemHeight / 2);
+                var maxScroll = scrollNode.scrollHeight - boxHeight;
+                target = Math.max(0, Math.min(target, maxScroll));
+
+                if (Math.abs(target - scrollTop) < 6) {
+                    return;
+                }
+
+                scrollBox.stop(true).animate({scrollTop: target}, 220, 'easeOutExpo');
             },
             
             buildHtml: function(tree) {

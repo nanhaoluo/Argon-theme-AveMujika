@@ -150,4 +150,5 @@
 
 	</div>
 
+	<?php echo get_article_skeleton('2'); ?>
 </article>

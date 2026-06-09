@@ -152,10 +152,25 @@ $(document).ready(function() {
     $('[data-toggle="scroll"]').on('click', function(event) {
         var hash = $(this).attr('href');
         var offset = $(this).data('offset') ? $(this).data('offset') : 0;
+        var $target;
+
+        if (!hash || hash === '#') {
+            return;
+        }
+
+        try {
+            $target = $(hash);
+        } catch (err) {
+            return;
+        }
+
+        if (!$target.length) {
+            return;
+        }
 
         // Animate scroll to the selected section
         $('html, body').stop(true, true).animate({
-            scrollTop: $(hash).offset().top - offset
+            scrollTop: $target.offset().top - offset
         }, 600);
 
         event.preventDefault();

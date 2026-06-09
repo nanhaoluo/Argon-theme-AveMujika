@@ -1,4 +1,5 @@
 <article class="post post-full card bg-white shadow-sm border-0" id="post-<?php the_ID(); ?>" <?php post_class(); ?>>
+	<div class="post-full-blur-overlay" aria-hidden="true"></div>
 	<?php $show_thumbnail_in_banner = get_option('argon_show_thumbnail_in_banner_in_content_page', 'false'); ?>
 	<header class="post-header text-center<?php if (argon_has_post_thumbnail() && $show_thumbnail_in_banner != 'true'){echo " post-header-with-thumbnail";}?>">
 		<?php
@@ -43,6 +44,12 @@
 			<?php if (!post_password_required() && get_option("argon_show_readingtime") != "false" && is_readingtime_meta_hidden() == False) {
 				echo get_article_reading_time_meta(get_the_content());
 			} ?>
+			<!-- 优雅内置的沉浸式阅读按钮 -->
+			<div class="post-meta-devide">|</div>
+			<div class="post-meta-detail post-meta-detail-immersive" id="immersive_read_toggle" role="button" tabindex="0" aria-pressed="false" title="<?php _e('沉浸阅读', 'argon'); ?>">
+				<i class="fa fa-television immersive-read-icon-enter" aria-hidden="true"></i>
+				<span class="immersive-read-label"><?php _e('沉浸', 'argon'); ?></span>
+			</div>
 		</div>
 		<?php
 			if (has_post_thumbnail() && $show_thumbnail_in_banner != 'true'){
@@ -51,9 +58,135 @@
 		?>
 	</header>
 
+	<!-- 简约的顶部退出按钮 -->
+	<div id="immersive_exit_btn" class="immersive-exit-btn-container">
+		<button class="immersive-exit-btn-fast" type="button" aria-label="<?php esc_attr_e('退出沉浸模式', 'argon'); ?>">
+			<i class="fa fa-compress" aria-hidden="true"></i><span><?php _e('退出', 'argon'); ?></span>
+		</button>
+	</div>
+
+	<!-- 沉浸式阅读 JS -->
+	<script>
+	(function() {
+		var root = document.documentElement;
+		var toggleBtn = document.getElementById('immersive_read_toggle');
+		var exitTopBtn = document.getElementById('immersive_exit_btn');
+		var exitButton = exitTopBtn ? exitTopBtn.querySelector('button') : null;
+		if (!toggleBtn) return;
+
+		var isActive = root.classList.contains('immersive-read');
+		var transitionTimer = null;
+		var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+		function updateToggle(active) {
+			toggleBtn.classList.toggle('active', active);
+			toggleBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+			toggleBtn.title = active ? '<?php _e("退出沉浸", "argon"); ?>' : '<?php _e("沉浸阅读", "argon"); ?>';
+
+			var icon = toggleBtn.querySelector('i.fa');
+			if (icon) {
+				icon.classList.toggle('fa-television', !active);
+				icon.classList.toggle('fa-compress', active);
+			}
+
+			var label = toggleBtn.querySelector('.immersive-read-label');
+			if (label) {
+				label.innerText = active ? '<?php _e("退出", "argon"); ?>' : '<?php _e("沉浸", "argon"); ?>';
+			}
+		}
+
+		function clearTransitionTimer() {
+			if (transitionTimer) {
+				clearTimeout(transitionTimer);
+				transitionTimer = null;
+			}
+		}
+
+		function scrollArticleIntoView() {
+			var article = document.querySelector('article.post.post-full');
+			if (!article) return;
+			var rect = article.getBoundingClientRect();
+			var scrollTarget = Math.max(0, window.scrollY + rect.top - 18);
+			window.scrollTo({
+				top: scrollTarget,
+				behavior: prefersReducedMotion ? 'auto' : 'smooth'
+			});
+		}
+
+		function enterImmersive() {
+			if (isActive) return;
+			isActive = true;
+			clearTransitionTimer();
+
+			root.classList.remove('immersive-read-leaving');
+			root.classList.add('immersive-read', 'immersive-read-entering');
+			updateToggle(true);
+
+			if (exitTopBtn) {
+				exitTopBtn.classList.add('visible');
+			}
+
+			requestAnimationFrame(scrollArticleIntoView);
+			transitionTimer = setTimeout(function() {
+				root.classList.remove('immersive-read-entering');
+				transitionTimer = null;
+			}, prefersReducedMotion ? 0 : 360);
+		}
+
+		function exitImmersive() {
+			if (!isActive && !root.classList.contains('immersive-read')) return;
+			isActive = false;
+			clearTransitionTimer();
+
+			root.classList.remove('immersive-read-entering');
+			root.classList.add('immersive-read-leaving');
+			updateToggle(false);
+
+			if (exitTopBtn) {
+				exitTopBtn.classList.remove('visible');
+			}
+
+			transitionTimer = setTimeout(function() {
+				root.classList.remove('immersive-read', 'immersive-read-leaving');
+				transitionTimer = null;
+			}, prefersReducedMotion ? 0 : 180);
+		}
+
+		toggleBtn.addEventListener('click', function(e) {
+			e.preventDefault();
+			isActive ? exitImmersive() : enterImmersive();
+		});
+
+		toggleBtn.addEventListener('keydown', function(e) {
+			if (e.key !== 'Enter' && e.key !== ' ') return;
+			e.preventDefault();
+			isActive ? exitImmersive() : enterImmersive();
+		});
+
+		if (exitButton) {
+			exitButton.addEventListener('click', function(e) {
+				e.preventDefault();
+				exitImmersive();
+			});
+		}
+
+		// Esc 快捷键支持
+		document.addEventListener('keydown', function(e) {
+			if (e.key === 'Escape' && isActive) exitImmersive();
+		});
+
+		document.addEventListener('pjax:send', exitImmersive);
+		window.addEventListener('beforeunload', function() {
+			root.classList.remove('immersive-read', 'immersive-read-entering', 'immersive-read-leaving');
+		});
+
+		updateToggle(isActive);
+	})();
+	</script>
+
 	<?php get_template_part('template-parts/ai-summary'); ?>
 
-	<div class="post-content" id="post_content"<?php echo function_exists('argon_get_content_performance_attrs') ? argon_get_content_performance_attrs() : ''; ?>>
+	<div class="post-content" id="post_content">
 		<?php if (post_password_required()){ ?>
 			<div class="text-center container">
 				<form action="<?php echo $GLOBALS['wp_path']; ?>wp-login.php?action=postpass" class="post-password-form" method="post">
@@ -79,14 +212,19 @@
 			</div>
 		<?php
 			}else{
-				echo argon_get_post_outdated_info();
+				$post_outdated_info = argon_get_post_outdated_info();
 
 				global $post_references, $post_reference_keys_first_index, $post_reference_contents_first_index;
 				$post_references = array();
 				$post_reference_keys_first_index = array();
 				$post_reference_contents_first_index = array();
 
-				the_content();
+				if (function_exists('argon_the_content_virtualized')){
+					argon_the_content_virtualized(null, $post_outdated_info);
+				}else{
+					echo $post_outdated_info;
+					the_content();
+				}
 			}
 		?>
 	</div>

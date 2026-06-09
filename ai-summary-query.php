@@ -108,7 +108,6 @@ if ($rate_limit_check !== true) {
 	}
 	body.ai-verify-page #primary { width: 100% !important; max-width: 1000px !important; margin: 0 auto !important; float: none !important; }
 	body.ai-verify-page #content { margin-top: -50vh !important; }
-	body.ai-verify-page .site-footer { max-width: 1000px !important; margin: 0 auto !important; width: 100% !important; float: none !important; }
 	</style>
 	<script data-pjax>
 	document.body.classList.add('ai-verify-page');
@@ -120,7 +119,6 @@ if ($rate_limit_check !== true) {
 		<p style="color: var(--color-text-muted); margin-bottom: 24px;"><?php echo esc_html($rate_limit_check); ?></p>
 		<a href="<?php echo home_url('/ai-query'); ?>" class="btn btn-primary"><?php _e('返回查询页面', 'argon'); ?></a>
 	</article>
-	</main>
 	<?php
 	get_footer();
 	exit;
@@ -199,12 +197,16 @@ if (!empty($query_code)) {
 						'openai' => 'OpenAI',
 						'anthropic' => 'Anthropic',
 						'deepseek' => 'DeepSeek',
+						'xiaomi' => '小米 Mimo',
 						'qianwen' => '通义千问',
 						'wenxin' => '文心一言',
 						'doubao' => '豆包',
 						'kimi' => 'Kimi',
 						'zhipu' => '智谱',
-						'siliconflow' => 'SiliconFlow'
+						'siliconflow' => 'SiliconFlow',
+						'openai_compatible' => 'OpenAI 兼容',
+						'anthropic_compatible' => 'Anthropic 兼容',
+						'local_cache' => '本地缓存'
 					];
 					
 					$result['provider_display'] = isset($provider_names[$result['provider']]) ? $provider_names[$result['provider']] : $result['provider'];
@@ -255,6 +257,7 @@ if (!empty($query_code)) {
 						// 获取 AI 配置信息
 						$result['provider'] = get_comment_meta($comment_id, '_argon_spam_detection_provider', true);
 						$result['model'] = get_comment_meta($comment_id, '_argon_spam_detection_model', true);
+						$config = function_exists('argon_get_active_api_config') ? argon_get_active_api_config('spam') : [];
 						$log_table = $wpdb->prefix . 'argon_ai_query_log';
 						$latest = $wpdb->get_row($wpdb->prepare(
 							"SELECT provider, model FROM {$log_table} WHERE scenario = %s AND status = 'success' AND comment_id = %d ORDER BY id DESC LIMIT 1",
@@ -272,22 +275,26 @@ if (!empty($query_code)) {
 							}
 						}
 						if (empty($result['provider'])) {
-							$result['provider'] = get_option('argon_ai_summary_provider', 'openai');
+							$result['provider'] = isset($config['provider']) ? $config['provider'] : '';
 						}
 						if (empty($result['model'])) {
-							$result['model'] = get_option('argon_ai_summary_model', '');
+							$result['model'] = isset($config['model']) ? $config['model'] : '';
 						}
 						
 						$provider_names = [
 							'openai' => 'OpenAI',
 							'anthropic' => 'Anthropic',
 							'deepseek' => 'DeepSeek',
+							'xiaomi' => '小米 Mimo',
 							'qianwen' => '通义千问',
 							'wenxin' => '文心一言',
 							'doubao' => '豆包',
 							'kimi' => 'Kimi',
 							'zhipu' => '智谱',
-							'siliconflow' => 'SiliconFlow'
+							'siliconflow' => 'SiliconFlow',
+							'openai_compatible' => 'OpenAI 兼容',
+							'anthropic_compatible' => 'Anthropic 兼容',
+							'local_cache' => '本地缓存'
 						];
 						
 						$result['provider_display'] = isset($provider_names[$result['provider']]) ? $provider_names[$result['provider']] : $result['provider'];
@@ -352,7 +359,6 @@ get_header();
 }
 body.ai-verify-page #primary { width: 100% !important; max-width: 1000px !important; margin: 0 auto !important; float: none !important; }
 body.ai-verify-page #content { margin-top: -50vh !important; }
-body.ai-verify-page .site-footer { max-width: 1000px !important; margin: 0 auto !important; width: 100% !important; float: none !important; }
 
 .ai-verify-header-card { text-align: center; padding: 40px 24px 32px; background: transparent !important; box-shadow: none !important; }
 .ai-verify-header-icon { width: 64px; height: 64px; margin: 0 auto 20px; background: var(--themecolor-gradient); border-radius: var(--card-radius); display: flex; align-items: center; justify-content: center; font-size: 28px; color: #fff; box-shadow: 0 4px 12px rgba(var(--themecolor-rgbstr), 0.2); transition: transform var(--animation-fast) var(--ease-standard); }
@@ -785,6 +791,7 @@ if (current_user_can('manage_options')):
 			$detection_result = get_comment_meta($detection->comment_id, '_argon_spam_detection_result', true);
 			$provider = get_comment_meta($detection->comment_id, '_argon_spam_detection_provider', true);
 			$model = get_comment_meta($detection->comment_id, '_argon_spam_detection_model', true);
+			$config = function_exists('argon_get_active_api_config') ? argon_get_active_api_config('spam') : [];
 			$log_table = $wpdb->prefix . 'argon_ai_query_log';
 			$latest = $wpdb->get_row($wpdb->prepare(
 				"SELECT provider, model FROM {$log_table} WHERE scenario = %s AND status = 'success' AND comment_id = %d ORDER BY id DESC LIMIT 1",
@@ -802,10 +809,10 @@ if (current_user_can('manage_options')):
 				}
 			}
 			if (empty($provider)) {
-				$provider = get_option('argon_ai_summary_provider', 'openai');
+				$provider = isset($config['provider']) ? $config['provider'] : '';
 			}
 			if (empty($model)) {
-				$model = get_option('argon_ai_summary_model', '');
+				$model = isset($config['model']) ? $config['model'] : '';
 			}
 			$all_records[] = [
 				'type' => 'spam_detection',
@@ -1298,7 +1305,10 @@ if (current_user_can('manage_options')):
 						'doubao': '豆包',
 						'kimi': 'Kimi',
 						'zhipu': '智谱',
-						'siliconflow': 'SiliconFlow'
+						'siliconflow': 'SiliconFlow',
+						'openai_compatible': 'OpenAI 兼容',
+						'anthropic_compatible': 'Anthropic 兼容',
+						'local_cache': '本地缓存'
 					};
 					
 					stats.by_provider.forEach(item => {
@@ -1348,8 +1358,6 @@ if (current_user_can('manage_options')):
 <?php
 endif; // current_user_can('manage_options')
 ?>
-
-</main>
 
 <?php
 get_footer();

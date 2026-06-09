@@ -1,4 +1,5 @@
 <article class="post post-full card bg-white shadow-sm border-0" id="post-<?php the_ID(); ?>" <?php post_class(); ?>>
+	<div class="post-full-blur-overlay" aria-hidden="true"></div>
 	<?php $show_thumbnail_in_banner = get_option('argon_show_thumbnail_in_banner_in_content_page', 'false'); ?>
 	<header class="post-header text-center<?php if (argon_has_post_thumbnail() && $show_thumbnail_in_banner != 'true'){echo " post-header-with-thumbnail";}?>">
 		<?php
@@ -54,7 +55,7 @@
 		?>
 	</header>
 
-	<div class="post-content" id="post_content"<?php echo function_exists('argon_get_content_performance_attrs') ? argon_get_content_performance_attrs() : ''; ?>>
+	<div class="post-content" id="post_content">
 		<?php if (post_password_required()){ ?>
 			<div class="text-center container">
 				<form action="<?php echo $GLOBALS['wp_path']; ?>wp-login.php?action=postpass" class="post-password-form" method="post">
@@ -85,7 +86,11 @@
 				$post_reference_keys_first_index = array();
 				$post_reference_contents_first_index = array();
 
-				the_content();
+				if (function_exists('argon_the_content_virtualized')){
+					argon_the_content_virtualized();
+				}else{
+					the_content();
+				}
 			}
 		?>
 	</div>

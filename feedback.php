@@ -76,13 +76,14 @@ if (isset($_POST['feedback_action']) && $_POST['feedback_action'] === 'upload_im
 		exit;
 	}
 	
-	$image_data = $_POST['image_data'] ?? '';
+	$image_data = isset($_POST['image_data']) ? wp_unslash($_POST['image_data']) : '';
 	if (empty($image_data)) {
 		echo json_encode(['success' => false, 'message' => '图片数据为空']);
 		exit;
 	}
 	
-	$saved_url = argon_save_feedback_image($image_data);
+	$upload_error = '';
+	$saved_url = argon_save_feedback_image($image_data, $upload_error);
 	if ($saved_url) {
 		// 更新频率限制计数
 		$limit_period = intval(get_option('argon_feedback_upload_period', 3600));
@@ -92,9 +93,15 @@ if (isset($_POST['feedback_action']) && $_POST['feedback_action'] === 'upload_im
 			set_transient($rate_limit_key, $upload_count + 1, $limit_period);
 		}
 		
-		echo json_encode(['success' => true, 'url' => $saved_url]);
+		$image_settings = argon_get_feedback_image_settings();
+		echo json_encode([
+			'success' => true,
+			'url' => $saved_url,
+			'max_count' => $image_settings['max_count'],
+			'max_size' => $image_settings['max_bytes'],
+		]);
 	} else {
-		echo json_encode(['success' => false, 'message' => '图片保存失败']);
+		echo json_encode(['success' => false, 'message' => $upload_error ?: '图片保存失败']);
 	}
 	exit;
 }
@@ -215,13 +222,14 @@ function argon_add_feedback($data) {
 	// 处理图片上传
 	$images = [];
 	if (!empty($data['feedback_images']) && is_array($data['feedback_images'])) {
+		$image_settings = argon_get_feedback_image_settings();
 		$upload_dir = wp_upload_dir();
 		$feedback_url_prefix = $upload_dir['baseurl'] . '/feedback-images/';
 		foreach ($data['feedback_images'] as $image_url) {
-			if (!empty($image_url) && count($images) < 10) {
+			if (!empty($image_url) && count($images) < $image_settings['max_count']) {
 				// 验证是否是本站上传的图片 URL（已经通过 upload_image 接口上传）
 				if (strpos($image_url, $feedback_url_prefix) === 0) {
-					$images[] = $image_url;
+					$images[] = esc_url_raw($image_url);
 				}
 			}
 		}
@@ -380,51 +388,79 @@ function argon_is_feedback_captcha_enabled() {
 	return function_exists('argon_is_captcha_enabled') && argon_is_captcha_enabled();
 }
 
-function argon_save_feedback_image($base64_data) {
-	// 验证 base64 数据
-	if (strpos($base64_data, 'data:image/') !== 0) {
+function argon_get_feedback_image_settings() {
+	$settings = [
+		'max_count' => intval(get_option('argon_feedback_image_max_count', 10)),
+		'max_bytes' => intval(get_option('argon_feedback_image_max_size_kb', 250)) * 1024,
+		'max_source_bytes' => intval(get_option('argon_feedback_image_source_max_mb', 12)) * 1024 * 1024,
+		'max_dimension' => intval(get_option('argon_feedback_image_max_dimension', 2048)),
+		'allowed_mimes' => [
+			'image/jpeg' => 'jpg',
+			'image/png' => 'png',
+			'image/gif' => 'gif',
+			'image/webp' => 'webp',
+		],
+	];
+	$settings['max_count'] = max(1, min(10, $settings['max_count']));
+	$settings['max_bytes'] = max(80 * 1024, min(2 * 1024 * 1024, $settings['max_bytes']));
+	$settings['max_source_bytes'] = max(1024 * 1024, min(32 * 1024 * 1024, $settings['max_source_bytes']));
+	$settings['max_dimension'] = max(640, min(4096, $settings['max_dimension']));
+	return apply_filters('argon_feedback_image_settings', $settings);
+}
+
+function argon_save_feedback_image($base64_data, &$error_message = '') {
+	$image_settings = argon_get_feedback_image_settings();
+	$base64_data = trim((string)$base64_data);
+
+	if (!preg_match('/^data:image\/(jpeg|jpg|png|gif|webp);base64,/i', $base64_data, $matches)) {
+		$error_message = __('图片格式不支持', 'argon');
 		return false;
 	}
 	
-	// 解析 base64
 	$data_parts = explode(',', $base64_data);
 	if (count($data_parts) !== 2) {
+		$error_message = __('图片数据格式错误', 'argon');
 		return false;
 	}
 	
-	$image_data = base64_decode($data_parts[1]);
+	$image_data = base64_decode($data_parts[1], true);
 	if ($image_data === false) {
+		$error_message = __('图片数据解析失败', 'argon');
 		return false;
 	}
 	
-	// 检查大小（250KB）
-	if (strlen($image_data) > 250 * 1024) {
+	if (strlen($image_data) > $image_settings['max_bytes']) {
+		$error_message = sprintf(__('图片不能超过 %s', 'argon'), size_format($image_settings['max_bytes']));
+		return false;
+	}
+
+	$image_info = function_exists('getimagesizefromstring') ? @getimagesizefromstring($image_data) : false;
+	if ($image_info === false || empty($image_info['mime']) || !isset($image_settings['allowed_mimes'][$image_info['mime']])) {
+		$error_message = __('图片文件校验失败', 'argon');
+		return false;
+	}
+	if (($image_info[0] ?? 0) > $image_settings['max_dimension'] || ($image_info[1] ?? 0) > $image_settings['max_dimension']) {
+		$error_message = sprintf(__('图片尺寸不能超过 %1$dx%1$d', 'argon'), $image_settings['max_dimension']);
 		return false;
 	}
 	
-	// 获取 MIME 类型
-	preg_match('/data:image\/(\w+);/', $data_parts[0], $matches);
-	$ext = $matches[1] ?? 'jpg';
-	if (!in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
-		$ext = 'jpg';
-	}
-	
-	// 生成文件名
 	$upload_dir = wp_upload_dir();
 	$feedback_dir = $upload_dir['basedir'] . '/feedback-images';
 	if (!file_exists($feedback_dir)) {
 		wp_mkdir_p($feedback_dir);
 	}
 	
-	$filename = 'fb_' . uniqid() . '_' . time() . '.' . $ext;
+	$ext = $image_settings['allowed_mimes'][$image_info['mime']];
+	$uuid = function_exists('wp_generate_uuid4') ? wp_generate_uuid4() : uniqid('', true);
+	$filename = wp_unique_filename($feedback_dir, 'fb_' . $uuid . '.' . $ext);
 	$filepath = $feedback_dir . '/' . $filename;
 	
-	// 保存文件
 	if (file_put_contents($filepath, $image_data) === false) {
+		$error_message = __('图片保存失败', 'argon');
 		return false;
 	}
+	@chmod($filepath, 0644);
 	
-	// 返回相对 URL
 	return $upload_dir['baseurl'] . '/feedback-images/' . $filename;
 }
 
@@ -443,7 +479,23 @@ function argon_handle_feedback_submit($data) {
 	if ($submit_count !== false && $submit_count >= $max_submits) {
 		return ['success' => false, 'message' => __('提交过于频繁，请稍后再试', 'argon')];
 	}
-	
+
+	if (empty($data['feedback_submit_nonce']) || !wp_verify_nonce($data['feedback_submit_nonce'], 'argon_feedback_submit')) {
+		return ['success' => false, 'message' => __('安全验证失败，请刷新页面后重试', 'argon')];
+	}
+	if (!empty($data['feedback_homepage'])) {
+		return ['success' => false, 'message' => __('提交失败，请稍后重试', 'argon')];
+	}
+
+	$data['feedback_name'] = trim((string)($data['feedback_name'] ?? ''));
+	$data['feedback_email'] = trim((string)($data['feedback_email'] ?? ''));
+	$data['feedback_title'] = trim((string)($data['feedback_title'] ?? ''));
+	$data['feedback_content'] = trim((string)($data['feedback_content'] ?? ''));
+	$valid_types = ['bug', 'suggestion', 'question', 'other'];
+	if (!in_array(($data['feedback_type'] ?? 'suggestion'), $valid_types, true)) {
+		$data['feedback_type'] = 'other';
+	}
+
 	if (empty($data['feedback_email'])) return ['success' => false, 'message' => __('请填写邮箱', 'argon')];
 	if (empty($data['feedback_name'])) return ['success' => false, 'message' => __('请填写昵称', 'argon')];
 	if (empty($data['feedback_content'])) return ['success' => false, 'message' => __('请填写反馈内容', 'argon')];
@@ -498,7 +550,13 @@ function argon_handle_feedback_submit($data) {
 		} else {
 			set_transient($submit_limit_key, $submit_count + 1, $limit_period);
 		}
-		return ['success' => true, 'message' => __('反馈提交成功，感谢您的建议！', 'argon')];
+		return [
+			'success' => true,
+			'message' => __('反馈提交成功，感谢您的建议！', 'argon'),
+			'id' => $id,
+			'view_url' => function_exists('argon_get_feedback_auth_url') ? argon_get_feedback_auth_url($id) : '',
+			'is_public' => !empty($data['feedback_public']),
+		];
 	}
 	return ['success' => false, 'message' => __('提交失败，请稍后重试', 'argon')];
 }
@@ -509,6 +567,7 @@ $public_feedbacks = argon_get_feedbacks('public');
 $stats = argon_get_feedback_stats();
 $captcha_enabled = argon_is_feedback_captcha_enabled();
 $captcha_type = get_option('argon_captcha_type', 'math');
+$feedback_image_settings = argon_get_feedback_image_settings();
 
 $saved_name = $_COOKIE['comment_author_' . COOKIEHASH] ?? '';
 $saved_email = $_COOKIE['comment_author_email_' . COOKIEHASH] ?? '';
@@ -543,7 +602,7 @@ $status_labels = ['pending' => __('未查看', 'argon'), 'viewed' => __('已查�
 $feedback_card_blur = intval(get_option('argon_card_blur', '20'));
 $feedback_card_saturate = intval(get_option('argon_card_saturate', '180'));
 $feedback_card_opacity = get_option('argon_post_background_opacity', '0.7');
-if ($feedback_card_opacity == '' || $feedback_card_opacity == '1') {
+if ($feedback_card_opacity == '') {
 	$feedback_card_opacity = '0.7';
 }
 ?>
@@ -563,10 +622,9 @@ if ($feedback_card_opacity == '' || $feedback_card_opacity == '1') {
 	}
 	html.leftbar-opened body.feedback-page #leftbar { left: 0px; }
 }
-body.feedback-page #primary { width: 100% !important; max-width: 900px !important; margin: 0 auto !important; float: none !important; }
+body.feedback-page #primary { width: 100% !important; max-width: var(--argon-special-page-width, 1040px) !important; margin: 0 auto !important; float: none !important; }
 body.feedback-page #content { margin-top: -50vh !important; }
-body.feedback-page #main { max-width: 900px !important; margin: 0 auto !important; }
-body.feedback-page .site-footer { max-width: 900px !important; margin: 0 auto !important; box-sizing: border-box !important; }
+body.feedback-page #main { max-width: var(--argon-special-page-width, 1040px) !important; margin: 0 auto !important; }
 
 /* 头部卡片 */
 .feedback-header-card { text-align: center; padding: 40px 24px 32px; background: transparent !important; box-shadow: none !important; border: none !important; }
@@ -582,7 +640,7 @@ html.darkmode .feedback-subtitle { color: #aaa; }
 
 /* 管理员统计 */
 .feedback-admin-stats { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
-.feedback-admin-stat { flex: 1; min-width: 120px; padding: 20px; background-color: rgba(255, 255, 255, <?php echo $feedback_card_opacity; ?>); backdrop-filter: blur(<?php echo $feedback_card_blur; ?>px) saturate(<?php echo $feedback_card_saturate; ?>%); -webkit-backdrop-filter: blur(<?php echo $feedback_card_blur; ?>px) saturate(<?php echo $feedback_card_saturate; ?>%); border-radius: var(--card-radius); text-align: center; border: 1px solid var(--color-border); transition: all var(--animation-fast) var(--ease-standard); }
+.feedback-admin-stat { flex: 1; min-width: 120px; padding: 20px; background-color: rgba(255, 255, 255, var(--card-opacity)); backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate)); -webkit-backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate)); border-radius: var(--card-radius); text-align: center; border: 1px solid var(--color-border); transition: all var(--animation-fast) var(--ease-standard); }
 .feedback-admin-stat:hover { transform: translateY(-2px); border-color: rgba(var(--themecolor-rgbstr), 0.3); box-shadow: 0 4px 12px rgba(var(--themecolor-rgbstr), 0.15); }
 .feedback-admin-stat .stat-value { font-size: 32px; font-weight: 600; color: var(--themecolor); line-height: 1.2; }
 .feedback-admin-stat .stat-label { font-size: 13px; color: #888; margin-top: 6px; }
@@ -590,11 +648,18 @@ html.darkmode .feedback-subtitle { color: #aaa; }
 .feedback-admin-stat.pending .stat-value { color: #d97706; }
 .feedback-admin-stat.resolved { border-color: rgba(5, 150, 105, 0.3); }
 .feedback-admin-stat.resolved .stat-value { color: #059669; }
-html.darkmode .feedback-admin-stat { background-color: rgba(66, 66, 66, <?php echo $feedback_card_opacity; ?>); }
+html.darkmode .feedback-admin-stat { background-color: rgba(66, 66, 66, var(--card-opacity)); }
 html.darkmode .feedback-admin-stat .stat-label { color: #aaa; }
 
 /* 表单样式 */
 .feedback-form-card { padding: 24px 28px; }
+.feedback-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.feedback-card-heading .feedback-form-title,
+.feedback-card-heading .feedback-list-title { margin-bottom: 0; }
+.feedback-kicker { margin: 0 0 4px; font-size: 12px; font-weight: 700; color: var(--themecolor); text-transform: uppercase; }
+.feedback-draft-state { display: none; align-items: center; gap: 6px; color: #059669; background: #d1fae5; border: 1px solid rgba(5, 150, 105, 0.16); border-radius: var(--card-radius-sm); padding: 6px 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.feedback-draft-state.show { display: inline-flex; }
+.feedback-form-intro { margin: -6px 0 20px; padding: 12px 14px; border-radius: var(--card-radius-sm); background: rgba(var(--themecolor-rgbstr), 0.06); color: #555; font-size: 13px; line-height: 1.65; }
 .feedback-form-title { font-size: 17px; font-weight: 600; margin: 0 0 20px; color: var(--color-text-deeper); display: flex; align-items: center; gap: 10px; }
 .feedback-form-title i { color: var(--themecolor); font-size: 18px; }
 .feedback-form .form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px; }
@@ -602,6 +667,7 @@ html.darkmode .feedback-admin-stat .stat-label { color: #aaa; }
 .feedback-form .form-group { margin-bottom: 0; }
 .feedback-form label { font-size: 14px; font-weight: 600; color: var(--color-text-deeper); margin-bottom: 6px; display: block; }
 .feedback-form label .required { color: #f5365c; margin-left: 2px; }
+.feedback-field-hint { color: #666; font-size: 12px; font-weight: 400; }
 .feedback-form input, .feedback-form textarea, .feedback-form select {
 	width: 100%; padding: 12px 14px; font-size: 14px;
 	border: 1.5px solid var(--color-border); border-radius: var(--card-radius-sm);
@@ -617,18 +683,44 @@ html.darkmode .feedback-admin-stat .stat-label { color: #aaa; }
 }
 .feedback-form textarea { resize: vertical; min-height: 140px; line-height: 1.6; }
 .feedback-form .char-count { font-size: 12px; color: #666; float: right; margin-top: 4px; }
+.feedback-form .char-count.warning { color: #d97706; }
+.feedback-form .char-count.danger { color: #dc2626; }
+.feedback-honeypot { position: absolute; left: -9999px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+.feedback-type-selector { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.feedback-type-option { position: relative; margin: 0; display: flex !important; align-items: center; gap: 8px; padding: 11px 12px; border: 1.5px solid var(--color-border); border-radius: var(--card-radius-sm); background: var(--color-widgets); cursor: pointer; transition: all var(--animation-fast) var(--ease-standard); min-height: 46px; }
+.feedback-type-option input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
+.feedback-type-option i { color: #777; width: 18px; text-align: center; transition: color var(--animation-fast) var(--ease-standard); }
+.feedback-type-option span { font-size: 13px; font-weight: 700; color: var(--color-text-deeper); }
+.feedback-type-option:hover { border-color: rgba(var(--themecolor-rgbstr), 0.42); background: rgba(var(--themecolor-rgbstr), 0.04); }
+.feedback-type-option:has(input:checked) { border-color: var(--themecolor); background: rgba(var(--themecolor-rgbstr), 0.1); box-shadow: 0 0 0 3px rgba(var(--themecolor-rgbstr), 0.08); }
+.feedback-type-option:has(input:checked) i { color: var(--themecolor); }
+.feedback-type-option.is-active { border-color: var(--themecolor); background: rgba(var(--themecolor-rgbstr), 0.1); box-shadow: 0 0 0 3px rgba(var(--themecolor-rgbstr), 0.08); }
+.feedback-type-option.is-active i { color: var(--themecolor); }
 .feedback-public-option { display: flex; align-items: center; gap: 10px; margin: 20px 0; padding: 14px 18px; background: rgba(var(--themecolor-rgbstr), 0.06); border-radius: var(--card-radius-sm); border: 1.5px solid rgba(var(--themecolor-rgbstr), 0.12); transition: all var(--animation-fast) var(--ease-standard); }
 .feedback-public-option:hover { background: rgba(var(--themecolor-rgbstr), 0.08); border-color: rgba(var(--themecolor-rgbstr), 0.18); }
 .feedback-public-option input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--themecolor); cursor: pointer; }
 .feedback-public-option label { font-size: 14px; color: var(--color-text-deeper); cursor: pointer; margin: 0; font-weight: 500; }
 .feedback-public-option .hint { font-size: 12px; color: #666; margin-left: auto; }
-.feedback-image-upload { display: flex; flex-wrap: wrap; gap: 12px; }
-.feedback-image-preview { display: contents; }
+.feedback-image-upload { display: grid; gap: 12px; padding: 12px; border: 1.5px dashed var(--color-border); border-radius: var(--card-radius-sm); background: rgba(var(--themecolor-rgbstr), 0.025); transition: all var(--animation-fast) var(--ease-standard); }
+.feedback-image-upload.dragover { border-color: var(--themecolor); background: rgba(var(--themecolor-rgbstr), 0.08); }
+.feedback-image-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 30px; }
+.feedback-image-status { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--card-radius-sm); background: rgba(var(--themecolor-rgbstr), 0.08); color: var(--themecolor); font-size: 12px; font-weight: 700; }
+.feedback-image-clear-btn { display: none; padding: 5px 10px !important; font-size: 12px !important; border-radius: var(--card-radius-sm) !important; }
+.feedback-image-clear-btn.show { display: inline-flex; align-items: center; gap: 5px; }
+.feedback-image-preview { display: flex; flex-wrap: wrap; gap: 12px; min-height: 100px; }
 .feedback-image-item { position: relative; width: 100px; height: 100px; border-radius: var(--card-radius-sm); overflow: hidden; border: 2px solid var(--color-border); transition: all var(--animation-fast) var(--ease-standard); }
 .feedback-image-item:hover { border-color: var(--themecolor); transform: scale(1.05); }
 .feedback-image-item img { width: 100%; height: 100%; object-fit: cover; }
 .feedback-image-item .remove-btn { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; background: rgba(245,54,92,0.9); color: #fff; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; transition: all var(--animation-fast) var(--ease-standard); }
 .feedback-image-item .remove-btn:hover { background: #f5365c; transform: scale(1.1); }
+.feedback-image-item .retry-btn { position: absolute; left: 6px; right: 6px; bottom: 6px; height: 26px; padding: 0; border: none; border-radius: var(--card-radius-sm); background: rgba(var(--themecolor-rgbstr), 0.92); color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; }
+.feedback-image-item .image-state { position: absolute; left: 6px; top: 6px; max-width: calc(100% - 38px); padding: 3px 7px; border-radius: 12px; background: rgba(0, 0, 0, 0.58); color: #fff; font-size: 11px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.feedback-image-item .image-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(0, 0, 0, 0.24); }
+.feedback-image-item .image-progress span { display: block; height: 100%; width: 0%; background: var(--themecolor); transition: width 0.2s ease; }
+.feedback-image-item.status-error { border-color: rgba(245, 54, 92, 0.7); }
+.feedback-image-item.status-error img { filter: grayscale(0.7) brightness(0.68); }
+.feedback-image-item.status-ready { border-color: rgba(var(--themecolor-rgbstr), 0.45); }
+.feedback-image-item.status-done { border-color: rgba(5, 150, 105, 0.65); }
 .feedback-image-add-btn { width: 100px; height: 100px; border: 2px dashed var(--color-border); border-radius: var(--card-radius-sm); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all var(--animation-fast) var(--ease-standard); color: #666; font-size: 13px; }
 .feedback-image-add-btn:hover { border-color: var(--themecolor); color: var(--themecolor); background: rgba(var(--themecolor-rgbstr), 0.05); }
 .feedback-image-add-btn.disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
@@ -644,12 +736,31 @@ html.darkmode .feedback-admin-stat .stat-label { color: #aaa; }
 .feedback-captcha-text:hover { background: var(--color-border-on-foreground); }
 .feedback-submit { margin-top: 20px; text-align: center; }
 .feedback-submit .btn { padding: 12px 40px; font-size: 15px; font-weight: 600; border-radius: var(--card-radius-sm); }
+.feedback-submit-actions { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.feedback-submit .btn:disabled { cursor: not-allowed; opacity: 0.72; }
+.feedback-submit-result { margin-top: 18px; padding: 14px 16px; border: 1.5px solid rgba(5, 150, 105, 0.24); background: #d1fae5; color: #065f46; border-radius: var(--card-radius-sm); text-align: left; }
+.feedback-submit-result[hidden] { display: none !important; }
+.feedback-submit-result-title { display: flex; align-items: center; gap: 8px; font-weight: 700; margin-bottom: 6px; }
+.feedback-submit-result p { margin: 0 0 10px; font-size: 13px; line-height: 1.6; }
+.feedback-submit-result-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.feedback-submit-result-actions .btn { padding: 8px 12px; font-size: 12px; }
 .feedback-divider { height: 1px; background: linear-gradient(to right, transparent, var(--color-border), transparent); margin: 32px 0; }
 
 /* 反馈列表 */
 .feedback-list-title { font-size: 17px; font-weight: 600; margin: 0 0 20px; color: var(--color-text-deeper); display: flex; align-items: center; gap: 10px; }
 .feedback-list-title i { color: var(--themecolor); font-size: 18px; }
 .feedback-list-title .count { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--themecolor); background: rgba(var(--themecolor-rgbstr), 0.1); padding: 4px 14px; border-radius: 14px; border: 1px solid rgba(var(--themecolor-rgbstr), 0.2); }
+.feedback-list-tools { display: grid; grid-template-columns: minmax(220px, 1fr) 150px 150px auto; gap: 10px; margin-bottom: 10px; align-items: center; }
+.feedback-search-box { position: relative; }
+.feedback-search-box i { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #888; font-size: 13px; pointer-events: none; }
+.feedback-search-box input,
+.feedback-list-tools select { width: 100%; height: 42px; border: 1.5px solid var(--color-border); border-radius: var(--card-radius-sm); background: var(--color-widgets); color: var(--color-text-deeper); font-size: 13px; box-sizing: border-box; transition: all var(--animation-fast) var(--ease-standard); }
+.feedback-search-box input { padding: 0 12px 0 36px; }
+.feedback-list-tools select { padding: 0 10px; }
+.feedback-search-box input:focus,
+.feedback-list-tools select:focus { border-color: var(--themecolor); outline: none; box-shadow: 0 0 0 3px rgba(var(--themecolor-rgbstr), 0.09); }
+.feedback-list-clear { height: 42px; min-width: 42px; padding: 0 12px !important; border-radius: var(--card-radius-sm) !important; }
+.feedback-list-summary { min-height: 20px; margin: 0 0 8px; color: #666; font-size: 12px; }
 .feedback-item { padding: 20px 0; background: transparent; border-radius: 0; margin-bottom: 0; position: relative; cursor: default; transition: all var(--animation-fast) var(--ease-standard); border: none; border-bottom: 1px solid var(--color-border-on-foreground); }
 .feedback-item:last-child { margin-bottom: 0; border-bottom: none; }
 .feedback-item.clickable { cursor: pointer; }
@@ -682,6 +793,8 @@ html.darkmode .feedback-admin-stat .stat-label { color: #aaa; }
 .feedback-badge.status-closed { background: #e5e7eb; color: #6b7280; }
 .feedback-item-title { font-size: 16px; font-weight: 600; color: var(--color-text-deeper); margin-bottom: 10px; line-height: 1.5; }
 .feedback-item-content { font-size: 14px; color: #555; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+.feedback-item-footer { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; color: #777; font-size: 12px; }
+.feedback-item-footer span { display: inline-flex; align-items: center; gap: 5px; }
 .feedback-item-reply { margin-top: 16px; padding: 14px 16px; background: rgba(var(--themecolor-rgbstr), 0.06); border-radius: var(--card-radius-sm); border-left: 3px solid var(--themecolor); transition: all var(--animation-fast) var(--ease-standard); }
 .feedback-item-reply:hover { background: rgba(var(--themecolor-rgbstr), 0.08); }
 .feedback-item-reply-header { font-size: 13px; font-weight: 600; color: var(--themecolor); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
@@ -689,6 +802,9 @@ html.darkmode .feedback-admin-stat .stat-label { color: #aaa; }
 .feedback-empty { padding: 60px 24px; text-align: center; }
 .feedback-empty i { font-size: 56px; color: var(--color-border); margin-bottom: 20px; display: block; opacity: 0.5; }
 .feedback-empty p { font-size: 15px; color: #666; margin: 0; line-height: 1.6; }
+.feedback-empty-filter { display: none; padding: 36px 16px; text-align: center; color: #666; border: 1px dashed var(--color-border); border-radius: var(--card-radius-sm); margin-top: 12px; }
+.feedback-empty-filter.show { display: block; }
+.feedback-empty-filter i { display: block; margin-bottom: 10px; font-size: 28px; color: var(--themecolor); opacity: 0.72; }
 .feedback-admin-card { padding: 20px 24px; }
 .feedback-admin-title { font-size: 16px; font-weight: 600; color: var(--themecolor); margin: 0 0 16px; display: flex; align-items: center; gap: 10px; }
 
@@ -727,6 +843,11 @@ html.darkmode .feedback-admin-stat .stat-label { color: #aaa; }
 /* 响应式 */
 @media (max-width: 768px) {
 	.feedback-form .form-row { grid-template-columns: 1fr; }
+	.feedback-card-heading { flex-direction: column; align-items: stretch; }
+	.feedback-draft-state { align-self: flex-start; }
+	.feedback-type-selector { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.feedback-list-tools { grid-template-columns: 1fr; }
+	.feedback-list-clear { width: 100%; }
 	.feedback-public-option { flex-wrap: wrap; }
 	.feedback-public-option .hint { width: 100%; margin-left: 26px; margin-top: 4px; }
 	.feedback-admin-stats { gap: 8px; }
@@ -738,10 +859,28 @@ html.darkmode .feedback-admin-stat .stat-label { color: #aaa; }
 	.feedback-image-item, .feedback-image-add-btn { width: 80px; height: 80px; }
 	.feedback-images-display img { max-width: 100px; max-height: 100px; }
 }
+@media (max-width: 420px) {
+	.feedback-form-card { padding: 20px 18px; }
+	.feedback-type-selector { grid-template-columns: 1fr; }
+	.feedback-header-card { padding-left: 12px; padding-right: 12px; }
+}
 
 /* 夜间模式 */
 html.darkmode .feedback-item { background: rgba(255, 255, 255, 0.03); }
 html.darkmode .feedback-modal { background: var(--color-background); }
+html.darkmode .feedback-form-intro,
+html.darkmode .feedback-list-summary,
+html.darkmode .feedback-field-hint,
+html.darkmode .feedback-item-footer,
+html.darkmode .feedback-empty-filter { color: #aaa; }
+html.darkmode .feedback-type-option,
+html.darkmode .feedback-search-box input,
+html.darkmode .feedback-list-tools select { background: var(--color-widgets); }
+html.darkmode .feedback-type-option:hover,
+html.darkmode .feedback-type-option:has(input:checked),
+html.darkmode .feedback-type-option.is-active { background: rgba(var(--themecolor-rgbstr), 0.16); }
+html.darkmode .feedback-submit-result { background: rgba(5, 150, 105, 0.18); color: #a7f3d0; border-color: rgba(5, 150, 105, 0.32); }
+html.darkmode .feedback-draft-state { background: rgba(5, 150, 105, 0.18); color: #a7f3d0; border-color: rgba(5, 150, 105, 0.32); }
 html.darkmode .feedback-badge.type-bug { background: rgba(220, 38, 38, 0.2); }
 html.darkmode .feedback-badge.type-suggestion { background: rgba(37, 99, 235, 0.2); }
 html.darkmode .feedback-badge.type-question { background: rgba(217, 119, 6, 0.2); }
@@ -907,8 +1046,19 @@ html.darkmode .feedback-images-display img { border-color: #555; }
 <?php if (!$is_admin) : ?>
 <!-- 访客提交反馈表单 -->
 <article class="post card shadow-sm bg-white border-0 feedback-form-card" style="margin-bottom: 0;">
-	<h2 class="feedback-form-title"><i class="fa fa-pencil-square-o"></i><?php _e('提交反馈', 'argon'); ?></h2>
+	<div class="feedback-card-heading">
+		<div>
+			<p class="feedback-kicker"><?php _e('Feedback', 'argon'); ?></p>
+			<h2 class="feedback-form-title"><i class="fa fa-pencil-square-o"></i><?php _e('提交反馈', 'argon'); ?></h2>
+		</div>
+		<span class="feedback-draft-state" id="feedback-draft-state"><i class="fa fa-check-circle"></i><?php _e('草稿已保存', 'argon'); ?></span>
+	</div>
+	<p class="feedback-form-intro"><?php _e('描述越具体，越容易定位问题；截图会被压缩后上传，仅反馈管理员可查看私密内容。', 'argon'); ?></p>
 	<form class="feedback-form" id="feedback-form">
+		<input type="hidden" name="feedback_submit_nonce" value="<?php echo esc_attr(wp_create_nonce('argon_feedback_submit')); ?>">
+		<div class="feedback-honeypot" aria-hidden="true">
+			<label>Homepage <input type="text" name="feedback_homepage" tabindex="-1" autocomplete="off"></label>
+		</div>
 		<div class="form-row">
 			<div class="form-group">
 				<label><?php _e('昵称', 'argon'); ?> <span class="required">*</span></label>
@@ -921,23 +1071,35 @@ html.darkmode .feedback-images-display img { border-color: #555; }
 		</div>
 		<div class="form-row">
 			<div class="form-group">
-				<label><?php _e('网站', 'argon'); ?></label>
-				<input type="url" name="feedback_url" id="feedback-url" placeholder="<?php _e('选填', 'argon'); ?>" value="<?php echo esc_attr($saved_url); ?>">
+				<label><?php _e('标题', 'argon'); ?></label>
+				<input type="text" name="feedback_title" id="feedback-title" placeholder="<?php _e('简要描述您的反馈（选填）', 'argon'); ?>" maxlength="100">
 			</div>
 			<div class="form-group">
-				<label><?php _e('反馈类型', 'argon'); ?></label>
-				<select name="feedback_type" id="feedback-type">
-					<option value="suggestion"><?php _e('建议', 'argon'); ?></option>
-					<option value="bug"><?php _e('Bug 报告', 'argon'); ?></option>
-					<option value="question"><?php _e('问题咨询', 'argon'); ?></option>
-					<option value="other"><?php _e('其他', 'argon'); ?></option>
-				</select>
+				<label><?php _e('网站', 'argon'); ?></label>
+				<input type="url" name="feedback_url" id="feedback-url" placeholder="<?php _e('选填', 'argon'); ?>" value="<?php echo esc_attr($saved_url); ?>">
 			</div>
 		</div>
 		<div class="form-row full">
 			<div class="form-group">
-				<label><?php _e('标题', 'argon'); ?></label>
-				<input type="text" name="feedback_title" id="feedback-title" placeholder="<?php _e('简要描述您的反馈（选填）', 'argon'); ?>" maxlength="100">
+				<label><?php _e('反馈类型', 'argon'); ?></label>
+				<div class="feedback-type-selector" role="radiogroup" aria-label="<?php esc_attr_e('反馈类型', 'argon'); ?>">
+					<label class="feedback-type-option">
+						<input type="radio" name="feedback_type" value="suggestion" checked>
+						<i class="fa fa-lightbulb-o"></i><span><?php _e('建议', 'argon'); ?></span>
+					</label>
+					<label class="feedback-type-option">
+						<input type="radio" name="feedback_type" value="bug">
+						<i class="fa fa-bug"></i><span><?php _e('Bug', 'argon'); ?></span>
+					</label>
+					<label class="feedback-type-option">
+						<input type="radio" name="feedback_type" value="question">
+						<i class="fa fa-question-circle"></i><span><?php _e('问题', 'argon'); ?></span>
+					</label>
+					<label class="feedback-type-option">
+						<input type="radio" name="feedback_type" value="other">
+						<i class="fa fa-ellipsis-h"></i><span><?php _e('其他', 'argon'); ?></span>
+					</label>
+				</div>
 			</div>
 		</div>
 		<div class="form-row full">
@@ -948,13 +1110,18 @@ html.darkmode .feedback-images-display img { border-color: #555; }
 		</div>
 		<div class="form-row full">
 			<div class="form-group">
-				<label><?php _e('上传图片', 'argon'); ?> <span style="font-size:12px;color:#666;font-weight:400;"><?php _e('（选填，最多10张，单张最大250KB）', 'argon'); ?></span></label>
+				<label><?php _e('上传图片', 'argon'); ?> <span class="feedback-field-hint"><?php printf(__('（选填，最多 %1$d 张，单张压缩后不超过 %2$s）', 'argon'), $feedback_image_settings['max_count'], size_format($feedback_image_settings['max_bytes'])); ?></span></label>
 				<div class="feedback-image-upload">
-					<div class="feedback-image-preview" id="feedback-image-preview"></div>
-					<label class="feedback-image-add-btn" id="feedback-image-add-btn" for="feedback-image-input">
-						<i class="fa fa-plus"></i>
-						<span><?php _e('添加图片', 'argon'); ?></span>
-					</label>
+					<div class="feedback-image-toolbar">
+						<span class="feedback-image-status" id="feedback-image-status"><i class="fa fa-picture-o"></i><span><?php _e('尚未选择图片', 'argon'); ?></span></span>
+						<button type="button" class="btn btn-secondary feedback-image-clear-btn" id="feedback-image-clear-btn"><i class="fa fa-trash-o"></i><?php _e('清空图片', 'argon'); ?></button>
+					</div>
+					<div class="feedback-image-preview" id="feedback-image-preview">
+						<label class="feedback-image-add-btn" id="feedback-image-add-btn" for="feedback-image-input">
+							<i class="fa fa-plus"></i>
+							<span><?php _e('添加图片', 'argon'); ?></span>
+						</label>
+					</div>
 					<input type="file" id="feedback-image-input" accept="image/*" multiple style="display:none;">
 				</div>
 			</div>
@@ -986,7 +1153,18 @@ html.darkmode .feedback-images-display img { border-color: #555; }
 		<?php endif; ?>
 		
 		<div class="feedback-submit">
-			<button type="submit" class="btn btn-primary" id="feedback-submit-btn"><i class="fa fa-paper-plane"></i> <?php _e('提交反馈', 'argon'); ?></button>
+			<div class="feedback-submit-actions">
+				<button type="submit" class="btn btn-primary" id="feedback-submit-btn"><i class="fa fa-paper-plane"></i> <?php _e('提交反馈', 'argon'); ?></button>
+				<button type="button" class="btn btn-secondary" id="feedback-clear-draft-btn"><i class="fa fa-trash-o"></i> <?php _e('清空', 'argon'); ?></button>
+			</div>
+			<div class="feedback-submit-result" id="feedback-submit-result" hidden>
+				<div class="feedback-submit-result-title"><i class="fa fa-check-circle"></i><span><?php _e('提交成功', 'argon'); ?></span></div>
+				<p id="feedback-submit-result-message"></p>
+				<div class="feedback-submit-result-actions">
+					<a class="btn btn-sm btn-primary" id="feedback-view-link" href="#" target="_blank" rel="noopener"><i class="fa fa-external-link"></i> <?php _e('查看详情', 'argon'); ?></a>
+					<button type="button" class="btn btn-sm btn-secondary" id="feedback-copy-link"><i class="fa fa-link"></i> <?php _e('复制链接', 'argon'); ?></button>
+				</div>
+			</div>
 		</div>
 	</form>
 </article>
@@ -997,14 +1175,57 @@ html.darkmode .feedback-images-display img { border-color: #555; }
 
 <!-- 公开反馈列表 -->
 <article class="post card shadow-sm bg-white border-0 feedback-form-card" style="margin-bottom: 16px;">
-	<h2 class="feedback-list-title"><i class="fa fa-comments-o"></i><?php _e('公开反馈', 'argon'); ?><span class="count"><?php echo count($public_feedbacks); ?></span></h2>
+	<div class="feedback-card-heading">
+		<h2 class="feedback-list-title"><i class="fa fa-comments-o"></i><?php _e('公开反馈', 'argon'); ?><span class="count" id="feedback-visible-count"><?php echo count($public_feedbacks); ?></span></h2>
+	</div>
 	<?php if (!empty($public_feedbacks)) : ?>
+		<div class="feedback-list-tools" id="feedback-list-tools">
+			<div class="feedback-search-box">
+				<i class="fa fa-search"></i>
+				<input type="search" id="feedback-search" placeholder="<?php esc_attr_e('搜索标题、内容或昵称', 'argon'); ?>" aria-label="<?php esc_attr_e('搜索公开反馈', 'argon'); ?>">
+			</div>
+			<select id="feedback-type-filter" aria-label="<?php esc_attr_e('筛选反馈类型', 'argon'); ?>">
+				<option value="all"><?php _e('全部类型', 'argon'); ?></option>
+				<option value="suggestion"><?php _e('建议', 'argon'); ?></option>
+				<option value="bug"><?php _e('Bug', 'argon'); ?></option>
+				<option value="question"><?php _e('问题', 'argon'); ?></option>
+				<option value="other"><?php _e('其他', 'argon'); ?></option>
+			</select>
+			<select id="feedback-status-filter" aria-label="<?php esc_attr_e('筛选反馈状态', 'argon'); ?>">
+				<option value="all"><?php _e('全部状态', 'argon'); ?></option>
+				<option value="pending"><?php _e('未查看', 'argon'); ?></option>
+				<option value="viewed"><?php _e('已查看', 'argon'); ?></option>
+				<option value="processing"><?php _e('进行中', 'argon'); ?></option>
+				<option value="resolved"><?php _e('已完成', 'argon'); ?></option>
+				<option value="closed"><?php _e('已关闭', 'argon'); ?></option>
+			</select>
+			<button type="button" class="btn btn-secondary feedback-list-clear" id="feedback-filter-reset" aria-label="<?php esc_attr_e('重置筛选', 'argon'); ?>"><i class="fa fa-undo"></i></button>
+		</div>
+		<div class="feedback-list-summary" id="feedback-list-summary"><?php printf(__('显示全部 %d 条公开反馈', 'argon'), count($public_feedbacks)); ?></div>
 		<?php foreach ($public_feedbacks as $fb) : 
 			$type = $fb['type'] ?? 'other';
 			$status = $fb['status'] ?? 'pending';
 			$avatar_url = get_avatar_url($fb['email'], ['size' => 80]);
+			$reply_count = 0;
+			$public_reply_count = 0;
+			$feedback_replies = $fb['replies'] ?? [];
+			if (empty($feedback_replies) && !empty($fb['reply'])) {
+				$feedback_replies = [[
+					'content' => $fb['reply'],
+					'time' => $fb['reply_at'] ?? time(),
+					'is_private' => false,
+				]];
+			}
+			if (!empty($feedback_replies)) {
+				foreach ($feedback_replies as $reply_item_for_count) {
+					$reply_count++;
+					if (empty($reply_item_for_count['is_private']) || $can_view_private) {
+						$public_reply_count++;
+					}
+				}
+			}
 		?>
-		<div class="feedback-item <?php echo $is_admin ? 'clickable' : ''; ?>" data-id="<?php echo esc_attr($fb['id']); ?>" <?php if ($is_admin) : ?>onclick="openFeedbackDetail('<?php echo esc_attr($fb['id']); ?>')"<?php endif; ?>>
+		<div class="feedback-item <?php echo $is_admin ? 'clickable' : ''; ?>" data-id="<?php echo esc_attr($fb['id']); ?>" data-type="<?php echo esc_attr($type); ?>" data-status="<?php echo esc_attr($status); ?>" data-search="<?php echo esc_attr(strtolower(wp_strip_all_tags(($fb['name'] ?? '') . ' ' . ($fb['title'] ?? '') . ' ' . ($fb['content'] ?? '')))); ?>" <?php if ($is_admin) : ?>onclick="openFeedbackDetail('<?php echo esc_attr($fb['id']); ?>')"<?php endif; ?>>
 			<div class="feedback-item-header">
 				<div class="feedback-item-avatar">
 					<?php if ($avatar_url) : ?><img src="<?php echo esc_url($avatar_url); ?>" alt=""><?php else : echo mb_substr($fb['name'], 0, 1); endif; ?>
@@ -1027,20 +1248,20 @@ html.darkmode .feedback-images-display img { border-color: #555; }
 			<?php if (!empty($fb['images'])) : ?>
 			<div class="feedback-images-display">
 				<?php foreach ($fb['images'] as $img_url) : ?>
-				<img src="<?php echo esc_url($img_url); ?>" alt="" onclick="window.open(this.src)">
+				<img src="<?php echo esc_url($img_url); ?>" alt="" onclick="event.stopPropagation(); window.open(this.src)">
 				<?php endforeach; ?>
 			</div>
 			<?php endif; ?>
+			<div class="feedback-item-footer">
+				<span><i class="fa fa-picture-o"></i><?php echo !empty($fb['images']) ? count($fb['images']) : 0; ?></span>
+				<span><i class="fa fa-reply"></i><?php echo $public_reply_count; ?></span>
+				<?php if ($is_admin && $reply_count !== $public_reply_count) : ?>
+				<span><i class="fa fa-lock"></i><?php echo $reply_count - $public_reply_count; ?></span>
+				<?php endif; ?>
+			</div>
 			<?php 
 			// 兼容旧数据格式
-			$replies = $fb['replies'] ?? [];
-			if (empty($replies) && !empty($fb['reply'])) {
-				$replies = [[
-					'content' => $fb['reply'],
-					'time' => $fb['reply_at'] ?? time(),
-					'is_private' => false,
-				]];
-			}
+			$replies = $feedback_replies;
 			if (!empty($replies)) :
 				foreach ($replies as $reply_item) :
 					if (!empty($reply_item['is_private']) && !$can_view_private) : ?>
@@ -1063,6 +1284,10 @@ html.darkmode .feedback-images-display img { border-color: #555; }
 			endif; ?>
 		</div>
 		<?php endforeach; ?>
+		<div class="feedback-empty-filter" id="feedback-empty-filter">
+			<i class="fa fa-filter"></i>
+			<?php _e('没有符合筛选条件的公开反馈', 'argon'); ?>
+		</div>
 	<?php else : ?>
 		<div class="feedback-empty">
 			<i class="fa fa-inbox"></i>
@@ -1119,8 +1344,8 @@ html.darkmode .feedback-images-display img { border-color: #555; }
 			<!-- 动态填充 -->
 		</div>
 		<div class="feedback-modal-footer">
-			<button type="button" class="btn btn-secondary btn-sm" onclick="setProcessing()"><?php _e('计划进行', 'argon'); ?></button>
-			<button type="button" class="btn btn-secondary btn-sm" onclick="submitReplyAndResolve()"><?php _e('确定', 'argon'); ?></button>
+			<button type="button" class="btn btn-secondary btn-sm" onclick="setProcessing(this)"><i class="fa fa-tasks"></i> <?php _e('标记进行中', 'argon'); ?></button>
+			<button type="button" class="btn btn-primary btn-sm" onclick="submitReplyAndResolve(this)"><i class="fa fa-check"></i> <?php _e('回复并完成', 'argon'); ?></button>
 			<button type="button" class="btn btn-secondary btn-sm" onclick="closeFeedbackDetail()"><?php _e('取消', 'argon'); ?></button>
 		</div>
 	</div>
@@ -1132,25 +1357,94 @@ html.darkmode .feedback-images-display img { border-color: #555; }
 <script data-pjax>
 var feedbackNonce = '<?php echo wp_create_nonce('argon_feedback_manage'); ?>';
 var feedbackUploadNonce = '<?php echo wp_create_nonce('argon_feedback_upload'); ?>';
-var feedbackAjaxUrl = '<?php echo esc_url($_SERVER['REQUEST_URI']); ?>';
+var feedbackAjaxUrl = <?php echo wp_json_encode(esc_url_raw($_SERVER['REQUEST_URI'])); ?>;
 var feedbackCaptchaType = '<?php echo esc_js($captcha_type); ?>';
 var feedbackCaptchaEnabled = <?php echo $captcha_enabled ? 'true' : 'false'; ?>;
 var currentFeedbackId = null;
-var feedbackImages = []; // 存储已上传的图片 URL
-var maxFeedbackImages = 10;
-var maxImageSize = 250 * 1024; // 250KB
-var maxImageDimension = 4096; // 最大分辨率
-var uploadingCount = 0; // 正在上传的图片数量
+var feedbackImages = []; // 提交前实际上传成功的图片 URL
+var feedbackImageQueue = [];
+var feedbackImageNextId = 1;
+var maxFeedbackImages = <?php echo intval($feedback_image_settings['max_count']); ?>;
+var maxImageSize = <?php echo intval($feedback_image_settings['max_bytes']); ?>;
+var maxImageDimension = <?php echo intval($feedback_image_settings['max_dimension']); ?>;
+var maxSourceImageSize = <?php echo intval($feedback_image_settings['max_source_bytes']); ?>;
+var uploadingCount = 0; // 正在处理/上传的图片数量
+var feedbackDraftKey = 'argon_feedback_form_draft';
+
+function getFeedbackActionUrl(action) {
+	let url = new URL(feedbackAjaxUrl, window.location.origin);
+	url.searchParams.set('action', action);
+	return url.toString();
+}
+
+function showFeedbackNotice(type, title, message) {
+	if (typeof iziToast !== 'undefined' && iziToast[type]) {
+		iziToast[type]({
+			title: title,
+			message: message || '',
+			position: 'topRight',
+			timeout: 3500
+		});
+		return;
+	}
+	alert(message ? title + '\n' + message : title);
+}
 
 function refreshFeedbackCaptcha() {
-	let currentUrl = window.location.pathname;
-	fetch(currentUrl + '?action=refresh_captcha')
+	fetch(getFeedbackActionUrl('refresh_captcha'))
 		.then(function(r) { return r.json(); })
 		.then(function(res) {
 			if (res.captcha) {
 				document.getElementById('feedback-captcha-text').textContent = res.captcha;
 			}
 		});
+}
+
+function initFeedbackListFilters() {
+	let search = document.getElementById('feedback-search');
+	let typeFilter = document.getElementById('feedback-type-filter');
+	let statusFilter = document.getElementById('feedback-status-filter');
+	let reset = document.getElementById('feedback-filter-reset');
+	let count = document.getElementById('feedback-visible-count');
+	let summary = document.getElementById('feedback-list-summary');
+	let empty = document.getElementById('feedback-empty-filter');
+	let items = Array.from(document.querySelectorAll('.feedback-item[data-search]'));
+	if (!items.length || !search || !typeFilter || !statusFilter) return;
+
+	function applyFilters() {
+		let keyword = search.value.trim().toLowerCase();
+		let selectedType = typeFilter.value;
+		let selectedStatus = statusFilter.value;
+		let visible = 0;
+		items.forEach(function(item) {
+			let matched = true;
+			if (keyword && (item.getAttribute('data-search') || '').indexOf(keyword) === -1) matched = false;
+			if (selectedType !== 'all' && item.getAttribute('data-type') !== selectedType) matched = false;
+			if (selectedStatus !== 'all' && item.getAttribute('data-status') !== selectedStatus) matched = false;
+			item.style.display = matched ? '' : 'none';
+			if (matched) visible++;
+		});
+		if (count) count.textContent = visible;
+		if (summary) {
+			summary.textContent = keyword || selectedType !== 'all' || selectedStatus !== 'all'
+				? '<?php _e('当前显示', 'argon'); ?> ' + visible + ' / ' + items.length + ' <?php _e('条公开反馈', 'argon'); ?>'
+				: '<?php printf(__('显示全部 %d 条公开反馈', 'argon'), count($public_feedbacks)); ?>';
+		}
+		if (empty) empty.classList.toggle('show', visible === 0);
+	}
+
+	search.addEventListener('input', applyFilters);
+	typeFilter.addEventListener('change', applyFilters);
+	statusFilter.addEventListener('change', applyFilters);
+	if (reset) {
+		reset.addEventListener('click', function() {
+			search.value = '';
+			typeFilter.value = 'all';
+			statusFilter.value = 'all';
+			applyFilters();
+		});
+	}
+	applyFilters();
 }
 
 <?php if ($captcha_enabled && $captcha_type === 'geetest' && !$is_admin) : ?>
@@ -1245,236 +1539,588 @@ if (document.readyState === 'loading') {
 
 <?php if (!$is_admin) : ?>
 // ==================== 图片上传处理 ====================
-function compressAndUploadImage(file, callback) {
-	let reader = new FileReader();
-	reader.onload = function(e) {
-		let img = new Image();
-		img.onload = function() {
-			// 检查分辨率
-			if (img.width > maxImageDimension || img.height > maxImageDimension) {
-				if (typeof iziToast !== 'undefined') {
-					iziToast.error({ 
-						title: '<?php _e('图片分辨率过大', 'argon'); ?>', 
-						message: '<?php _e('图片分辨率不能超过 4096x4096，请使用较小的图片', 'argon'); ?>',
-						position: 'topRight', 
-						timeout: 5000 
-					});
-				} else {
-					alert('<?php _e('图片分辨率不能超过 4096x4096', 'argon'); ?>');
-				}
-				callback(null);
-				return;
-			}
-			
-			let canvas = document.createElement('canvas');
-			let ctx = canvas.getContext('2d');
-			
-			// 初始质量
-			let quality = 0.9;
-			let width = img.width;
-			let height = img.height;
-			
-			// 如果图片太大，先缩小尺寸
-			let maxDimension = 2048;
-			if (width > maxDimension || height > maxDimension) {
-				if (width > height) {
-					height = (height / width) * maxDimension;
-					width = maxDimension;
-				} else {
-					width = (width / height) * maxDimension;
-					height = maxDimension;
-				}
-			}
-			
-			canvas.width = width;
-			canvas.height = height;
-			ctx.drawImage(img, 0, 0, width, height);
-			
-			// 尝试压缩
-			let tryCompress = function(q) {
-				let dataUrl = canvas.toDataURL('image/jpeg', q);
-				let size = Math.round((dataUrl.length - 'data:image/jpeg;base64,'.length) * 0.75);
-				
-				if (size <= maxImageSize || q <= 0.1) {
-					if (size > maxImageSize) {
-						// 无法压缩到目标大小
-						if (typeof iziToast !== 'undefined') {
-							iziToast.error({ 
-								title: '<?php _e('图片无法压缩', 'argon'); ?>', 
-								message: '<?php _e('图片内容过于复杂，无法压缩到 250KB 以下，请使用更小的图片', 'argon'); ?>',
-								position: 'topRight', 
-								timeout: 5000 
-							});
-						} else {
-							alert('<?php _e('图片无法压缩到 250KB 以下', 'argon'); ?>');
-						}
-						callback(null);
-					} else {
-						// 上传到服务器
-						uploadingCount++;
-						updateImagePreview();
-						
-						let formData = new FormData();
-						formData.append('feedback_action', 'upload_image');
-						formData.append('feedback_upload_nonce', feedbackUploadNonce);
-						formData.append('image_data', dataUrl);
-						
-						fetch(feedbackAjaxUrl, { method: 'POST', body: formData })
-							.then(function(r) { return r.json(); })
-							.then(function(res) {
-								uploadingCount--;
-								if (res.success) {
-									callback(res.url);
-								} else {
-									if (typeof iziToast !== 'undefined') {
-										iziToast.error({ 
-											title: '<?php _e('上传失败', 'argon'); ?>', 
-											message: res.message || '<?php _e('请稍后重试', 'argon'); ?>',
-											position: 'topRight', 
-											timeout: 5000 
-										});
-									} else {
-										alert(res.message || '<?php _e('上传失败', 'argon'); ?>');
-									}
-									callback(null);
-								}
-								updateImagePreview();
-							})
-							.catch(function() {
-								uploadingCount--;
-								if (typeof iziToast !== 'undefined') {
-									iziToast.error({ 
-										title: '<?php _e('上传失败', 'argon'); ?>', 
-										message: '<?php _e('网络错误，请稍后重试', 'argon'); ?>',
-										position: 'topRight', 
-										timeout: 5000 
-									});
-								} else {
-									alert('<?php _e('上传失败', 'argon'); ?>');
-								}
-								callback(null);
-								updateImagePreview();
-							});
-					}
-				} else {
-					// 继续降低质量
-					tryCompress(q - 0.1);
-				}
-			};
-			
-			tryCompress(quality);
+var feedbackImageLabels = <?php echo wp_json_encode([
+	'idle' => __('尚未选择图片', 'argon'),
+	'count' => __('已选择 %1$d / %2$d 张', 'argon'),
+	'processing' => __('正在处理 %d 张图片', 'argon'),
+	'ready' => __('等待提交时上传', 'argon'),
+	'done' => __('已上传', 'argon'),
+	'compressing' => __('压缩中', 'argon'),
+	'uploading' => __('上传中', 'argon'),
+	'error' => __('失败', 'argon'),
+	'retry' => __('重试', 'argon'),
+	'remove' => __('删除图片', 'argon'),
+	'formatError' => __('只能上传 JPG、PNG、GIF 或 WebP 图片', 'argon'),
+	'tooMany' => __('最多上传 %d 张图片', 'argon'),
+	'sourceTooLarge' => __('原图不能超过 %s', 'argon'),
+	'compressFail' => __('图片无法压缩到 %s 以下，请换一张更小或内容更简单的图片', 'argon'),
+	'readFail' => __('图片读取失败', 'argon'),
+	'networkFail' => __('网络错误，请稍后重试', 'argon'),
+	'waitProcessing' => __('请等待图片处理完成', 'argon'),
+	'fixImages' => __('请先重试或删除失败的图片', 'argon'),
+	'uploadFail' => __('图片上传失败', 'argon'),
+	'clearImages' => __('图片已清空', 'argon'),
+], JSON_UNESCAPED_UNICODE); ?>;
+var feedbackImageConfig = {
+	maxCount: maxFeedbackImages,
+	maxSizeLabel: <?php echo wp_json_encode(size_format($feedback_image_settings['max_bytes'])); ?>,
+	maxSourceSizeLabel: <?php echo wp_json_encode(size_format($feedback_image_settings['max_source_bytes'])); ?>
+};
+
+function formatFeedbackImageLabel(template, args) {
+	var text = template || '';
+	for (var i = 0; i < args.length; i++) {
+		text = text.replace('%' + (i + 1) + '$d', args[i]);
+		text = text.replace('%' + (i + 1) + '$s', args[i]);
+		text = text.replace('%d', args[i]);
+		text = text.replace('%s', args[i]);
+	}
+	return text;
+}
+
+function getFeedbackImageProcessingCount() {
+	var count = 0;
+	for (var i = 0; i < feedbackImageQueue.length; i++) {
+		if (feedbackImageQueue[i].status === 'compressing' || feedbackImageQueue[i].status === 'uploading') {
+			count++;
+		}
+	}
+	return count;
+}
+
+function getFeedbackImageErrorCount() {
+	var count = 0;
+	for (var i = 0; i < feedbackImageQueue.length; i++) {
+		if (feedbackImageQueue[i].status === 'error') {
+			count++;
+		}
+	}
+	return count;
+}
+
+function updateFeedbackImageStatus() {
+	var status = document.getElementById('feedback-image-status');
+	var clearBtn = document.getElementById('feedback-image-clear-btn');
+	if (!status) return;
+	var text = feedbackImageLabels.idle;
+	var processing = getFeedbackImageProcessingCount();
+	var errors = getFeedbackImageErrorCount();
+	if (processing > 0) {
+		text = formatFeedbackImageLabel(feedbackImageLabels.processing, [processing]);
+	} else if (errors > 0) {
+		text = feedbackImageLabels.error + ' ' + errors + ' / ' + feedbackImageQueue.length;
+	} else if (feedbackImageQueue.length > 0) {
+		text = formatFeedbackImageLabel(feedbackImageLabels.count, [feedbackImageQueue.length, maxFeedbackImages]);
+	}
+	var label = status.querySelector('span');
+	if (label) label.textContent = text;
+	if (clearBtn) clearBtn.classList.toggle('show', feedbackImageQueue.length > 0);
+	uploadingCount = processing;
+}
+
+function estimateFeedbackImageDataUrlSize(dataUrl) {
+	var marker = ';base64,';
+	var index = dataUrl.indexOf(marker);
+	var length = index === -1 ? dataUrl.length : dataUrl.length - index - marker.length;
+	return Math.round(length * 0.75);
+}
+
+function escapeFeedbackImageHtml(text) {
+	var div = document.createElement('div');
+	div.textContent = text || '';
+	return div.innerHTML;
+}
+
+function compressFeedbackImage(file, item) {
+	return new Promise(function(resolve, reject) {
+		if (!file || !file.type || !/^image\/(jpeg|jpg|png|gif|webp)$/i.test(file.type)) {
+			reject(new Error(feedbackImageLabels.formatError));
+			return;
+		}
+		if (file.size > maxSourceImageSize) {
+			reject(new Error(formatFeedbackImageLabel(feedbackImageLabels.sourceTooLarge, [feedbackImageConfig.maxSourceSizeLabel])));
+			return;
+		}
+
+		var reader = new FileReader();
+		reader.onerror = function() {
+			reject(new Error(feedbackImageLabels.readFail));
 		};
-		img.src = e.target.result;
-	};
-	reader.readAsDataURL(file);
+		reader.onload = function(e) {
+			var img = new Image();
+			img.onerror = function() {
+				reject(new Error(feedbackImageLabels.readFail));
+			};
+			img.onload = function() {
+				var sourceWidth = img.naturalWidth || img.width;
+				var sourceHeight = img.naturalHeight || img.height;
+				var width = sourceWidth;
+				var height = sourceHeight;
+				var ratio = Math.min(1, maxImageDimension / Math.max(width, height));
+				width = Math.max(1, Math.round(width * ratio));
+				height = Math.max(1, Math.round(height * ratio));
+
+				var canvas = document.createElement('canvas');
+				var ctx = canvas.getContext('2d');
+				var quality = 0.88;
+				var minQuality = 0.42;
+				var output = null;
+				var attempts = 0;
+
+				while (attempts < 32) {
+					canvas.width = width;
+					canvas.height = height;
+					ctx.clearRect(0, 0, width, height);
+					ctx.drawImage(img, 0, 0, width, height);
+					var dataUrl = canvas.toDataURL('image/jpeg', quality);
+					var size = estimateFeedbackImageDataUrlSize(dataUrl);
+					output = { dataUrl: dataUrl, size: size, width: width, height: height };
+					if (size <= maxImageSize) break;
+					if (quality > minQuality) {
+						quality = Math.max(minQuality, quality - 0.08);
+					} else if (width > 640 || height > 640) {
+						width = Math.max(1, Math.round(width * 0.86));
+						height = Math.max(1, Math.round(height * 0.86));
+						quality = 0.82;
+					} else {
+						break;
+					}
+					attempts++;
+					if (item) {
+						item.progress = Math.min(88, 18 + attempts * 5);
+						updateImagePreview();
+					}
+				}
+
+				if (!output || output.size > maxImageSize) {
+					reject(new Error(formatFeedbackImageLabel(feedbackImageLabels.compressFail, [feedbackImageConfig.maxSizeLabel])));
+					return;
+				}
+				resolve(output);
+			};
+			img.src = e.target.result;
+		};
+		reader.readAsDataURL(file);
+	});
+}
+
+function prepareFeedbackImageItem(item) {
+	item.status = 'compressing';
+	item.error = '';
+	item.url = '';
+	item.progress = 8;
+	updateImagePreview();
+	compressFeedbackImage(item.file, item)
+		.then(function(result) {
+			item.dataUrl = result.dataUrl;
+			item.previewUrl = result.dataUrl;
+			item.size = result.size;
+			item.width = result.width;
+			item.height = result.height;
+			item.status = 'ready';
+			item.progress = 100;
+			updateImagePreview();
+		})
+		.catch(function(err) {
+			item.status = 'error';
+			item.error = err && err.message ? err.message : feedbackImageLabels.compressFail;
+			item.progress = 0;
+			updateImagePreview();
+			showFeedbackNotice('error', item.error);
+		});
+}
+
+function uploadFeedbackImageItem(item) {
+	return new Promise(function(resolve, reject) {
+		if (item.status === 'done' && item.url) {
+			resolve(item.url);
+			return;
+		}
+		if (!item.dataUrl || item.status === 'error') {
+			reject(new Error(item.error || feedbackImageLabels.fixImages));
+			return;
+		}
+
+		item.status = 'uploading';
+		item.progress = 18;
+		updateImagePreview();
+
+		var formData = new FormData();
+		formData.append('feedback_action', 'upload_image');
+		formData.append('feedback_upload_nonce', feedbackUploadNonce);
+		formData.append('image_data', item.dataUrl);
+
+		fetch(feedbackAjaxUrl, { method: 'POST', body: formData })
+			.then(function(r) {
+				item.progress = 72;
+				updateImagePreview();
+				return r.json();
+			})
+			.then(function(res) {
+				if (res.success && res.url) {
+					item.status = 'done';
+					item.url = res.url;
+					item.progress = 100;
+					updateImagePreview();
+					resolve(res.url);
+				} else {
+					item.status = 'error';
+					item.error = res.message || feedbackImageLabels.uploadFail;
+					item.progress = 0;
+					updateImagePreview();
+					reject(new Error(item.error));
+				}
+			})
+			.catch(function(err) {
+				item.status = 'error';
+				item.error = err && err.message ? err.message : feedbackImageLabels.networkFail;
+				item.progress = 0;
+				updateImagePreview();
+				reject(new Error(item.error));
+			});
+	});
+}
+
+function uploadFeedbackQueuedImages() {
+	var chain = Promise.resolve([]);
+	feedbackImageQueue.forEach(function(item) {
+		chain = chain.then(function(urls) {
+			return uploadFeedbackImageItem(item).then(function(url) {
+				urls.push(url);
+				return urls;
+			});
+		});
+	});
+	return chain;
 }
 
 function updateImagePreview() {
-	let preview = document.getElementById('feedback-image-preview');
-	let addBtn = document.getElementById('feedback-image-add-btn');
-	
+	var preview = document.getElementById('feedback-image-preview');
+	var addBtn = document.getElementById('feedback-image-add-btn');
+	if (!preview || !addBtn) return;
+
 	preview.innerHTML = '';
-	
-	// 显示已上传的图片
-	feedbackImages.forEach(function(img, index) {
-		let item = document.createElement('div');
-		item.className = 'feedback-image-item';
-		item.innerHTML = '<img src="' + img + '" alt=""><button type="button" class="remove-btn" onclick="removeFeedbackImage(' + index + ')">&times;</button>';
-		preview.appendChild(item);
-	});
-	
-	// 显示上传中的占位符
-	for (let i = 0; i < uploadingCount; i++) {
-		let item = document.createElement('div');
-		item.className = 'feedback-image-item uploading';
-		item.innerHTML = '<div class="uploading-spinner"><i class="fa fa-spinner fa-spin"></i></div>';
+	for (var i = 0; i < feedbackImageQueue.length; i++) {
+		var image = feedbackImageQueue[i];
+		var item = document.createElement('div');
+		var statusClass = image.status ? ' status-' + image.status : '';
+		item.className = 'feedback-image-item' + statusClass + (image.status === 'uploading' || image.status === 'compressing' ? ' uploading' : '');
+		var src = image.previewUrl || image.dataUrl || '';
+		var stateText = image.error || feedbackImageLabels[image.status] || feedbackImageLabels.ready;
+		var html = '';
+		if (src) {
+			html += '<img src="' + src + '" alt="">';
+		} else {
+			html += '<div class="uploading-spinner"><i class="fa fa-spinner fa-spin"></i></div>';
+		}
+		html += '<span class="image-state">' + escapeFeedbackImageHtml(stateText) + '</span>';
+		html += '<button type="button" class="remove-btn" onclick="removeFeedbackImage(' + image.id + ')" aria-label="' + escapeFeedbackImageHtml(feedbackImageLabels.remove) + '">&times;</button>';
+		if (image.status === 'error') {
+			html += '<button type="button" class="retry-btn" onclick="retryFeedbackImage(' + image.id + ')">' + escapeFeedbackImageHtml(feedbackImageLabels.retry) + '</button>';
+		}
+		if (image.status === 'compressing' || image.status === 'uploading') {
+			html += '<div class="image-progress"><span style="width:' + Math.max(8, image.progress || 8) + '%"></span></div>';
+		}
+		item.innerHTML = html;
 		preview.appendChild(item);
 	}
-	
-	if (feedbackImages.length + uploadingCount >= maxFeedbackImages) {
-		addBtn.classList.add('disabled');
-	} else {
-		addBtn.classList.remove('disabled');
-	}
+
+	addBtn.classList.toggle('disabled', feedbackImageQueue.length >= maxFeedbackImages);
+	preview.appendChild(addBtn);
+	updateFeedbackImageStatus();
 }
 
-function removeFeedbackImage(index) {
-	feedbackImages.splice(index, 1);
+function findFeedbackImage(id) {
+	for (var i = 0; i < feedbackImageQueue.length; i++) {
+		if (feedbackImageQueue[i].id === id) return feedbackImageQueue[i];
+	}
+	return null;
+}
+
+function removeFeedbackImage(id) {
+	for (var i = 0; i < feedbackImageQueue.length; i++) {
+		if (feedbackImageQueue[i].id === id) {
+			feedbackImageQueue.splice(i, 1);
+			break;
+		}
+	}
 	updateImagePreview();
 }
 
-document.getElementById('feedback-image-input')?.addEventListener('change', function(e) {
-	let files = Array.from(e.target.files);
-	let remaining = maxFeedbackImages - feedbackImages.length - uploadingCount;
-	
+function retryFeedbackImage(id) {
+	var item = findFeedbackImage(id);
+	if (!item) return;
+	if (item.dataUrl) {
+		item.status = 'ready';
+		item.error = '';
+		item.progress = 100;
+		updateImagePreview();
+		return;
+	}
+	prepareFeedbackImageItem(item);
+}
+
+function clearFeedbackImages() {
+	feedbackImageQueue = [];
+	feedbackImages = [];
+	updateImagePreview();
+}
+
+function handleFeedbackImageFiles(fileList) {
+	var files = Array.prototype.slice.call(fileList || []);
+	var remaining = maxFeedbackImages - feedbackImageQueue.length;
+	if (remaining <= 0) {
+		showFeedbackNotice('warning', formatFeedbackImageLabel(feedbackImageLabels.tooMany, [maxFeedbackImages]));
+		return;
+	}
+
 	if (files.length > remaining) {
-		if (typeof iziToast !== 'undefined') {
-			iziToast.warning({ 
-				title: '<?php _e('最多上传 10 张图片', 'argon'); ?>', 
-				position: 'topRight', 
-				timeout: 3000 
-			});
-		}
+		showFeedbackNotice('warning', formatFeedbackImageLabel(feedbackImageLabels.tooMany, [maxFeedbackImages]));
 		files = files.slice(0, remaining);
 	}
-	
-	files.forEach(function(file) {
-		if (!file.type.startsWith('image/')) {
-			return;
+
+	for (var i = 0; i < files.length; i++) {
+		var file = files[i];
+		if (!file.type || !/^image\//i.test(file.type)) {
+			showFeedbackNotice('warning', feedbackImageLabels.formatError);
+			continue;
 		}
-		
-		compressAndUploadImage(file, function(url) {
-			if (url) {
-				feedbackImages.push(url);
-				updateImagePreview();
-			}
-		});
+		var item = {
+			id: feedbackImageNextId++,
+			file: file,
+			name: file.name || '',
+			status: 'compressing',
+			progress: 0,
+			error: '',
+			dataUrl: '',
+			previewUrl: '',
+			url: ''
+		};
+		feedbackImageQueue.push(item);
+		prepareFeedbackImageItem(item);
+	}
+	updateImagePreview();
+}
+
+var feedbackImageInput = document.getElementById('feedback-image-input');
+if (feedbackImageInput) {
+	feedbackImageInput.addEventListener('change', function(e) {
+		handleFeedbackImageFiles(e.target.files);
+		e.target.value = '';
 	});
-	
-	e.target.value = '';
-});
+}
+
+var feedbackImageClearBtn = document.getElementById('feedback-image-clear-btn');
+if (feedbackImageClearBtn) {
+	feedbackImageClearBtn.addEventListener('click', function() {
+		clearFeedbackImages();
+		showFeedbackNotice('success', feedbackImageLabels.clearImages);
+	});
+}
+
+function initFeedbackDropUpload() {
+	var upload = document.querySelector('.feedback-image-upload');
+	if (!upload) return;
+	var activateEvents = ['dragenter', 'dragover'];
+	var deactivateEvents = ['dragleave', 'drop'];
+	for (var i = 0; i < activateEvents.length; i++) {
+		upload.addEventListener(activateEvents[i], function(e) {
+			e.preventDefault();
+			e.stopPropagation();
+			upload.classList.add('dragover');
+		});
+	}
+	for (var j = 0; j < deactivateEvents.length; j++) {
+		upload.addEventListener(deactivateEvents[j], function(e) {
+			e.preventDefault();
+			e.stopPropagation();
+			upload.classList.remove('dragover');
+		});
+	}
+	upload.addEventListener('drop', function(e) {
+		handleFeedbackImageFiles(e.dataTransfer.files);
+	});
+	updateImagePreview();
+}
+
+function updateFeedbackContentCount() {
+	let content = document.getElementById('feedback-content');
+	let counter = document.getElementById('content-count');
+	let wrapper = counter ? counter.parentElement : null;
+	if (!content || !counter) return;
+	let length = content.value.length;
+	counter.textContent = length;
+	if (wrapper) {
+		wrapper.classList.toggle('warning', length >= 1600 && length < 1900);
+		wrapper.classList.toggle('danger', length >= 1900);
+	}
+}
+
+function readFeedbackDraft() {
+	try {
+		return JSON.parse(localStorage.getItem(feedbackDraftKey) || '{}');
+	} catch (e) {
+		return {};
+	}
+}
+
+function saveFeedbackDraft() {
+	let form = document.getElementById('feedback-form');
+	if (!form) return;
+	let nameInput = document.getElementById('feedback-name');
+	let emailInput = document.getElementById('feedback-email');
+	let urlInput = document.getElementById('feedback-url');
+	let titleInput = document.getElementById('feedback-title');
+	let contentInput = document.getElementById('feedback-content');
+	let typeInput = form.querySelector('input[name="feedback_type"]:checked');
+	let publicInput = document.getElementById('feedback-public');
+	let data = {
+		name: nameInput ? nameInput.value : '',
+		email: emailInput ? emailInput.value : '',
+		url: urlInput ? urlInput.value : '',
+		title: titleInput ? titleInput.value : '',
+		content: contentInput ? contentInput.value : '',
+		type: typeInput ? typeInput.value : 'suggestion',
+		isPublic: publicInput ? publicInput.checked : false
+	};
+	if (!data.title && !data.content && !data.url) {
+		try { localStorage.removeItem(feedbackDraftKey); } catch (e) {}
+		return;
+	}
+	try {
+		localStorage.setItem(feedbackDraftKey, JSON.stringify(data));
+	} catch (e) {
+		return;
+	}
+	let state = document.getElementById('feedback-draft-state');
+	if (state) {
+		state.classList.add('show');
+		clearTimeout(state._timer);
+		state._timer = setTimeout(function() { state.classList.remove('show'); }, 1600);
+	}
+}
+
+function restoreFeedbackDraft() {
+	let form = document.getElementById('feedback-form');
+	if (!form) return;
+	let data = readFeedbackDraft();
+	if (!data || Object.keys(data).length === 0) return;
+	let nameInput = document.getElementById('feedback-name');
+	let emailInput = document.getElementById('feedback-email');
+	let urlInput = document.getElementById('feedback-url');
+	let titleInput = document.getElementById('feedback-title');
+	let contentInput = document.getElementById('feedback-content');
+	if (data.name && nameInput && !nameInput.value) nameInput.value = data.name;
+	if (data.email && emailInput && !emailInput.value) emailInput.value = data.email;
+	if (data.url && urlInput && !urlInput.value) urlInput.value = data.url;
+	if (data.title && titleInput) titleInput.value = data.title;
+	if (data.content && contentInput) contentInput.value = data.content;
+	if (data.type) {
+		let typeInput = form.querySelector('input[name="feedback_type"][value="' + data.type + '"]');
+		if (typeInput) typeInput.checked = true;
+	}
+	if (document.getElementById('feedback-public')) document.getElementById('feedback-public').checked = !!data.isPublic;
+	updateFeedbackContentCount();
+}
+
+function clearFeedbackDraft(resetForm) {
+	try { localStorage.removeItem(feedbackDraftKey); } catch (e) {}
+	if (resetForm) {
+		let form = document.getElementById('feedback-form');
+		if (form) form.reset();
+		clearFeedbackImages();
+		updateFeedbackContentCount();
+		let result = document.getElementById('feedback-submit-result');
+		if (result) result.hidden = true;
+	}
+	let state = document.getElementById('feedback-draft-state');
+	if (state) state.classList.remove('show');
+}
+
+function initFeedbackDraft() {
+	let form = document.getElementById('feedback-form');
+	if (!form) return;
+	restoreFeedbackDraft();
+	function syncTypeActiveState() {
+		form.querySelectorAll('.feedback-type-option').forEach(function(option) {
+			let input = option.querySelector('input[type="radio"]');
+			option.classList.toggle('is-active', !!input && input.checked);
+		});
+	}
+	syncTypeActiveState();
+	let timer = null;
+	form.addEventListener('input', function() {
+		updateFeedbackContentCount();
+		clearTimeout(timer);
+		timer = setTimeout(saveFeedbackDraft, 350);
+	});
+	form.addEventListener('change', function() {
+		syncTypeActiveState();
+		clearTimeout(timer);
+		timer = setTimeout(saveFeedbackDraft, 120);
+	});
+	let clearDraftBtn = document.getElementById('feedback-clear-draft-btn');
+	if (clearDraftBtn) {
+		clearDraftBtn.addEventListener('click', function() {
+			clearFeedbackDraft(true);
+			showFeedbackNotice('success', '<?php _e('已清空', 'argon'); ?>');
+		});
+	}
+}
 
 function submitFeedbackForm() {
 	let form = document.getElementById('feedback-form');
 	let btn = document.getElementById('feedback-submit-btn');
 	let originalText = btn.innerHTML;
+	let resultBox = document.getElementById('feedback-submit-result');
+	let resultMessage = document.getElementById('feedback-submit-result-message');
+	let viewLink = document.getElementById('feedback-view-link');
 	btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> <?php _e('提交中...', 'argon'); ?>';
 	btn.disabled = true;
-	
-	let formData = new FormData(form);
-	formData.append('feedback_action', 'submit');
-	
-	// 添加已上传的图片 URL
-	feedbackImages.forEach(function(img, index) {
-		formData.append('feedback_images[' + index + ']', img);
-	});
-	
-	fetch(feedbackAjaxUrl, { method: 'POST', body: formData })
+	if (resultBox) resultBox.hidden = true;
+
+	uploadFeedbackQueuedImages()
+		.then(function(uploadedImages) {
+			feedbackImages = uploadedImages;
+			btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> <?php _e('正在提交...', 'argon'); ?>';
+			let formData = new FormData(form);
+			formData.append('feedback_action', 'submit');
+			feedbackImages.forEach(function(img, index) {
+				formData.append('feedback_images[' + index + ']', img);
+			});
+			return fetch(feedbackAjaxUrl, { method: 'POST', body: formData });
+		})
 		.then(function(r) { return r.json(); })
 		.then(function(res) {
 			btn.innerHTML = originalText;
 			btn.disabled = false;
 			if (res.success) {
-				if (typeof iziToast !== 'undefined') {
-					iziToast.success({ title: res.message, position: 'topRight', timeout: 3000 });
-				} else {
-					alert(res.message);
-				}
+				showFeedbackNotice('success', res.message);
 				form.reset();
 				document.getElementById('content-count').textContent = '0';
-				feedbackImages = [];
-				updateImagePreview();
+				clearFeedbackImages();
+				clearFeedbackDraft(false);
+				if (resultBox && resultMessage) {
+					resultMessage.textContent = res.is_public
+						? '<?php _e('这条反馈已公开，刷新页面后也会出现在公开反馈列表中。', 'argon'); ?>'
+						: '<?php _e('这条反馈为私密内容，请保留专属链接以便查看后续回复。', 'argon'); ?>';
+					if (viewLink && res.view_url) {
+						viewLink.href = res.view_url;
+						viewLink.style.display = '';
+					} else if (viewLink) {
+						viewLink.style.display = 'none';
+					}
+					resultBox.hidden = false;
+				}
 				<?php if ($captcha_enabled && $captcha_type === 'geetest') : ?>
 				feedbackGeetestValidated = false;
 				if (feedbackGeetestCaptcha) feedbackGeetestCaptcha.reset();
 				<?php endif; ?>
-				setTimeout(function() { location.reload(); }, 1500);
+				<?php if ($captcha_enabled && $captcha_type !== 'geetest') : ?>
+				refreshFeedbackCaptcha();
+				<?php endif; ?>
 			} else {
-				if (typeof iziToast !== 'undefined') {
-					iziToast.error({ title: res.message, position: 'topRight', timeout: 5000 });
-				} else {
-					alert(res.message);
-				}
+				showFeedbackNotice('error', res.message || '<?php _e('提交失败，请稍后重试', 'argon'); ?>');
 				<?php if ($captcha_enabled) : ?>
 				if (feedbackCaptchaType === 'math') {
 					refreshFeedbackCaptcha();
@@ -1485,57 +2131,83 @@ function submitFeedbackForm() {
 				<?php endif; ?>
 			}
 		})
-		.catch(function() {
+		.catch(function(err) {
 			btn.innerHTML = originalText;
 			btn.disabled = false;
-			alert('<?php _e('提交失败，请稍后重试', 'argon'); ?>');
+			showFeedbackNotice('error', err && err.message ? err.message : '<?php _e('提交失败，请稍后重试', 'argon'); ?>');
 		});
 }
 
-document.getElementById('feedback-form')?.addEventListener('submit', function(e) {
-	e.preventDefault();
-	
-	// 检查是否有图片正在上传
-	if (uploadingCount > 0) {
-		if (typeof iziToast !== 'undefined') {
-			iziToast.warning({ title: '<?php _e('请等待图片上传完成', 'argon'); ?>', position: 'topRight', timeout: 3000 });
-		} else {
-			alert('<?php _e('请等待图片上传完成', 'argon'); ?>');
+var feedbackForm = document.getElementById('feedback-form');
+if (feedbackForm) {
+	feedbackForm.addEventListener('submit', function(e) {
+		e.preventDefault();
+		
+		if (getFeedbackImageProcessingCount() > 0) {
+			showFeedbackNotice('warning', feedbackImageLabels.waitProcessing);
+			return;
 		}
-		return;
-	}
-	
-	let name = document.getElementById('feedback-name').value.trim();
-	let email = document.getElementById('feedback-email').value.trim();
-	let content = document.getElementById('feedback-content').value.trim();
-	
-	if (!name || !email || !content) {
-		if (typeof iziToast !== 'undefined') {
-			iziToast.warning({ title: '<?php _e('请填写必填项', 'argon'); ?>', position: 'topRight', timeout: 3000 });
-		} else {
-			alert('<?php _e('请填写必填项', 'argon'); ?>');
+		if (getFeedbackImageErrorCount() > 0) {
+			showFeedbackNotice('warning', feedbackImageLabels.fixImages);
+			return;
 		}
-		return;
-	}
-	
-	<?php if ($captcha_enabled && $captcha_type === 'geetest') : ?>
-	if (!feedbackGeetestValidated) {
-		if (feedbackGeetestCaptcha) {
-			feedbackGeetestCaptcha.showCaptcha();
-		} else {
-			if (typeof iziToast !== 'undefined') {
-				iziToast.error({ title: '<?php _e('验证码加载中，请稍后重试', 'argon'); ?>', position: 'topRight', timeout: 3000 });
+		
+		let name = document.getElementById('feedback-name').value.trim();
+		let email = document.getElementById('feedback-email').value.trim();
+		let content = document.getElementById('feedback-content').value.trim();
+		let emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+		
+		if (!name || !email || !content) {
+			showFeedbackNotice('warning', '<?php _e('请填写必填项', 'argon'); ?>');
+			return;
+		}
+		if (!emailPattern.test(email)) {
+			showFeedbackNotice('warning', '<?php _e('邮箱格式错误', 'argon'); ?>');
+			return;
+		}
+		
+		<?php if ($captcha_enabled && $captcha_type === 'geetest') : ?>
+		if (!feedbackGeetestValidated) {
+			if (feedbackGeetestCaptcha) {
+				feedbackGeetestCaptcha.showCaptcha();
 			} else {
-				alert('<?php _e('验证码加载中，请稍后重试', 'argon'); ?>');
+				showFeedbackNotice('error', '<?php _e('验证码加载中，请稍后重试', 'argon'); ?>');
 			}
+			return;
 		}
-		return;
-	}
-	<?php endif; ?>
-	
-	submitFeedbackForm();
-});
+		<?php endif; ?>
+		
+		submitFeedbackForm();
+	});
+}
+
+var feedbackCopyLink = document.getElementById('feedback-copy-link');
+if (feedbackCopyLink) {
+	feedbackCopyLink.addEventListener('click', function() {
+		let viewLink = document.getElementById('feedback-view-link');
+		let link = viewLink ? viewLink.href : '';
+		if (!link || link === '#') return;
+		if (navigator.clipboard && navigator.clipboard.writeText) {
+			navigator.clipboard.writeText(link).then(function() {
+				showFeedbackNotice('success', '<?php _e('链接已复制', 'argon'); ?>');
+			});
+			return;
+		}
+		let input = document.createElement('input');
+		input.value = link;
+		document.body.appendChild(input);
+		input.select();
+		document.execCommand('copy');
+		document.body.removeChild(input);
+		showFeedbackNotice('success', '<?php _e('链接已复制', 'argon'); ?>');
+	});
+}
+
+initFeedbackDraft();
+initFeedbackDropUpload();
 <?php endif; ?>
+
+initFeedbackListFilters();
 
 <?php if ($is_admin) : ?>
 var typeLabels = <?php echo json_encode($type_labels); ?>;
@@ -1554,7 +2226,12 @@ function openFeedbackDetail(id) {
 			if (res.success) {
 				renderFeedbackDetail(res.data);
 				document.getElementById('feedback-detail-modal').classList.add('show');
+			} else {
+				showFeedbackNotice('error', res.message || '<?php _e('反馈不存在', 'argon'); ?>');
 			}
+		})
+		.catch(function() {
+			showFeedbackNotice('error', '<?php _e('加载失败，请稍后重试', 'argon'); ?>');
 		});
 }
 
@@ -1593,7 +2270,7 @@ function renderFeedbackDetail(data) {
 		html += '<div class="feedback-detail-label"><?php _e('附件图片', 'argon'); ?> (' + data.images.length + ')</div>';
 		html += '<div class="feedback-images-display">';
 		data.images.forEach(function(img) {
-			html += '<img src="' + escapeHtml(img) + '" alt="" onclick="window.open(this.src)">';
+			html += '<img src="' + escapeHtml(img) + '" alt="" onclick="event.stopPropagation(); window.open(this.src)">';
 		});
 		html += '</div>';
 		html += '</div>';
@@ -1671,10 +2348,12 @@ function closeFeedbackDetail() {
 	currentFeedbackId = null;
 }
 
-function setProcessing() {
+function setProcessing(statusButton) {
 	if (!currentFeedbackId) return;
 	let reply = document.getElementById('detail-reply-content').value;
-	let isPrivate = document.getElementById('detail-reply-private')?.checked || false;
+	let privateInput = document.getElementById('detail-reply-private');
+	let isPrivate = privateInput ? privateInput.checked : false;
+	if (statusButton) statusButton.disabled = true;
 	
 	// 先保存回复（如果有）
 	let formData = new FormData();
@@ -1687,6 +2366,9 @@ function setProcessing() {
 	fetch(feedbackAjaxUrl, { method: 'POST', body: formData })
 		.then(function(r) { return r.json(); })
 		.then(function(res) {
+			if (!res.success) {
+				throw new Error(res.message || '<?php _e('保存留言失败', 'argon'); ?>');
+			}
 			// 设置状态为进行中
 			let statusData = new FormData();
 			statusData.append('feedback_action', 'update_status');
@@ -1695,16 +2377,26 @@ function setProcessing() {
 			statusData.append('status', 'processing');
 			return fetch(feedbackAjaxUrl, { method: 'POST', body: statusData });
 		})
-		.then(function() {
+		.then(function(r) { return r.json(); })
+		.then(function(res) {
+			if (!res.success) {
+				throw new Error(res.message || '<?php _e('状态更新失败', 'argon'); ?>');
+			}
 			closeFeedbackDetail();
 			location.reload();
+		})
+		.catch(function(err) {
+			if (statusButton) statusButton.disabled = false;
+			showFeedbackNotice('error', err.message || '<?php _e('操作失败，请稍后重试', 'argon'); ?>');
 		});
 }
 
-function submitReplyAndResolve() {
+function submitReplyAndResolve(actionButton) {
 	if (!currentFeedbackId) return;
 	let reply = document.getElementById('detail-reply-content').value;
-	let isPrivate = document.getElementById('detail-reply-private')?.checked || false;
+	let privateInput = document.getElementById('detail-reply-private');
+	let isPrivate = privateInput ? privateInput.checked : false;
+	if (actionButton) actionButton.disabled = true;
 	
 	let formData = new FormData();
 	formData.append('feedback_action', 'reply_and_resolve');
@@ -1719,7 +2411,13 @@ function submitReplyAndResolve() {
 			if (res.success) {
 				closeFeedbackDetail();
 				location.reload();
+			} else {
+				throw new Error(res.message || '<?php _e('操作失败，请稍后重试', 'argon'); ?>');
 			}
+		})
+		.catch(function(err) {
+			if (actionButton) actionButton.disabled = false;
+			showFeedbackNotice('error', err.message || '<?php _e('操作失败，请稍后重试', 'argon'); ?>');
 		});
 }
 

@@ -344,6 +344,12 @@ $author_desc = get_option('argon_sidebar_author_description');
 						<i class="fa fa-tags"></i>
 						<span><?php _e('标签', 'argon'); ?></span>
 					</button>
+					<?php if (get_option('argon_show_rss_link', 'false') == 'true') : ?>
+					<a class="leftbar-mobile-action leftbar-mobile-rss-action" href="<?php echo esc_url(get_feed_link('rss2')); ?>" target="_blank" rel="noopener" no-pjax aria-label="<?php esc_attr_e('RSS 订阅', 'argon'); ?>">
+						<i class="fa fa-rss"></i>
+						<span>RSS</span>
+					</a>
+					<?php endif; ?>
 				</div>
 			</div>
 		</div>
@@ -488,7 +494,15 @@ $author_desc = get_option('argon_sidebar_author_description');
 
 					$nowActiveTab = 1;/*默认激活的标签*/
 
-					if (have_catalog()){
+					$has_leftbar_catalog = have_catalog();
+
+					$has_leftbar_tools = is_active_sidebar('leftbar-tools');
+
+					$show_sidebar_rss = get_option('argon_show_rss_link', 'false') == 'true';
+
+					$has_leftbar_tab_switcher = $has_leftbar_catalog || $has_leftbar_tools;
+
+					if ($has_leftbar_catalog){
 
 						$nowActiveTab = 0;
 
@@ -496,11 +510,13 @@ $author_desc = get_option('argon_sidebar_author_description');
 
 				?>
 
-				<div class="nav-wrapper" style="padding-top: 5px;<?php if (!have_catalog() && !is_active_sidebar('leftbar-tools')) { echo ' display:none;'; }?>">
+				<div class="nav-wrapper<?php if ($show_sidebar_rss) { echo ' has-sidebar-rss'; } if (!$has_leftbar_tab_switcher) { echo ' sidebar-overview-only'; }?>" style="padding-top: 5px;<?php if (!$has_leftbar_tab_switcher && !$show_sidebar_rss) { echo ' display:none;'; }?>">
+
+					<?php if ($has_leftbar_tab_switcher) { ?>
 
 	                <ul class="nav nav-pills nav-fill" role="tablist">
 
-						<?php if (have_catalog()) { ?>
+						<?php if ($has_leftbar_catalog) { ?>
 
 							<li class="nav-item sidebar-tab-switcher">
 
@@ -516,7 +532,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 
 						</li>
 
-						<?php if ( is_active_sidebar( 'leftbar-tools' ) ){?>
+						<?php if ( $has_leftbar_tools ){?>
 
 							<li class="nav-item sidebar-tab-switcher">
 
@@ -526,7 +542,38 @@ $author_desc = get_option('argon_sidebar_author_description');
 
 						<?php }?>
 
-	                </ul>
+					</ul>
+
+					<?php } ?>
+
+					<?php if ($show_sidebar_rss) : ?>
+						<?php
+							$argon_rss2_url = get_feed_link('rss2');
+							$argon_atom_url = get_feed_link('atom');
+							$argon_comments_rss2_url = get_bloginfo('comments_rss2_url');
+						?>
+						<details class="site-rss site-rss-sidebar">
+							<summary class="site-rss-btn" aria-label="<?php esc_attr_e('RSS 订阅选项', 'argon'); ?>" title="<?php esc_attr_e('RSS 订阅', 'argon'); ?>">
+								<span class="site-rss-btn-icon"><i class="fa fa-rss" aria-hidden="true"></i></span>
+								<span class="site-rss-btn-text"><?php _e('RSS', 'argon'); ?></span>
+								<span class="site-rss-btn-caret"><i class="fa fa-angle-down" aria-hidden="true"></i></span>
+							</summary>
+							<div class="site-rss-menu" role="list">
+								<a href="<?php echo esc_url($argon_rss2_url); ?>" target="_blank" rel="noopener" no-pjax role="listitem">
+									<span class="site-rss-menu-label"><i class="fa fa-newspaper-o" aria-hidden="true"></i><?php _e('文章更新', 'argon'); ?></span>
+									<span class="site-rss-menu-meta">RSS 2.0</span>
+								</a>
+								<a href="<?php echo esc_url($argon_comments_rss2_url); ?>" target="_blank" rel="noopener" no-pjax role="listitem">
+									<span class="site-rss-menu-label"><i class="fa fa-comments-o" aria-hidden="true"></i><?php _e('评论更新', 'argon'); ?></span>
+									<span class="site-rss-menu-meta">RSS</span>
+								</a>
+								<a href="<?php echo esc_url($argon_atom_url); ?>" target="_blank" rel="noopener" no-pjax role="listitem">
+									<span class="site-rss-menu-label"><i class="fa fa-code" aria-hidden="true"></i>Atom</span>
+									<span class="site-rss-menu-meta">Feed</span>
+								</a>
+							</div>
+						</details>
+					<?php endif; ?>
 
 				</div>
 
@@ -547,10 +594,10 @@ $author_desc = get_option('argon_sidebar_author_description');
 										if (typeof jQuery !== 'undefined' && typeof jQuery.fn.headIndex === 'function') {
 											jQuery(document).ready(function($) {
 												// 初始化 headIndex
-												$(document).headIndex({
+													$(document).headIndex({
 													articleWrapSelector: '#post_content',
 													indexBoxSelector: '#leftbar_catalog',
-													indexScrollBoxSelector: '#leftbar_part2_inner',
+													indexScrollBoxSelector: '#leftbar_tab_catalog',
 													scrollSelector: 'body,html',
 													scrollWrap: window,
 													subItemBoxClass: "index-subItem-box",
@@ -564,16 +611,17 @@ $author_desc = get_option('argon_sidebar_author_description');
 												var headIndexInstance = $(document).data('headIndex');
 												
 												// 添加额外的滚动监听，确保目录跟随
-												var scrollTimer = null;
+												var scrollTicking = false;
 												$(window).on('scroll.desktopCatalog', function() {
-													if (scrollTimer) {
-														clearTimeout(scrollTimer);
+													if (!scrollTicking) {
+														scrollTicking = true;
+														requestAnimationFrame(function() {
+															if (headIndexInstance && typeof headIndexInstance.updateCurrent === 'function') {
+																headIndexInstance.updateCurrent();
+															}
+															scrollTicking = false;
+														});
 													}
-													scrollTimer = setTimeout(function() {
-														if (headIndexInstance && typeof headIndexInstance.updateCurrent === 'function') {
-															headIndexInstance.updateCurrent();
-														}
-													}, 100);
 												});
 												
 												// PJAX 后重新绑定
@@ -995,6 +1043,15 @@ $author_desc = get_option('argon_sidebar_author_description');
 			var captchaType = '<?php echo get_option('argon_captcha_type', 'math'); ?>';
 			var pendingUrgeBtn = null;
 			var geetestCaptchaObj = null;
+			var todoList = document.getElementById('todo-list');
+			var scheduleFrame = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function(callback) {
+				return window.setTimeout(callback, 16);
+			};
+			var todoMetaFrame = 0;
+			var todoEmptyText = <?php echo wp_json_encode(__('暂无待办事项', 'argon')); ?>;
+			var firstEmpty = todoList ? todoList.querySelector('.todo-empty') : null;
+			if (firstEmpty) todoEmptyText = firstEmpty.textContent;
+			var todoState = collectTodoState();
 			
 			function updateCount() {
 				var count = document.querySelectorAll('.todo-item:not(.todo-completed)').length;
@@ -1034,8 +1091,99 @@ $author_desc = get_option('argon_sidebar_author_description');
 					emptyEl.remove();
 				}
 			}
-			
+
 			// 折叠/展开已完成任务
+			function collectTodoState() {
+				var state = { active: 0, completed: 0, total: 0 };
+				if (!todoList) return state;
+
+				for (var i = 0; i < todoList.children.length; i++) {
+					var child = todoList.children[i];
+					if (!child.classList || !child.classList.contains('todo-item')) continue;
+
+					state.total++;
+					if (child.classList.contains('todo-completed')) {
+						state.completed++;
+					} else {
+						state.active++;
+					}
+				}
+				return state;
+			}
+
+			function renderTodoMeta() {
+				if (!todoList) return;
+
+				var countEl = document.querySelector('.todo-count');
+				if (countEl) countEl.textContent = todoState.active;
+
+				var divider = document.getElementById('todo-collapse-btn');
+				if (divider) {
+					var completedCountEl = divider.querySelector('.todo-completed-count');
+					if (completedCountEl) {
+						completedCountEl.textContent = todoState.completed;
+					}
+					divider.style.display = todoState.completed > 0 ? 'flex' : 'none';
+				}
+
+				if (todoState.total > 4) {
+					todoList.classList.add('todo-list-scroll');
+				} else {
+					todoList.classList.remove('todo-list-scroll');
+				}
+
+				var emptyEl = todoList.querySelector('.todo-empty');
+				if (todoState.total === 0 && !emptyEl) {
+					var emptyItem = document.createElement('li');
+					emptyItem.className = 'todo-empty';
+					emptyItem.textContent = todoEmptyText;
+					todoList.appendChild(emptyItem);
+				} else if (todoState.total > 0 && emptyEl) {
+					emptyEl.remove();
+				}
+			}
+
+			updateCount = function(delta) {
+				if (delta) {
+					todoState.active = Math.max(0, todoState.active + (delta.active || 0));
+					todoState.completed = Math.max(0, todoState.completed + (delta.completed || 0));
+					todoState.total = Math.max(0, todoState.total + (delta.total || 0));
+				} else {
+					todoState = collectTodoState();
+				}
+
+				if (todoMetaFrame) return;
+				todoMetaFrame = scheduleFrame(function() {
+					todoMetaFrame = 0;
+					renderTodoMeta();
+				});
+			};
+
+			function createTodoButton(className, title, iconClass) {
+				var button = document.createElement('button');
+				button.className = className;
+				button.title = title;
+				var icon = document.createElement('i');
+				icon.className = iconClass;
+				button.appendChild(icon);
+				return button;
+			}
+
+			function createTodoItem(id, content) {
+				var li = document.createElement('li');
+				li.className = 'todo-item todo-new';
+				li.dataset.id = id;
+
+				var contentEl = document.createElement('span');
+				contentEl.className = 'todo-content';
+				contentEl.textContent = content;
+				li.appendChild(contentEl);
+				li.appendChild(createTodoButton('todo-complete-btn', '<?php echo esc_js(__('完成', 'argon')); ?>', 'fa fa-check'));
+				return li;
+			}
+
+			window.argonTodoRefresh = updateCount;
+
 			var collapseBtn = document.getElementById('todo-collapse-btn');
 			if (collapseBtn) {
 				collapseBtn.addEventListener('click', function(e) {
@@ -1079,19 +1227,15 @@ $author_desc = get_option('argon_sidebar_author_description');
 						.then(function(r) { return r.json(); })
 						.then(function(res) {
 							if (res.success) {
-								var list = document.getElementById('todo-list');
+								var list = todoList;
 								var emptyEl = list.querySelector('.todo-empty');
 								if (emptyEl) emptyEl.remove();
 								
-								var li = document.createElement('li');
-								li.className = 'todo-item';
-								li.dataset.id = res.data.id;
-								li.innerHTML = '<span class="todo-content">' + content + '</span>' +
-									'<button class="todo-complete-btn" title="<?php _e('完成', 'argon'); ?>"><i class="fa fa-check"></i></button>';
+								var li = createTodoItem(res.data.id, content);
 								list.insertBefore(li, list.firstChild);
 								
 								input.value = '';
-								updateCount();
+								updateCount({ active: 1, total: 1 });
 							}
 							addBtn.disabled = false;
 						});
@@ -1128,7 +1272,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 								newBtn.title = '<?php _e('删除', 'argon'); ?>';
 								newBtn.innerHTML = '<i class="fa fa-trash"></i>';
 								btn.parentNode.replaceChild(newBtn, btn);
-								updateCount();
+								updateCount({ active: -1, completed: 1 });
 							} else {
 								btn.disabled = false;
 							}
@@ -1147,7 +1291,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 								item.classList.add('todo-completing');
 								setTimeout(function() {
 									item.remove();
-									updateCount();
+									updateCount({ completed: -1, total: -1 });
 								}, 300);
 							}
 						});
