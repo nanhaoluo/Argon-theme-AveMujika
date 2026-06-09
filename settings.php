@@ -5106,6 +5106,23 @@ function themeoptions_page(){
 
 				<tr>
 
+					<th><label><?php _e('反馈图片提交设置', 'argon');?></label></th>
+
+					<td>
+
+						<input type="number" name="argon_feedback_image_max_count" min="1" max="10" value="<?php echo get_option('argon_feedback_image_max_count', '10'); ?>" style="width:80px;"/> <?php _e('张 / 次提交', 'argon');?>&nbsp;&nbsp;
+						<input type="number" name="argon_feedback_image_max_size_kb" min="80" max="2048" value="<?php echo get_option('argon_feedback_image_max_size_kb', '250'); ?>" style="width:90px;"/> KB <?php _e('/ 张', 'argon');?>&nbsp;&nbsp;
+						<input type="number" name="argon_feedback_image_max_dimension" min="640" max="4096" value="<?php echo get_option('argon_feedback_image_max_dimension', '2048'); ?>" style="width:90px;"/> px&nbsp;&nbsp;
+						<input type="number" name="argon_feedback_image_source_max_mb" min="1" max="32" value="<?php echo get_option('argon_feedback_image_source_max_mb', '12'); ?>" style="width:80px;"/> MB <?php _e('原图', 'argon');?>
+
+						<p class="description"><?php _e('控制提点建议页单次提交的图片数量、压缩后的单张大小、最长边尺寸和原图读取上限。前端会按此配置压缩，后端会再次校验。', 'argon');?></p>
+
+					</td>
+
+				</tr>
+
+				<tr>
+
 					<th><label><?php _e('评论速率限制', 'argon');?></label></th>
 
 					<td>
@@ -7603,6 +7620,10 @@ function argon_update_themeoptions(){
 		argon_update_option('argon_feedback_submit_period');
 		argon_update_option('argon_feedback_upload_limit');
 		argon_update_option('argon_feedback_upload_period');
+		argon_update_option('argon_feedback_image_max_count');
+		argon_update_option('argon_feedback_image_max_size_kb');
+		argon_update_option('argon_feedback_image_max_dimension');
+		argon_update_option('argon_feedback_image_source_max_mb');
 		argon_update_option('argon_friend_link_hide_no_backlink');
 		argon_update_option_allow_tags('argon_friend_link_requirements');
 

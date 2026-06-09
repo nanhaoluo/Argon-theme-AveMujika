@@ -76,13 +76,14 @@ if (isset($_POST['feedback_action']) && $_POST['feedback_action'] === 'upload_im
 		exit;
 	}
 	
-	$image_data = $_POST['image_data'] ?? '';
+	$image_data = isset($_POST['image_data']) ? wp_unslash($_POST['image_data']) : '';
 	if (empty($image_data)) {
 		echo json_encode(['success' => false, 'message' => '图片数据为空']);
 		exit;
 	}
 	
-	$saved_url = argon_save_feedback_image($image_data);
+	$upload_error = '';
+	$saved_url = argon_save_feedback_image($image_data, $upload_error);
 	if ($saved_url) {
 		// 更新频率限制计数
 		$limit_period = intval(get_option('argon_feedback_upload_period', 3600));
@@ -92,9 +93,15 @@ if (isset($_POST['feedback_action']) && $_POST['feedback_action'] === 'upload_im
 			set_transient($rate_limit_key, $upload_count + 1, $limit_period);
 		}
 		
-		echo json_encode(['success' => true, 'url' => $saved_url]);
+		$image_settings = argon_get_feedback_image_settings();
+		echo json_encode([
+			'success' => true,
+			'url' => $saved_url,
+			'max_count' => $image_settings['max_count'],
+			'max_size' => $image_settings['max_bytes'],
+		]);
 	} else {
-		echo json_encode(['success' => false, 'message' => '图片保存失败']);
+		echo json_encode(['success' => false, 'message' => $upload_error ?: '图片保存失败']);
 	}
 	exit;
 }
@@ -215,13 +222,14 @@ function argon_add_feedback($data) {
 	// 处理图片上传
 	$images = [];
 	if (!empty($data['feedback_images']) && is_array($data['feedback_images'])) {
+		$image_settings = argon_get_feedback_image_settings();
 		$upload_dir = wp_upload_dir();
 		$feedback_url_prefix = $upload_dir['baseurl'] . '/feedback-images/';
 		foreach ($data['feedback_images'] as $image_url) {
-			if (!empty($image_url) && count($images) < 10) {
+			if (!empty($image_url) && count($images) < $image_settings['max_count']) {
 				// 验证是否是本站上传的图片 URL（已经通过 upload_image 接口上传）
 				if (strpos($image_url, $feedback_url_prefix) === 0) {
-					$images[] = $image_url;
+					$images[] = esc_url_raw($image_url);
 				}
 			}
 		}
@@ -380,51 +388,79 @@ function argon_is_feedback_captcha_enabled() {
 	return function_exists('argon_is_captcha_enabled') && argon_is_captcha_enabled();
 }
 
-function argon_save_feedback_image($base64_data) {
-	// 验证 base64 数据
-	if (strpos($base64_data, 'data:image/') !== 0) {
+function argon_get_feedback_image_settings() {
+	$settings = [
+		'max_count' => intval(get_option('argon_feedback_image_max_count', 10)),
+		'max_bytes' => intval(get_option('argon_feedback_image_max_size_kb', 250)) * 1024,
+		'max_source_bytes' => intval(get_option('argon_feedback_image_source_max_mb', 12)) * 1024 * 1024,
+		'max_dimension' => intval(get_option('argon_feedback_image_max_dimension', 2048)),
+		'allowed_mimes' => [
+			'image/jpeg' => 'jpg',
+			'image/png' => 'png',
+			'image/gif' => 'gif',
+			'image/webp' => 'webp',
+		],
+	];
+	$settings['max_count'] = max(1, min(10, $settings['max_count']));
+	$settings['max_bytes'] = max(80 * 1024, min(2 * 1024 * 1024, $settings['max_bytes']));
+	$settings['max_source_bytes'] = max(1024 * 1024, min(32 * 1024 * 1024, $settings['max_source_bytes']));
+	$settings['max_dimension'] = max(640, min(4096, $settings['max_dimension']));
+	return apply_filters('argon_feedback_image_settings', $settings);
+}
+
+function argon_save_feedback_image($base64_data, &$error_message = '') {
+	$image_settings = argon_get_feedback_image_settings();
+	$base64_data = trim((string)$base64_data);
+
+	if (!preg_match('/^data:image\/(jpeg|jpg|png|gif|webp);base64,/i', $base64_data, $matches)) {
+		$error_message = __('图片格式不支持', 'argon');
 		return false;
 	}
 	
-	// 解析 base64
 	$data_parts = explode(',', $base64_data);
 	if (count($data_parts) !== 2) {
+		$error_message = __('图片数据格式错误', 'argon');
 		return false;
 	}
 	
-	$image_data = base64_decode($data_parts[1]);
+	$image_data = base64_decode($data_parts[1], true);
 	if ($image_data === false) {
+		$error_message = __('图片数据解析失败', 'argon');
 		return false;
 	}
 	
-	// 检查大小（250KB）
-	if (strlen($image_data) > 250 * 1024) {
+	if (strlen($image_data) > $image_settings['max_bytes']) {
+		$error_message = sprintf(__('图片不能超过 %s', 'argon'), size_format($image_settings['max_bytes']));
+		return false;
+	}
+
+	$image_info = function_exists('getimagesizefromstring') ? @getimagesizefromstring($image_data) : false;
+	if ($image_info === false || empty($image_info['mime']) || !isset($image_settings['allowed_mimes'][$image_info['mime']])) {
+		$error_message = __('图片文件校验失败', 'argon');
+		return false;
+	}
+	if (($image_info[0] ?? 0) > $image_settings['max_dimension'] || ($image_info[1] ?? 0) > $image_settings['max_dimension']) {
+		$error_message = sprintf(__('图片尺寸不能超过 %1$dx%1$d', 'argon'), $image_settings['max_dimension']);
 		return false;
 	}
 	
-	// 获取 MIME 类型
-	preg_match('/data:image\/(\w+);/', $data_parts[0], $matches);
-	$ext = $matches[1] ?? 'jpg';
-	if (!in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
-		$ext = 'jpg';
-	}
-	
-	// 生成文件名
 	$upload_dir = wp_upload_dir();
 	$feedback_dir = $upload_dir['basedir'] . '/feedback-images';
 	if (!file_exists($feedback_dir)) {
 		wp_mkdir_p($feedback_dir);
 	}
 	
-	$filename = 'fb_' . uniqid() . '_' . time() . '.' . $ext;
+	$ext = $image_settings['allowed_mimes'][$image_info['mime']];
+	$uuid = function_exists('wp_generate_uuid4') ? wp_generate_uuid4() : uniqid('', true);
+	$filename = wp_unique_filename($feedback_dir, 'fb_' . $uuid . '.' . $ext);
 	$filepath = $feedback_dir . '/' . $filename;
 	
-	// 保存文件
 	if (file_put_contents($filepath, $image_data) === false) {
+		$error_message = __('图片保存失败', 'argon');
 		return false;
 	}
+	@chmod($filepath, 0644);
 	
-	// 返回相对 URL
 	return $upload_dir['baseurl'] . '/feedback-images/' . $filename;
 }
 
@@ -531,6 +567,7 @@ $public_feedbacks = argon_get_feedbacks('public');
 $stats = argon_get_feedback_stats();
 $captcha_enabled = argon_is_feedback_captcha_enabled();
 $captcha_type = get_option('argon_captcha_type', 'math');
+$feedback_image_settings = argon_get_feedback_image_settings();
 
 $saved_name = $_COOKIE['comment_author_' . COOKIEHASH] ?? '';
 $saved_email = $_COOKIE['comment_author_email_' . COOKIEHASH] ?? '';
@@ -664,14 +701,26 @@ html.darkmode .feedback-admin-stat .stat-label { color: #aaa; }
 .feedback-public-option input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--themecolor); cursor: pointer; }
 .feedback-public-option label { font-size: 14px; color: var(--color-text-deeper); cursor: pointer; margin: 0; font-weight: 500; }
 .feedback-public-option .hint { font-size: 12px; color: #666; margin-left: auto; }
-.feedback-image-upload { display: flex; flex-wrap: wrap; gap: 12px; padding: 12px; border: 1.5px dashed var(--color-border); border-radius: var(--card-radius-sm); background: rgba(var(--themecolor-rgbstr), 0.025); transition: all var(--animation-fast) var(--ease-standard); }
+.feedback-image-upload { display: grid; gap: 12px; padding: 12px; border: 1.5px dashed var(--color-border); border-radius: var(--card-radius-sm); background: rgba(var(--themecolor-rgbstr), 0.025); transition: all var(--animation-fast) var(--ease-standard); }
 .feedback-image-upload.dragover { border-color: var(--themecolor); background: rgba(var(--themecolor-rgbstr), 0.08); }
-.feedback-image-preview { display: contents; }
+.feedback-image-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 30px; }
+.feedback-image-status { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--card-radius-sm); background: rgba(var(--themecolor-rgbstr), 0.08); color: var(--themecolor); font-size: 12px; font-weight: 700; }
+.feedback-image-clear-btn { display: none; padding: 5px 10px !important; font-size: 12px !important; border-radius: var(--card-radius-sm) !important; }
+.feedback-image-clear-btn.show { display: inline-flex; align-items: center; gap: 5px; }
+.feedback-image-preview { display: flex; flex-wrap: wrap; gap: 12px; min-height: 100px; }
 .feedback-image-item { position: relative; width: 100px; height: 100px; border-radius: var(--card-radius-sm); overflow: hidden; border: 2px solid var(--color-border); transition: all var(--animation-fast) var(--ease-standard); }
 .feedback-image-item:hover { border-color: var(--themecolor); transform: scale(1.05); }
 .feedback-image-item img { width: 100%; height: 100%; object-fit: cover; }
 .feedback-image-item .remove-btn { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; background: rgba(245,54,92,0.9); color: #fff; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; transition: all var(--animation-fast) var(--ease-standard); }
 .feedback-image-item .remove-btn:hover { background: #f5365c; transform: scale(1.1); }
+.feedback-image-item .retry-btn { position: absolute; left: 6px; right: 6px; bottom: 6px; height: 26px; padding: 0; border: none; border-radius: var(--card-radius-sm); background: rgba(var(--themecolor-rgbstr), 0.92); color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; }
+.feedback-image-item .image-state { position: absolute; left: 6px; top: 6px; max-width: calc(100% - 38px); padding: 3px 7px; border-radius: 12px; background: rgba(0, 0, 0, 0.58); color: #fff; font-size: 11px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.feedback-image-item .image-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(0, 0, 0, 0.24); }
+.feedback-image-item .image-progress span { display: block; height: 100%; width: 0%; background: var(--themecolor); transition: width 0.2s ease; }
+.feedback-image-item.status-error { border-color: rgba(245, 54, 92, 0.7); }
+.feedback-image-item.status-error img { filter: grayscale(0.7) brightness(0.68); }
+.feedback-image-item.status-ready { border-color: rgba(var(--themecolor-rgbstr), 0.45); }
+.feedback-image-item.status-done { border-color: rgba(5, 150, 105, 0.65); }
 .feedback-image-add-btn { width: 100px; height: 100px; border: 2px dashed var(--color-border); border-radius: var(--card-radius-sm); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all var(--animation-fast) var(--ease-standard); color: #666; font-size: 13px; }
 .feedback-image-add-btn:hover { border-color: var(--themecolor); color: var(--themecolor); background: rgba(var(--themecolor-rgbstr), 0.05); }
 .feedback-image-add-btn.disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
@@ -1061,13 +1110,18 @@ html.darkmode .feedback-images-display img { border-color: #555; }
 		</div>
 		<div class="form-row full">
 			<div class="form-group">
-				<label><?php _e('上传图片', 'argon'); ?> <span class="feedback-field-hint"><?php _e('（选填，最多10张，单张最大250KB）', 'argon'); ?></span></label>
+				<label><?php _e('上传图片', 'argon'); ?> <span class="feedback-field-hint"><?php printf(__('（选填，最多 %1$d 张，单张压缩后不超过 %2$s）', 'argon'), $feedback_image_settings['max_count'], size_format($feedback_image_settings['max_bytes'])); ?></span></label>
 				<div class="feedback-image-upload">
-					<div class="feedback-image-preview" id="feedback-image-preview"></div>
-					<label class="feedback-image-add-btn" id="feedback-image-add-btn" for="feedback-image-input">
-						<i class="fa fa-plus"></i>
-						<span><?php _e('添加图片', 'argon'); ?></span>
-					</label>
+					<div class="feedback-image-toolbar">
+						<span class="feedback-image-status" id="feedback-image-status"><i class="fa fa-picture-o"></i><span><?php _e('尚未选择图片', 'argon'); ?></span></span>
+						<button type="button" class="btn btn-secondary feedback-image-clear-btn" id="feedback-image-clear-btn"><i class="fa fa-trash-o"></i><?php _e('清空图片', 'argon'); ?></button>
+					</div>
+					<div class="feedback-image-preview" id="feedback-image-preview">
+						<label class="feedback-image-add-btn" id="feedback-image-add-btn" for="feedback-image-input">
+							<i class="fa fa-plus"></i>
+							<span><?php _e('添加图片', 'argon'); ?></span>
+						</label>
+					</div>
 					<input type="file" id="feedback-image-input" accept="image/*" multiple style="display:none;">
 				</div>
 			</div>
@@ -1307,11 +1361,14 @@ var feedbackAjaxUrl = <?php echo wp_json_encode(esc_url_raw($_SERVER['REQUEST_UR
 var feedbackCaptchaType = '<?php echo esc_js($captcha_type); ?>';
 var feedbackCaptchaEnabled = <?php echo $captcha_enabled ? 'true' : 'false'; ?>;
 var currentFeedbackId = null;
-var feedbackImages = []; // 存储已上传的图片 URL
-var maxFeedbackImages = 10;
-var maxImageSize = 250 * 1024; // 250KB
-var maxImageDimension = 4096; // 最大分辨率
-var uploadingCount = 0; // 正在上传的图片数量
+var feedbackImages = []; // 提交前实际上传成功的图片 URL
+var feedbackImageQueue = [];
+var feedbackImageNextId = 1;
+var maxFeedbackImages = <?php echo intval($feedback_image_settings['max_count']); ?>;
+var maxImageSize = <?php echo intval($feedback_image_settings['max_bytes']); ?>;
+var maxImageDimension = <?php echo intval($feedback_image_settings['max_dimension']); ?>;
+var maxSourceImageSize = <?php echo intval($feedback_image_settings['max_source_bytes']); ?>;
+var uploadingCount = 0; // 正在处理/上传的图片数量
 var feedbackDraftKey = 'argon_feedback_form_draft';
 
 function getFeedbackActionUrl(action) {
@@ -1482,190 +1539,367 @@ if (document.readyState === 'loading') {
 
 <?php if (!$is_admin) : ?>
 // ==================== 图片上传处理 ====================
-function compressAndUploadImage(file, callback) {
-	let reader = new FileReader();
-	reader.onload = function(e) {
-		let img = new Image();
-		img.onload = function() {
-			// 检查分辨率
-			if (img.width > maxImageDimension || img.height > maxImageDimension) {
-				if (typeof iziToast !== 'undefined') {
-					iziToast.error({ 
-						title: '<?php _e('图片分辨率过大', 'argon'); ?>', 
-						message: '<?php _e('图片分辨率不能超过 4096x4096，请使用较小的图片', 'argon'); ?>',
-						position: 'topRight', 
-						timeout: 5000 
-					});
-				} else {
-					alert('<?php _e('图片分辨率不能超过 4096x4096', 'argon'); ?>');
-				}
-				callback(null);
-				return;
-			}
-			
-			let canvas = document.createElement('canvas');
-			let ctx = canvas.getContext('2d');
-			
-			// 初始质量
-			let quality = 0.9;
-			let width = img.width;
-			let height = img.height;
-			
-			// 如果图片太大，先缩小尺寸
-			let maxDimension = 2048;
-			if (width > maxDimension || height > maxDimension) {
-				if (width > height) {
-					height = (height / width) * maxDimension;
-					width = maxDimension;
-				} else {
-					width = (width / height) * maxDimension;
-					height = maxDimension;
-				}
-			}
-			
-			canvas.width = width;
-			canvas.height = height;
-			ctx.drawImage(img, 0, 0, width, height);
-			
-			// 尝试压缩
-			let tryCompress = function(q) {
-				let dataUrl = canvas.toDataURL('image/jpeg', q);
-				let size = Math.round((dataUrl.length - 'data:image/jpeg;base64,'.length) * 0.75);
-				
-				if (size <= maxImageSize || q <= 0.1) {
-					if (size > maxImageSize) {
-						// 无法压缩到目标大小
-						if (typeof iziToast !== 'undefined') {
-							iziToast.error({ 
-								title: '<?php _e('图片无法压缩', 'argon'); ?>', 
-								message: '<?php _e('图片内容过于复杂，无法压缩到 250KB 以下，请使用更小的图片', 'argon'); ?>',
-								position: 'topRight', 
-								timeout: 5000 
-							});
-						} else {
-							alert('<?php _e('图片无法压缩到 250KB 以下', 'argon'); ?>');
-						}
-						callback(null);
-					} else {
-						// 上传到服务器
-						uploadingCount++;
-						updateImagePreview();
-						
-						let formData = new FormData();
-						formData.append('feedback_action', 'upload_image');
-						formData.append('feedback_upload_nonce', feedbackUploadNonce);
-						formData.append('image_data', dataUrl);
-						
-						fetch(feedbackAjaxUrl, { method: 'POST', body: formData })
-							.then(function(r) { return r.json(); })
-							.then(function(res) {
-								uploadingCount--;
-								if (res.success) {
-									callback(res.url);
-								} else {
-									if (typeof iziToast !== 'undefined') {
-										iziToast.error({ 
-											title: '<?php _e('上传失败', 'argon'); ?>', 
-											message: res.message || '<?php _e('请稍后重试', 'argon'); ?>',
-											position: 'topRight', 
-											timeout: 5000 
-										});
-									} else {
-										alert(res.message || '<?php _e('上传失败', 'argon'); ?>');
-									}
-									callback(null);
-								}
-								updateImagePreview();
-							})
-							.catch(function() {
-								uploadingCount--;
-								if (typeof iziToast !== 'undefined') {
-									iziToast.error({ 
-										title: '<?php _e('上传失败', 'argon'); ?>', 
-										message: '<?php _e('网络错误，请稍后重试', 'argon'); ?>',
-										position: 'topRight', 
-										timeout: 5000 
-									});
-								} else {
-									alert('<?php _e('上传失败', 'argon'); ?>');
-								}
-								callback(null);
-								updateImagePreview();
-							});
-					}
-				} else {
-					// 继续降低质量
-					tryCompress(q - 0.1);
-				}
-			};
-			
-			tryCompress(quality);
+var feedbackImageLabels = <?php echo wp_json_encode([
+	'idle' => __('尚未选择图片', 'argon'),
+	'count' => __('已选择 %1$d / %2$d 张', 'argon'),
+	'processing' => __('正在处理 %d 张图片', 'argon'),
+	'ready' => __('等待提交时上传', 'argon'),
+	'done' => __('已上传', 'argon'),
+	'compressing' => __('压缩中', 'argon'),
+	'uploading' => __('上传中', 'argon'),
+	'error' => __('失败', 'argon'),
+	'retry' => __('重试', 'argon'),
+	'remove' => __('删除图片', 'argon'),
+	'formatError' => __('只能上传 JPG、PNG、GIF 或 WebP 图片', 'argon'),
+	'tooMany' => __('最多上传 %d 张图片', 'argon'),
+	'sourceTooLarge' => __('原图不能超过 %s', 'argon'),
+	'compressFail' => __('图片无法压缩到 %s 以下，请换一张更小或内容更简单的图片', 'argon'),
+	'readFail' => __('图片读取失败', 'argon'),
+	'networkFail' => __('网络错误，请稍后重试', 'argon'),
+	'waitProcessing' => __('请等待图片处理完成', 'argon'),
+	'fixImages' => __('请先重试或删除失败的图片', 'argon'),
+	'uploadFail' => __('图片上传失败', 'argon'),
+	'clearImages' => __('图片已清空', 'argon'),
+], JSON_UNESCAPED_UNICODE); ?>;
+var feedbackImageConfig = {
+	maxCount: maxFeedbackImages,
+	maxSizeLabel: <?php echo wp_json_encode(size_format($feedback_image_settings['max_bytes'])); ?>,
+	maxSourceSizeLabel: <?php echo wp_json_encode(size_format($feedback_image_settings['max_source_bytes'])); ?>
+};
+
+function formatFeedbackImageLabel(template, args) {
+	var text = template || '';
+	for (var i = 0; i < args.length; i++) {
+		text = text.replace('%' + (i + 1) + '$d', args[i]);
+		text = text.replace('%' + (i + 1) + '$s', args[i]);
+		text = text.replace('%d', args[i]);
+		text = text.replace('%s', args[i]);
+	}
+	return text;
+}
+
+function getFeedbackImageProcessingCount() {
+	var count = 0;
+	for (var i = 0; i < feedbackImageQueue.length; i++) {
+		if (feedbackImageQueue[i].status === 'compressing' || feedbackImageQueue[i].status === 'uploading') {
+			count++;
+		}
+	}
+	return count;
+}
+
+function getFeedbackImageErrorCount() {
+	var count = 0;
+	for (var i = 0; i < feedbackImageQueue.length; i++) {
+		if (feedbackImageQueue[i].status === 'error') {
+			count++;
+		}
+	}
+	return count;
+}
+
+function updateFeedbackImageStatus() {
+	var status = document.getElementById('feedback-image-status');
+	var clearBtn = document.getElementById('feedback-image-clear-btn');
+	if (!status) return;
+	var text = feedbackImageLabels.idle;
+	var processing = getFeedbackImageProcessingCount();
+	var errors = getFeedbackImageErrorCount();
+	if (processing > 0) {
+		text = formatFeedbackImageLabel(feedbackImageLabels.processing, [processing]);
+	} else if (errors > 0) {
+		text = feedbackImageLabels.error + ' ' + errors + ' / ' + feedbackImageQueue.length;
+	} else if (feedbackImageQueue.length > 0) {
+		text = formatFeedbackImageLabel(feedbackImageLabels.count, [feedbackImageQueue.length, maxFeedbackImages]);
+	}
+	var label = status.querySelector('span');
+	if (label) label.textContent = text;
+	if (clearBtn) clearBtn.classList.toggle('show', feedbackImageQueue.length > 0);
+	uploadingCount = processing;
+}
+
+function estimateFeedbackImageDataUrlSize(dataUrl) {
+	var marker = ';base64,';
+	var index = dataUrl.indexOf(marker);
+	var length = index === -1 ? dataUrl.length : dataUrl.length - index - marker.length;
+	return Math.round(length * 0.75);
+}
+
+function escapeFeedbackImageHtml(text) {
+	var div = document.createElement('div');
+	div.textContent = text || '';
+	return div.innerHTML;
+}
+
+function compressFeedbackImage(file, item) {
+	return new Promise(function(resolve, reject) {
+		if (!file || !file.type || !/^image\/(jpeg|jpg|png|gif|webp)$/i.test(file.type)) {
+			reject(new Error(feedbackImageLabels.formatError));
+			return;
+		}
+		if (file.size > maxSourceImageSize) {
+			reject(new Error(formatFeedbackImageLabel(feedbackImageLabels.sourceTooLarge, [feedbackImageConfig.maxSourceSizeLabel])));
+			return;
+		}
+
+		var reader = new FileReader();
+		reader.onerror = function() {
+			reject(new Error(feedbackImageLabels.readFail));
 		};
-		img.src = e.target.result;
-	};
-	reader.readAsDataURL(file);
+		reader.onload = function(e) {
+			var img = new Image();
+			img.onerror = function() {
+				reject(new Error(feedbackImageLabels.readFail));
+			};
+			img.onload = function() {
+				var sourceWidth = img.naturalWidth || img.width;
+				var sourceHeight = img.naturalHeight || img.height;
+				var width = sourceWidth;
+				var height = sourceHeight;
+				var ratio = Math.min(1, maxImageDimension / Math.max(width, height));
+				width = Math.max(1, Math.round(width * ratio));
+				height = Math.max(1, Math.round(height * ratio));
+
+				var canvas = document.createElement('canvas');
+				var ctx = canvas.getContext('2d');
+				var quality = 0.88;
+				var minQuality = 0.42;
+				var output = null;
+				var attempts = 0;
+
+				while (attempts < 32) {
+					canvas.width = width;
+					canvas.height = height;
+					ctx.clearRect(0, 0, width, height);
+					ctx.drawImage(img, 0, 0, width, height);
+					var dataUrl = canvas.toDataURL('image/jpeg', quality);
+					var size = estimateFeedbackImageDataUrlSize(dataUrl);
+					output = { dataUrl: dataUrl, size: size, width: width, height: height };
+					if (size <= maxImageSize) break;
+					if (quality > minQuality) {
+						quality = Math.max(minQuality, quality - 0.08);
+					} else if (width > 640 || height > 640) {
+						width = Math.max(1, Math.round(width * 0.86));
+						height = Math.max(1, Math.round(height * 0.86));
+						quality = 0.82;
+					} else {
+						break;
+					}
+					attempts++;
+					if (item) {
+						item.progress = Math.min(88, 18 + attempts * 5);
+						updateImagePreview();
+					}
+				}
+
+				if (!output || output.size > maxImageSize) {
+					reject(new Error(formatFeedbackImageLabel(feedbackImageLabels.compressFail, [feedbackImageConfig.maxSizeLabel])));
+					return;
+				}
+				resolve(output);
+			};
+			img.src = e.target.result;
+		};
+		reader.readAsDataURL(file);
+	});
+}
+
+function prepareFeedbackImageItem(item) {
+	item.status = 'compressing';
+	item.error = '';
+	item.url = '';
+	item.progress = 8;
+	updateImagePreview();
+	compressFeedbackImage(item.file, item)
+		.then(function(result) {
+			item.dataUrl = result.dataUrl;
+			item.previewUrl = result.dataUrl;
+			item.size = result.size;
+			item.width = result.width;
+			item.height = result.height;
+			item.status = 'ready';
+			item.progress = 100;
+			updateImagePreview();
+		})
+		.catch(function(err) {
+			item.status = 'error';
+			item.error = err && err.message ? err.message : feedbackImageLabels.compressFail;
+			item.progress = 0;
+			updateImagePreview();
+			showFeedbackNotice('error', item.error);
+		});
+}
+
+function uploadFeedbackImageItem(item) {
+	return new Promise(function(resolve, reject) {
+		if (item.status === 'done' && item.url) {
+			resolve(item.url);
+			return;
+		}
+		if (!item.dataUrl || item.status === 'error') {
+			reject(new Error(item.error || feedbackImageLabels.fixImages));
+			return;
+		}
+
+		item.status = 'uploading';
+		item.progress = 18;
+		updateImagePreview();
+
+		var formData = new FormData();
+		formData.append('feedback_action', 'upload_image');
+		formData.append('feedback_upload_nonce', feedbackUploadNonce);
+		formData.append('image_data', item.dataUrl);
+
+		fetch(feedbackAjaxUrl, { method: 'POST', body: formData })
+			.then(function(r) {
+				item.progress = 72;
+				updateImagePreview();
+				return r.json();
+			})
+			.then(function(res) {
+				if (res.success && res.url) {
+					item.status = 'done';
+					item.url = res.url;
+					item.progress = 100;
+					updateImagePreview();
+					resolve(res.url);
+				} else {
+					item.status = 'error';
+					item.error = res.message || feedbackImageLabels.uploadFail;
+					item.progress = 0;
+					updateImagePreview();
+					reject(new Error(item.error));
+				}
+			})
+			.catch(function(err) {
+				item.status = 'error';
+				item.error = err && err.message ? err.message : feedbackImageLabels.networkFail;
+				item.progress = 0;
+				updateImagePreview();
+				reject(new Error(item.error));
+			});
+	});
+}
+
+function uploadFeedbackQueuedImages() {
+	var chain = Promise.resolve([]);
+	feedbackImageQueue.forEach(function(item) {
+		chain = chain.then(function(urls) {
+			return uploadFeedbackImageItem(item).then(function(url) {
+				urls.push(url);
+				return urls;
+			});
+		});
+	});
+	return chain;
 }
 
 function updateImagePreview() {
-	let preview = document.getElementById('feedback-image-preview');
-	let addBtn = document.getElementById('feedback-image-add-btn');
-	
+	var preview = document.getElementById('feedback-image-preview');
+	var addBtn = document.getElementById('feedback-image-add-btn');
+	if (!preview || !addBtn) return;
+
 	preview.innerHTML = '';
-	
-	// 显示已上传的图片
-	feedbackImages.forEach(function(img, index) {
-		let item = document.createElement('div');
-		item.className = 'feedback-image-item';
-		item.innerHTML = '<img src="' + img + '" alt=""><button type="button" class="remove-btn" onclick="removeFeedbackImage(' + index + ')">&times;</button>';
-		preview.appendChild(item);
-	});
-	
-	// 显示上传中的占位符
-	for (let i = 0; i < uploadingCount; i++) {
-		let item = document.createElement('div');
-		item.className = 'feedback-image-item uploading';
-		item.innerHTML = '<div class="uploading-spinner"><i class="fa fa-spinner fa-spin"></i></div>';
+	for (var i = 0; i < feedbackImageQueue.length; i++) {
+		var image = feedbackImageQueue[i];
+		var item = document.createElement('div');
+		var statusClass = image.status ? ' status-' + image.status : '';
+		item.className = 'feedback-image-item' + statusClass + (image.status === 'uploading' || image.status === 'compressing' ? ' uploading' : '');
+		var src = image.previewUrl || image.dataUrl || '';
+		var stateText = image.error || feedbackImageLabels[image.status] || feedbackImageLabels.ready;
+		var html = '';
+		if (src) {
+			html += '<img src="' + src + '" alt="">';
+		} else {
+			html += '<div class="uploading-spinner"><i class="fa fa-spinner fa-spin"></i></div>';
+		}
+		html += '<span class="image-state">' + escapeFeedbackImageHtml(stateText) + '</span>';
+		html += '<button type="button" class="remove-btn" onclick="removeFeedbackImage(' + image.id + ')" aria-label="' + escapeFeedbackImageHtml(feedbackImageLabels.remove) + '">&times;</button>';
+		if (image.status === 'error') {
+			html += '<button type="button" class="retry-btn" onclick="retryFeedbackImage(' + image.id + ')">' + escapeFeedbackImageHtml(feedbackImageLabels.retry) + '</button>';
+		}
+		if (image.status === 'compressing' || image.status === 'uploading') {
+			html += '<div class="image-progress"><span style="width:' + Math.max(8, image.progress || 8) + '%"></span></div>';
+		}
+		item.innerHTML = html;
 		preview.appendChild(item);
 	}
-	
-	if (feedbackImages.length + uploadingCount >= maxFeedbackImages) {
-		addBtn.classList.add('disabled');
-	} else {
-		addBtn.classList.remove('disabled');
-	}
+
+	addBtn.classList.toggle('disabled', feedbackImageQueue.length >= maxFeedbackImages);
+	preview.appendChild(addBtn);
+	updateFeedbackImageStatus();
 }
 
-function removeFeedbackImage(index) {
-	feedbackImages.splice(index, 1);
+function findFeedbackImage(id) {
+	for (var i = 0; i < feedbackImageQueue.length; i++) {
+		if (feedbackImageQueue[i].id === id) return feedbackImageQueue[i];
+	}
+	return null;
+}
+
+function removeFeedbackImage(id) {
+	for (var i = 0; i < feedbackImageQueue.length; i++) {
+		if (feedbackImageQueue[i].id === id) {
+			feedbackImageQueue.splice(i, 1);
+			break;
+		}
+	}
+	updateImagePreview();
+}
+
+function retryFeedbackImage(id) {
+	var item = findFeedbackImage(id);
+	if (!item) return;
+	if (item.dataUrl) {
+		item.status = 'ready';
+		item.error = '';
+		item.progress = 100;
+		updateImagePreview();
+		return;
+	}
+	prepareFeedbackImageItem(item);
+}
+
+function clearFeedbackImages() {
+	feedbackImageQueue = [];
+	feedbackImages = [];
 	updateImagePreview();
 }
 
 function handleFeedbackImageFiles(fileList) {
-	let files = Array.from(fileList || []);
-	let remaining = maxFeedbackImages - feedbackImages.length - uploadingCount;
+	var files = Array.prototype.slice.call(fileList || []);
+	var remaining = maxFeedbackImages - feedbackImageQueue.length;
 	if (remaining <= 0) {
-		showFeedbackNotice('warning', '<?php _e('最多上传 10 张图片', 'argon'); ?>');
+		showFeedbackNotice('warning', formatFeedbackImageLabel(feedbackImageLabels.tooMany, [maxFeedbackImages]));
 		return;
 	}
-	
+
 	if (files.length > remaining) {
-		showFeedbackNotice('warning', '<?php _e('最多上传 10 张图片', 'argon'); ?>');
+		showFeedbackNotice('warning', formatFeedbackImageLabel(feedbackImageLabels.tooMany, [maxFeedbackImages]));
 		files = files.slice(0, remaining);
 	}
-	
-	files.forEach(function(file) {
-		if (!file.type.startsWith('image/')) {
-			showFeedbackNotice('warning', '<?php _e('只能上传图片文件', 'argon'); ?>');
-			return;
+
+	for (var i = 0; i < files.length; i++) {
+		var file = files[i];
+		if (!file.type || !/^image\//i.test(file.type)) {
+			showFeedbackNotice('warning', feedbackImageLabels.formatError);
+			continue;
 		}
-		
-		compressAndUploadImage(file, function(url) {
-			if (url) {
-				feedbackImages.push(url);
-				updateImagePreview();
-			}
-		});
-	});
+		var item = {
+			id: feedbackImageNextId++,
+			file: file,
+			name: file.name || '',
+			status: 'compressing',
+			progress: 0,
+			error: '',
+			dataUrl: '',
+			previewUrl: '',
+			url: ''
+		};
+		feedbackImageQueue.push(item);
+		prepareFeedbackImageItem(item);
+	}
+	updateImagePreview();
 }
 
 var feedbackImageInput = document.getElementById('feedback-image-input');
@@ -1676,26 +1910,37 @@ if (feedbackImageInput) {
 	});
 }
 
+var feedbackImageClearBtn = document.getElementById('feedback-image-clear-btn');
+if (feedbackImageClearBtn) {
+	feedbackImageClearBtn.addEventListener('click', function() {
+		clearFeedbackImages();
+		showFeedbackNotice('success', feedbackImageLabels.clearImages);
+	});
+}
+
 function initFeedbackDropUpload() {
-	let upload = document.querySelector('.feedback-image-upload');
+	var upload = document.querySelector('.feedback-image-upload');
 	if (!upload) return;
-	['dragenter', 'dragover'].forEach(function(eventName) {
-		upload.addEventListener(eventName, function(e) {
+	var activateEvents = ['dragenter', 'dragover'];
+	var deactivateEvents = ['dragleave', 'drop'];
+	for (var i = 0; i < activateEvents.length; i++) {
+		upload.addEventListener(activateEvents[i], function(e) {
 			e.preventDefault();
 			e.stopPropagation();
 			upload.classList.add('dragover');
 		});
-	});
-	['dragleave', 'drop'].forEach(function(eventName) {
-		upload.addEventListener(eventName, function(e) {
+	}
+	for (var j = 0; j < deactivateEvents.length; j++) {
+		upload.addEventListener(deactivateEvents[j], function(e) {
 			e.preventDefault();
 			e.stopPropagation();
 			upload.classList.remove('dragover');
 		});
-	});
+	}
 	upload.addEventListener('drop', function(e) {
 		handleFeedbackImageFiles(e.dataTransfer.files);
 	});
+	updateImagePreview();
 }
 
 function updateFeedbackContentCount() {
@@ -1783,8 +2028,7 @@ function clearFeedbackDraft(resetForm) {
 	if (resetForm) {
 		let form = document.getElementById('feedback-form');
 		if (form) form.reset();
-		feedbackImages = [];
-		updateImagePreview();
+		clearFeedbackImages();
 		updateFeedbackContentCount();
 		let result = document.getElementById('feedback-submit-result');
 		if (result) result.hidden = true;
@@ -1834,16 +2078,18 @@ function submitFeedbackForm() {
 	btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> <?php _e('提交中...', 'argon'); ?>';
 	btn.disabled = true;
 	if (resultBox) resultBox.hidden = true;
-	
-	let formData = new FormData(form);
-	formData.append('feedback_action', 'submit');
-	
-	// 添加已上传的图片 URL
-	feedbackImages.forEach(function(img, index) {
-		formData.append('feedback_images[' + index + ']', img);
-	});
-	
-	fetch(feedbackAjaxUrl, { method: 'POST', body: formData })
+
+	uploadFeedbackQueuedImages()
+		.then(function(uploadedImages) {
+			feedbackImages = uploadedImages;
+			btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> <?php _e('正在提交...', 'argon'); ?>';
+			let formData = new FormData(form);
+			formData.append('feedback_action', 'submit');
+			feedbackImages.forEach(function(img, index) {
+				formData.append('feedback_images[' + index + ']', img);
+			});
+			return fetch(feedbackAjaxUrl, { method: 'POST', body: formData });
+		})
 		.then(function(r) { return r.json(); })
 		.then(function(res) {
 			btn.innerHTML = originalText;
@@ -1852,8 +2098,7 @@ function submitFeedbackForm() {
 				showFeedbackNotice('success', res.message);
 				form.reset();
 				document.getElementById('content-count').textContent = '0';
-				feedbackImages = [];
-				updateImagePreview();
+				clearFeedbackImages();
 				clearFeedbackDraft(false);
 				if (resultBox && resultMessage) {
 					resultMessage.textContent = res.is_public
@@ -1886,10 +2131,10 @@ function submitFeedbackForm() {
 				<?php endif; ?>
 			}
 		})
-		.catch(function() {
+		.catch(function(err) {
 			btn.innerHTML = originalText;
 			btn.disabled = false;
-			showFeedbackNotice('error', '<?php _e('提交失败，请稍后重试', 'argon'); ?>');
+			showFeedbackNotice('error', err && err.message ? err.message : '<?php _e('提交失败，请稍后重试', 'argon'); ?>');
 		});
 }
 
@@ -1898,13 +2143,12 @@ if (feedbackForm) {
 	feedbackForm.addEventListener('submit', function(e) {
 		e.preventDefault();
 		
-		// 检查是否有图片正在上传
-		if (uploadingCount > 0) {
-			if (typeof iziToast !== 'undefined') {
-				iziToast.warning({ title: '<?php _e('请等待图片上传完成', 'argon'); ?>', position: 'topRight', timeout: 3000 });
-			} else {
-				alert('<?php _e('请等待图片上传完成', 'argon'); ?>');
-			}
+		if (getFeedbackImageProcessingCount() > 0) {
+			showFeedbackNotice('warning', feedbackImageLabels.waitProcessing);
+			return;
+		}
+		if (getFeedbackImageErrorCount() > 0) {
+			showFeedbackNotice('warning', feedbackImageLabels.fixImages);
 			return;
 		}
 		
