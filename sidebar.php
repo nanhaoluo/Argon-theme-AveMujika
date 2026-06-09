@@ -590,6 +590,13 @@ $author_desc = get_option('argon_sidebar_author_description');
 								<script type="text/javascript">
 									// 桌面端目录初始化 - 等待 jQuery 和 headIndex 插件加载完成
 									(function initDesktopCatalog() {
+										var postContent = document.getElementById('post_content');
+										var virtualSource = postContent && postContent.querySelector('script.argon-virtual-content-source[type="application/json"]');
+										var virtualizer = window.ArgonLongContentVirtualizer;
+										if (virtualSource && (!virtualizer || !virtualizer.isReady || !virtualizer.isReady())) {
+											setTimeout(initDesktopCatalog, 50);
+											return;
+										}
 										// 检查 jQuery 和 headIndex 是否都已加载
 										if (typeof jQuery !== 'undefined' && typeof jQuery.fn.headIndex === 'function') {
 											jQuery(document).ready(function($) {
@@ -630,6 +637,11 @@ $author_desc = get_option('argon_sidebar_author_description');
 														setTimeout(function() {
 															headIndexInstance.updateCurrent();
 														}, 300);
+													}
+												});
+												$(document).one('argon:longContentVirtualized', function() {
+													if (headIndexInstance && typeof headIndexInstance.updateCurrent === 'function') {
+														headIndexInstance.updateCurrent();
 													}
 												});
 											});

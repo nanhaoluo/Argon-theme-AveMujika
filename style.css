@@ -8,7 +8,7 @@ Author URI: https://solstice23.top/
 
 Description: 杞荤泩銆佺畝娲併€佺編瑙傜殑 Wordpress 涓婚
 
-Version: 1.5.7
+Version: 1.5.8
 
 License: GNU General Public License v3.0
 
@@ -2552,6 +2552,12 @@ html.darkmode.amoled-dark #leftbar_search_container {
 
 }
 
+#leftbar .card,
+#leftbar_part1,
+#leftbar_part2 {
+	will-change: auto !important;
+}
+
 #leftbar_part2.sticky {
 
 	position: fixed;
@@ -2599,9 +2605,16 @@ html.navbar-absolute #leftbar_part2.sticky {
 
 #leftbar_part2.sticky.leftbar-tab-catalog-active #leftbar_part2_inner {
 	height: var(--leftbar-part2-inner-height, auto);
-	overflow: hidden;
+	overflow: visible;
 	display: flex;
 	flex-direction: column;
+}
+
+#leftbar_part2.sticky:not(.leftbar-tab-catalog-active) #leftbar_part2_inner {
+	height: auto !important;
+	max-height: none;
+	overflow: visible;
+	display: block;
 }
 
 #leftbar_part2.sticky.leftbar-tab-catalog-active #leftbar_part2_inner>div:not(.nav-wrapper) {
@@ -2611,7 +2624,7 @@ html.navbar-absolute #leftbar_part2.sticky {
 
 #leftbar_part2.sticky.leftbar-tab-catalog-active #leftbar_part2_inner>div:not(.nav-wrapper)>.tab-content {
 	height: 100%;
-	overflow: hidden;
+	overflow: visible;
 }
 
 /* 鍙湁鏂囩珷鐩綍鏍囩闇€瑕佹粴鍔?*/
@@ -2619,6 +2632,7 @@ html.navbar-absolute #leftbar_part2.sticky {
 	height: 100%;
 	max-height: 100%;
 	overflow-y: auto;
+	overflow-x: hidden;
 	scrollbar-color: rgba(var(--themecolor-rgbstr), 0.35) transparent;
 }
 
@@ -4198,6 +4212,13 @@ article.post.card:not(.post-full):not(.post-preview-layout-2)>.post-header.post-
 
 	contain: layout paint style;
 
+}
+
+html.no-js .post-content>script.argon-virtual-content-source,
+.post-content.argon-long-content-virtual>script.argon-virtual-content-source,
+.post-content.argon-long-content-virtual>.argon-virtual-content-fallback,
+.post-content.argon-long-content-virtual>noscript {
+	display: none !important;
 }
 
 .argon-virtual-section {
@@ -14755,7 +14776,6 @@ article.post.card {
 /* M3 渚ц竟鏍忔牱寮?*/
 #leftbar .card {
 	border-radius: var(--m3-shape-lg) !important;
-	overflow: hidden;
 	will-change: transform;
 }
 
@@ -18207,6 +18227,14 @@ html.darkmode .article-skeleton-thumb {
 	opacity: 1;
 }
 
+.modal {
+	z-index: 2147483100;
+}
+
+.modal-backdrop {
+	z-index: 2147483090;
+}
+
 @media screen and (max-width: 900px) {
 	.modal-dialog.modal-bottom {
 		position: fixed;
@@ -18611,7 +18639,7 @@ html.darkmode .shuoshuo-content .argon-hidden-text-background:active {
 	z-index: 5;
 	flex: 0 0 auto;
 	width: auto;
-	margin: 0;
+	margin: 0 0 0 auto;
 	padding: 0;
 	text-align: right;
 }

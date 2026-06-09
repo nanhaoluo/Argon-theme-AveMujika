@@ -185,9 +185,8 @@
 		if (!card) return;
 
 		// 创建模糊覆盖层
-		var overlay = document.createElement('div');
-		overlay.className = 'post-full-blur-overlay';
-		card.insertBefore(overlay, card.firstChild);
+		var overlay = card.querySelector('.post-full-blur-overlay');
+		if (!overlay) return;
 
 		var ticking = false;
 		function updateOverlay() {

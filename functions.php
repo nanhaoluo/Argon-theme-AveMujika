@@ -1672,6 +1672,9 @@ function argon_the_content_virtualized($content = null, $before_html = '') {
 	echo '<script type="application/json" class="argon-virtual-content-source">';
 	echo wp_json_encode($sections, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP);
 	echo '</script>';
+	echo '<div class="argon-virtual-content-fallback">';
+	echo $html;
+	echo '</div>';
 	echo '<noscript>' . $html . '</noscript>';
 }
 

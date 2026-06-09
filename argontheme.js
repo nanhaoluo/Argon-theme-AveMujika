@@ -3242,49 +3242,62 @@ function disconnectHighlightObserver() {
 
 function initArgonLongContentVirtualizer() {
 	var content = document.getElementById("post_content");
-	if (!content || content.getAttribute("data-argon-virtual-ready") === "true") {
-		return;
-	}
-	if (postPasswordRequiredOnPage()) {
-		return;
-	}
-	if (!("querySelectorAll" in content) || !("appendChild" in content)) {
-		return;
-	}
+	try {
+		if (!content || content.getAttribute("data-argon-virtual-ready") === "true") {
+			return;
+		}
+		if (postPasswordRequiredOnPage()) {
+			return;
+		}
+		if (!("querySelectorAll" in content) || !("appendChild" in content)) {
+			return;
+		}
 
-	var sourceSections = getArgonVirtualContentSource(content);
-	if (sourceSections && sourceSections.length < 3) {
+		var sourceSections = getArgonVirtualContentSource(content);
+		if (sourceSections && sourceSections.length < 3) {
+			restoreVirtualSourceFallback(content);
+			return;
+		}
+		if (!sourceSections && content.querySelector("script:not(.argon-virtual-content-source)")) {
+			return;
+		}
+		if (!sourceSections && content.querySelector("script.argon-virtual-content-source")) {
+			restoreVirtualSourceFallback(content);
+			return;
+		}
+
+		var existingBlocks = content.children.length;
+		var textLength = (content.textContent || "").replace(/\s+/g, "").length;
+		var heavyNodes = content.querySelectorAll("pre, table, blockquote, figure, img, iframe, video, .wp-block, .katex, .MathJax, script").length;
+		if (!sourceSections && textLength < 12000 && existingBlocks < 120 && heavyNodes < 30) {
+			return;
+		}
+
+		if (window.ArgonLongContentVirtualizer && typeof window.ArgonLongContentVirtualizer.destroy === "function") {
+			window.ArgonLongContentVirtualizer.destroy(false);
+		}
+
+		window.ArgonLongContentVirtualizer = createArgonLongContentVirtualizer(content, {
+			sourceSections: sourceSections,
+			targetTextLength: 1800,
+			maxPlainTextBlockLength: 2200,
+			maxNodesPerSection: 18,
+			keepRange: 2,
+			rootMargin: "1200px 0px 1200px 0px"
+		});
+		window.ArgonLongContentVirtualizer.init();
+	} catch (e) {
+		if (window.ArgonLongContentVirtualizer && typeof window.ArgonLongContentVirtualizer.destroy === "function") {
+			try {
+				window.ArgonLongContentVirtualizer.destroy(true);
+			} catch (destroyError) { }
+		}
+		window.ArgonLongContentVirtualizer = null;
 		restoreVirtualSourceFallback(content);
-		return;
+		if (typeof ArgonDebug !== "undefined" && ArgonDebug.warn) {
+			ArgonDebug.warn("Long content virtualizer failed, restored full content:", e);
+		}
 	}
-	if (!sourceSections && content.querySelector("script:not(.argon-virtual-content-source)")) {
-		return;
-	}
-	if (!sourceSections && content.querySelector("script.argon-virtual-content-source")) {
-		restoreVirtualSourceFallback(content);
-		return;
-	}
-
-	var existingBlocks = content.children.length;
-	var textLength = (content.textContent || "").replace(/\s+/g, "").length;
-	var heavyNodes = content.querySelectorAll("pre, table, blockquote, figure, img, iframe, video, .wp-block, .katex, .MathJax, script").length;
-	if (!sourceSections && textLength < 12000 && existingBlocks < 120 && heavyNodes < 30) {
-		return;
-	}
-
-	if (window.ArgonLongContentVirtualizer && typeof window.ArgonLongContentVirtualizer.destroy === "function") {
-		window.ArgonLongContentVirtualizer.destroy(false);
-	}
-
-	window.ArgonLongContentVirtualizer = createArgonLongContentVirtualizer(content, {
-		sourceSections: sourceSections,
-		targetTextLength: 1800,
-		maxPlainTextBlockLength: 2200,
-		maxNodesPerSection: 18,
-		keepRange: 2,
-		rootMargin: "1200px 0px 1200px 0px"
-	});
-	window.ArgonLongContentVirtualizer.init();
 }
 
 function getArgonVirtualContentSource(content) {
@@ -3302,12 +3315,20 @@ function getArgonVirtualContentSource(content) {
 }
 
 function restoreVirtualSourceFallback(content) {
-	var fallback = content ? content.querySelector("noscript") : null;
-	if (!fallback) {
+	if (!content) {
 		return false;
 	}
-	content.innerHTML = fallback.textContent || fallback.innerHTML;
-	return true;
+	var fallback = content.querySelector(".argon-virtual-content-fallback");
+	if (fallback) {
+		content.innerHTML = fallback.innerHTML;
+		return true;
+	}
+	var noscript = content.querySelector("noscript");
+	if (noscript) {
+		content.innerHTML = noscript.textContent || noscript.innerHTML;
+		return true;
+	}
+	return false;
 }
 
 function normalizeArgonVirtualSourceSections(sourceSections) {
@@ -3376,6 +3397,7 @@ function createArgonLongContentVirtualizer(content, options) {
 		setupObserver();
 		renderAroundIndex(0, true);
 		scheduleUpdate();
+		jQuery(document).trigger("argon:longContentVirtualized");
 	}
 
 	function buildSections(nodes) {
@@ -4309,6 +4331,11 @@ function executeInlineScripts(container) {
 	// 需求 4.3: 按照脚本在 DOM 中的顺序执行
 	scripts.forEach((script, index) => {
 		if (script.getAttribute('data-pjax-executed') === 'true') {
+			return;
+		}
+		var scriptType = (script.getAttribute('type') || '').toLowerCase();
+		if (scriptType && scriptType !== 'text/javascript' && scriptType !== 'application/javascript' && scriptType !== 'module') {
+			ArgonDebug.log(`Script ${index + 1}: Data script (${scriptType}), skipped`);
 			return;
 		}
 		// 需求 4.2: 只执行内联脚本（没有 src 属性的脚本）
