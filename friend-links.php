@@ -41,12 +41,25 @@ if (isset($_POST['flink_action'])) {
                 'category' => isset($_POST['category']) ? $_POST['category'] : '',
                 'status' => 'approved'
             ));
-            $response = array('success' => $id !== false, 'id' => $id);
+            $response = array(
+                'success' => $id !== false,
+                'id' => $id,
+                'message' => $id !== false ? __('已添加友链', 'argon') : __('添加失败，可能已存在相同域名的友链', 'argon')
+            );
             break;
             
         case 'delete':
             $id = isset($_POST['id']) ? sanitize_text_field($_POST['id']) : '';
-            $response = array('success' => argon_delete_friend_link($id));
+            if (empty($id)) {
+                $response = array('success' => false, 'message' => __('友链 ID 不能为空', 'argon'));
+                break;
+            }
+            if (!argon_get_friend_link($id)) {
+                $response = array('success' => false, 'message' => __('友链不存在或已被删除，请刷新页面后重试', 'argon'));
+                break;
+            }
+            $deleted = argon_delete_friend_link($id);
+            $response = array('success' => $deleted, 'message' => $deleted ? __('已删除友链', 'argon') : __('友链不存在', 'argon'));
             break;
             
         case 'approve':
@@ -70,11 +83,24 @@ if (isset($_POST['flink_action'])) {
             
         case 'update':
             $id = isset($_POST['id']) ? sanitize_text_field($_POST['id']) : '';
+            if (empty($id)) {
+                $response = array('success' => false, 'message' => __('友链 ID 不能为空', 'argon'));
+                break;
+            }
+            if (!argon_get_friend_link($id)) {
+                $response = array('success' => false, 'message' => __('友链不存在或已被删除，请刷新页面后重试', 'argon'));
+                break;
+            }
             $data = array();
             foreach (array('name', 'display_name', 'url', 'links_page', 'avatar', 'description', 'auto_description', 'category', 'hide_no_backlink', 'auto_approved') as $f) {
                 if (isset($_POST[$f])) $data[$f] = $_POST[$f];
             }
-            $response = array('success' => argon_update_friend_link($id, $data));
+            if (empty($data)) {
+                $response = array('success' => true, 'message' => __('没有需要保存的变化', 'argon'));
+                break;
+            }
+            $updated = argon_update_friend_link($id, $data);
+            $response = array('success' => $updated, 'message' => $updated ? __('已保存友链信息', 'argon') : __('保存失败，请刷新页面后重试', 'argon'));
             break;
             
         case 'get':
@@ -87,11 +113,26 @@ if (isset($_POST['flink_action'])) {
             $id = isset($_POST['id']) ? sanitize_text_field($_POST['id']) : '';
             $link = argon_get_friend_link($id);
             if ($link) {
-                $links_page = !empty($link['links_page']) ? $link['links_page'] : '';
+                $raw_links_page = isset($_POST['links_page']) ? trim(wp_unslash($_POST['links_page'])) : '';
+                if ($raw_links_page !== '' && !preg_match('/^https?:\/\//i', $raw_links_page)) {
+                    $raw_links_page = 'https://' . $raw_links_page;
+                }
+                $links_page = $raw_links_page !== '' ? esc_url_raw($raw_links_page) : (!empty($link['links_page']) ? $link['links_page'] : '');
+                if (empty($links_page)) {
+                    $response = array('success' => false, 'message' => __('请先填写对方的友链页面地址', 'argon'));
+                    break;
+                }
+                $raw_url = isset($_POST['url']) ? trim(wp_unslash($_POST['url'])) : '';
+                if ($raw_url !== '' && !preg_match('/^https?:\/\//i', $raw_url)) {
+                    $raw_url = 'https://' . $raw_url;
+                }
+                $url = $raw_url !== '' ? esc_url_raw($raw_url) : $link['url'];
                 $has_backlink = $links_page ? argon_check_backlink($links_page) : null;
-                $accessible = argon_check_site_accessible($link['url']);
-                argon_update_friend_link($id, array('has_backlink' => $has_backlink, 'accessible' => $accessible, 'last_check' => time()));
+                $accessible = argon_check_site_accessible($url);
+                argon_update_friend_link($id, array('url' => $url, 'links_page' => $links_page, 'has_backlink' => $has_backlink, 'accessible' => $accessible, 'last_check' => time()));
                 $response = array('success' => true, 'has_backlink' => $has_backlink, 'accessible' => $accessible, 'links_page' => $links_page);
+            } else {
+                $response = array('success' => false, 'message' => __('友链不存在或已被删除，请刷新页面后重试', 'argon'));
             }
             break;
             
@@ -315,19 +356,62 @@ get_header();
 body.flinks-page #primary { width: 100% !important; max-width: var(--argon-special-page-width, 1040px) !important; margin: 0 auto !important; float: none !important; }
 body.flinks-page #content { margin-top: -50vh !important; }
 body.flinks-page #main { max-width: var(--argon-special-page-width, 1040px) !important; margin: 0 auto !important; }
+body.flinks-page {
+    --flinks-text-main: var(--color-text-deeper);
+    --flinks-text-muted: #677181;
+    --flinks-text-soft: #8a93a3;
+    --flinks-text-faint: #a4adba;
+    --flinks-surface-soft: rgba(var(--themecolor-rgbstr), 0.05);
+    --flinks-surface-hover: rgba(var(--themecolor-rgbstr), 0.08);
+    --flinks-input-bg: rgba(var(--themecolor-rgbstr), 0.05);
+    --flinks-input-text: var(--color-text-deeper);
+    --flinks-placeholder: #99a2b1;
+    --flinks-success-bg: rgba(34, 197, 94, 0.12);
+    --flinks-success-text: #15803d;
+    --flinks-danger-bg: rgba(239, 68, 68, 0.12);
+    --flinks-danger-text: #dc2626;
+    --flinks-warning-bg: rgba(245, 158, 11, 0.14);
+    --flinks-warning-text: #b45309;
+}
+html.darkmode body.flinks-page {
+    --flinks-text-muted: #c5c9d1;
+    --flinks-text-soft: #a4aab5;
+    --flinks-text-faint: #878e9b;
+    --flinks-surface-soft: rgba(255, 255, 255, 0.05);
+    --flinks-surface-hover: rgba(255, 255, 255, 0.08);
+    --flinks-input-bg: rgba(255, 255, 255, 0.06);
+    --flinks-placeholder: #858c99;
+    --flinks-success-bg: rgba(74, 222, 128, 0.13);
+    --flinks-success-text: #86efac;
+    --flinks-danger-bg: rgba(248, 113, 113, 0.14);
+    --flinks-danger-text: #fca5a5;
+    --flinks-warning-bg: rgba(251, 191, 36, 0.14);
+    --flinks-warning-text: #facc15;
+}
 
 .flinks-header-card { text-align: center; padding: 40px 24px 32px; background: transparent !important; box-shadow: none !important; }
 .flinks-header-icon { width: 64px; height: 64px; margin: 0 auto 20px; background: var(--themecolor-gradient); border-radius: var(--card-radius); display: flex; align-items: center; justify-content: center; font-size: 28px; color: #fff; box-shadow: 0 4px 12px rgba(var(--themecolor-rgbstr), 0.2); transition: transform var(--animation-fast) var(--ease-standard); }
 .flinks-header-icon:hover { transform: translateY(-2px); }
 .flinks-title { font-size: 24px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper); background: none !important; }
 .flinks-title::before, .flinks-title::after { display: none !important; }
-.flinks-subtitle { font-size: 14px; color: #888; margin: 0 0 20px; line-height: 1.6; }
-.flinks-stats { display: flex; justify-content: center; gap: 12px; }
+.flinks-subtitle { font-size: 14px; color: var(--flinks-text-muted); margin: 0 0 20px; line-height: 1.6; }
+.flinks-stats { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
 .flinks-stat { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: rgba(var(--themecolor-rgbstr), 0.08); border-radius: var(--card-radius-sm); font-size: 13px; font-weight: 500; color: var(--themecolor); transition: all var(--animation-fast) var(--ease-standard); }
 .flinks-stat:hover { background: rgba(var(--themecolor-rgbstr), 0.12); }
-html.darkmode .flinks-subtitle { color: #aaa; }
 
-.flinks-welcome-text { font-size: 14px; color: #777; line-height: 1.6; margin-bottom: 16px; padding: 12px 16px; background: rgba(var(--themecolor-rgbstr), 0.05); border-radius: var(--card-radius-sm); border-left: 3px solid var(--themecolor); }
+.flinks-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 16px; margin-bottom: 16px; background: var(--flinks-surface-soft); border: 1px solid var(--color-border-on-foreground); border-radius: var(--card-radius); }
+.flinks-search { position: relative; flex: 1 1 260px; margin: 0; color: var(--flinks-text-soft); }
+.flinks-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+.flinks-search input { width: 100%; min-height: 38px; padding: 8px 12px 8px 34px; border: 1px solid var(--color-border); border-radius: var(--card-radius-sm); background: var(--flinks-input-bg); color: var(--flinks-input-text); font-size: 13px; outline: none; box-sizing: border-box; }
+.flinks-search input::placeholder, .flinks-add-form input::placeholder, .flink-modal input::placeholder, .flinks-form .form-control::placeholder { color: var(--flinks-placeholder); }
+.flinks-search input:focus { border-color: var(--themecolor); box-shadow: 0 0 0 2px rgba(var(--themecolor-rgbstr), 0.14); }
+.flinks-filter { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.flinks-filter-btn { min-height: 34px; padding: 7px 12px; border: 1px solid var(--color-border); border-radius: var(--card-radius-sm); background: var(--color-foreground); color: var(--flinks-text-muted); font-size: 12px; font-weight: 600; cursor: pointer; transition: all var(--animation-fast) var(--ease-standard); }
+.flinks-filter-btn:hover, .flinks-filter-btn.active { border-color: rgba(var(--themecolor-rgbstr), 0.45); background: rgba(var(--themecolor-rgbstr), 0.1); color: var(--themecolor); }
+.flinks-toolbar-count { margin-left: auto; color: var(--flinks-text-soft); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.flinks-filter-empty[hidden], .flink-card.is-hidden, .flinks-category-card.is-hidden { display: none !important; }
+
+.flinks-welcome-text { font-size: 14px; color: var(--flinks-text-muted); line-height: 1.6; margin-bottom: 16px; padding: 12px 16px; background: var(--flinks-surface-soft); border-radius: var(--card-radius-sm); border-left: 3px solid var(--themecolor); }
 
 .flinks-category-card { padding: 24px 28px; }
 .flinks-category-header { display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--color-border-on-foreground); }
@@ -341,9 +425,8 @@ html.darkmode .flinks-subtitle { color: #aaa; }
 .flink-card:hover { 
 	box-shadow: 0 4px 12px rgba(var(--themecolor-rgbstr), 0.1); 
 	transform: translateY(-2px); 
-	background: rgba(var(--themecolor-rgbstr), 0.03);
+	background: var(--flinks-surface-hover);
 }
-html.darkmode .flinks-welcome-text { color: #aaa; }
 .flink-card.editable { cursor: default; }
 .flink-card .flink-edit-btn { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: var(--card-radius-sm); background: rgba(var(--themecolor-rgbstr), 0.1); color: var(--themecolor); border: none; cursor: pointer; display: none; align-items: center; justify-content: center; font-size: 12px; transition: all var(--animation-fast) var(--ease-standard); }
 .flink-card:hover .flink-edit-btn { display: flex; }
@@ -369,17 +452,15 @@ html.darkmode .flinks-welcome-text { color: #aaa; }
 .flink-info { flex: 1; min-width: 0; padding-top: 2px; }
 .flink-name { font-size: 15px; font-weight: 600; color: var(--color-text-deeper); margin-bottom: 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; line-height: 1.4; }
 .flink-name .main-name { }
-.flink-name .sub-name { font-size: 13px; font-weight: 400; color: #999; }
+.flink-name .sub-name { font-size: 13px; font-weight: 400; color: var(--flinks-text-soft); }
 .flink-verified { color: #22c55e; font-size: 13px; flex-shrink: 0; }
-.flink-desc { font-size: 13px; color: #888; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 4px; }
-.flink-url { font-size: 12px; color: #aaa; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-html.darkmode .flink-name .sub-name { color: #777; }
-html.darkmode .flink-desc { color: #aaa; }
-html.darkmode .flink-url { color: #888; }
+.flink-desc { font-size: 13px; color: var(--flinks-text-muted); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 4px; }
+.flink-url { font-size: 12px; color: var(--flinks-text-faint); margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .flinks-empty { padding: 60px 24px; text-align: center; }
 .flinks-empty i { font-size: 48px; color: var(--color-border); margin-bottom: 16px; display: block; }
-.flinks-empty p { font-size: 15px; color: #888; margin: 0; }
+.flinks-empty p { font-size: 15px; color: var(--flinks-text-muted); margin: 0; }
+.flinks-filter-empty { margin-bottom: 16px; }
 
 /* 申请区域 */
 .flinks-apply-card { padding: 16px 22px; }
@@ -392,13 +473,15 @@ html.darkmode .flink-url { color: #888; }
 .flinks-apply-content.open { max-height: 1200px; }
 
 .flinks-requirements { background: rgba(var(--themecolor-rgbstr), 0.05); border-radius: var(--card-radius); padding: 10px 12px; margin: 10px 0 8px; border: none; border-left: 3px solid var(--themecolor); font-size: 13px; line-height: 1.5; }
+.flinks-requirements, .flinks-requirements p, .flinks-requirements li { color: var(--flinks-text-muted); }
 .flinks-requirements p { margin: 0; }
 
 .flinks-mysite-info { background: transparent; border-radius: var(--card-radius); padding: 10px 12px; margin: 8px 0; border: none; }
 .flinks-mysite-title { font-size: 12px; font-weight: 600; color: var(--themecolor); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
 .flinks-mysite-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.flinks-mysite-item { background: transparent; border-radius: calc(var(--card-radius) * 0.6); padding: 6px 10px; cursor: pointer; transition: all var(--animation-fast) var(--ease-standard); border: none; }
-.flinks-mysite-item label { display: block; font-size: 10px; color: #999; margin-bottom: 1px; text-transform: uppercase; pointer-events: none; }
+.flinks-mysite-item { background: var(--flinks-surface-soft); border-radius: calc(var(--card-radius) * 0.6); padding: 7px 10px; cursor: pointer; transition: all var(--animation-fast) var(--ease-standard); border: 1px solid transparent; }
+.flinks-mysite-item:hover { background: var(--flinks-surface-hover); border-color: rgba(var(--themecolor-rgbstr), 0.18); }
+.flinks-mysite-item label { display: block; font-size: 10px; color: var(--flinks-text-soft); margin-bottom: 1px; text-transform: uppercase; pointer-events: none; }
 .flinks-mysite-item span { font-size: 12px; color: var(--color-text-deeper); word-break: break-all; font-weight: 500; pointer-events: none; }
 
 .flinks-form { margin-top: 8px; font-family: var(--font); }
@@ -406,9 +489,10 @@ html.darkmode .flink-url { color: #888; }
 .flinks-form .row > [class*="col-"] { padding-left: 6px; padding-right: 6px; }
 .flinks-form .form-group { margin-bottom: 8px; }
 .flinks-form .form-control-label { font-size: 12px; font-weight: 600; margin-bottom: 3px; color: var(--color-text-deeper); display: block; font-family: var(--font); }
-.flinks-form .form-control { border-radius: calc(var(--card-radius) * 0.6); border: none; padding: 7px 10px; font-size: 13px; font-family: var(--font); background: rgba(var(--themecolor-rgbstr), 0.05); }
-.flinks-form .form-control:focus { border: none; box-shadow: 0 0 0 2px rgba(var(--themecolor-rgbstr), 0.15); outline: none; }
-.flinks-form .char-count { font-size: 11px; color: #999; float: right; }
+.flinks-form .form-control { border-radius: calc(var(--card-radius) * 0.6); border: 1px solid transparent; padding: 7px 10px; font-size: 13px; font-family: var(--font); background: var(--flinks-input-bg); color: var(--flinks-input-text); }
+.flinks-form .form-control:focus { border-color: rgba(var(--themecolor-rgbstr), 0.45); box-shadow: 0 0 0 2px rgba(var(--themecolor-rgbstr), 0.15); outline: none; }
+.flinks-form .char-count { font-size: 11px; color: var(--flinks-text-soft); float: right; }
+.flinks-autopass-note { color: var(--flinks-success-text); font-weight: normal; }
 .flinks-submit { margin-top: 10px; text-align: center; }
 .flinks-submit .btn { padding: 8px 24px; font-size: 13px; font-weight: 600; font-family: var(--font); }
 
@@ -421,38 +505,38 @@ html.darkmode .flink-url { color: #888; }
 .flinks-auto-preview-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .flinks-auto-preview-info { flex: 1; min-width: 0; }
 .flinks-auto-preview-name { font-size: 14px; font-weight: 600; color: var(--color-text-deeper); }
-.flinks-auto-preview-desc { font-size: 12px; color: #888; margin-top: 4px; }
+.flinks-auto-preview-desc { font-size: 12px; color: var(--flinks-text-muted); margin-top: 4px; }
 
 /* 验证码 */
 .flinks-captcha { margin-top: 10px; }
 .flinks-captcha .input-group { max-width: 280px; }
-.flinks-captcha-text { background: var(--color-background); font-family: monospace; font-size: 14px; letter-spacing: 2px; cursor: pointer; user-select: none; }
+.flinks-captcha-text { background: var(--color-background); color: var(--flinks-text-main); border-color: var(--color-border); font-family: monospace; font-size: 14px; letter-spacing: 2px; cursor: pointer; user-select: none; }
 
 /* 管理面板 */
 .flinks-admin-card { padding: 16px 20px; }
-.flinks-admin-title { font-size: 15px; font-weight: 600; color: var(--themecolor); margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+.flinks-admin-title { font-size: 15px; font-weight: 600; color: var(--themecolor); margin: 0 0 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .flinks-admin-section { margin-bottom: 16px; }
 .flinks-admin-section:last-child { margin-bottom: 0; }
 .flinks-admin-section h4 { font-size: 13px; font-weight: 600; color: var(--color-text-deeper); margin: 0 0 8px; display: flex; align-items: center; gap: 6px; }
 
-.flinks-pending-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: transparent; border: 1px solid #fcd34d; border-radius: var(--card-radius); margin-bottom: 8px; }
+.flinks-pending-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: var(--flinks-warning-bg); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: var(--card-radius); margin-bottom: 8px; }
 .flinks-pending-avatar { width: 40px; height: 40px; border-radius: 8px; background: var(--color-border); flex-shrink: 0; overflow: hidden; }
 .flinks-pending-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .flinks-pending-info { flex: 1; min-width: 0; }
-.flinks-pending-name { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
-.flinks-pending-name .sub-name { font-weight: 400; font-size: 12px; color: #888; margin-left: 6px; }
-.flinks-pending-url { font-size: 12px; color: #666; margin-bottom: 4px; }
+.flinks-pending-name { font-weight: 600; font-size: 14px; margin-bottom: 2px; color: var(--flinks-text-main); }
+.flinks-pending-name .sub-name { font-weight: 400; font-size: 12px; color: var(--flinks-text-soft); margin-left: 6px; }
+.flinks-pending-url { font-size: 12px; color: var(--flinks-text-muted); margin-bottom: 4px; }
 .flinks-pending-url a { color: var(--themecolor); }
-.flinks-pending-desc { font-size: 12px; color: #888; }
+.flinks-pending-desc { font-size: 12px; color: var(--flinks-text-muted); }
 .flinks-pending-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .flinks-pending-actions .btn { padding: 4px 12px; font-size: 12px; }
 
-.flinks-add-form { background: transparent; border-radius: var(--card-radius); padding: 14px; border: none; }
+.flinks-add-form { background: var(--flinks-surface-soft); border-radius: var(--card-radius); padding: 14px; border: 1px solid var(--color-border-on-foreground); }
 .flinks-add-form .form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 8px; }
 .flinks-add-form .form-row.full { grid-template-columns: 1fr; }
 .flinks-add-form label { font-size: 12px; font-weight: 500; color: var(--color-text-deeper); margin-bottom: 3px; display: block; }
-.flinks-add-form input { width: 100%; padding: 6px 10px; font-size: 13px; border: 1px solid var(--color-border); border-radius: calc(var(--card-radius) * 0.6); font-family: var(--font); box-sizing: border-box; }
-.flinks-add-form input:focus { border-color: var(--themecolor); outline: none; }
+.flinks-add-form input { width: 100%; padding: 6px 10px; font-size: 13px; border: 1px solid var(--color-border); border-radius: calc(var(--card-radius) * 0.6); font-family: var(--font); box-sizing: border-box; background: var(--color-foreground); color: var(--flinks-input-text); }
+.flinks-add-form input:focus { border-color: var(--themecolor); outline: none; box-shadow: 0 0 0 2px rgba(var(--themecolor-rgbstr), 0.12); }
 .flinks-add-form .input-with-btn { display: flex; gap: 6px; }
 .flinks-add-form .input-with-btn input { flex: 1; min-width: 0; }
 .flinks-add-form .input-with-btn .btn { flex-shrink: 0; padding: 6px 10px; font-size: 12px; }
@@ -462,34 +546,50 @@ html.darkmode .flink-url { color: #888; }
 /* 编辑弹窗 */
 .flink-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9998; display: none; align-items: center; justify-content: center; }
 .flink-modal-overlay.show { display: flex; }
-.flink-modal { background: var(--color-foreground); border-radius: var(--card-radius); padding: 20px; width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
-.flink-modal-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
-.flink-modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #999; padding: 0; line-height: 1; }
+.flink-modal { background: var(--color-foreground); border-radius: var(--card-radius); padding: 20px; width: 90%; max-width: 560px; max-height: 90vh; overflow-y: auto; color: var(--flinks-text-main); box-shadow: 0 24px 80px rgba(0,0,0,0.28); }
+.flink-modal-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; color: var(--flinks-text-main); }
+.flink-modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--flinks-text-soft); padding: 0; line-height: 1; }
+.flink-modal-close:hover { color: var(--flinks-text-main); }
 .flink-modal .form-group { margin-bottom: 12px; }
 .flink-modal .form-group label { font-size: 12px; font-weight: 600; color: var(--color-text-deeper); margin-bottom: 4px; display: block; }
-.flink-modal .form-group input, .flink-modal .form-group select { width: 100%; padding: 8px 10px; font-size: 13px; border: 1px solid var(--color-border); border-radius: calc(var(--card-radius) * 0.6); font-family: var(--font); box-sizing: border-box; }
-.flink-modal .form-group input:focus { border-color: var(--themecolor); outline: none; }
-.flink-modal .form-actions { margin-top: 16px; display: flex; gap: 8px; justify-content: flex-end; flex-wrap: nowrap; }
+.flink-modal .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; }
+.flink-modal .form-group.full { grid-column: 1 / -1; }
+.flink-modal .form-group input, .flink-modal .form-group select { width: 100%; padding: 8px 10px; font-size: 13px; border: 1px solid var(--color-border); border-radius: calc(var(--card-radius) * 0.6); font-family: var(--font); box-sizing: border-box; background: var(--flinks-input-bg); color: var(--flinks-input-text); }
+.flink-modal .form-group input:focus, .flink-modal .form-group select:focus { border-color: var(--themecolor); outline: none; box-shadow: 0 0 0 2px rgba(var(--themecolor-rgbstr), 0.12); }
+.flink-modal .form-actions { margin-top: 16px; display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
 .flink-modal .form-actions .btn { display: inline-flex; align-items: center; justify-content: center; text-align: center; min-width: auto; }
 .flink-modal .btn-danger { background: #ef4444; border-color: #ef4444; }
 .flink-modal .btn-danger:hover { background: #dc2626; border-color: #dc2626; }
-.flink-modal .status-info { font-size: 12px; color: #888; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-border); }
+.flink-modal .status-info { font-size: 12px; color: var(--flinks-text-muted); margin-top: 12px; padding: 12px; border: 1px solid var(--color-border-on-foreground); border-radius: var(--card-radius-sm); background: var(--flinks-surface-soft); }
 .flink-modal .status-info .badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; }
-.flink-modal .status-info .badge-warning { background: #fef3c7; color: #d97706; }
-.flink-modal .status-info .badge-danger { background: #fee2e2; color: #dc2626; }
-.flink-modal .status-info .badge-success { background: #d1fae5; color: #059669; }
+.flink-modal .status-info .badge-warning { background: var(--flinks-warning-bg); color: var(--flinks-warning-text); }
+.flink-modal .status-info .badge-danger { background: var(--flinks-danger-bg); color: var(--flinks-danger-text); }
+.flink-modal .status-info .badge-success { background: var(--flinks-success-bg); color: var(--flinks-success-text); }
+.flink-modal .status-info .badge-secondary { background: var(--flinks-surface-hover); color: var(--flinks-text-muted); }
+.flink-action-message { display: none; margin-top: 10px; padding: 9px 12px; border-radius: var(--card-radius-sm); font-size: 12px; line-height: 1.5; }
+.flink-action-message.show { display: block; }
+.flink-action-message.success { background: var(--flinks-success-bg); color: var(--flinks-success-text); }
+.flink-action-message.error { background: var(--flinks-danger-bg); color: var(--flinks-danger-text); }
+.flink-action-message.info { background: rgba(var(--themecolor-rgbstr), 0.1); color: var(--themecolor); }
 
 @media (max-width: 768px) {
+    .flinks-header-card { padding: 30px 16px 24px; }
     .flinks-grid { grid-template-columns: 1fr; }
     .flinks-mysite-grid { grid-template-columns: 1fr; }
     .flinks-add-form .form-row { grid-template-columns: 1fr; }
     .flink-card { min-height: auto; }
+    .flinks-toolbar { align-items: stretch; }
+    .flinks-filter, .flinks-toolbar-count { width: 100%; margin-left: 0; }
+    .flinks-filter-btn { flex: 1 1 auto; }
+    .flink-modal { width: calc(100% - 24px); padding: 16px; }
+    .flink-modal .form-grid { grid-template-columns: 1fr; }
+    .flink-modal .form-actions .btn { flex: 1 1 calc(50% - 4px); }
 }
 
 html.darkmode .flink-card { background: rgba(255, 255, 255, 0.03); }
 html.darkmode .flink-card:hover { background: rgba(255, 255, 255, 0.05); }
-html.darkmode .flinks-pending-item { background: rgba(251, 191, 36, 0.1); border-color: rgba(251, 191, 36, 0.3); }
 html.darkmode .flink-modal { background: var(--color-background); }
+html.darkmode .flinks-filter-btn, html.darkmode .flinks-add-form input { background: var(--color-background); }
 
 .flink-avatar[data-color="1"] { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
 .flink-avatar[data-color="2"] { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
@@ -623,8 +723,27 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
 
 <!-- 友链列表 -->
 <?php if (!empty($links)) : ?>
+<div class="flinks-toolbar">
+    <label class="flinks-search" for="flinks-search-input">
+        <i class="fa fa-search"></i>
+        <input type="search" id="flinks-search-input" placeholder="<?php esc_attr_e('搜索名称、描述或域名', 'argon'); ?>" autocomplete="off">
+    </label>
+    <div class="flinks-filter" aria-label="<?php esc_attr_e('友链分类筛选', 'argon'); ?>">
+        <button type="button" class="flinks-filter-btn active" data-filter="__all"><?php _e('全部', 'argon'); ?></button>
+        <?php foreach ($links as $category => $category_links) : ?>
+        <button type="button" class="flinks-filter-btn" data-filter="<?php echo esc_attr($category); ?>">
+            <?php echo empty($category) ? __('默认', 'argon') : esc_html($category); ?>
+        </button>
+        <?php endforeach; ?>
+    </div>
+    <div class="flinks-toolbar-count" id="flinks-visible-count" data-total="<?php echo esc_attr($total_links); ?>"><?php echo $total_links; ?> <?php _e('个站点', 'argon'); ?></div>
+</div>
+<article class="post card shadow-sm bg-white border-0 flinks-empty flinks-filter-empty" id="flinks-filter-empty" hidden>
+    <i class="fa fa-search"></i>
+    <p><?php _e('没有匹配的友链', 'argon'); ?></p>
+</article>
     <?php $color_index = 0; foreach ($links as $category => $category_links) : ?>
-    <article class="post card shadow-sm bg-white border-0 flinks-category-card" style="margin-bottom: 16px;">
+    <article class="post card shadow-sm bg-white border-0 flinks-category-card" style="margin-bottom: 16px;" data-category="<?php echo esc_attr($category); ?>">
         <div class="flinks-category-header">
             <h2 class="flinks-category-title">
                 <i class="fa fa-<?php echo empty($category) ? 'star' : 'folder-open'; ?>"></i>
@@ -661,7 +780,7 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
                     }
                 }
             ?>
-            <a href="<?php echo esc_url($link['url']); ?>" class="flink-card <?php echo $is_admin ? 'editable' : ''; ?>" target="_blank" rel="noopener noreferrer" data-id="<?php echo esc_attr($link['id']); ?>">
+            <a href="<?php echo esc_url($link['url']); ?>" class="flink-card <?php echo $is_admin ? 'editable' : ''; ?>" target="_blank" rel="noopener noreferrer" data-id="<?php echo esc_attr($link['id']); ?>" data-category="<?php echo esc_attr($category); ?>" data-search="<?php echo esc_attr($main_name . ' ' . $sub_name . ' ' . $desc . ' ' . $host . ' ' . $category); ?>">
                 <?php echo $status_badge; ?>
                 <?php if ($is_admin) : ?><button type="button" class="flink-edit-btn" onclick="event.preventDefault();event.stopPropagation();openEditModal('<?php echo esc_attr($link['id']); ?>')"><i class="fa fa-pencil"></i></button><?php endif; ?>
                 <div class="flink-avatar" data-letter="<?php echo esc_attr($first_letter); ?>" data-color="<?php echo $color_index; ?>">
@@ -747,7 +866,7 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
-                        <label class="form-control-label"><?php _e('友链页面', 'argon'); ?> <small style="color:#4caf50;font-weight:normal;"><?php _e('填写可自动通过', 'argon'); ?></small></label>
+                        <label class="form-control-label"><?php _e('友链页面', 'argon'); ?> <small class="flinks-autopass-note"><?php _e('填写可自动通过', 'argon'); ?></small></label>
                         <input type="url" name="apply_links_page" class="form-control" placeholder="<?php _e('您放置友链的页面地址', 'argon'); ?>">
                     </div>
                 </div>
@@ -796,43 +915,46 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
             <button type="button" class="flink-modal-close" onclick="closeEditModal()">&times;</button>
         </div>
         <input type="hidden" id="edit-id">
-        <div class="form-group">
-            <label><?php _e('网站名称', 'argon'); ?> *</label>
-            <input type="text" id="edit-name" placeholder="<?php _e('主标题', 'argon'); ?>">
-        </div>
-        <div class="form-group">
-            <label><?php _e('副标题', 'argon'); ?></label>
-            <input type="text" id="edit-display-name" placeholder="<?php _e('自动获取的标题', 'argon'); ?>">
-        </div>
-        <div class="form-group">
-            <label><?php _e('网站地址', 'argon'); ?> *</label>
-            <input type="url" id="edit-url">
-        </div>
-        <div class="form-group">
-            <label><?php _e('友链页面', 'argon'); ?></label>
-            <input type="url" id="edit-links-page" placeholder="<?php _e('对方放置友链的页面地址', 'argon'); ?>">
-        </div>
-        <div class="form-group">
-            <label><?php _e('头像地址', 'argon'); ?></label>
-            <input type="url" id="edit-avatar">
-        </div>
-        <div class="form-group">
-            <label><?php _e('描述', 'argon'); ?></label>
-            <input type="text" id="edit-desc" maxlength="100">
-        </div>
-        <div class="form-group">
-            <label><?php _e('分类', 'argon'); ?></label>
-            <input type="text" id="edit-category">
-        </div>
-        <div class="form-group">
-            <label><?php _e('未上友链时', 'argon'); ?></label>
-            <select id="edit-hide-no-backlink">
-                <option value=""><?php _e('跟随全局设置', 'argon'); ?></option>
-                <option value="hide"><?php _e('隐藏', 'argon'); ?></option>
-                <option value="show"><?php _e('仍然显示', 'argon'); ?></option>
-            </select>
+        <div class="form-grid">
+            <div class="form-group">
+                <label><?php _e('网站名称', 'argon'); ?> *</label>
+                <input type="text" id="edit-name" placeholder="<?php _e('主标题', 'argon'); ?>">
+            </div>
+            <div class="form-group">
+                <label><?php _e('副标题', 'argon'); ?></label>
+                <input type="text" id="edit-display-name" placeholder="<?php _e('自动获取的标题', 'argon'); ?>">
+            </div>
+            <div class="form-group full">
+                <label><?php _e('网站地址', 'argon'); ?> *</label>
+                <input type="url" id="edit-url">
+            </div>
+            <div class="form-group full">
+                <label><?php _e('友链页面', 'argon'); ?></label>
+                <input type="url" id="edit-links-page" placeholder="<?php _e('对方放置友链的页面地址', 'argon'); ?>">
+            </div>
+            <div class="form-group full">
+                <label><?php _e('头像地址', 'argon'); ?></label>
+                <input type="url" id="edit-avatar">
+            </div>
+            <div class="form-group">
+                <label><?php _e('描述', 'argon'); ?></label>
+                <input type="text" id="edit-desc" maxlength="100">
+            </div>
+            <div class="form-group">
+                <label><?php _e('分类', 'argon'); ?></label>
+                <input type="text" id="edit-category">
+            </div>
+            <div class="form-group full">
+                <label><?php _e('未上友链时', 'argon'); ?></label>
+                <select id="edit-hide-no-backlink">
+                    <option value=""><?php _e('跟随全局设置', 'argon'); ?></option>
+                    <option value="hide"><?php _e('隐藏', 'argon'); ?></option>
+                    <option value="show"><?php _e('仍然显示', 'argon'); ?></option>
+                </select>
+            </div>
         </div>
         <div class="status-info" id="edit-status-info"></div>
+        <div class="flink-action-message" id="edit-action-message" aria-live="polite"></div>
         <div class="form-actions">
             <button type="button" class="btn btn-secondary" id="edit-fetch-btn"><?php _e('更新信息', 'argon'); ?></button>
             <button type="button" class="btn btn-secondary" id="edit-check-btn"><?php _e('检测互链', 'argon'); ?></button>
@@ -872,6 +994,51 @@ function refreshCaptcha() {
             }
         });
 }
+
+function bindFlinksFilter() {
+    var search = document.getElementById('flinks-search-input');
+    var cards = Array.prototype.slice.call(document.querySelectorAll('.flink-card'));
+    var sections = Array.prototype.slice.call(document.querySelectorAll('.flinks-category-card'));
+    var buttons = Array.prototype.slice.call(document.querySelectorAll('.flinks-filter-btn'));
+    var empty = document.getElementById('flinks-filter-empty');
+    var count = document.getElementById('flinks-visible-count');
+    var activeCategory = '__all';
+    var total = cards.length;
+
+    if (!cards.length) return;
+
+    function applyFilter() {
+        var query = search ? search.value.trim().toLowerCase() : '';
+        var visible = 0;
+        cards.forEach(function(card) {
+            var category = card.getAttribute('data-category') || '';
+            var text = (card.getAttribute('data-search') || card.textContent || '').toLowerCase();
+            var categoryMatch = activeCategory === '__all' || category === activeCategory;
+            var searchMatch = !query || text.indexOf(query) !== -1;
+            var show = categoryMatch && searchMatch;
+            card.classList.toggle('is-hidden', !show);
+            if (show) visible++;
+        });
+        sections.forEach(function(section) {
+            var hasVisible = !!section.querySelector('.flink-card:not(.is-hidden)');
+            section.classList.toggle('is-hidden', !hasVisible);
+        });
+        if (empty) empty.hidden = visible !== 0;
+        if (count) count.textContent = visible + ' / ' + total + ' <?php _e('个站点', 'argon'); ?>';
+    }
+
+    if (search) search.addEventListener('input', applyFilter);
+    buttons.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var filter = this.getAttribute('data-filter');
+            activeCategory = filter === null ? '__all' : filter;
+            buttons.forEach(function(item) { item.classList.toggle('active', item === btn); });
+            applyFilter();
+        });
+    });
+    applyFilter();
+}
+bindFlinksFilter();
 
 <?php if ($apply_result) : ?>
 document.addEventListener('DOMContentLoaded', function() {
@@ -915,25 +1082,52 @@ if (typeof initGeetest4 === 'function') {
 <?php if ($is_admin) : ?>
 (function() {
     var nonce = '<?php echo wp_create_nonce('argon_flink_manage'); ?>';
-    var ajaxUrl = '<?php echo esc_url($_SERVER['REQUEST_URI']); ?>';
+    var ajaxUrl = <?php echo wp_json_encode(esc_url_raw(wp_unslash($_SERVER['REQUEST_URI']))); ?>;
+
+    function setMessage(type, message) {
+        var box = document.getElementById('edit-action-message');
+        if (!box) return;
+        box.className = 'flink-action-message show ' + (type || 'info');
+        box.textContent = message || '';
+    }
+
+    function clearMessage() {
+        var box = document.getElementById('edit-action-message');
+        if (!box) return;
+        box.className = 'flink-action-message';
+        box.textContent = '';
+    }
+
+    function normalizeUrlInput(value) {
+        value = (value || '').trim();
+        if (value && !/^https?:\/\//i.test(value)) value = 'https://' + value;
+        return value;
+    }
     
     function flinkAction(action, data, callback) {
         data.flink_action = action;
         data.flink_nonce = nonce;
         var fd = new FormData();
         for (var k in data) fd.append(k, data[k]);
-        fetch(ajaxUrl, { method: 'POST', body: fd })
-            .then(function(r) { return r.json(); })
+        fetch(ajaxUrl, { method: 'POST', body: fd, credentials: 'same-origin' })
+            .then(function(r) {
+                return r.json().catch(function() {
+                    throw new Error('<?php _e('服务器返回格式异常', 'argon'); ?>');
+                });
+            })
             .then(callback)
-            .catch(function(e) { alert('<?php _e('操作失败', 'argon'); ?>'); });
+            .catch(function(e) {
+                if (callback) callback({ success: false, message: e && e.message ? e.message : '<?php _e('操作失败', 'argon'); ?>' });
+            });
     }
-    
+
     // 移除自动审核标记
     window.removeAutoTag = function(el) {
         if (!confirm('<?php _e('确定移除自动审核标记？', 'argon'); ?>')) return;
         var id = el.getAttribute('data-id');
         flinkAction('update', { id: id, auto_approved: '' }, function(res) {
             if (res.success) el.remove();
+            else alert(res.message || '<?php _e('操作失败', 'argon'); ?>');
         });
     };
     
@@ -941,9 +1135,8 @@ if (typeof initGeetest4 === 'function') {
     var fetchInfoBtn = document.getElementById('fetch-info');
     if (fetchInfoBtn) {
         fetchInfoBtn.addEventListener('click', function() {
-            var url = document.getElementById('add-url').value.trim();
+            var url = normalizeUrlInput(document.getElementById('add-url').value);
             if (!url) return alert('<?php _e('请输入网址', 'argon'); ?>');
-            if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
             document.getElementById('add-url').value = url;
             this.disabled = true; this.textContent = '...';
             var btn = this;
@@ -967,8 +1160,9 @@ if (typeof initGeetest4 === 'function') {
     if (addLinkBtn) {
         addLinkBtn.addEventListener('click', function() {
             var name = document.getElementById('add-name').value.trim();
-            var url = document.getElementById('add-url').value.trim();
+            var url = normalizeUrlInput(document.getElementById('add-url').value);
             if (!url) return alert('<?php _e('请填写网址', 'argon'); ?>');
+            document.getElementById('add-url').value = url;
             if (!name) {
                 name = document.getElementById('add-display-name').value.trim();
                 if (!name) return alert('<?php _e('请填写名称', 'argon'); ?>');
@@ -993,16 +1187,24 @@ if (typeof initGeetest4 === 'function') {
     document.querySelectorAll('.flink-approve').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var id = this.dataset.id;
+            var button = this;
             this.disabled = true;
-            flinkAction('approve', { id: id }, function(res) { if (res.success) location.reload(); });
+            flinkAction('approve', { id: id }, function(res) {
+                if (res.success) location.reload();
+                else { button.disabled = false; alert(res.message || '<?php _e('操作失败', 'argon'); ?>'); }
+            });
         });
     });
     document.querySelectorAll('.flink-reject').forEach(function(btn) {
         btn.addEventListener('click', function() {
             if (!confirm('<?php _e('确定拒绝？', 'argon'); ?>')) return;
             var id = this.dataset.id;
+            var button = this;
             this.disabled = true;
-            flinkAction('reject', { id: id }, function(res) { if (res.success) location.reload(); });
+            flinkAction('reject', { id: id }, function(res) {
+                if (res.success) location.reload();
+                else { button.disabled = false; alert(res.message || '<?php _e('操作失败', 'argon'); ?>'); }
+            });
         });
     });
 
@@ -1014,7 +1216,7 @@ if (typeof initGeetest4 === 'function') {
             this.disabled = true; this.textContent = '<?php _e('检测中...', 'argon'); ?>';
             flinkAction('check_all', {}, function(res) {
                 if (res.success) location.reload();
-                else alert('<?php _e('检测失败', 'argon'); ?>');
+                else { checkAllBtn.disabled = false; checkAllBtn.textContent = '<?php _e('检测所有友链', 'argon'); ?>'; alert(res.message || '<?php _e('检测失败', 'argon'); ?>'); }
             });
         });
     }
@@ -1024,6 +1226,7 @@ if (typeof initGeetest4 === 'function') {
         flinkAction('get', { id: id }, function(res) {
             if (res.success && res.data) {
                 var link = res.data;
+                clearMessage();
                 document.getElementById('edit-id').value = link.id;
                 document.getElementById('edit-name').value = link.name || '';
                 document.getElementById('edit-display-name').value = link.display_name || '';
@@ -1055,12 +1258,15 @@ if (typeof initGeetest4 === 'function') {
                 document.getElementById('edit-status-info').innerHTML = statusHtml || '<?php _e('暂无检测记录', 'argon'); ?>';
 
                 document.getElementById('edit-modal').classList.add('show');
+            } else {
+                alert(res.message || '<?php _e('友链不存在或已被删除，请刷新页面后重试', 'argon'); ?>');
             }
         });
     };
     
     window.closeEditModal = function() {
         document.getElementById('edit-modal').classList.remove('show');
+        clearMessage();
     };
 
     var editModal = document.getElementById('edit-modal');
@@ -1074,10 +1280,11 @@ if (typeof initGeetest4 === 'function') {
     var editFetchBtn = document.getElementById('edit-fetch-btn');
     if (editFetchBtn) {
         editFetchBtn.addEventListener('click', function() {
-            var url = document.getElementById('edit-url').value.trim();
+            var url = normalizeUrlInput(document.getElementById('edit-url').value);
             if (!url) return alert('<?php _e('请先填写网址', 'argon'); ?>');
-            if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+            document.getElementById('edit-url').value = url;
 
+            clearMessage();
             this.disabled = true; this.textContent = '<?php _e('获取中...', 'argon'); ?>';
             var btn = this;
                 
@@ -1098,22 +1305,20 @@ if (typeof initGeetest4 === 'function') {
                     if (newAvatar) avatar.value = newAvatar;
                     if (res.data.description) desc.value = res.data.description;
 
-                    var statusInfo = document.getElementById('edit-status-info');
-                    var infoHtml = '<div style="margin-top:10px;padding:10px;background:#e8f5e9;border-radius:6px;font-size:13px;">';
-                    infoHtml += '<strong><?php _e('已更新并保存', 'argon'); ?></strong>';
+                    var infoHtml = '<strong><?php _e('已更新并保存', 'argon'); ?></strong>';
                     if (res.data.blocked_by_waf) {
-                        infoHtml += ' <span style="color:#e91e63;">(<?php _e('被WAF拦截', 'argon'); ?>)</span>';
+                        infoHtml += ' <span class="badge badge-warning"><?php _e('被 WAF 拦截', 'argon'); ?></span>';
                     } else if (res.data.accessible === false) {
-                        infoHtml += ' <span style="color:#dc2626;">(<?php _e('无法访问', 'argon'); ?>)</span>';
+                        infoHtml += ' <span class="badge badge-danger"><?php _e('无法访问', 'argon'); ?></span>';
                     }
                     if (res.data.last_info_update) {
                         var updatedAt = new Date(res.data.last_info_update * 1000);
                         infoHtml += '<br><?php _e('更新时间', 'argon'); ?>: ' + updatedAt.toLocaleString();
                     }
-                    infoHtml += '</div>';
-                    statusInfo.innerHTML = infoHtml;
+                    document.getElementById('edit-status-info').innerHTML = infoHtml;
+                    setMessage('success', res.message || '<?php _e('站点信息已保存', 'argon'); ?>');
                 } else {
-                    alert(res.message || (res.data && res.data.error_reason) || '<?php _e('获取失败', 'argon'); ?>');
+                    setMessage('error', res.message || (res.data && res.data.error_reason) || '<?php _e('获取失败', 'argon'); ?>');
                 }
             });
         });
@@ -1128,12 +1333,23 @@ if (typeof initGeetest4 === 'function') {
                 return alert('<?php _e('请先填写对方的友链页面地址', 'argon'); ?>');
             }
             var id = document.getElementById('edit-id').value;
+            clearMessage();
             this.disabled = true; this.textContent = '<?php _e('检测中...', 'argon'); ?>';
             var btn = this;
-            flinkAction('check_backlink', { id: id }, function(res) {
+            flinkAction('check_backlink', {
+                id: id,
+                url: document.getElementById('edit-url').value.trim(),
+                links_page: linksPage
+            }, function(res) {
                 btn.disabled = false; btn.textContent = '<?php _e('检测互链', 'argon'); ?>';
                 if (res.success) {
-                    openEditModal(id); // 刷新显示
+                    var statusHtml = '<?php _e('互链页面', 'argon'); ?>: ' + (res.links_page || linksPage) + '<br>';
+                    statusHtml += '<?php _e('网站状态', 'argon'); ?>: <span class="badge ' + (res.accessible ? 'badge-success' : 'badge-danger') + '">' + (res.accessible ? '<?php _e('正常', 'argon'); ?>' : '<?php _e('无法访问', 'argon'); ?>') + '</span><br>';
+                    statusHtml += '<?php _e('互链状态', 'argon'); ?>: <span class="badge ' + (res.has_backlink ? 'badge-success' : 'badge-warning') + '">' + (res.has_backlink ? '<?php _e('已上友链', 'argon'); ?>' : '<?php _e('未检测到本站链接', 'argon'); ?>') + '</span>';
+                    document.getElementById('edit-status-info').innerHTML = statusHtml;
+                    setMessage(res.has_backlink ? 'success' : 'info', res.has_backlink ? '<?php _e('检测完成，已保存互链状态', 'argon'); ?>' : '<?php _e('检测完成，暂未发现本站链接', 'argon'); ?>');
+                } else {
+                    setMessage('error', res.message || '<?php _e('检测失败', 'argon'); ?>');
                 }
             });
         });
@@ -1145,9 +1361,11 @@ if (typeof initGeetest4 === 'function') {
         editSaveBtn.addEventListener('click', function() {
             var id = document.getElementById('edit-id').value;
             var name = document.getElementById('edit-name').value.trim();
-            var url = document.getElementById('edit-url').value.trim();
+            var url = normalizeUrlInput(document.getElementById('edit-url').value);
             if (!name || !url) return alert('<?php _e('名称和网址不能为空', 'argon'); ?>');
+            document.getElementById('edit-url').value = url;
 
+            clearMessage();
             this.disabled = true; this.textContent = '<?php _e('保存中...', 'argon'); ?>';
             var btn = this;
             flinkAction('update', {
@@ -1161,8 +1379,13 @@ if (typeof initGeetest4 === 'function') {
                 category: document.getElementById('edit-category').value.trim(),
                 hide_no_backlink: document.getElementById('edit-hide-no-backlink').value
             }, function(res) {
-                if (res.success) location.reload();
-                else { btn.disabled = false; btn.textContent = '<?php _e('保存', 'argon'); ?>'; alert('<?php _e('保存失败', 'argon'); ?>'); }
+                btn.disabled = false; btn.textContent = '<?php _e('保存', 'argon'); ?>';
+                if (res.success) {
+                    setMessage('success', res.message || '<?php _e('已保存友链信息', 'argon'); ?>');
+                    setTimeout(function() { location.reload(); }, 450);
+                } else {
+                    setMessage('error', res.message || '<?php _e('保存失败，请刷新页面后重试', 'argon'); ?>');
+                }
             });
         });
     }
@@ -1174,9 +1397,10 @@ if (typeof initGeetest4 === 'function') {
             if (!confirm('<?php _e('确定删除这个友链？', 'argon'); ?>')) return;
             var id = document.getElementById('edit-id').value;
             this.disabled = true; this.textContent = '<?php _e('删除中...', 'argon'); ?>';
+            var btn = this;
             flinkAction('delete', { id: id }, function(res) {
                 if (res.success) location.reload();
-                else alert('<?php _e('删除失败', 'argon'); ?>');
+                else { btn.disabled = false; btn.textContent = '<?php _e('删除', 'argon'); ?>'; setMessage('error', res.message || '<?php _e('删除失败', 'argon'); ?>'); }
             });
         });
     }
