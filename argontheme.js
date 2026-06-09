@@ -622,6 +622,9 @@ $(document).on("change", ".search-filter", function (e) {
 	let part1OffsetTop = $('#leftbar_part1').offset().top;
 	let part1OuterHeight = $('#leftbar_part1').outerHeight();
 	let leftbarStickyUpdateFrame = 0;
+	let leftbarHeightObserver = null;
+	let leftbarHeightObservedNodes = [];
+	let leftbarHeightSignature = '';
 
 	function setLeftbarRootProperty(name, value) {
 		if (document.documentElement.style.getPropertyValue(name) !== value) {
@@ -643,6 +646,42 @@ $(document).on("change", ".search-filter", function (e) {
 		return height;
 	}
 
+	function addLeftbarHeightTarget(targets, element) {
+		if (element && targets.indexOf(element) === -1) {
+			targets.push(element);
+		}
+	}
+
+	function addLeftbarHeightTargetsFromSelector(targets, root, selector) {
+		if (!root) return;
+		let nodes = root.querySelectorAll(selector);
+		for (let i = 0; i < nodes.length; i++) {
+			addLeftbarHeightTarget(targets, nodes[i]);
+		}
+	}
+
+	function getLeftbarHeightTargets() {
+		let targets = [];
+		addLeftbarHeightTargetsFromSelector(targets, leftbarPart2, '#leftbar_part2_inner > *, #leftbar_catalog, #leftbar_tab_overview, #leftbar_tab_tools');
+		addLeftbarHeightTargetsFromSelector(targets, leftbarPart3, '.card-body > *');
+		return targets;
+	}
+
+	function getLeftbarHeightSignature() {
+		let targets = getLeftbarHeightTargets();
+		let signature = [];
+		for (let i = 0; i < targets.length; i++) {
+			let element = targets[i];
+			signature.push([
+				element.id || element.className || element.tagName,
+				element.scrollHeight,
+				element.offsetHeight,
+				element.childElementCount
+			].join(':'));
+		}
+		return signature.join('|');
+	}
+
 	function requestLeftbarStickyStatusUpdate() {
 		if (leftbarStickyUpdateFrame) return;
 		let scheduleFrame = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function (callback) {
@@ -652,6 +691,37 @@ $(document).on("change", ".search-filter", function (e) {
 			leftbarStickyUpdateFrame = 0;
 			changeLeftbarStickyStatus();
 		});
+	}
+
+	function requestLeftbarStickyStatusUpdateOnHeightChange() {
+		refreshLeftbarHeightObservers();
+		let currentSignature = getLeftbarHeightSignature();
+		if (currentSignature === leftbarHeightSignature) {
+			return;
+		}
+		leftbarHeightSignature = currentSignature;
+		requestLeftbarStickyStatusUpdate();
+	}
+
+	function refreshLeftbarHeightObservers() {
+		if (typeof ResizeObserver === 'undefined') {
+			return;
+		}
+		if (!leftbarHeightObserver) {
+			leftbarHeightObserver = new ResizeObserver(requestLeftbarStickyStatusUpdateOnHeightChange);
+		}
+		let nextTargets = getLeftbarHeightTargets();
+		for (let i = 0; i < leftbarHeightObservedNodes.length; i++) {
+			if (nextTargets.indexOf(leftbarHeightObservedNodes[i]) === -1) {
+				leftbarHeightObserver.unobserve(leftbarHeightObservedNodes[i]);
+			}
+		}
+		for (let i = 0; i < nextTargets.length; i++) {
+			if (leftbarHeightObservedNodes.indexOf(nextTargets[i]) === -1) {
+				leftbarHeightObserver.observe(nextTargets[i]);
+			}
+		}
+		leftbarHeightObservedNodes = nextTargets;
 	}
 
 	function changeLeftbarStickyStatus() {
@@ -722,6 +792,7 @@ $(document).on("change", ".search-filter", function (e) {
 		} else {
 			document.body.classList.remove('leftbar-can-headroom');
 		}
+		leftbarHeightSignature = getLeftbarHeightSignature();
 	}
 	changeLeftbarStickyStatus();
 	// 使用节流优化滚动事件性能
@@ -739,20 +810,25 @@ $(document).on("change", ".search-filter", function (e) {
 		part1OuterHeight = $leftbarPart1.outerHeight();
 		changeLeftbarStickyStatus();
 	}).observe(leftbarPart1, { attributes: true, childList: true, subtree: true });
-	// 监听 part2 和 part3 的尺寸变化，确保高度变动时重新计算布局
-	// 注意：这里必须使用 ResizeObserver 而不是 MutationObserver
-	// 因为 changeLeftbarStickyStatus 会修改 DOM 属性（classList, style），使用 MuationObserver 会导致无限循环死机
-	if (typeof ResizeObserver !== 'undefined') {
-		const ro = new ResizeObserver(function () {
-			requestLeftbarStickyStatusUpdate();
-		});
-		if (leftbarPart2) ro.observe(leftbarPart2);
-		if (leftbarPart3) ro.observe(leftbarPart3);
+	// ?? part2/part3 ?????????? sticky ???????????????
+	refreshLeftbarHeightObservers();
+	if (typeof MutationObserver !== 'undefined') {
+		let leftbarHeightMutationObserver = new MutationObserver(requestLeftbarStickyStatusUpdateOnHeightChange);
+		if (leftbarPart2) leftbarHeightMutationObserver.observe(leftbarPart2, { childList: true, characterData: true, subtree: true });
+		if (leftbarPart3) leftbarHeightMutationObserver.observe(leftbarPart3, { childList: true, characterData: true, subtree: true });
 	}
 	$(document).on('shown.bs.tab click', '#leftbar_part2 [data-toggle="tab"]', function () {
+		refreshLeftbarHeightObservers();
 		requestLeftbarStickyStatusUpdate();
-		window.setTimeout(requestLeftbarStickyStatusUpdate, 180);
+		window.setTimeout(function () {
+			refreshLeftbarHeightObservers();
+			requestLeftbarStickyStatusUpdate();
+		}, 180);
 	});
+	window.argonRequestLeftbarStickyStatusUpdate = function () {
+		refreshLeftbarHeightObservers();
+		requestLeftbarStickyStatusUpdate();
+	};
 }();
 
 /*左侧栏滚轮焦点切换*/
