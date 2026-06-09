@@ -1539,3 +1539,7 @@ if (apply_filters('argon_page_background_url', get_option('argon_page_background
 
 <div id="content" class="site-content">
 
+	<div id="argon_pjax_state" hidden><?php echo esc_html(wp_json_encode(array(
+		'bodyClasses' => implode(' ', get_body_class()),
+		'htmlClasses' => trim($htmlclasses)
+	))); ?></div>
