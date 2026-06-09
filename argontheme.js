@@ -755,6 +755,109 @@ $(document).on("change", ".search-filter", function (e) {
 	});
 }();
 
+/*左侧栏滚轮焦点切换*/
+!function () {
+	if (window.argonLeftbarWheelFocusBound) return;
+	window.argonLeftbarWheelFocusBound = true;
+
+	function normalizeWheelDelta(event) {
+		let deltaY = event.deltaY;
+		if (deltaY === undefined) {
+			deltaY = -event.wheelDelta || event.detail || 0;
+		}
+		if (event.deltaMode === 1) {
+			deltaY *= 40;
+		} else if (event.deltaMode === 2) {
+			deltaY *= window.innerHeight;
+		}
+		return deltaY;
+	}
+
+	function getPageScroller() {
+		return document.scrollingElement || document.documentElement || document.body;
+	}
+
+	function getMaxScrollTop(element) {
+		return Math.max(0, element.scrollHeight - element.clientHeight);
+	}
+
+	function canScrollVertically(element) {
+		return !!(element && getMaxScrollTop(element) > 1);
+	}
+
+	function canScrollBy(element, deltaY) {
+		if (!canScrollVertically(element) || deltaY === 0) {
+			return false;
+		}
+		let maxScrollTop = getMaxScrollTop(element);
+		let scrollTop = element.scrollTop;
+		return deltaY < 0 ? scrollTop > 0 : scrollTop < maxScrollTop - 1;
+	}
+
+	function scrollElementBy(element, deltaY) {
+		if (!element || deltaY === 0) {
+			return;
+		}
+		if (window.jQuery) {
+			jQuery(element).stop(true);
+		}
+		let maxScrollTop = getMaxScrollTop(element);
+		element.scrollTop = Math.max(0, Math.min(element.scrollTop + deltaY, maxScrollTop));
+	}
+
+	function getPart2ScrollTarget() {
+		let leftbarPart2 = document.getElementById('leftbar_part2');
+		if (!leftbarPart2 || !leftbarPart2.classList.contains('sticky')) {
+			return null;
+		}
+		let activePane = leftbarPart2.querySelector('.tab-pane.active.show');
+		if (!activePane) {
+			activePane = leftbarPart2.querySelector('#leftbar_tab_catalog');
+		}
+		return canScrollVertically(activePane) ? activePane : null;
+	}
+
+	function getPart3ScrollTarget() {
+		let leftbarPart3 = document.getElementById('leftbar_part3');
+		if (!leftbarPart3) {
+			return null;
+		}
+		let cardBody = leftbarPart3.querySelector('.card-body');
+		return canScrollVertically(cardBody) ? cardBody : null;
+	}
+
+	function handleLeftbarWheel(event) {
+		let target = event.target;
+		if (!target || typeof target.closest !== 'function') {
+			return;
+		}
+		let leftbarPart2 = target.closest('#leftbar_part2');
+		let leftbarPart3 = target.closest('#leftbar_part3');
+		if (!leftbarPart2 && !leftbarPart3) {
+			return;
+		}
+		let deltaY = normalizeWheelDelta(event);
+		if (!deltaY) {
+			return;
+		}
+		let focusedScroller = leftbarPart2 ? getPart2ScrollTarget() : getPart3ScrollTarget();
+		let pageScroller = getPageScroller();
+		let scrollTarget = canScrollBy(focusedScroller, deltaY) ? focusedScroller : pageScroller;
+		if (!canScrollBy(scrollTarget, deltaY)) {
+			return;
+		}
+		event.preventDefault();
+		event.stopPropagation();
+		if (typeof event.stopImmediatePropagation === 'function') {
+			event.stopImmediatePropagation();
+		}
+		scrollElementBy(scrollTarget, deltaY);
+	}
+
+	document.addEventListener('wheel', handleLeftbarWheel, { passive: false, capture: true });
+	document.addEventListener('mousewheel', handleLeftbarWheel, { passive: false, capture: true });
+}();
+
 /*Headroom*/
 if (argonConfig.headroom == "true") {
 	var headroom = new Headroom(document.querySelector("body"), {

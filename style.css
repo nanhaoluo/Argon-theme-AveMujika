@@ -2633,6 +2633,8 @@ html.navbar-absolute #leftbar_part2.sticky {
 	max-height: 100%;
 	overflow-y: auto;
 	overflow-x: hidden;
+	overscroll-behavior: contain;
+	-webkit-overflow-scrolling: touch;
 	scrollbar-color: rgba(var(--themecolor-rgbstr), 0.35) transparent;
 }
 
@@ -13365,6 +13367,8 @@ article .post-content .huhua a:before {
 	padding: 12px 16px;
 	max-height: 50vh;
 	overflow-y: auto;
+	overscroll-behavior: contain;
+	-webkit-overflow-scrolling: touch;
 }
 
 #leftbar_part3.sticky .card-body {
