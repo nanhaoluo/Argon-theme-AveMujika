@@ -727,6 +727,8 @@ $card_opacity = get_option('argon_post_background_opacity', '0.7');
 $card_blur = get_option('argon_card_blur', '20');
 $card_saturate = get_option('argon_card_saturate', '180');
 $bg_opacity = get_option('argon_page_background_opacity', '1');
+$argon_loader_page_bg = apply_filters('argon_page_background_url', get_option('argon_page_background_url'));
+$argon_loader_page_bg_dark = apply_filters('argon_page_background_dark_url', get_option('argon_page_background_dark_url'));
 
 // 顶栏模糊度为卡片模糊度的 60%（12px / 20px = 0.6）
 $toolbar_blur = round($card_blur * 0.6);
@@ -756,6 +758,14 @@ if ($bg_opacity == '') {
 	}
 </style>
 
+<?php if ($argon_loader_page_bg != '') { ?>
+<link rel="preload" as="image" href="<?php echo esc_url($argon_loader_page_bg); ?>" fetchpriority="high">
+<?php } ?>
+
+<?php if ($argon_loader_page_bg_dark != '') { ?>
+<link rel="preload" as="image" href="<?php echo esc_url($argon_loader_page_bg_dark); ?>">
+<?php } ?>
+
 <style id="theme_animation_css">
 	:root {
 		/* 动画时长 - Material 3 规范 */
@@ -773,6 +783,13 @@ if ($bg_opacity == '') {
 <body <?php body_class(); ?>>
 
 <?php /*wp_body_open();*/ ?>
+
+<div id="page-loader" class="page-loader is-visible" data-page-bg="<?php echo esc_url($argon_loader_page_bg); ?>" data-page-bg-dark="<?php echo esc_url($argon_loader_page_bg_dark); ?>" aria-hidden="true">
+	<div class="page-loader-backdrop"></div>
+	<div class="loader-progress" aria-hidden="true">
+		<div class="loader-progress-bar"></div>
+	</div>
+</div>
 
 <div id="toolbar">
 

@@ -1,4 +1,5 @@
 <article class="post post-full card bg-white shadow-sm border-0" id="post-<?php the_ID(); ?>" <?php post_class(); ?>>
+	<div class="post-full-blur-overlay" aria-hidden="true"></div>
 	<?php $show_thumbnail_in_banner = get_option('argon_show_thumbnail_in_banner_in_content_page', 'false'); ?>
 	<header class="post-header text-center<?php if (argon_has_post_thumbnail() && $show_thumbnail_in_banner != 'true'){echo " post-header-with-thumbnail";}?>">
 		<?php

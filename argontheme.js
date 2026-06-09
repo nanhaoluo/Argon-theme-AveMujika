@@ -3304,226 +3304,225 @@ var pjaxContainers = pjaxContainerSelectors.filter(function (selector) {
 /**
  * 页面加载管理器 - 提供智能加载动画和进度追踪
  */
-const PageLoader = (function () {
-	// 配置常量
-	const CONFIG = {
+var PageLoader = (function () {
+	var CONFIG = {
 		OVERLAY_ID: 'page-loader',
-		MIN_DISPLAY_TIME: 400,        // 最小显示时间（避免闪烁）
-		FADE_DURATION: 350,            // 淡出动画时长
-		PROGRESS_STEP: 0.1,            // 进度条步进
-		PROGRESS_INTERVAL: 200,        // 进度更新间隔
-		SKELETON_DELAY: 260            // 骨架屏延迟显示
+		MIN_DISPLAY_TIME: 280,
+		FADE_DURATION: 220,
+		RESOURCE_TIMEOUT: 5000,
+		PRELOAD_LIMIT: 92
 	};
 
-	// 状态管理
-	let state = {
+	var state = {
 		element: null,
 		isVisible: false,
 		startTime: 0,
 		progress: 0,
-		progressTimer: null,
 		hideTimer: null,
-		skeletonTimer: null
+		pendingHide: false,
+		trackedTotal: 0,
+		trackedDone: 0,
+		trackId: 0,
+		trackedNodes: []
 	};
 
-	/**
-	 * 创建加载动画 HTML
-	 */
-	function createHTML() {
-		return `
-			<div class="page-loader-backdrop"></div>
-			<div class="page-loader-content" role="status" aria-live="polite" aria-label="页面加载中">
-				<div class="loader-text">
-					<div class="loader-title">加载中</div>
-					<div class="loader-subtitle">请稍候</div>
-				</div>
-				<div class="loader-progress" aria-hidden="true">
-					<div class="loader-progress-bar"></div>
-				</div>
-				<div class="loader-skeleton" aria-hidden="true">
-					<div class="skeleton-page">
-						<div class="skeleton-row skeleton-row-wide"></div>
-						<div class="skeleton-row skeleton-row-short"></div>
-					</div>
-				</div>
-			</div>
-		`;
-	}
-
-	/**
-	 * 创建加载器元素
-	 */
 	function createElement() {
-		const el = document.createElement('div');
+		var el = document.createElement('div');
 		el.id = CONFIG.OVERLAY_ID;
-		el.className = 'page-loader';
-		el.innerHTML = createHTML();
+		el.className = 'page-loader is-visible';
+		el.innerHTML = '<div class="page-loader-backdrop"></div><div class="loader-progress" aria-hidden="true"><div class="loader-progress-bar"></div></div>';
 		return el;
 	}
 
-	/**
-	 * 获取或创建元素
-	 */
 	function getElement() {
 		if (!state.element) {
 			state.element = document.getElementById(CONFIG.OVERLAY_ID);
 			if (!state.element) {
 				state.element = createElement();
-				document.body.appendChild(state.element);
+				if (document.body) {
+					document.body.insertBefore(state.element, document.body.firstChild);
+				} else {
+					document.documentElement.appendChild(state.element);
+				}
 			}
 		}
 		return state.element;
 	}
 
-	/**
-	 * 更新进度环
-	 */
 	function updateProgress(progress) {
-		const el = state.element;
-		if (!el) return;
-
-		const bar = el.querySelector('.loader-progress-bar');
+		var el = getElement();
+		var bar = el.querySelector('.loader-progress-bar');
+		progress = Math.max(0, Math.min(100, progress));
+		state.progress = progress;
 		if (bar) {
 			bar.style.width = progress + '%';
 		}
-
-		state.progress = progress;
 	}
 
-	/**
-	 * 自动递增进度
-	 */
-	function startProgressAnimation() {
-		stopProgressAnimation();
-
-		state.progress = 0;
-		updateProgress(0);
-
-		state.progressTimer = setInterval(function () {
-			if (state.progress < 90) {
-				// 使用缓动函数，越接近 90% 越慢
-				const increment = CONFIG.PROGRESS_STEP * (1 - state.progress / 100);
-				state.progress = Math.min(90, state.progress + increment * 10);
-				updateProgress(state.progress);
-			}
-		}, CONFIG.PROGRESS_INTERVAL);
+	function canHide() {
+		return state.trackedTotal === 0 || state.trackedDone >= state.trackedTotal;
 	}
 
-	/**
-	 * 停止进度动画
-	 */
-	function stopProgressAnimation() {
-		if (state.progressTimer) {
-			clearInterval(state.progressTimer);
-			state.progressTimer = null;
+	function markResourceDone() {
+		state.trackedDone += 1;
+		if (state.trackedTotal > 0) {
+			updateProgress(Math.min(CONFIG.PRELOAD_LIMIT, (state.trackedDone / state.trackedTotal) * CONFIG.PRELOAD_LIMIT));
 		}
 	}
 
-	/**
-	 * 完成进度到 100%
-	 */
-	function completeProgress() {
-		stopProgressAnimation();
-		updateProgress(100);
+	function isResourceReady(node) {
+		if (!node) return true;
+		if (node.tagName === 'LINK') {
+			return !!node.sheet;
+		}
+		if (typeof node.complete !== 'undefined') {
+			return node.complete;
+		}
+		return false;
 	}
 
-	/**
-	 * 显示加载器
-	 */
-	function show() {
-		// 清理之前的定时器
+	function bindResource(node, trackId) {
+		var done = false;
+		function onDone() {
+			if (done) return;
+			done = true;
+			node.removeEventListener('load', onDone);
+			node.removeEventListener('error', onDone);
+			if (trackId !== state.trackId) {
+				return;
+			}
+			markResourceDone();
+			if (state.pendingHide && canHide()) {
+				hide();
+			}
+		}
+		node.addEventListener('load', onDone);
+		node.addEventListener('error', onDone);
+		if (isResourceReady(node)) {
+			setTimeout(onDone, 0);
+		}
+		setTimeout(onDone, CONFIG.RESOURCE_TIMEOUT);
+	}
+
+	function isImagePending(img) {
+		return img && !img.complete && img.getAttribute && img.getAttribute('loading') !== 'lazy';
+	}
+
+	function isStylePending(node) {
+		return node && node.tagName === 'LINK' && node.rel && node.rel.toLowerCase().indexOf('stylesheet') > -1;
+	}
+
+	function collectPreloadResources(root) {
+		var scope = root || document;
+		var nodes = [];
+		var imgs = scope.querySelectorAll ? scope.querySelectorAll('img') : [];
+		for (var i = 0; i < imgs.length; i++) {
+			if (isImagePending(imgs[i])) {
+				nodes.push(imgs[i]);
+			}
+		}
+		var styles = document.querySelectorAll('link[rel~="stylesheet"]');
+		for (var j = 0; j < styles.length; j++) {
+			if (!styles[j].sheet && !styles[j].getAttribute('data-argon-preload-seen') && isStylePending(styles[j])) {
+				nodes.push(styles[j]);
+			}
+		}
+		var loader = getElement();
+		var bgUrls = [];
+		if (loader.getAttribute('data-page-bg')) {
+			bgUrls.push(loader.getAttribute('data-page-bg'));
+		}
+		if (document.documentElement.classList.contains('darkmode') && loader.getAttribute('data-page-bg-dark')) {
+			bgUrls.push(loader.getAttribute('data-page-bg-dark'));
+		}
+		for (var k = 0; k < bgUrls.length; k++) {
+			var preloadImg = new Image();
+			preloadImg.src = bgUrls[k];
+			if (!preloadImg.complete) {
+				nodes.push(preloadImg);
+			}
+		}
+		return nodes;
+	}
+
+	function trackResources(root) {
+		state.trackId += 1;
+		var nodes = collectPreloadResources(root);
+		state.trackedNodes = nodes;
+		state.trackedTotal = nodes.length;
+		state.trackedDone = 0;
+
+		if (!nodes.length) {
+			updateProgress(72);
+			return;
+		}
+
+		updateProgress(8);
+		var trackId = state.trackId;
+		nodes.forEach(function (node) {
+			if (node.setAttribute) {
+				node.setAttribute('data-argon-preload-seen', 'true');
+			}
+			bindResource(node, trackId);
+		});
+	}
+
+	function show(root) {
+		var el = getElement();
 		if (state.hideTimer) {
 			clearTimeout(state.hideTimer);
 			state.hideTimer = null;
 		}
-		if (state.skeletonTimer) {
-			clearTimeout(state.skeletonTimer);
-			state.skeletonTimer = null;
-		}
-
-		const el = getElement();
 		state.startTime = Date.now();
 		state.isVisible = true;
-
-		// 移除隐藏类，添加显示类
+		state.pendingHide = false;
 		el.classList.remove('is-hiding');
-		void el.offsetWidth; // 强制重排
 		el.classList.add('is-visible');
-
-		// 启动进度动画
-		startProgressAnimation();
-
-		// 延迟显示骨架屏（避免快速加载时闪烁）
-		state.skeletonTimer = setTimeout(function () {
-			if (state.isVisible && el) {
-				el.classList.add('show-skeleton');
-			}
-		}, CONFIG.SKELETON_DELAY);
+		updateProgress(0);
+		trackResources(root || document);
 	}
 
-	/**
-	 * 隐藏加载器
-	 */
 	function hide() {
-		if (!state.isVisible) return;
+		var el = getElement();
+		if (!state.isVisible && !el.classList.contains('is-visible')) return;
+		if (!canHide()) {
+			state.pendingHide = true;
+			updateProgress(96);
+			return;
+		}
 
-		const el = state.element;
-		if (!el) return;
+		updateProgress(100);
+		state.pendingHide = false;
+		var elapsedTime = Date.now() - state.startTime;
+		var remainingTime = Math.max(0, CONFIG.MIN_DISPLAY_TIME - elapsedTime);
 
-		// 完成进度
-		completeProgress();
-
-		// 计算已显示时间
-		const elapsedTime = Date.now() - state.startTime;
-		const remainingTime = Math.max(0, CONFIG.MIN_DISPLAY_TIME - elapsedTime);
-
-		// 确保最小显示时间后再隐藏
 		state.hideTimer = setTimeout(function () {
 			el.classList.add('is-hiding');
-			el.classList.remove('show-skeleton');
-
-			// 动画结束后清理
 			setTimeout(function () {
-				el.classList.remove('is-visible', 'is-hiding');
+				el.classList.remove('is-visible');
+				el.classList.remove('is-hiding');
 				state.isVisible = false;
-				stopProgressAnimation();
 			}, CONFIG.FADE_DURATION);
 		}, remainingTime);
 	}
 
-	/**
-	 * 设置进度（手动控制）
-	 */
 	function setProgress(progress) {
-		progress = Math.max(0, Math.min(100, progress));
-		stopProgressAnimation();
 		updateProgress(progress);
 	}
 
-	/**
-	 * 销毁加载器
-	 */
 	function destroy() {
-		stopProgressAnimation();
-
 		if (state.hideTimer) {
 			clearTimeout(state.hideTimer);
 			state.hideTimer = null;
 		}
-		if (state.skeletonTimer) {
-			clearTimeout(state.skeletonTimer);
-			state.skeletonTimer = null;
-		}
-
 		if (state.element && state.element.parentNode) {
 			state.element.parentNode.removeChild(state.element);
 		}
-
 		state.element = null;
 		state.isVisible = false;
+		state.trackId += 1;
 	}
 
-	// 公开 API
 	return {
 		show: show,
 		hide: hide,
@@ -3540,6 +3539,20 @@ function showLoadingOverlay() {
 }
 
 function hideLoadingOverlay() {
+	PageLoader.hide();
+}
+
+if (typeof NProgress !== 'undefined') {
+	NProgress.configure({ showSpinner: false });
+}
+
+if (document.readyState !== 'complete') {
+	PageLoader.show(document);
+	window.addEventListener('load', function () {
+		PageLoader.hide();
+	});
+} else {
+	PageLoader.show(document);
 	PageLoader.hide();
 }
 var pageTransitionTimer = null;
@@ -3642,6 +3655,7 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 			}
 		}).on('pjax:send', function () {
 			NProgress.set(0.618);
+			PageLoader.setProgress(38);
 			startPageExitTransition();
 		}).on('pjax:beforeReplace', function (e, dom) {
 			// ========== 需求 1.1-1.4: 清理旧页面的所有资源 ==========
@@ -3666,10 +3680,8 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 			// ========== 需求 1.5, 1.6: 重新初始化所有功能模块 ==========
 			pjaxLoading = false;
 			NProgress.inc();
+			PageLoader.setProgress(70);
 			startPageEnterTransition();
-			setTimeout(function () {
-				hideLoadingOverlay();
-			}, 120);
 
 			// ========== 需求 4.1-4.5: 执行新页面中的内联脚本 ==========
 			try {
@@ -3722,6 +3734,12 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 			try { foldLongShuoshuo(); } catch (err) { ArgonDebug.error('foldLongShuoshuo failed:', err); }
 			try { handleHashNavigation(); } catch (err) { ArgonDebug.error('handleHashNavigation failed:', err); }
 			try { initArticleSkeletons(); } catch (err) { ArgonDebug.error('initArticleSkeletons failed:', err); }
+			try {
+				PageLoader.show(document.querySelector(pjaxContainers[0] || '#primary') || document);
+				PageLoader.setProgress(86);
+			} catch (err) {
+				ArgonDebug.error('PageLoader PJAX tracking failed:', err);
+			}
 
 			$("html").trigger("resize");
 
@@ -3741,6 +3759,7 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 			}
 
 			NProgress.done();
+			hideLoadingOverlay();
 		}).on('pjax:error', function () {
 			hideLoadingOverlay();
 			endPageTransition();
@@ -5199,80 +5218,16 @@ setInterval(function(){
 		});
 	}
 
-	// 5. 页面加载进度条
-	function initLoadingBar() {
-		if (document.getElementById('page-loading-bar')) return;
-		var bar = document.createElement('div');
-		bar.id = 'page-loading-bar';
-		bar.style.width = '0%';
-		document.body.appendChild(bar);
-		var progress = 0;
-		var interval = setInterval(function () {
-			progress += Math.random() * 10;
-			if (progress >= 90) { clearInterval(interval); progress = 90; }
-			bar.style.width = progress + '%';
-		}, 100);
-		var overlay = document.getElementById('article-loading-overlay');
-		if (!overlay) {
-			overlay = document.createElement('div');
-			overlay.id = 'article-loading-overlay';
-			var inner = document.createElement('div');
-			inner.className = 'overlay-content';
-			inner.innerHTML = '<div class="overlay-title"></div><div class="overlay-thumb"></div><div class="overlay-row" style="width:85%"></div><div class="overlay-row" style="width:70%"></div><div class="overlay-row" style="width:90%"></div><div class="overlay-grid"><div class="overlay-grid-item"></div><div class="overlay-grid-item"></div></div><div class="center-spinner"><div class="loading-spinner"></div><div class="overlay-row" style="width:120px;height:14px;margin:0"></div></div>';
-			overlay.appendChild(inner);
-			document.body.appendChild(overlay);
-		}
-		overlay.classList.remove('is-hiding');
-		requestAnimationFrame(function () {
-			overlay.classList.add('is-visible');
-		});
-		window.addEventListener('load', function () {
-			clearInterval(interval);
-			bar.style.width = '100%';
-			setTimeout(function () { bar.style.opacity = '0'; setTimeout(function () { bar.remove(); }, 300); }, 200);
-			if (overlay) {
-				overlay.classList.remove('is-visible');
-				overlay.classList.add('is-hiding');
-				setTimeout(function () { if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 360);
-			}
-		});
-	}
-
-	// 6. PJAX 加载动画
+	// 5. PJAX loading animation
 	function initPjaxAnimations() {
 		if (typeof jQuery === 'undefined') return;
 		jQuery(document).on('pjax:start', function () {
 			jQuery('#primary').addClass('pjax-loading');
-			var bar = document.getElementById('page-loading-bar');
-			if (!bar) { bar = document.createElement('div'); bar.id = 'page-loading-bar'; document.body.appendChild(bar); }
-			bar.style.opacity = '1'; bar.style.width = '30%';
-			setTimeout(function () { bar.style.width = '60%'; }, 200);
-			var overlay = document.getElementById('article-loading-overlay');
-			if (!overlay) {
-				overlay = document.createElement('div');
-				overlay.id = 'article-loading-overlay';
-				var inner = document.createElement('div');
-				inner.className = 'overlay-content';
-				inner.innerHTML = '<div class="overlay-title"></div><div class="overlay-thumb"></div><div class="overlay-row" style="width:85%"></div><div class="overlay-row" style="width:70%"></div><div class="overlay-row" style="width:90%"></div><div class="overlay-grid"><div class="overlay-grid-item"></div><div class="overlay-grid-item"></div></div><div class="center-spinner"><div class="loading-spinner"></div><div class="overlay-row" style="width:120px;height:14px;margin:0"></div></div>';
-				overlay.appendChild(inner);
-				document.body.appendChild(overlay);
-			}
-			overlay.classList.remove('is-hiding');
-			requestAnimationFrame(function () {
-				overlay.classList.add('is-visible');
-			});
+			PageLoader.setProgress(30);
 		});
 		jQuery(document).on('pjax:end', function () {
 			jQuery('#primary').removeClass('pjax-loading');
-			var bar = document.getElementById('page-loading-bar');
-			if (bar) { bar.style.width = '100%'; setTimeout(function () { bar.style.opacity = '0'; setTimeout(function () { bar.remove(); }, 300); }, 200); }
 			setTimeout(function () { initArticleSkeletons(); initImageLoadAnimation(); initScrollAnimations(); initSmoothScroll(); }, 100);
-			var overlay = document.getElementById('article-loading-overlay');
-			if (overlay) {
-				overlay.classList.remove('is-visible');
-				overlay.classList.add('is-hiding');
-				setTimeout(function () { if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 360);
-			}
 		});
 	}
 
@@ -5323,7 +5278,6 @@ setInterval(function(){
 
 	if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); }
 	else { init(); }
-	if (document.readyState !== 'complete') { initLoadingBar(); }
 })();
 /* ========== End of Modern UI Enhancements ========== */
 
