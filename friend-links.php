@@ -3,9 +3,41 @@
  * 友情链接页面
  * @package Argon
  */
+$argon_flink_ajax_buffer_level = null;
+if (isset($_POST['flink_action'])) {
+    $argon_flink_ajax_buffer_level = ob_get_level();
+    ob_start();
+}
+
 $wp_load_path = dirname(dirname(dirname(dirname(__FILE__)))) . '/wp-load.php';
 if (!file_exists($wp_load_path)) $wp_load_path = $_SERVER['DOCUMENT_ROOT'] . '/wp-load.php';
 require_once($wp_load_path);
+
+if (!function_exists('argon_flink_send_json_response')) {
+    function argon_flink_send_json_response($response, $status_code = 200) {
+        global $argon_flink_ajax_buffer_level;
+
+        $unexpected_output = '';
+        if ($argon_flink_ajax_buffer_level !== null) {
+            while (ob_get_level() > $argon_flink_ajax_buffer_level) {
+                $unexpected_output = ob_get_clean() . $unexpected_output;
+            }
+        }
+
+        if ($unexpected_output !== '') {
+            error_log('Argon friend links AJAX unexpected output: ' . trim(wp_strip_all_tags($unexpected_output)));
+        }
+
+        if (!headers_sent()) {
+            status_header($status_code);
+            header('Content-Type: application/json; charset=' . get_option('blog_charset', 'UTF-8'), true);
+            nocache_headers();
+        }
+
+        echo wp_json_encode($response);
+        exit;
+    }
+}
 
 if (function_exists('argon_deduplicate_friend_links')) argon_deduplicate_friend_links();
 
@@ -14,19 +46,16 @@ $is_admin = current_user_can('manage_options');
 
 // AJAX 处理友链管理
 if (isset($_POST['flink_action'])) {
-    header('Content-Type: application/json; charset=utf-8');
     $response = array('success' => false, 'message' => '');
-    $action = sanitize_text_field($_POST['flink_action']);
+    $action = sanitize_text_field(wp_unslash($_POST['flink_action']));
     
     // 以下操作需要管理员权限
     if (!$is_admin) {
-        echo json_encode(array('success' => false, 'message' => '权限不足'));
-        exit;
+        argon_flink_send_json_response(array('success' => false, 'message' => '权限不足'), 403);
     }
     
     if (!isset($_POST['flink_nonce']) || !wp_verify_nonce($_POST['flink_nonce'], 'argon_flink_manage')) {
-        echo json_encode(array('success' => false, 'message' => '安全验证失败'));
-        exit;
+        argon_flink_send_json_response(array('success' => false, 'message' => '安全验证失败'), 403);
     }
     
     switch ($action) {
@@ -228,8 +257,7 @@ if (isset($_POST['flink_action'])) {
             $response = array('success' => false, 'message' => '未知操作');
     }
     
-    echo json_encode($response);
-    exit;
+    argon_flink_send_json_response($response);
 }
 
 // 处理访客申请

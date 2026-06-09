@@ -5696,7 +5696,7 @@ function argon_get_duolingo_data($force_refresh = false) {
  */
 function argon_get_friend_links($status = 'all') {
     $links = get_option('argon_friend_links', array());
-    if (empty($links)) {
+    if (empty($links) || !is_array($links)) {
         return array();
     }
     
@@ -5704,10 +5704,15 @@ function argon_get_friend_links($status = 'all') {
     $seen_hosts = array();
     $unique_links = array();
     foreach ($links as $link) {
-        $host = parse_url($link['url'], PHP_URL_HOST);
-        $host = preg_replace('/^www\./', '', $host);
-        if (!isset($seen_hosts[$host])) {
-            $seen_hosts[$host] = true;
+        if (!is_array($link)) {
+            continue;
+        }
+        $url = isset($link['url']) ? (string)$link['url'] : '';
+        $host = $url !== '' ? parse_url($url, PHP_URL_HOST) : '';
+        $host = $host ? preg_replace('/^www\./', '', strtolower($host)) : '';
+        $dedupe_key = $host !== '' ? 'host:' . $host : 'id:' . (isset($link['id']) ? (string)$link['id'] : md5(wp_json_encode($link)));
+        if (!isset($seen_hosts[$dedupe_key])) {
+            $seen_hosts[$dedupe_key] = true;
             $unique_links[] = $link;
         }
     }
@@ -5743,10 +5748,17 @@ function argon_get_friend_links($status = 'all') {
  */
 function argon_get_friend_links_raw($status = 'all') {
     $links = get_option('argon_friend_links', array());
+    if (!is_array($links)) {
+        return array();
+    }
+    $links = array_filter($links, 'is_array');
     if ($status === 'all') {
         return $links;
     }
     return array_filter($links, function($link) use ($status) {
+        if (!is_array($link)) {
+            return false;
+        }
         $link_status = isset($link['status']) ? $link['status'] : 'approved';
         return $link_status === $status;
     });
@@ -5757,13 +5769,22 @@ function argon_get_friend_links_raw($status = 'all') {
  */
 function argon_check_duplicate_link($url, $exclude_id = null) {
     $links = get_option('argon_friend_links', array());
+    if (!is_array($links)) {
+        return false;
+    }
     $new_host = parse_url($url, PHP_URL_HOST);
+    if (!$new_host) {
+        return false;
+    }
     $new_host = preg_replace('/^www\./', '', $new_host);
     
     foreach ($links as $link) {
-        if ($exclude_id && $link['id'] === $exclude_id) continue;
+        if (!is_array($link)) continue;
+        if ($exclude_id && isset($link['id']) && $link['id'] === $exclude_id) continue;
+        if (empty($link['url'])) continue;
         
         $existing_host = parse_url($link['url'], PHP_URL_HOST);
+        if (!$existing_host) continue;
         $existing_host = preg_replace('/^www\./', '', $existing_host);
         
         if ($existing_host === $new_host) {
@@ -6511,16 +6532,25 @@ function argon_select_friend_link_image($site_info) {
  */
 function argon_deduplicate_friend_links() {
     $links = get_option('argon_friend_links', array());
+    if (!is_array($links)) {
+        return 0;
+    }
     $seen_hosts = array();
     $unique_links = array();
     $removed = 0;
     
     foreach ($links as $link) {
-        $host = parse_url($link['url'], PHP_URL_HOST);
-        $host = preg_replace('/^www\./', '', $host);
+        if (!is_array($link)) {
+            $removed++;
+            continue;
+        }
+        $url = isset($link['url']) ? (string)$link['url'] : '';
+        $host = $url !== '' ? parse_url($url, PHP_URL_HOST) : '';
+        $host = $host ? preg_replace('/^www\./', '', strtolower($host)) : '';
+        $dedupe_key = $host !== '' ? 'host:' . $host : 'id:' . (isset($link['id']) ? (string)$link['id'] : md5(wp_json_encode($link)));
         
-        if (!isset($seen_hosts[$host])) {
-            $seen_hosts[$host] = true;
+        if (!isset($seen_hosts[$dedupe_key])) {
+            $seen_hosts[$dedupe_key] = true;
             $unique_links[] = $link;
         } else {
             $removed++;
@@ -6586,9 +6616,22 @@ function argon_add_friend_link($data) {
  */
 function argon_update_friend_link($id, $data) {
     $links = get_option('argon_friend_links', array());
+    if (!is_array($links)) {
+        return false;
+    }
+    $updated = false;
     foreach ($links as $key => $link) {
+        if (!is_array($link) || !isset($link['id']) || $link['id'] !== $id) {
+            continue;
+        }
         if ($link['id'] === $id) {
             foreach ($data as $field => $value) {
+                if (is_array($value)) {
+                    continue;
+                }
+                if (!is_bool($value)) {
+                    $value = wp_unslash($value);
+                }
                 if (in_array($field, array('url', 'links_page', 'avatar', 'author_avatar', 'favicon', 'auto_favicon', 'site_image', 'image'), true)) {
                     $links[$key][$field] = esc_url_raw($value);
                 } elseif ($field === 'email') {
@@ -6598,11 +6641,14 @@ function argon_update_friend_link($id, $data) {
                 }
             }
             $links[$key]['updated_at'] = time();
+            $updated = true;
             break;
         }
     }
-    update_option('argon_friend_links', $links);
-    return true;
+    if ($updated) {
+        update_option('argon_friend_links', $links);
+    }
+    return $updated;
 }
 
 /**
@@ -6610,14 +6656,24 @@ function argon_update_friend_link($id, $data) {
  */
 function argon_delete_friend_link($id) {
     $links = get_option('argon_friend_links', array());
+    if (!is_array($links)) {
+        return false;
+    }
+    $deleted = false;
     foreach ($links as $key => $link) {
+        if (!is_array($link) || !isset($link['id'])) {
+            continue;
+        }
         if ($link['id'] === $id) {
             unset($links[$key]);
+            $deleted = true;
             break;
         }
     }
-    update_option('argon_friend_links', array_values($links));
-    return true;
+    if ($deleted) {
+        update_option('argon_friend_links', array_values($links));
+    }
+    return $deleted;
 }
 
 /**
@@ -6625,7 +6681,13 @@ function argon_delete_friend_link($id) {
  */
 function argon_get_friend_link($id) {
     $links = get_option('argon_friend_links', array());
+    if (!is_array($links)) {
+        return null;
+    }
     foreach ($links as $link) {
+        if (!is_array($link) || !isset($link['id'])) {
+            continue;
+        }
         if ($link['id'] === $id) {
             return $link;
         }
