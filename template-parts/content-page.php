@@ -86,7 +86,11 @@
 				$post_reference_keys_first_index = array();
 				$post_reference_contents_first_index = array();
 
-				the_content();
+				if (function_exists('argon_the_content_virtualized')){
+					argon_the_content_virtualized();
+				}else{
+					the_content();
+				}
 			}
 		?>
 	</div>

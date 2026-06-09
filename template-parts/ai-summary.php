@@ -8,19 +8,15 @@ if (get_option('argon_ai_summary_enable', 'false') !== 'true') {
 }
 
 $post_id = get_the_ID();
-$api_key = get_option('argon_ai_summary_api_key', '');
+$api_config = function_exists('argon_get_active_api_config') ? argon_get_active_api_config('summary') : [];
 
-if (empty($api_key)) {
+if (empty($api_config['api_key'])) {
 	return;
 }
 
 // 检查排除列表
-$exclude_ids = get_option('argon_ai_summary_exclude_ids', '');
-if (!empty($exclude_ids)) {
-	$exclude_array = array_map('trim', explode(',', $exclude_ids));
-	if (in_array($post_id, $exclude_array)) {
-		return;
-	}
+if (function_exists('argon_get_ai_summary_excluded_post_ids') && in_array(intval($post_id), argon_get_ai_summary_excluded_post_ids(), true)) {
+	return;
 }
 
 $summary = argon_get_ai_summary($post_id);
@@ -41,10 +37,13 @@ $provider_names = [
 	'doubao' => '豆包',
 	'kimi' => 'Kimi',
 	'zhipu' => '智谱',
-	'siliconflow' => 'SiliconFlow'
+	'siliconflow' => 'SiliconFlow',
+	'openai_compatible' => __('OpenAI 兼容', 'argon'),
+	'anthropic_compatible' => __('Anthropic 兼容', 'argon'),
+	'local_cache' => __('本地缓存', 'argon')
 ];
 
-$provider_display = isset($provider_names[$provider]) ? $provider_names[$provider] : $provider;
+$provider_display = !empty($provider) && isset($provider_names[$provider]) ? $provider_names[$provider] : $provider;
 $model_display = !empty($model) ? $model : __('未知模型', 'argon');
 ?>
 
@@ -85,57 +84,74 @@ $model_display = !empty($model) ? $model : __('未知模型', 'argon');
 <?php if ($is_generating): ?>
 <script>
 (function() {
-	let postId = <?php echo $post_id; ?>;
-	let checkCount = 0;
-	let maxChecks = 60;
+	var postId = <?php echo intval($post_id); ?>;
+	var checkCount = 0;
+	var maxChecks = 60;
+	var ajaxUrl = <?php echo wp_json_encode(admin_url('admin-ajax.php')); ?>;
+	var nonce = <?php echo wp_json_encode(wp_create_nonce('argon_check_ai_summary')); ?>;
+	var queryBaseUrl = <?php echo wp_json_encode(home_url('/ai-query/')); ?>;
+	var text = {
+		disclaimer: <?php echo wp_json_encode(__('内容由AI生成，请注意甄别', 'argon')); ?>,
+		model: <?php echo wp_json_encode(__('使用模型', 'argon')); ?>,
+		code: <?php echo wp_json_encode(__('识别码', 'argon')); ?>,
+		timeout: <?php echo wp_json_encode(__('摘要生成超时，请刷新页面重试', 'argon')); ?>,
+		failed: <?php echo wp_json_encode(__('摘要生成失败', 'argon')); ?>,
+		unknown: <?php echo wp_json_encode(__('未知错误', 'argon')); ?>
+	};
+
+	function escapeHtml(value) {
+		return String(value == null ? '' : value).replace(/[&<>"']/g, function(ch) {
+			return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'}[ch];
+		});
+	}
 	
 	function checkSummary() {
 		if (checkCount >= maxChecks) {
-			let loadingEl = document.querySelector('.ai-summary-loading');
+			var loadingEl = document.querySelector('.ai-summary-loading');
 			if (loadingEl) {
-				loadingEl.innerHTML = '<span class="text-danger"><i class="fa fa-exclamation-triangle"></i> 摘要生成超时，请刷新页面重试</span>';
+				loadingEl.innerHTML = '<span class="text-danger"><i class="fa fa-exclamation-triangle"></i> ' + escapeHtml(text.timeout) + '</span>';
 			}
 			return;
 		}
 		
 		checkCount++;
 		
-		fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+		fetch(ajaxUrl, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/x-www-form-urlencoded',
 			},
-			body: 'action=argon_check_ai_summary&post_id=' + postId + '&nonce=<?php echo wp_create_nonce('argon_check_ai_summary'); ?>'
+			body: 'action=argon_check_ai_summary&post_id=' + encodeURIComponent(postId) + '&nonce=' + encodeURIComponent(nonce)
 		})
-		.then(response => response.json())
-		.then(data => {
+		.then(function(response) { return response.json(); })
+		.then(function(data) {
 			if (data.success && data.data && data.data.summary) {
-				let contentDiv = document.querySelector('.ai-summary-content');
-				let footerDiv = document.querySelector('.ai-summary-footer');
+				var contentDiv = document.querySelector('.ai-summary-content');
+				var footerDiv = document.querySelector('.ai-summary-footer');
 				if (contentDiv) {
-					contentDiv.innerHTML = '<p>' + data.data.summary + '</p>';
+					contentDiv.innerHTML = '<p>' + escapeHtml(data.data.summary) + '</p>';
 				}
 				if (footerDiv) {
-					let footerHTML = '<span class="ai-summary-disclaimer"><i class="fa fa-info-circle"></i> <?php _e('内容由AI生成，请注意甄别', 'argon'); ?></span>';
+					var footerHTML = '<span class="ai-summary-disclaimer"><i class="fa fa-info-circle"></i> ' + escapeHtml(text.disclaimer) + '</span>';
 					if (data.data.model) {
-						footerHTML += '<span class="ai-summary-model"><?php _e('使用模型', 'argon'); ?>: ' + data.data.model + '</span>';
+						footerHTML += '<span class="ai-summary-model">' + escapeHtml(text.model) + ': ' + escapeHtml(data.data.model) + '</span>';
 					}
 					if (data.data.code) {
-						footerHTML += '<span class="ai-summary-code"><?php _e('识别码', 'argon'); ?>: <a href="<?php echo home_url('/ai-query/'); ?>' + data.data.code + '">' + data.data.code + '</a></span>';
+						footerHTML += '<span class="ai-summary-code">' + escapeHtml(text.code) + ': <a href="' + escapeHtml(queryBaseUrl + encodeURIComponent(data.data.code)) + '">' + escapeHtml(data.data.code) + '</a></span>';
 					}
 					footerDiv.innerHTML = footerHTML;
 				}
 			} else if (data.success === false) {
-				let loadingEl = document.querySelector('.ai-summary-loading');
+				var loadingEl = document.querySelector('.ai-summary-loading');
 				if (loadingEl) {
-					let errorMsg = (data.data && data.data.message) ? data.data.message : '未知错误';
-					loadingEl.innerHTML = '<span class="text-danger"><i class="fa fa-exclamation-triangle"></i> 摘要生成失败: ' + errorMsg + '</span>';
+					var errorMsg = (data.data && data.data.message) ? data.data.message : text.unknown;
+					loadingEl.innerHTML = '<span class="text-danger"><i class="fa fa-exclamation-triangle"></i> ' + escapeHtml(text.failed) + ': ' + escapeHtml(errorMsg) + '</span>';
 				}
 			} else {
 				setTimeout(checkSummary, 5000);
 			}
 		})
-		.catch(error => {
+		.catch(function() {
 			setTimeout(checkSummary, 5000);
 		});
 	}

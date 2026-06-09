@@ -594,7 +594,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 										if (typeof jQuery !== 'undefined' && typeof jQuery.fn.headIndex === 'function') {
 											jQuery(document).ready(function($) {
 												// 初始化 headIndex
-												$(document).headIndex({
+													$(document).headIndex({
 													articleWrapSelector: '#post_content',
 													indexBoxSelector: '#leftbar_catalog',
 													indexScrollBoxSelector: '#leftbar_tab_catalog',

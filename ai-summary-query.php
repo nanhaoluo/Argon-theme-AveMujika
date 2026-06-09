@@ -197,12 +197,16 @@ if (!empty($query_code)) {
 						'openai' => 'OpenAI',
 						'anthropic' => 'Anthropic',
 						'deepseek' => 'DeepSeek',
+						'xiaomi' => '小米 Mimo',
 						'qianwen' => '通义千问',
 						'wenxin' => '文心一言',
 						'doubao' => '豆包',
 						'kimi' => 'Kimi',
 						'zhipu' => '智谱',
-						'siliconflow' => 'SiliconFlow'
+						'siliconflow' => 'SiliconFlow',
+						'openai_compatible' => 'OpenAI 兼容',
+						'anthropic_compatible' => 'Anthropic 兼容',
+						'local_cache' => '本地缓存'
 					];
 					
 					$result['provider_display'] = isset($provider_names[$result['provider']]) ? $provider_names[$result['provider']] : $result['provider'];
@@ -253,6 +257,7 @@ if (!empty($query_code)) {
 						// 获取 AI 配置信息
 						$result['provider'] = get_comment_meta($comment_id, '_argon_spam_detection_provider', true);
 						$result['model'] = get_comment_meta($comment_id, '_argon_spam_detection_model', true);
+						$config = function_exists('argon_get_active_api_config') ? argon_get_active_api_config('spam') : [];
 						$log_table = $wpdb->prefix . 'argon_ai_query_log';
 						$latest = $wpdb->get_row($wpdb->prepare(
 							"SELECT provider, model FROM {$log_table} WHERE scenario = %s AND status = 'success' AND comment_id = %d ORDER BY id DESC LIMIT 1",
@@ -270,22 +275,26 @@ if (!empty($query_code)) {
 							}
 						}
 						if (empty($result['provider'])) {
-							$result['provider'] = get_option('argon_ai_summary_provider', 'openai');
+							$result['provider'] = isset($config['provider']) ? $config['provider'] : '';
 						}
 						if (empty($result['model'])) {
-							$result['model'] = get_option('argon_ai_summary_model', '');
+							$result['model'] = isset($config['model']) ? $config['model'] : '';
 						}
 						
 						$provider_names = [
 							'openai' => 'OpenAI',
 							'anthropic' => 'Anthropic',
 							'deepseek' => 'DeepSeek',
+							'xiaomi' => '小米 Mimo',
 							'qianwen' => '通义千问',
 							'wenxin' => '文心一言',
 							'doubao' => '豆包',
 							'kimi' => 'Kimi',
 							'zhipu' => '智谱',
-							'siliconflow' => 'SiliconFlow'
+							'siliconflow' => 'SiliconFlow',
+							'openai_compatible' => 'OpenAI 兼容',
+							'anthropic_compatible' => 'Anthropic 兼容',
+							'local_cache' => '本地缓存'
 						];
 						
 						$result['provider_display'] = isset($provider_names[$result['provider']]) ? $provider_names[$result['provider']] : $result['provider'];
@@ -782,6 +791,7 @@ if (current_user_can('manage_options')):
 			$detection_result = get_comment_meta($detection->comment_id, '_argon_spam_detection_result', true);
 			$provider = get_comment_meta($detection->comment_id, '_argon_spam_detection_provider', true);
 			$model = get_comment_meta($detection->comment_id, '_argon_spam_detection_model', true);
+			$config = function_exists('argon_get_active_api_config') ? argon_get_active_api_config('spam') : [];
 			$log_table = $wpdb->prefix . 'argon_ai_query_log';
 			$latest = $wpdb->get_row($wpdb->prepare(
 				"SELECT provider, model FROM {$log_table} WHERE scenario = %s AND status = 'success' AND comment_id = %d ORDER BY id DESC LIMIT 1",
@@ -799,10 +809,10 @@ if (current_user_can('manage_options')):
 				}
 			}
 			if (empty($provider)) {
-				$provider = get_option('argon_ai_summary_provider', 'openai');
+				$provider = isset($config['provider']) ? $config['provider'] : '';
 			}
 			if (empty($model)) {
-				$model = get_option('argon_ai_summary_model', '');
+				$model = isset($config['model']) ? $config['model'] : '';
 			}
 			$all_records[] = [
 				'type' => 'spam_detection',
@@ -1295,7 +1305,10 @@ if (current_user_can('manage_options')):
 						'doubao': '豆包',
 						'kimi': 'Kimi',
 						'zhipu': '智谱',
-						'siliconflow': 'SiliconFlow'
+						'siliconflow': 'SiliconFlow',
+						'openai_compatible': 'OpenAI 兼容',
+						'anthropic_compatible': 'Anthropic 兼容',
+						'local_cache': '本地缓存'
 					};
 					
 					stats.by_provider.forEach(item => {

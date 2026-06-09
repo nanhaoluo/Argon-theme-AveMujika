@@ -11898,8 +11898,6 @@ html.darkmode.amoled-dark #content:after {
 		height: -moz-max-content;
 	}
 
-
-
 	#leftbar_part2_inner:before {
 		content: "";
 		display: block;
@@ -18004,6 +18002,7 @@ html.darkmode .page-loader-backdrop {
 	}
 }
 
+/* ---------- 鏂囩珷鍗＄墖楠ㄦ灦灞?---------- */
 @keyframes article-skeleton-pulse {
 	0% {
 		background-position: 100% 50%;
@@ -18607,6 +18606,16 @@ html.darkmode .shuoshuo-content .argon-hidden-text-background:active {
 	text-align: center;
 }
 
+.site-rss-sidebar {
+	position: relative;
+	z-index: 5;
+	flex: 0 0 auto;
+	width: auto;
+	margin: 0;
+	padding: 0;
+	text-align: right;
+}
+
 .site-rss-btn {
 	width: auto;
 	min-width: 92px;
@@ -18634,6 +18643,17 @@ html.darkmode .shuoshuo-content .argon-hidden-text-background:active {
 		transform var(--animation-fast) var(--ease-standard);
 }
 
+.site-rss-sidebar .site-rss-btn {
+	width: 34px;
+	min-width: 34px;
+	padding: 0;
+	gap: 0;
+	background: transparent;
+	border-color: transparent;
+	color: var(--rss-color) !important;
+	box-shadow: none;
+}
+
 .site-rss-btn::-webkit-details-marker {
 	display: none;
 }
@@ -18655,8 +18675,28 @@ html.darkmode .shuoshuo-content .argon-hidden-text-background:active {
 	box-shadow: 0 4px 10px rgba(var(--rss-rgb), 0.22);
 }
 
+.site-rss-sidebar .site-rss-btn-icon {
+	width: 26px;
+	height: 26px;
+	background: rgba(var(--rss-rgb), 0.1);
+	color: var(--rss-color);
+	box-shadow: none;
+}
+
 .site-rss-btn-text {
 	letter-spacing: 0;
+}
+
+.site-rss-sidebar .site-rss-btn-text {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
 }
 
 .site-rss-btn-caret {
@@ -18665,6 +18705,10 @@ html.darkmode .shuoshuo-content .argon-hidden-text-background:active {
 	font-size: 13px;
 	opacity: 0.72;
 	transition: transform var(--animation-fast) var(--ease-standard);
+}
+
+.site-rss-sidebar .site-rss-btn-caret {
+	display: none;
 }
 
 .site-rss[open] .site-rss-btn-caret {
@@ -18680,10 +18724,24 @@ html.darkmode .shuoshuo-content .argon-hidden-text-background:active {
 	box-shadow: 0 8px 18px rgba(var(--rss-rgb), 0.2);
 }
 
+.site-rss-sidebar .site-rss-btn:hover,
+.site-rss-sidebar[open] .site-rss-btn {
+	background: rgba(var(--rss-rgb), 0.12);
+	border-color: rgba(var(--rss-rgb), 0.18);
+	color: var(--rss-color) !important;
+	box-shadow: none;
+}
+
 .site-rss-btn:hover .site-rss-btn-icon,
 .site-rss[open] .site-rss-btn-icon {
 	background: rgba(255, 255, 255, 0.22);
 	box-shadow: none;
+}
+
+.site-rss-sidebar .site-rss-btn:hover .site-rss-btn-icon,
+.site-rss-sidebar[open] .site-rss-btn-icon {
+	background: var(--rss-color);
+	color: #fff;
 }
 
 .site-rss-btn:active {
@@ -18710,6 +18768,15 @@ html.darkmode .shuoshuo-content .argon-hidden-text-background:active {
 	box-shadow: 0 10px 24px rgba(31, 35, 40, 0.08);
 	text-align: left;
 	animation: site-rss-menu-in var(--animation-fast) var(--ease-standard) both;
+}
+
+.site-rss-sidebar .site-rss-menu {
+	position: absolute;
+	top: calc(100% + 8px);
+	right: 0;
+	width: 218px;
+	margin: 0;
+	z-index: 20;
 }
 
 .site-rss-menu a {
@@ -18790,68 +18857,6 @@ html.darkmode .site-rss-menu-meta {
 
 .leftbar-mobile-rss-action:active {
 	color: var(--themecolor) !important;
-}
-
-.site-rss-sidebar {
-		display: none;
-	}
-
-.site-rss-sidebar .site-rss-btn {
-	width: 34px;
-	min-width: 34px;
-	padding: 0;
-	gap: 0;
-	background: transparent;
-	border-color: transparent;
-	color: var(--rss-color) !important;
-	box-shadow: none;
-}
-
-.site-rss-sidebar .site-rss-btn-icon {
-	width: 26px;
-	height: 26px;
-	background: rgba(var(--rss-rgb), 0.1);
-	color: var(--rss-color);
-	box-shadow: none;
-}
-
-.site-rss-sidebar .site-rss-btn-text {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	margin: -1px;
-	padding: 0;
-	overflow: hidden;
-	clip: rect(0, 0, 0, 0);
-	white-space: nowrap;
-	border: 0;
-}
-
-.site-rss-sidebar .site-rss-btn-caret {
-	display: none;
-}
-
-.site-rss-sidebar .site-rss-btn:hover,
-.site-rss-sidebar[open] .site-rss-btn {
-	background: rgba(var(--rss-rgb), 0.12);
-	border-color: rgba(var(--rss-rgb), 0.18);
-	color: var(--rss-color) !important;
-	box-shadow: none;
-}
-
-.site-rss-sidebar .site-rss-btn:hover .site-rss-btn-icon,
-.site-rss-sidebar[open] .site-rss-btn-icon {
-	background: var(--rss-color);
-	color: #fff;
-}
-
-.site-rss-sidebar .site-rss-menu {
-	position: absolute;
-	top: calc(100% + 8px);
-	right: 0;
-	width: 218px;
-	margin: 0;
-	z-index: 20;
 }
 
 @keyframes site-rss-menu-in {

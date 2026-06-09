@@ -6599,7 +6599,7 @@ setInterval(function(){
 		});
 	}
 
-	// 5. PJAX loading animation
+	// 5. PJAX 加载动画
 	function initPjaxAnimations() {
 		if (typeof jQuery === 'undefined') return;
 		jQuery(document).on('pjax:end', function () {

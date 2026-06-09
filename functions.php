@@ -7321,6 +7321,80 @@ function argon_normalize_ai_api_config($api) {
 	return $api;
 }
 
+function argon_get_ai_summary_excluded_post_ids() {
+	$exclude_ids = get_option('argon_ai_summary_exclude_posts', '');
+	if ($exclude_ids === '') {
+		$exclude_ids = get_option('argon_ai_summary_exclude_ids', '');
+	}
+	if ($exclude_ids === '') {
+		return [];
+	}
+	return array_values(array_filter(array_map('intval', preg_split('/[\s,，]+/u', (string)$exclude_ids))));
+}
+
+function argon_decode_ai_json_response($response, $expect_array = false) {
+	if (!is_string($response)) {
+		return null;
+	}
+
+	$response = trim($response);
+	if ($response === '') {
+		return null;
+	}
+
+	$decoded = json_decode($response, true);
+	if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+		return $decoded;
+	}
+
+	if (preg_match('/```(?:json)?\s*([\s\S]*?)\s*```/i', $response, $matches)) {
+		$decoded = json_decode(trim($matches[1]), true);
+		if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+			return $decoded;
+		}
+	}
+
+	$pattern = $expect_array ? '/(\[[\s\S]*\])/s' : '/(\{[\s\S]*\})/s';
+	if (preg_match($pattern, $response, $matches)) {
+		$decoded = json_decode(trim($matches[1]), true);
+		if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+			return $decoded;
+		}
+	}
+
+	return null;
+}
+
+function argon_normalize_ai_boolean_value($value, $default = false) {
+	if (is_bool($value)) {
+		return $value;
+	}
+	if (is_numeric($value)) {
+		return floatval($value) !== 0.0;
+	}
+	if (is_string($value)) {
+		$value = strtolower(trim($value));
+		if (in_array($value, ['true', 'yes', 'spam', '1', '是', '垃圾'], true)) {
+			return true;
+		}
+		if (in_array($value, ['false', 'no', 'ham', 'normal', '0', '否', '正常'], true)) {
+			return false;
+		}
+	}
+	return $default;
+}
+
+function argon_normalize_ai_confidence_value($value, $default = 0.0) {
+	if (!is_numeric($value)) {
+		return $default;
+	}
+	$confidence = floatval($value);
+	if ($confidence > 1) {
+		$confidence = $confidence / 100;
+	}
+	return max(0, min(1, $confidence));
+}
+
 function argon_get_openai_compatible_models($api_key, $custom_endpoint = '') {
 	$endpoint = !empty($custom_endpoint) ? $custom_endpoint : argon_get_default_ai_endpoint('openai_compatible');
 	$endpoint = preg_replace('#/chat/completions$#', '/models', $endpoint);
@@ -7486,13 +7560,27 @@ function argon_ai_query($scenario, $prompt, $content, $context = []) {
 	// 优先使用场景化的 API 配置（新系统）
 	$config = null;
 	$provider = '';
-	$config_scenario = $scenario;
-	if ($scenario === 'spam_detection' || $scenario === 'keyword_extraction') {
-		$config_scenario = 'spam';
-	}
-	
-	// 如果 context 中指定了 provider，使用指定的 provider
-	if (isset($context['provider'])) {
+	$config_scenario = ($scenario === 'summary') ? 'summary' : 'spam';
+
+	// 如果 context 中指定了完整配置，优先使用，避免同 provider 多 API 时误取第一项。
+	if (isset($context['api_config']) && is_array($context['api_config'])) {
+		$config = argon_normalize_ai_api_config($context['api_config']);
+		$provider = isset($config['provider']) ? $config['provider'] : '';
+	} elseif (isset($context['api_id'])) {
+		$config = argon_get_api_by_id(sanitize_text_field($context['api_id']));
+		if ($config) {
+			$config = argon_normalize_ai_api_config($config);
+			$provider = isset($config['provider']) ? $config['provider'] : '';
+		}
+	} elseif (isset($context['provider']) && isset($context['api_key'])) {
+		$provider = $context['provider'];
+		$config = [
+			'provider' => $provider,
+			'api_key' => $context['api_key'],
+			'api_endpoint' => isset($context['api_endpoint']) ? $context['api_endpoint'] : '',
+			'model' => isset($context['model']) ? $context['model'] : ''
+		];
+	} elseif (isset($context['provider'])) {
 		$provider = $context['provider'];
 		$config = argon_get_ai_provider_config($provider);
 	} else {
@@ -7503,10 +7591,12 @@ function argon_ai_query($scenario, $prompt, $content, $context = []) {
 		}
 	}
 	
-	// 如果新系统没有配置，回退到旧系统
+	// 如果新系统没有配置，回退到旧系统/第一个统一 API
 	if (!$config || empty($provider) || empty($config['api_key'])) {
-		$provider = get_option('argon_ai_summary_provider', 'openai');
-		$config = argon_get_ai_provider_config($provider);
+		$config = argon_get_ai_provider_config();
+		if ($config && !empty($config['provider'])) {
+			$provider = $config['provider'];
+		}
 	}
 	
 	if (!$config || empty($provider) || empty($config['api_key'])) {
@@ -7612,11 +7702,28 @@ function argon_resolve_ai_provider_model($scenario, $context = []) {
 	$config = null;
 	$provider = '';
 	$config_scenario = $scenario;
-	if ($scenario === 'spam_detection' || $scenario === 'keyword_extraction') {
+	if ($scenario !== 'summary') {
 		$config_scenario = 'spam';
 	}
 	
-	if (is_array($context) && isset($context['provider'])) {
+	if (is_array($context) && isset($context['api_config']) && is_array($context['api_config'])) {
+		$config = argon_normalize_ai_api_config($context['api_config']);
+		$provider = isset($config['provider']) ? $config['provider'] : '';
+	} elseif (is_array($context) && isset($context['api_id'])) {
+		$config = argon_get_api_by_id(sanitize_text_field($context['api_id']));
+		if ($config) {
+			$config = argon_normalize_ai_api_config($config);
+			$provider = isset($config['provider']) ? $config['provider'] : '';
+		}
+	} elseif (is_array($context) && isset($context['provider']) && isset($context['api_key'])) {
+		$provider = $context['provider'];
+		$config = [
+			'provider' => $provider,
+			'api_key' => $context['api_key'],
+			'api_endpoint' => isset($context['api_endpoint']) ? $context['api_endpoint'] : '',
+			'model' => isset($context['model']) ? $context['model'] : ''
+		];
+	} elseif (is_array($context) && isset($context['provider'])) {
 		$provider = $context['provider'];
 		$config = argon_get_ai_provider_config($provider);
 	} else {
@@ -7627,8 +7734,10 @@ function argon_resolve_ai_provider_model($scenario, $context = []) {
 	}
 	
 	if (!$config || empty($provider) || empty($config['api_key'])) {
-		$provider = get_option('argon_ai_summary_provider', 'openai');
-		$config = argon_get_ai_provider_config($provider);
+		$config = argon_get_ai_provider_config();
+		if ($config && !empty($config['provider'])) {
+			$provider = $config['provider'];
+		}
 	}
 	
 	$endpoint = is_array($config) && isset($config['api_endpoint']) ? $config['api_endpoint'] : '';
@@ -8001,12 +8110,8 @@ function argon_get_ai_summary($post_id) {
 	}
 
 	// 检查是否在排除列表中
-	$exclude_ids = get_option('argon_ai_summary_exclude_ids', '');
-	if (!empty($exclude_ids)) {
-		$exclude_array = array_map('trim', explode(',', $exclude_ids));
-		if (in_array($post_id, $exclude_array)) {
-			return false;
-		}
+	if (in_array(intval($post_id), argon_get_ai_summary_excluded_post_ids(), true)) {
+		return false;
 	}
 
 	// 尝试从缓存获取
@@ -8015,6 +8120,9 @@ function argon_get_ai_summary($post_id) {
 	
 	// 计算当前文章内容的哈希值
 	$post = get_post($post_id);
+	if (!$post) {
+		return false;
+	}
 	$current_hash = md5($post->post_content . $post->post_title);
 	
 	// 如果缓存存在且内容未变化，返回缓存
@@ -11219,9 +11327,13 @@ function argon_auto_learn_from_ai($comment, $ai_result) {
  * @return array|false ['is_spam' => bool, 'reason' => string, 'username_invalid' => bool, 'username_reason' => string] 或 false
  */
 function argon_detect_spam_comment_sync($comment) {
-	
+	$comment_id = isset($comment->comment_ID) ? intval($comment->comment_ID) : 0;
+	$post_id = isset($comment->comment_post_ID) ? intval($comment->comment_post_ID) : 0;
+	$user_id = isset($comment->user_id) ? intval($comment->user_id) : 0;
+	$can_persist = $comment_id > 0;
+
 	// 检查是否触发怕死模式
-	$panic_mode_info = get_comment_meta($comment->comment_ID, '_argon_panic_mode_triggered', true);
+	$panic_mode_info = $can_persist ? get_comment_meta($comment_id, '_argon_panic_mode_triggered', true) : '';
 	$panic_mode_triggered = false;
 	if (!empty($panic_mode_info)) {
 		$panic_mode_info = json_decode($panic_mode_info, true);
@@ -11232,16 +11344,12 @@ function argon_detect_spam_comment_sync($comment) {
 	
 	// 如果评论元数据中没有怕死模式信息，重新检测
 	if (!$panic_mode_triggered) {
-		$panic_mode_triggered = argon_check_panic_mode_trigger($comment->comment_post_ID);
-		if ($panic_mode_triggered) {
-			update_comment_meta($comment->comment_ID, '_argon_panic_mode_triggered', json_encode($panic_mode_triggered));
+		$panic_mode_triggered = $post_id > 0 ? argon_check_panic_mode_trigger($post_id) : false;
+		if ($panic_mode_triggered && $can_persist) {
+			update_comment_meta($comment_id, '_argon_panic_mode_triggered', json_encode($panic_mode_triggered));
 		}
 	}
 	
-	// 获取配置
-	$prompt_mode = get_option('argon_comment_spam_detection_prompt_mode', 'standard');
-	$custom_prompt = get_option('argon_comment_spam_detection_prompt', '');
-
 	// 1. 快速路径：关键词缓存匹配（降低 AI 调用产生的成本）
 	// 怕死模式下跳过关键词快速路径，强制使用 AI 检测
 	$combined_content = $comment->comment_author . ' ' . $comment->comment_content;
@@ -11259,16 +11367,18 @@ function argon_detect_spam_comment_sync($comment) {
 		];
 		
 		// 保存检测结果
-		update_comment_meta($comment->comment_ID, '_argon_spam_detection_result', $unified_result);
-		update_comment_meta($comment->comment_ID, '_argon_spam_detection_time', time());
-		update_comment_meta($comment->comment_ID, '_argon_spam_detection_provider', 'local_cache');
+		if ($can_persist) {
+			update_comment_meta($comment_id, '_argon_spam_detection_result', $unified_result);
+			update_comment_meta($comment_id, '_argon_spam_detection_time', time());
+			update_comment_meta($comment_id, '_argon_spam_detection_provider', 'local_cache');
+		}
 		
 		return $unified_result;
 	}
 	
 	// 2. AI 路径
 	$prompt_mode = get_option('argon_comment_spam_detection_prompt_mode', 'standard');
-	$custom_prompt = get_option('argon_comment_spam_detection_prompt', '');
+	$custom_prompt = get_option('argon_comment_spam_detection_custom_prompt', '');
 	
 	// 选择 Prompt
 	// 怕死模式：使用专项提示词
@@ -11286,18 +11396,19 @@ function argon_detect_spam_comment_sync($comment) {
 	$comment_text = argon_build_comment_context($comment);
 	
 	$resolved = argon_resolve_ai_provider_model('spam_detection', [
-		'comment_id' => $comment->comment_ID,
-		'post_id' => $comment->comment_post_ID,
-		'user_id' => $comment->user_id
+		'comment_id' => $comment_id,
+		'post_id' => $post_id,
+		'user_id' => $user_id
 	]);
 	$provider = isset($resolved['provider']) ? $resolved['provider'] : '';
 	$model = isset($resolved['model']) ? $resolved['model'] : '';
 	
 	// 使用统一的 AI 查询接口
 	$result_text = argon_ai_query('spam_detection', $prompt, $comment_text, [
-		'comment_id' => $comment->comment_ID,
-		'post_id' => $comment->comment_post_ID,
-		'user_id' => $comment->user_id,
+		'comment_id' => $comment_id,
+		'post_id' => $post_id,
+		'user_id' => $user_id,
+		'api_config' => argon_get_active_api_config('spam'),
 		'provider' => $provider,
 		'model' => $model
 	]);
@@ -11307,10 +11418,10 @@ function argon_detect_spam_comment_sync($comment) {
 	}
 	
 	// 解析 AI 返回的 JSON 结果
-	$result = json_decode($result_text, true);
+	$result = argon_decode_ai_json_response($result_text);
 	
-	if ($result && isset($result['content_spam'])) {
-		$latest = argon_get_latest_ai_query_provider_model('spam_detection', 0, $comment->comment_ID);
+	if ($result && (isset($result['content_spam']) || isset($result['is_spam']))) {
+		$latest = $can_persist ? argon_get_latest_ai_query_provider_model('spam_detection', 0, $comment_id) : null;
 		if ($latest) {
 			if (!empty($latest['provider'])) {
 				$provider = $latest['provider'];
@@ -11320,25 +11431,33 @@ function argon_detect_spam_comment_sync($comment) {
 			}
 		}
 		// 转换为统一格式
+		$content_spam = argon_normalize_ai_boolean_value(isset($result['content_spam']) ? $result['content_spam'] : $result['is_spam']);
+		$content_reason = isset($result['content_reason']) ? $result['content_reason'] : (isset($result['reason']) ? $result['reason'] : '未知');
 		$unified_result = [
-			'is_spam' => $result['content_spam'],
-			'reason' => isset($result['content_reason']) ? $result['content_reason'] : '未知',
-			'username_invalid' => isset($result['username_invalid']) ? $result['username_invalid'] : false,
+			'is_spam' => $content_spam,
+			'reason' => $content_reason,
+			'username_invalid' => isset($result['username_invalid']) ? argon_normalize_ai_boolean_value($result['username_invalid']) : false,
 			'username_reason' => isset($result['username_reason']) ? $result['username_reason'] : '正常',
-			'confidence' => isset($result['confidence']) ? floatval($result['confidence']) : 0.8,
+			'confidence' => argon_normalize_ai_confidence_value(isset($result['confidence']) ? $result['confidence'] : null, 0.8),
 			'suggestion' => isset($result['suggestion']) ? $result['suggestion'] : 'auto',
 			'analysis' => isset($result['analysis']) ? $result['analysis'] : '',
-			'prompt_mode' => $prompt_mode
+			'prompt_mode' => $prompt_mode,
+			'provider' => $provider,
+			'model' => $model
 		];
 		
 		// 保存检测结果
-		update_comment_meta($comment->comment_ID, '_argon_spam_detection_result', $unified_result);
-		update_comment_meta($comment->comment_ID, '_argon_spam_detection_time', time());
-		update_comment_meta($comment->comment_ID, '_argon_spam_detection_provider', $provider);
-		update_comment_meta($comment->comment_ID, '_argon_spam_detection_model', $model);
+		if ($can_persist) {
+			update_comment_meta($comment_id, '_argon_spam_detection_result', $unified_result);
+			update_comment_meta($comment_id, '_argon_spam_detection_time', time());
+			update_comment_meta($comment_id, '_argon_spam_detection_provider', $provider);
+			update_comment_meta($comment_id, '_argon_spam_detection_model', $model);
+		}
 		
 		// 自动从 AI 结果中提取特征并缓存，降低未来成本
-		argon_auto_learn_from_ai($comment, $unified_result);
+		if ($can_persist) {
+			argon_auto_learn_from_ai($comment, $unified_result);
+		}
 		
 		return $unified_result;
 	}
@@ -11490,23 +11609,15 @@ function argon_extract_keywords_from_comment($comment, $is_spam) {
 	$result_text = argon_ai_query('keyword_extraction', $prompt, $content, [
 		'comment_id' => $comment->comment_ID,
 		'post_id' => $comment->comment_post_ID,
-		'user_id' => $comment->user_id
+		'user_id' => $comment->user_id,
+		'api_config' => argon_get_active_api_config('spam')
 	]);
 	
 	if ($result_text === false) {
 		return [];
 	}
 	
-	// 提取 JSON
-	if (preg_match('/```(?:json)?\s*(\{.*?\})\s*```/s', $result_text, $matches)) {
-		$json_str = $matches[1];
-	} elseif (preg_match('/(\{.*?\})/s', $result_text, $matches)) {
-		$json_str = $matches[1];
-	} else {
-		return [];
-	}
-	
-	$result = json_decode($json_str, true);
+	$result = argon_decode_ai_json_response($result_text);
 	
 	if ($result && isset($result['keywords']) && is_array($result['keywords'])) {
 		return $result['keywords'];
@@ -11796,22 +11907,32 @@ function argon_async_spam_detection_handler($comment_id) {
 		return;
 	}
 	
-	// 记录检测时间（无论成功失败都记录，避免重复检测）
-	update_comment_meta($comment_id, '_argon_spam_detection_time', time());
-	
-	// 生成识别码
-	$detection_code = argon_generate_detection_code($comment_id);
+	$existing_code = get_comment_meta($comment_id, '_argon_spam_detection_code', true);
+	$detection_code = !empty($existing_code) ? $existing_code : argon_generate_detection_code($comment_id);
 	update_comment_meta($comment_id, '_argon_spam_detection_code', $detection_code);
-	
+
 	$config = argon_get_active_api_config('spam');
-	if (!empty($config) && !empty($config['api_key']) && !empty($config['provider'])) {
-		update_comment_meta($comment_id, '_argon_spam_detection_provider', $config['provider']);
-		update_comment_meta($comment_id, '_argon_spam_detection_model', isset($config['model']) ? $config['model'] : '');
-	} else {
-		$provider = get_option('argon_ai_summary_provider', 'openai');
-		$provider_config = argon_get_ai_provider_config($provider);
+	$provider = !empty($config['provider']) ? $config['provider'] : '';
+	$model = isset($config['model']) ? $config['model'] : '';
+	$latest = argon_get_latest_ai_query_provider_model('spam_detection', 0, $comment_id);
+	if ($latest) {
+		if (!empty($latest['provider'])) {
+			$provider = $latest['provider'];
+		}
+		if (isset($latest['model'])) {
+			$model = $latest['model'];
+		}
+	} elseif ($result && isset($result['provider'])) {
+		$provider = $result['provider'];
+		if (isset($result['model'])) {
+			$model = $result['model'];
+		}
+	}
+	if (!empty($provider)) {
 		update_comment_meta($comment_id, '_argon_spam_detection_provider', $provider);
-		update_comment_meta($comment_id, '_argon_spam_detection_model', !empty($provider_config['model']) ? $provider_config['model'] : get_option('argon_ai_summary_model', ''));
+	}
+	if ($model !== '') {
+		update_comment_meta($comment_id, '_argon_spam_detection_model', $model);
 	}
 	
 	if ($result && isset($result['is_spam'])) {
@@ -11831,8 +11952,12 @@ function argon_async_spam_detection_handler($comment_id) {
 			}
 		}
 		
-		// 获取自动处理置信度阈值
-		$confidence_threshold = floatval(get_option('argon_comment_spam_detection_confidence_threshold', 0.85));
+		// 获取自动处理置信度阈值；后台保存为百分比，运行时统一换算到 0-1。
+		$confidence_threshold = floatval(get_option('argon_comment_spam_detection_confidence_threshold', 85));
+		if ($confidence_threshold > 1) {
+			$confidence_threshold = $confidence_threshold / 100;
+		}
+		$confidence_threshold = max(0, min(1, $confidence_threshold));
 		
 		// 怕死模式下调整阈值
 		if ($panic_mode_triggered) {
@@ -12105,14 +12230,16 @@ function argon_spam_detection_scan() {
 		$provider = $config['provider'];
 		$model = isset($config['model']) ? $config['model'] : '';
 	} else {
-		$provider = get_option('argon_ai_summary_provider', 'openai');
-		$provider_config = argon_get_ai_provider_config($provider);
-		$model = !empty($provider_config['model']) ? $provider_config['model'] : get_option('argon_ai_summary_model', '');
+		$provider_config = argon_get_ai_provider_config();
+		$provider = !empty($provider_config['provider']) ? $provider_config['provider'] : '';
+		$model = !empty($provider_config['model']) ? $provider_config['model'] : '';
 	}
 	
 	foreach ($result as $item) {
 		$comment_id = $item['id'];
 		$checked_ids[] = $comment_id;
+		$item_is_spam = isset($item['is_spam']) ? argon_normalize_ai_boolean_value($item['is_spam']) : false;
+		$item_confidence = argon_normalize_ai_confidence_value(isset($item['confidence']) ? $item['confidence'] : null, 0);
 		
 		// 记录检测时间
 		update_comment_meta($comment_id, '_argon_spam_detection_time', time());
@@ -12123,11 +12250,11 @@ function argon_spam_detection_scan() {
 		$detection_code = argon_generate_detection_code($comment_id);
 		update_comment_meta($comment_id, '_argon_spam_detection_code', $detection_code);
 		
-		if (isset($item['is_spam']) && $item['is_spam']) {
+		if ($item_is_spam) {
 			$comment = get_comment($comment_id);
 			if ($comment) {
 				// 检查是否有用户名问题
-				$username_invalid = isset($item['username_invalid']) ? $item['username_invalid'] : false;
+				$username_invalid = isset($item['username_invalid']) ? argon_normalize_ai_boolean_value($item['username_invalid']) : false;
 				$reason = isset($item['reason']) ? $item['reason'] : __('未知原因', 'argon');
 				
 				// 如果有用户名问题，在理由中标注
@@ -12150,14 +12277,16 @@ function argon_spam_detection_scan() {
 				update_comment_meta($comment_id, '_argon_spam_detection_result', [
 					'is_spam' => true,
 					'reason' => $item['reason'],
-					'username_invalid' => $username_invalid
+					'username_invalid' => $username_invalid,
+					'confidence' => $item_confidence
 				]);
 			}
 		} else {
 			// 保存正常评论的检测结果
 			update_comment_meta($comment_id, '_argon_spam_detection_result', [
 				'is_spam' => false,
-				'reason' => isset($item['reason']) ? $item['reason'] : '正常'
+				'reason' => isset($item['reason']) ? $item['reason'] : '正常',
+				'confidence' => $item_confidence
 			]);
 		}
 	}
@@ -12189,7 +12318,7 @@ add_action('wp_ajax_argon_spam_detection_scan', 'argon_spam_detection_scan');
 function argon_batch_detect_spam_comments($comments_data) {
 	// 获取配置
 	$prompt_mode = get_option('argon_comment_spam_detection_prompt_mode', 'standard');
-	$custom_prompt = get_option('argon_comment_spam_detection_prompt', '');
+	$custom_prompt = get_option('argon_comment_spam_detection_custom_prompt', '');
 	
 	// 根据模式选择 Prompt
 	if ($prompt_mode === 'custom' && !empty($custom_prompt)) {
@@ -12214,8 +12343,9 @@ function argon_batch_detect_spam_comments($comments_data) {
 	$batch_content .= "\n请返回 JSON 数组格式：[{\"id\": 评论ID, \"is_spam\": true/false, \"reason\": \"理由(25字以内)\", \"confidence\": 0.0-1.0}]";
 	
 	// 使用统一的 AI 查询接口
-	$ai_response = argon_ai_query('spam', $prompt, $batch_content, [
-		'user_id' => get_current_user_id()
+	$ai_response = argon_ai_query('spam_detection_batch', $prompt, $batch_content, [
+		'user_id' => get_current_user_id(),
+		'api_config' => argon_get_active_api_config('spam')
 	]);
 	
 	if (!$ai_response) {
@@ -12223,13 +12353,7 @@ function argon_batch_detect_spam_comments($comments_data) {
 	}
 	
 	// 解析 JSON 响应
-	$result = json_decode($ai_response, true);
-	if (!$result || !is_array($result)) {
-		// 尝试从文本中提取 JSON 数组
-		if (preg_match('/\[\s*\{[^\]]*\}\s*\]/s', $ai_response, $matches)) {
-			$result = json_decode($matches[0], true);
-		}
-	}
+	$result = argon_decode_ai_json_response($ai_response, true);
 	
 	if (!$result || !is_array($result)) {
 		return false;
@@ -12589,7 +12713,8 @@ class Argon_Spam_Prompt_Engine {
 	 * @return string 自定义模板
 	 */
 	public function get_custom_template() {
-		return get_option('argon_comment_spam_detection_prompt', '');
+		$prompt = get_option('argon_comment_spam_detection_custom_prompt', '');
+		return $prompt !== '' ? $prompt : get_option('argon_comment_spam_detection_prompt', '');
 	}
 	
 	/**
@@ -12604,7 +12729,7 @@ class Argon_Spam_Prompt_Engine {
 			return false;
 		}
 		
-		return update_option('argon_comment_spam_detection_prompt', $template);
+		return update_option('argon_comment_spam_detection_custom_prompt', $template);
 	}
 	
 	/**
@@ -13029,8 +13154,8 @@ class Argon_Spam_AI_Detector {
 	 */
 	public function detect($comment, $async = true) {
 		if ($async) {
-			// 异步检测：调度后台任务
-			wp_schedule_single_event(time() + 1, 'argon_async_spam_detection_v2', [$comment->comment_ID]);
+			// 兼容旧类入口，实际调度统一主链路。
+			wp_schedule_single_event(time() + 1, 'argon_async_spam_detection', [$comment->comment_ID]);
 			return null;
 		}
 		
@@ -13045,32 +13170,15 @@ class Argon_Spam_AI_Detector {
 	 * @return array 检测结果
 	 */
 	public function detect_sync($comment) {
-		// 获取配置
-		$mode = get_option('argon_comment_spam_detection_prompt_mode', 'standard');
-		$privacy_level = get_option('argon_comment_spam_detection_privacy_level', 'standard');
-		
-		// 构建上下文
-		$context = $this->context_builder->build_context($comment, $privacy_level);
-		
-		// 生成 Prompt
-		$prompt = $this->prompt_engine->get_prompt($mode, $context);
-		
-		// 调用 AI API
-		$api_result = $this->call_ai_api($prompt, $context['content']);
-		
-		// 处理 API 结果
-		$result = $this->process_api_result($api_result, $mode);
-		
-		// 添加元数据
-		$result['timestamp'] = time();
-		$result['mode'] = $mode;
-		$result['api_provider'] = get_option('argon_ai_summary_api_provider', 'openai');
-		
-		// 生成处理建议（如果 AI 没有返回）
-		if (!isset($result['suggestion'])) {
-			$result['suggestion'] = $this->threshold_manager->get_suggestion($result);
+		$result = argon_detect_spam_comment_sync($comment);
+		if ($result === false) {
+			return [
+				'is_spam' => false,
+				'confidence' => 0,
+				'reason' => __('AI 调用失败', 'argon'),
+				'suggestion' => 'review'
+			];
 		}
-		
 		return $result;
 	}
 	
@@ -13083,24 +13191,18 @@ class Argon_Spam_AI_Detector {
 	 */
 	private function call_ai_api($prompt, $content) {
 		// 使用统一的 AI 查询接口
-		$result = argon_ai_query('spam', $prompt, $content);
+		$result = argon_ai_query('spam_detection', $prompt, $content, [
+			'api_config' => argon_get_active_api_config('spam')
+		]);
 		
 		if ($result === false) {
 			return false;
 		}
 		
 		// 解析 JSON 结果
-		$decoded = json_decode($result, true);
-		if (json_last_error() === JSON_ERROR_NONE) {
+		$decoded = argon_decode_ai_json_response($result);
+		if (is_array($decoded)) {
 			return $decoded;
-		}
-		
-		// 尝试从文本中提取 JSON
-		if (preg_match('/\{.*\}/s', $result, $matches)) {
-			$decoded = json_decode($matches[0], true);
-			if (json_last_error() === JSON_ERROR_NONE) {
-				return $decoded;
-			}
 		}
 		
 		// 如果无法解析 JSON，尝试构建基本的返回结构
@@ -13132,7 +13234,7 @@ class Argon_Spam_AI_Detector {
 		}
 		
 		// 解析 AI 返回的结果
-		$is_spam = isset($api_result['content_spam']) ? $api_result['content_spam'] : false;
+		$is_spam = isset($api_result['content_spam']) ? argon_normalize_ai_boolean_value($api_result['content_spam']) : false;
 		$reason = isset($api_result['reason']) ? $api_result['reason'] : '';
 		
 		// 尝试从 reason 中提取置信度（如果 AI 返回了）
@@ -13170,16 +13272,11 @@ class Argon_Spam_AI_Detector {
 	private function extract_confidence($api_result) {
 		// 如果 API 直接返回了 confidence
 		if (isset($api_result['confidence'])) {
-			$confidence = floatval($api_result['confidence']);
-			// 如果是百分比形式，转换为小数
-			if ($confidence > 1.0) {
-				$confidence = $confidence / 100;
-			}
-			return max(0, min(1, $confidence));
+			return argon_normalize_ai_confidence_value($api_result['confidence']);
 		}
 		
 		// 如果没有置信度，根据 is_spam 返回默认值
-		if (isset($api_result['content_spam']) && $api_result['content_spam']) {
+		if (isset($api_result['content_spam']) && argon_normalize_ai_boolean_value($api_result['content_spam'])) {
 			return 0.8; // 默认中等置信度
 		}
 		
@@ -13195,7 +13292,7 @@ class Argon_Spam_AI_Detector {
 	private function extract_suggestion($api_result) {
 		if (isset($api_result['suggestion'])) {
 			$suggestion = strtolower($api_result['suggestion']);
-			if (in_array($suggestion, ['auto', 'review', 'approve'])) {
+			if (in_array($suggestion, ['auto', 'review', 'approve'], true)) {
 				return $suggestion;
 			}
 		}
@@ -13254,17 +13351,17 @@ class Argon_Spam_AI_Detector {
 		];
 		
 		foreach ($comment_ids as $comment_id) {
-			$comment = get_comment($comment_id);
-			if (!$comment) {
+			$comment_id = intval($comment_id);
+			if ($comment_id <= 0 || !get_comment($comment_id)) {
 				$stats['errors']++;
 				continue;
 			}
 			
 			try {
-				$result = $this->detect_sync($comment);
-				$this->process_result($comment, $result);
+				argon_async_spam_detection_handler($comment_id);
+				$result = get_comment_meta($comment_id, '_argon_spam_detection_result', true);
 				
-				if ($result['is_spam']) {
+				if (is_array($result) && !empty($result['is_spam'])) {
 					$stats['spam_found']++;
 				}
 				
@@ -13330,25 +13427,7 @@ class Argon_Spam_AI_Detector {
  * @param int $comment_id 评论 ID
  */
 function argon_async_spam_detection_handler_v2($comment_id) {
-	$comment = get_comment($comment_id);
-	if (!$comment) {
-		return;
-	}
-	
-	// 检查是否已经检测过
-	$detection_time = get_comment_meta($comment_id, '_argon_spam_detection_time', true);
-	if (!empty($detection_time)) {
-		return;
-	}
-	
-	// 创建检测器实例
-	$detector = new Argon_Spam_AI_Detector();
-	
-	// 执行检测
-	$result = $detector->detect_sync($comment);
-	
-	// 处理结果
-	$detector->process_result($comment, $result);
+	argon_async_spam_detection_handler($comment_id);
 }
 add_action('argon_async_spam_detection_v2', 'argon_async_spam_detection_handler_v2');
 
@@ -13555,19 +13634,30 @@ function argon_call_ai_api_with_error_handling($provider, $api_key, $model, $pro
 		return false;
 	}
 	
-	// 调用原有的 API 函数
-	$result = argon_call_ai_api_for_spam_detection($provider, $api_key, $model, $prompt, $content);
-	
-	// 处理结果
-	if ($result === false) {
+	$result_text = argon_ai_query('spam_detection', $prompt, $content, [
+		'provider' => $provider,
+		'api_key' => $api_key,
+		'model' => $model
+	]);
+	if ($result_text === false) {
 		$error_handler->log_error('API 调用失败', 'unknown');
 		return false;
 	}
+
+	$result = argon_decode_ai_json_response($result_text);
 	
-	// 检查响应格式
-	if (!isset($result['content_spam'])) {
-		$error_handler->log_error('API 响应格式错误：缺少 content_spam 字段', 'format');
+	// 处理结果
+	if (!$result || (!isset($result['content_spam']) && !isset($result['is_spam']))) {
+		$error_handler->log_error('API 响应格式错误：缺少 content_spam/is_spam 字段', 'format');
 		return false;
+	}
+
+	if (!isset($result['content_spam']) && isset($result['is_spam'])) {
+		$result['content_spam'] = $result['is_spam'];
+	}
+	$result['content_spam'] = argon_normalize_ai_boolean_value($result['content_spam']);
+	if (isset($result['confidence'])) {
+		$result['confidence'] = argon_normalize_ai_confidence_value($result['confidence']);
 	}
 	
 	// 记录成功
@@ -13585,77 +13675,7 @@ function argon_call_ai_api_with_error_handling($provider, $api_key, $model, $pro
  * AJAX: 批量扫描评论（使用新的 AI_Detector）
  */
 function argon_spam_detection_scan_v2() {
-	check_ajax_referer('argon_spam_detection_scan', 'nonce');
-	
-	if (!current_user_can('moderate_comments')) {
-		wp_send_json_error(__('权限不足', 'argon'));
-	}
-	
-	$scan_type = isset($_POST['scan_type']) ? sanitize_text_field($_POST['scan_type']) : 'all';
-	
-	// 获取评论列表
-	$args = [
-		'status' => $scan_type === 'pending' ? 'hold' : 'approve',
-		'number' => 0,
-		'orderby' => 'comment_ID',
-		'order' => 'DESC'
-	];
-	
-	$all_comments = get_comments($args);
-	
-	// 过滤掉已检测过的评论
-	$comment_ids = [];
-	foreach ($all_comments as $comment) {
-		$detection_time = get_comment_meta($comment->comment_ID, '_argon_spam_detection_time', true);
-		if (empty($detection_time)) {
-			$comment_ids[] = $comment->comment_ID;
-		}
-	}
-	
-	if (empty($comment_ids)) {
-		wp_send_json_success([
-			'status' => 'completed',
-			'total' => 0,
-			'spam_found' => 0,
-			'results' => [],
-			'message' => __('所有评论都已检测过，无需重复检测', 'argon')
-		]);
-		return;
-	}
-	
-	// 创建检测器实例
-	$detector = new Argon_Spam_AI_Detector();
-	
-	// 执行批量检测
-	$stats = $detector->batch_detect($comment_ids);
-	
-	// 获取垃圾评论列表
-	$spam_results = [];
-	foreach ($comment_ids as $comment_id) {
-		$result = get_comment_meta($comment_id, '_argon_spam_detection_result', true);
-		if ($result && isset($result['is_spam']) && $result['is_spam']) {
-			$comment = get_comment($comment_id);
-			if ($comment) {
-				$spam_results[] = [
-					'comment_id' => $comment_id,
-					'author' => $comment->comment_author,
-					'content' => mb_substr(strip_tags($comment->comment_content), 0, 100),
-					'reason' => $result['reason'],
-					'confidence' => isset($result['confidence']) ? $result['confidence'] : 0,
-					'suggestion' => isset($result['suggestion']) ? $result['suggestion'] : 'review'
-				];
-			}
-		}
-	}
-	
-	wp_send_json_success([
-		'status' => 'completed',
-		'total' => $stats['total'],
-		'processed' => $stats['processed'],
-		'spam_found' => $stats['spam_found'],
-		'errors' => $stats['errors'],
-		'results' => $spam_results
-	]);
+	argon_spam_detection_scan();
 }
 add_action('wp_ajax_argon_spam_detection_scan_v2', 'argon_spam_detection_scan_v2');
 
@@ -14150,7 +14170,8 @@ function argon_ai_review_blacklist_spam($comment) {
 	// 调用 AI
 	$ai_result = argon_ai_query('blacklist_review', $prompt, $content, [
 		'comment_id' => $comment->comment_ID,
-		'keywords' => $keywords_array
+		'keywords' => $keywords_array,
+		'api_config' => argon_get_active_api_config('spam')
 	]);
 	
 	if ($ai_result === false) {
@@ -14161,13 +14182,17 @@ function argon_ai_review_blacklist_spam($comment) {
 	}
 	
 	// 解析 AI 结果
-	$review = json_decode($ai_result, true);
+	$review = argon_decode_ai_json_response($ai_result);
 	if (!$review || !isset($review['is_spam'])) {
 		return [
 			'success' => false,
 			'error' => 'AI 返回格式错误'
 		];
 	}
+	$review['is_spam'] = argon_normalize_ai_boolean_value($review['is_spam']);
+	$review['confidence'] = argon_normalize_ai_confidence_value(isset($review['confidence']) ? $review['confidence'] : null, 0) * 100;
+	$review['reason'] = isset($review['reason']) ? $review['reason'] : '';
+	$review['keyword_analysis'] = (isset($review['keyword_analysis']) && is_array($review['keyword_analysis'])) ? $review['keyword_analysis'] : [];
 	
 	// 保存 AI 评估结果
 	update_comment_meta($comment->comment_ID, '_argon_spam_ai_review', json_encode($review));
@@ -14434,9 +14459,12 @@ add_action('wp_ajax_argon_clear_keyword_optimization_log', 'argon_ajax_clear_key
 /**
  * 使用AI检测垃圾评论（包装函数）
  */
-function argon_detect_spam_with_ai($content, $author = '', $email = '') {
+function argon_detect_spam_with_ai($content, $author = '', $email = '', $comment = null) {
 	try {
-		$test_comment = new WP_Comment((object)[
+		if ($comment instanceof WP_Comment) {
+			return argon_detect_spam_comment_sync($comment);
+		}
+		$test_comment = (object)[
 			'comment_ID' => 0,
 			'comment_content' => $content,
 			'comment_author' => $author,
@@ -14444,11 +14472,10 @@ function argon_detect_spam_with_ai($content, $author = '', $email = '') {
 			'comment_author_url' => '',
 			'comment_author_IP' => '',
 			'comment_date' => current_time('mysql'),
-			'comment_post_ID' => 0
-		]);
-		
-		$detector = new Argon_Spam_AI_Detector();
-		return $detector->detect_sync($test_comment);
+			'comment_post_ID' => 0,
+			'user_id' => 0
+		];
+		return argon_detect_spam_comment_sync($test_comment);
 	} catch (Exception $e) {
 		return false;
 	}
@@ -14506,12 +14533,15 @@ function argon_ajax_spam_scan_comments() {
 			continue;
 		}
 		
-		// 使用 AI 检测
-		$detection_result = argon_detect_spam_with_ai($comment->comment_content, $comment->comment_author, $comment->comment_author_email);
+		// 使用统一审核主链路检测
+		$detection_result = argon_detect_spam_with_ai($comment->comment_content, $comment->comment_author, $comment->comment_author_email, $comment);
 		
 		if ($detection_result && isset($detection_result['is_spam'])) {
-			// 保存检测结果
-			update_comment_meta($comment->comment_ID, '_argon_spam_detection_result', $detection_result);
+			$existing_code = get_comment_meta($comment->comment_ID, '_argon_spam_detection_code', true);
+			if (empty($existing_code)) {
+				update_comment_meta($comment->comment_ID, '_argon_spam_detection_code', argon_generate_detection_code($comment->comment_ID));
+			}
+			update_comment_meta($comment->comment_ID, '_argon_spam_detection_time', time());
 			
 			$scanned++;
 			
@@ -14524,7 +14554,7 @@ function argon_ajax_spam_scan_comments() {
 					'author' => esc_html($comment->comment_author),
 					'content' => esc_html(mb_substr($comment->comment_content, 0, 200)),
 					'date' => get_comment_date('Y-m-d H:i', $comment->comment_ID),
-					'confidence' => isset($detection_result['confidence']) ? intval($detection_result['confidence']) : 0,
+					'confidence' => isset($detection_result['confidence']) ? round(floatval($detection_result['confidence']) * 100) : 0,
 					'reason' => isset($detection_result['reason']) ? esc_html($detection_result['reason']) : '',
 					'edit_link' => admin_url('comment.php?action=editcomment&c=' . $comment->comment_ID)
 				];
@@ -14532,7 +14562,7 @@ function argon_ajax_spam_scan_comments() {
 				// 根据设置自动处理
 				$auto_action = get_option('argon_comment_spam_detection_auto_action', 'trash');
 				$confidence_threshold = intval(get_option('argon_comment_spam_detection_confidence_threshold', 85));
-				$confidence = isset($detection_result['confidence']) ? intval($detection_result['confidence']) : 0;
+				$confidence = isset($detection_result['confidence']) ? round(floatval($detection_result['confidence']) * 100) : 0;
 				
 				if ($confidence >= $confidence_threshold) {
 					if ($auto_action === 'trash') {
