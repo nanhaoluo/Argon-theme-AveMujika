@@ -4529,6 +4529,73 @@ initArgonLongContentVirtualizer();
 // 内联脚本执行器 (Inline Script Executor)
 // ==========================================================================
 
+var argonPjaxReadyReplayDepth = 0;
+var argonPjaxOriginalDocumentAddEventListener = null;
+
+function beginPjaxReadyReplay() {
+	if (!document || document.readyState === 'loading' || !document.addEventListener) {
+		return function () { };
+	}
+	if (argonPjaxReadyReplayDepth === 0) {
+		argonPjaxOriginalDocumentAddEventListener = document.addEventListener;
+		document.addEventListener = function (type, listener, options) {
+			if (String(type).toLowerCase() === 'domcontentloaded' && listener) {
+				window.setTimeout(function () {
+					try {
+						var event = new Event('DOMContentLoaded');
+						if (typeof listener === 'function') {
+							listener.call(document, event);
+						} else if (listener && typeof listener.handleEvent === 'function') {
+							listener.handleEvent(event);
+						}
+					} catch (err) {
+						ArgonDebug.error('DOMContentLoaded callback replay failed:', err);
+					}
+				}, 0);
+				return;
+			}
+			return argonPjaxOriginalDocumentAddEventListener.call(document, type, listener, options);
+		};
+	}
+	argonPjaxReadyReplayDepth++;
+	var ended = false;
+	return function () {
+		if (ended) {
+			return;
+		}
+		ended = true;
+		argonPjaxReadyReplayDepth = Math.max(0, argonPjaxReadyReplayDepth - 1);
+		if (argonPjaxReadyReplayDepth === 0 && argonPjaxOriginalDocumentAddEventListener) {
+			document.addEventListener = argonPjaxOriginalDocumentAddEventListener;
+			argonPjaxOriginalDocumentAddEventListener = null;
+		}
+	};
+}
+
+function withPjaxReadyReplay(callback) {
+	var endReplay = beginPjaxReadyReplay();
+	try {
+		return callback();
+	} finally {
+		endReplay();
+	}
+}
+
+function isPjaxScriptAlreadyLoaded(oldScript) {
+	if (!oldScript || !oldScript.src) {
+		return false;
+	}
+	try {
+		var scripts = document.querySelectorAll('script[src]');
+		for (var i = 0; i < scripts.length; i++) {
+			if (scripts[i] !== oldScript && scripts[i].src === oldScript.src) {
+				return true;
+			}
+		}
+	} catch (err) { }
+	return false;
+}
+
 /**
  * 执行单个脚本元素
  * 需求 4.4: 脚本执行失败时捕获错误并记录日志，不中断其他脚本执行
@@ -4561,15 +4628,22 @@ function executeScript(oldScript) {
 
 		// 将脚本添加到 head 并立即执行
 		if (hasSrc) {
+			if (isPjaxScriptAlreadyLoaded(oldScript)) {
+				ArgonDebug.log('External script already loaded, skipped:', oldScript.src);
+				resolve(true);
+				return;
+			}
 			if (!oldScript.hasAttribute('async') && !oldScript.hasAttribute('defer')) {
 				newScript.async = false;
 			}
+			var endReadyReplay = beginPjaxReadyReplay();
 			let settled = false;
 			let timeout = window.setTimeout(function () {
 				if (settled) {
 					return;
 				}
 				settled = true;
+				endReadyReplay();
 				ArgonDebug.warn('Script load timeout:', oldScript.src);
 				resolve(false);
 			}, 10000);
@@ -4579,6 +4653,7 @@ function executeScript(oldScript) {
 					return;
 				}
 				settled = true;
+				endReadyReplay();
 				window.clearTimeout(timeout);
 				ArgonDebug.log('External script loaded:', oldScript.src);
 				resolve(true);
@@ -4588,6 +4663,7 @@ function executeScript(oldScript) {
 					return;
 				}
 				settled = true;
+				endReadyReplay();
 				window.clearTimeout(timeout);
 				ArgonDebug.error('External script load failed:', oldScript.src, error);
 				resolve(false);
@@ -4596,7 +4672,9 @@ function executeScript(oldScript) {
 			return;
 		}
 
-		document.head.appendChild(newScript);
+		withPjaxReadyReplay(function () {
+			document.head.appendChild(newScript);
+		});
 
 		// 执行后立即移除，避免污染 DOM
 		if (scriptType !== 'module') {
@@ -5042,14 +5120,6 @@ var ArgonPjaxPrefetch = (function () {
 			return;
 		}
 		installTransport();
-		jQuery(document).on('click.argonPjaxPrefetch', argonPjaxLinkSelector, function (event) {
-			if (event.which > 1 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.isDefaultPrevented()) {
-				return;
-			}
-			if (navigate(this, { target: this })) {
-				event.preventDefault();
-			}
-		});
 		jQuery(document).on('mouseenter focusin touchstart', argonPjaxLinkSelector, function () {
 			prefetch(this);
 		});
@@ -5415,11 +5485,7 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 		pjaxContainers.length ? pjaxContainers : ['#primary'],
 		{ fragment: (pjaxContainers.length ? pjaxContainers : ['#primary']), timeout: $.pjax.defaults.timeout }
 	)
-		.on('pjax:click', function (e, f, g) {
-			if (!pjaxLoading) {
-				ArgonPjaxPrefetch.beginNavigationProgress(document, 18);
-			}
-		}).on('pjax:afterGetContainers', function (e, f, g) {
+		.on('pjax:afterGetContainers', function (e, f, g) {
 			pjaxScrollTop = 0;
 			if ($("html").hasClass("banner-as-cover")) {
 				if (g.is(".page-link")) {
@@ -5427,6 +5493,9 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 				}
 			}
 		}).on('pjax:send', function () {
+			if (!pjaxLoading) {
+				ArgonPjaxPrefetch.beginNavigationProgress(document, 18);
+			}
 			ArgonPjaxPrefetch.setTopProgress(62);
 		}).on('pjax:beforeReplace', function (e, dom) {
 			ArgonPjaxPrefetch.setTopProgress(72);
