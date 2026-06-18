@@ -6907,6 +6907,22 @@ window.pjaxLoaded = function(){
 					</tr>
 
 					<!-- ========== 17. 评论设置 ========== -->
+				</tbody>
+
+			</table>
+
+			<p class="submit argon-settings-submit">
+
+				<input type="submit" name="submit" id="submit" class="button button-primary" value="<?php esc_attr_e('保存更改', 'argon'); ?>" />
+
+				<button type="button" class="button" onclick="exportSettings();"><?php _e('导出设置', 'argon'); ?></button>
+
+				<button type="button" class="button" onclick="importSettings();"><?php _e('导入设置', 'argon'); ?></button>
+
+			</p>
+
+		</form>
+
 	</div>
 
 	<div id="headindex_box">
@@ -7205,9 +7221,25 @@ window.pjaxLoaded = function(){
 
 		}
 
+		#main_form > .argon-settings-submit{
+
+			margin-right: 210px;
+
+			max-width: calc(100% - 210px);
+
+		}
+
 		@media screen and (max-width:960px){
 
 			#main_form > .form-table{
+
+				margin-right: 0;
+
+				max-width: 100%;
+
+			}
+
+			#main_form > .argon-settings-submit{
 
 				margin-right: 0;
 

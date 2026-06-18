@@ -4534,38 +4534,84 @@ initArgonLongContentVirtualizer();
  * 需求 4.4: 脚本执行失败时捕获错误并记录日志，不中断其他脚本执行
  * 
  * @param {HTMLScriptElement} oldScript - 原始脚本元素
- * @returns {boolean} 是否执行成功
+ * @returns {Promise<boolean>} 是否执行成功
  */
 function executeScript(oldScript) {
+	return new Promise(function (resolve) {
 	try {
 		// 创建新的 script 元素
 		const newScript = document.createElement('script');
+		const hasSrc = !!oldScript.src;
+		const scriptType = (oldScript.getAttribute('type') || '').toLowerCase();
 
 		// 复制脚本内容
-		if (oldScript.textContent) {
+		if (oldScript.textContent && !hasSrc) {
 			newScript.textContent = oldScript.textContent;
 		}
 
 		// 复制所有属性（包括 type, async, defer 等）
 		// 需求 4.5: 尊重 async 和 defer 属性的执行时机
-		Array.from(oldScript.attributes).forEach(attr => {
-			newScript.setAttribute(attr.name, attr.value);
+		Array.from(oldScript.attributes).forEach(function (attr) {
+			if (attr.name !== 'data-pjax-executed') {
+				newScript.setAttribute(attr.name, attr.value);
+			}
 		});
+		newScript.setAttribute('data-dynamic', 'true');
+		newScript.setAttribute('data-pjax-dynamic', 'true');
 
 		// 将脚本添加到 head 并立即执行
+		if (hasSrc) {
+			if (!oldScript.hasAttribute('async') && !oldScript.hasAttribute('defer')) {
+				newScript.async = false;
+			}
+			let settled = false;
+			let timeout = window.setTimeout(function () {
+				if (settled) {
+					return;
+				}
+				settled = true;
+				ArgonDebug.warn('Script load timeout:', oldScript.src);
+				resolve(false);
+			}, 10000);
+
+			newScript.onload = function () {
+				if (settled) {
+					return;
+				}
+				settled = true;
+				window.clearTimeout(timeout);
+				ArgonDebug.log('External script loaded:', oldScript.src);
+				resolve(true);
+			};
+			newScript.onerror = function (error) {
+				if (settled) {
+					return;
+				}
+				settled = true;
+				window.clearTimeout(timeout);
+				ArgonDebug.error('External script load failed:', oldScript.src, error);
+				resolve(false);
+			};
+			document.head.appendChild(newScript);
+			return;
+		}
+
 		document.head.appendChild(newScript);
 
 		// 执行后立即移除，避免污染 DOM
-		document.head.removeChild(newScript);
+		if (scriptType !== 'module') {
+			document.head.removeChild(newScript);
+		}
 
 		ArgonDebug.log('Script executed successfully:', oldScript.textContent.substring(0, 50) + '...');
-		return true;
+		resolve(true);
 	} catch (error) {
 		// 需求 4.4: 捕获错误并记录日志
 		ArgonDebug.error('Script execution failed:', error);
 		ArgonDebug.error('Failed script content:', oldScript.textContent);
-		return false;
+		resolve(false);
 	}
+	});
 }
 
 /**
@@ -4576,7 +4622,7 @@ function executeScript(oldScript) {
  * 需求 4.4: 脚本执行失败不中断其他脚本执行
  * 
  * @param {HTMLElement|Document} container - 新页面的容器元素或文档对象
- * @returns {Object} 执行结果统计 {total, success, failed}
+ * @returns {Promise<Object>} 执行结果统计 {total, success, failed}
  */
 function executeInlineScripts(container) {
 	// 如果没有传入容器，使用整个文档
@@ -4589,11 +4635,12 @@ function executeInlineScripts(container) {
 
 	if (scripts.length === 0) {
 		ArgonDebug.log('No scripts found in new page');
-		return { total: 0, success: 0, failed: 0 };
+		return Promise.resolve({ total: 0, success: 0, failed: 0 });
 	}
 
 	let successCount = 0;
 	let failedCount = 0;
+	let chain = Promise.resolve();
 
 	ArgonDebug.log(`Found ${scripts.length} script tags in new page`);
 
@@ -4608,37 +4655,57 @@ function executeInlineScripts(container) {
 			return;
 		}
 		// 需求 4.2: 只执行内联脚本（没有 src 属性的脚本）
-		if (!script.src) {
+		if (script.src || (script.textContent && script.textContent.trim() !== '')) {
 			// 跳过空脚本
-			if (!script.textContent || script.textContent.trim() === '') {
+			if (!script.src && (!script.textContent || script.textContent.trim() === '')) {
 				ArgonDebug.log(`Script ${index + 1}: Empty, skipped`);
 				return;
 			}
 
-			ArgonDebug.log(`Executing inline script ${index + 1}/${scripts.length}`);
+			ArgonDebug.log(`Queueing script ${index + 1}/${scripts.length}`);
 
 			// 需求 4.4: 错误隔离 - 单个脚本失败不影响其他脚本
-			const success = executeScript(script);
-			if (success) {
-				script.setAttribute('data-pjax-executed', 'true');
-				successCount++;
-			} else {
-				failedCount++;
-			}
+			chain = chain.then(function () {
+				ArgonDebug.log(`Executing script ${index + 1}/${scripts.length}`);
+				return executeScript(script).then(function (success) {
+					if (success) {
+						script.setAttribute('data-pjax-executed', 'true');
+						successCount++;
+					} else {
+						failedCount++;
+					}
+				});
+			});
 		} else {
 			// 外部脚本由浏览器自动加载，不需要手动执行
-			ArgonDebug.log(`Script ${index + 1}: External (${script.src}), skipped`);
+			ArgonDebug.log(`Script ${index + 1}: Empty, skipped`);
 		}
 	});
 
-	const result = {
-		total: scripts.length,
-		success: successCount,
-		failed: failedCount
-	};
+	return chain.then(function () {
+		const result = {
+			total: scripts.length,
+			success: successCount,
+			failed: failedCount
+		};
 
-	ArgonDebug.log('Script execution completed:', result);
-	return result;
+		ArgonDebug.log('Script execution completed:', result);
+		return result;
+	});
+}
+
+function executePjaxScripts(containers) {
+	let chain = Promise.resolve();
+	(containers && containers.length ? containers : ['#primary']).forEach(function (selector) {
+		chain = chain.then(function () {
+			var container = document.querySelector(selector);
+			if (!container) {
+				return null;
+			}
+			return executeInlineScripts(container);
+		});
+	});
+	return chain;
 }
 
 var pjaxContainerSelectors = ['#primary', '#argon_pjax_state', '#leftbar_mobile_nav', '#leftbar_part1_menu', '#leftbar_part2_inner', '#leftbar_part3', '.page-information-card-container', '#rightbar', '#wpadminbar'];
@@ -5390,15 +5457,11 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 			PageLoader.trackResources(document);
 			ArgonPjaxPrefetch.setTopProgress(82);
 			startPageEnterTransition();
+			var pjaxScriptExecution = Promise.resolve();
 
 			// ========== 需求 4.1-4.5: 执行新页面中的内联脚本 ==========
 			try {
-				pjaxContainers.forEach(function (selector) {
-					var container = document.querySelector(selector);
-					if (container) {
-						executeInlineScripts(container);
-					}
-				});
+				pjaxScriptExecution = executePjaxScripts(pjaxContainers);
 			} catch (err) {
 				ArgonDebug.error('executeInlineScripts failed:', err);
 			}
@@ -5458,6 +5521,7 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 				pjaxScrollTop = 0;
 			}
 
+			pjaxScriptExecution.then(function () {
 			// 调用用户自定义的 PJAX 加载完成回调
 			if (typeof (window.pjaxLoaded) == "function") {
 				try {
@@ -5470,6 +5534,7 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 			ArgonPjaxPrefetch.setTopProgress(96);
 			PageLoader.hide();
 			NProgress.done();
+			});
 		}).on('pjax:error', function () {
 			ArgonPjaxPrefetch.stopNavigationProgress();
 		}).on('pjax:end', function () {
