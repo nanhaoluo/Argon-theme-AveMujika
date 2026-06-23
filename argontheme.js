@@ -810,7 +810,7 @@ $(document).on("change", ".search-filter", function (e) {
 		part1OuterHeight = $leftbarPart1.outerHeight();
 		changeLeftbarStickyStatus();
 	}).observe(leftbarPart1, { attributes: true, childList: true, subtree: true });
-	// ?? part2/part3 ?????????? sticky ???????????????
+	// 监听 part2/part3 的自然内容高度，外层 sticky 高度被脚本钳住时也能立即重算。
 	refreshLeftbarHeightObservers();
 	if (typeof MutationObserver !== 'undefined') {
 		let leftbarHeightMutationObserver = new MutationObserver(requestLeftbarStickyStatusUpdateOnHeightChange);
@@ -1063,7 +1063,6 @@ if (argonConfig.waterflow_columns != "1") {
 	});
 }();
 
-/*浮动按钮栏相关(回顶部)*/
 function expandPostComments() {
 	var commentsArea = $("#comments");
 	var postCommentArea = $("#post_comment");
@@ -1073,11 +1072,353 @@ function expandPostComments() {
 	if (toggleBtn.length > 0) {
 		toggleBtn.addClass("expanded");
 		toggleBtn.find("i").removeClass("fa-comments").addClass("fa-comment-o");
-		toggleBtn.find(".btn-inner--text").text(__("????"));
+		toggleBtn.find(".btn-inner--text").text(__("折叠评论"));
 	}
 }
 window.expandPostComments = expandPostComments;
 
+var argonPostFullBlurState = {
+	card: null,
+	overlay: null,
+	onScroll: null,
+	resizeObserver: null,
+	frame: 0
+};
+
+function cleanupPostFullBlur() {
+	if (argonPostFullBlurState.onScroll) {
+		window.removeEventListener('scroll', argonPostFullBlurState.onScroll);
+		window.removeEventListener('resize', argonPostFullBlurState.onScroll);
+	}
+	if (argonPostFullBlurState.frame) {
+		cancelAnimationFrame(argonPostFullBlurState.frame);
+	}
+	if (argonPostFullBlurState.resizeObserver) {
+		try {
+			argonPostFullBlurState.resizeObserver.disconnect();
+		} catch (e) { }
+	}
+	if (argonPostFullBlurState.card) {
+		argonPostFullBlurState.card.classList.remove('post-full-blur-managed');
+	}
+	if (argonPostFullBlurState.overlay) {
+		argonPostFullBlurState.overlay.style.top = '';
+		argonPostFullBlurState.overlay.style.height = '';
+		argonPostFullBlurState.overlay.style.transform = '';
+	}
+	argonPostFullBlurState.card = null;
+	argonPostFullBlurState.overlay = null;
+	argonPostFullBlurState.onScroll = null;
+	argonPostFullBlurState.resizeObserver = null;
+	argonPostFullBlurState.frame = 0;
+}
+
+function initPostFullBlur() {
+	cleanupPostFullBlur();
+	var card = document.querySelector('article.post.post-full.card');
+	if (!card) return;
+	var overlay = card.querySelector('.post-full-blur-overlay');
+	if (!overlay) return;
+	card.classList.add('post-full-blur-managed');
+
+	function updateOverlay() {
+		argonPostFullBlurState.frame = 0;
+		var viewportHeight = Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0, 480);
+		var cardHeight = Math.max(card.scrollHeight || 0, card.offsetHeight || 0);
+		var overlayHeight = Math.min(cardHeight, viewportHeight + 800);
+		var cardRect = card.getBoundingClientRect();
+		var offset = Math.max(0, -cardRect.top - 400);
+		var maxOffset = Math.max(0, cardHeight - overlayHeight);
+		overlay.style.height = overlayHeight + 'px';
+		overlay.style.top = Math.min(offset, maxOffset) + 'px';
+		overlay.style.transform = '';
+	}
+
+	function requestUpdate() {
+		if (argonPostFullBlurState.frame) return;
+		argonPostFullBlurState.frame = requestAnimationFrame(updateOverlay);
+	}
+
+	argonPostFullBlurState.card = card;
+	argonPostFullBlurState.overlay = overlay;
+	argonPostFullBlurState.onScroll = requestUpdate;
+	window.addEventListener('scroll', requestUpdate, { passive: true });
+	window.addEventListener('resize', requestUpdate, { passive: true });
+	if (typeof ResizeObserver !== 'undefined') {
+		argonPostFullBlurState.resizeObserver = new ResizeObserver(requestUpdate);
+		argonPostFullBlurState.resizeObserver.observe(card);
+	}
+	updateOverlay();
+}
+
+window.initPostFullBlur = initPostFullBlur;
+if (document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', initPostFullBlur);
+} else {
+	initPostFullBlur();
+}
+
+function getArgonMetaContent(selector) {
+	var node = document.querySelector(selector);
+	return node ? (node.getAttribute('content') || '') : '';
+}
+
+function showArgonActionToast(success, title, message) {
+	if (typeof iziToast === 'undefined') return;
+	iziToast.show({
+		title: title,
+		message: message,
+		class: 'shadow',
+		position: 'topRight',
+		backgroundColor: success ? '#2dce89' : '#f5365c',
+		titleColor: '#ffffff',
+		messageColor: '#ffffff',
+		iconColor: '#ffffff',
+		progressBarColor: '#ffffff',
+		icon: success ? 'fa fa-check' : 'fa fa-close',
+		timeout: 5000
+	});
+}
+
+function initArgonShareQRCode() {
+	var qrcode = document.getElementById('copy_link_qrcode');
+	if (!qrcode) return;
+	var url = window.location.href;
+	if (qrcode.getAttribute('data-argon-qrcode-url') === url && qrcode.children.length > 0) return;
+	qrcode.innerHTML = '';
+	qrcode.setAttribute('data-argon-qrcode-url', url);
+	if (typeof QRCode !== 'undefined') {
+		try {
+			new QRCode(qrcode, {
+				text: url,
+				width: 128,
+				height: 128,
+				colorDark: '#000000',
+				colorLight: '#ffffff',
+				correctLevel: QRCode.CorrectLevel.M
+			});
+			return;
+		} catch (err) {
+			ArgonDebug.warn('QRCode init failed:', err);
+		}
+	}
+	qrcode.innerHTML = '<img src="https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=' + encodeURIComponent(url) + '" alt="QR Code" style="width: 128px; height: 128px;">';
+}
+
+function copyArgonPostLink() {
+	var text = window.location.href;
+	function done(success) {
+		showArgonActionToast(success, success ? __('复制成功') : __('复制失败'), success ? __('链接已复制到剪贴板') : __('请手动复制链接'));
+	}
+	if (navigator.clipboard && window.isSecureContext) {
+		navigator.clipboard.writeText(text).then(function () {
+			done(true);
+		}).catch(function () {
+			done(copyArgonPostLinkFallback(text));
+		});
+		return;
+	}
+	done(copyArgonPostLinkFallback(text));
+}
+
+function copyArgonPostLinkFallback(text) {
+	var input = document.createElement('input');
+	document.body.appendChild(input);
+	input.value = text;
+	input.setAttribute('readonly', 'readonly');
+	input.style.opacity = '0';
+	input.style.pointerEvents = 'none';
+	input.select();
+	var success = false;
+	try {
+		success = document.execCommand('copy');
+	} catch (err) {
+		success = false;
+	}
+	document.body.removeChild(input);
+	return success;
+}
+
+function refreshArgonCommentsToggleState() {
+	var $btn = $('#comments_toggle');
+	if ($btn.length === 0) return;
+	var $comments = $('#comments');
+	var collapsed = $comments.hasClass('comments-collapsed');
+	setArgonCommentsToggleState(!collapsed);
+}
+
+function setArgonCommentsToggleState(expanded) {
+	var $btn = $('#comments_toggle');
+	if ($btn.length === 0) return;
+	var collapsed = !expanded;
+	$btn.toggleClass('expanded', !collapsed);
+	$btn.find('i').toggleClass('fa-comments', collapsed).toggleClass('fa-comment-o', !collapsed);
+	$btn.find('.btn-inner--text').text(collapsed ? __('展开评论') : __('折叠评论'));
+}
+
+function toggleArgonPostComments() {
+	var $btn = $('#comments_toggle');
+	var $comments = $('#comments');
+	var $postComment = $('#post_comment');
+	if ($btn.length === 0 || $comments.length === 0) return;
+	if ($comments.hasClass('comments-collapsed')) {
+		$comments.removeClass('comments-collapsed');
+		setArgonCommentsToggleState(true);
+		window.setTimeout(function () {
+			$postComment.removeClass('comments-collapsed');
+		}, 150);
+		window.setTimeout(function () {
+			if ($comments.length > 0) {
+				$('html, body').animate({ scrollTop: $comments.offset().top - 100 }, 500);
+			}
+		}, 300);
+	} else {
+		$postComment.addClass('comments-collapsed');
+		setArgonCommentsToggleState(false);
+		window.setTimeout(function () {
+			$comments.addClass('comments-collapsed');
+		}, 150);
+	}
+}
+
+function bindArgonPostActionEvents() {
+	$(document)
+		.off('click.argonPostActions')
+		.on('click.argonPostActions', '#share_show', function (e) {
+			e.preventDefault();
+			$('#share_container').addClass('opened');
+		})
+		.on('click.argonPostActions', '#share_copy_link', function (e) {
+			e.preventDefault();
+			copyArgonPostLink();
+		})
+		.on('click.argonPostActions', '#comments_toggle', function (e) {
+			e.preventDefault();
+			toggleArgonPostComments();
+		})
+		.on('click.argonPostActions', function (e) {
+			if ($(e.target).closest('#share_container').length === 0) {
+				$('#share_container').removeClass('opened');
+			}
+		});
+}
+
+function initArgonPostActions() {
+	$('#share_show, #share_copy_link, #comments_toggle').each(function () {
+		this.onclick = null;
+	});
+	var share = document.getElementById('share');
+	if (share && typeof socialShare === 'function') {
+		try {
+			share.initialized = false;
+			share.className = share.className.replace(/\bshare-component\b|\bsocial-share\b/g, '').replace(/\s+/g, ' ').trim();
+			var qrcodeWraps = share.querySelectorAll('.icon-wechat .wechat-qrcode');
+			for (var i = 0; i < qrcodeWraps.length; i++) {
+				qrcodeWraps[i].remove();
+			}
+			socialShare('#share', {
+				url: window.location.href,
+				source: window.location.href,
+				title: getArgonMetaContent('meta[property="og:title"]') || document.title,
+				description: getArgonMetaContent('meta[name="description"]') || getArgonMetaContent('meta[property="og:description"]') || '',
+				wechatQrcodeTitle: __('分享到微信'),
+				wechatQrcodeHelper: __('微信扫一扫')
+			});
+		} catch (err) {
+			ArgonDebug.warn('Post share init failed:', err);
+		}
+	}
+	initArgonShareQRCode();
+	refreshArgonCommentsToggleState();
+}
+
+function initArgonTodoFallbacks() {
+	bindArgonTodoCollapseHandler();
+	var list = document.getElementById('todo-list');
+	if (list && list.getAttribute('data-argon-todo-script-ready') !== 'true') {
+		window.argonTodoRefresh = refreshArgonDesktopTodoMeta;
+	}
+	if (typeof window.argonMobileTodoRefresh === 'function') {
+		window.argonMobileTodoRefresh();
+	}
+	if (typeof window.argonTodoRefresh === 'function') {
+		try { window.argonTodoRefresh(); } catch (err) { ArgonDebug.warn('argonTodoRefresh failed:', err); }
+	}
+}
+var argonTodoCollapseHandlerBound = false;
+function collectArgonDesktopTodoState(list) {
+	var state = { active: 0, completed: 0, total: 0 };
+	if (!list) return state;
+	var items = list.querySelectorAll('.todo-item');
+	items.forEach(function (item) {
+		state.total++;
+		if (item.classList.contains('todo-completed')) {
+			state.completed++;
+		} else {
+			state.active++;
+		}
+	});
+	return state;
+}
+function refreshArgonDesktopTodoMeta() {
+	var list = document.getElementById('todo-list');
+	if (!list) return;
+	var state = collectArgonDesktopTodoState(list);
+	var countEl = document.querySelector('.todo-count');
+	if (countEl) countEl.textContent = state.active;
+	var divider = document.getElementById('todo-collapse-btn');
+	if (divider) {
+		var completedCountEl = divider.querySelector('.todo-completed-count');
+		if (completedCountEl) completedCountEl.textContent = state.completed;
+		divider.style.display = state.completed > 0 ? 'flex' : 'none';
+	}
+	if (state.total > 4) {
+		list.classList.add('todo-list-scroll');
+	} else {
+		list.classList.remove('todo-list-scroll');
+	}
+}
+function findArgonTodoCollapseButton(target) {
+	while (target && target !== document) {
+		if (target.id === 'todo-collapse-btn' || target.id === 'mobile-todo-collapse-btn') {
+			return target;
+		}
+		target = target.parentNode;
+	}
+	return null;
+}
+function toggleArgonTodoCompletedList(button) {
+	var isMobile = button.id === 'mobile-todo-collapse-btn';
+	var list = document.getElementById(isMobile ? 'mobile-todo-list' : 'todo-list');
+	if (!list) return;
+	var itemSelector = isMobile ? '.mobile-todo-item.todo-completed' : '.todo-item.todo-completed';
+	var completedItems = list.querySelectorAll(itemSelector);
+	var shouldExpand = button.classList.contains('collapsed');
+	button.classList.toggle('collapsed', !shouldExpand);
+	button.setAttribute('aria-expanded', shouldExpand ? 'true' : 'false');
+	completedItems.forEach(function (item) {
+		item.classList.toggle('collapsed', !shouldExpand);
+	});
+}
+function bindArgonTodoCollapseHandler() {
+	if (argonTodoCollapseHandlerBound) return;
+	argonTodoCollapseHandlerBound = true;
+	document.addEventListener('click', function (e) {
+		var button = findArgonTodoCollapseButton(e.target);
+		if (!button) return;
+		e.preventDefault();
+		if (typeof e.stopImmediatePropagation === 'function') {
+			e.stopImmediatePropagation();
+		} else {
+			e.stopPropagation();
+		}
+		toggleArgonTodoCompletedList(button);
+	}, true);
+}
+bindArgonPostActionEvents();
+bindArgonTodoCollapseHandler();
+
+/*浮动按钮栏相关(回顶部)*/
 !function () {
 	// 确保 DOM 和 jQuery 已加载
 	if (typeof jQuery === 'undefined') {
@@ -1116,14 +1457,20 @@ window.expandPostComments = expandPostComments;
 		toggleAmoledDarkMode();
 	})
 
-	if ($("#post_comment").length > 0) {
-		$("#fabtn_go_to_comment").removeClass("fabtn-hidden");
-	} else {
-		$("#fabtn_go_to_comment").addClass("fabtn-hidden");
+	function refreshFabtnPageState() {
+		if ($("#post_comment").length > 0) {
+			$goToComment.removeClass("fabtn-hidden d-none");
+		} else {
+			$goToComment.addClass("fabtn-hidden");
+		}
+		changefabtnDisplayStatus();
 	}
 	$goToComment.on("click", function () {
 		var commentsArea = $("#comments");
 		var postCommentArea = $("#post_comment");
+		if (postCommentArea.length === 0) {
+			return;
+		}
 		var wasCollapsed = commentsArea.hasClass("comments-collapsed");
 		var toggleBtn = $("#comments_toggle");
 
@@ -1272,7 +1619,8 @@ window.expandPostComments = expandPostComments;
 			$backToTopBtn.addClass("fabtn-hidden");
 		}
 	}
-	changefabtnDisplayStatus();
+	refreshFabtnPageState();
+	window.argonRefreshFloatActionButtons = refreshFabtnPageState;
 	$(window).scroll(function () {
 		changefabtnDisplayStatus();
 	});
@@ -1995,7 +2343,7 @@ window.expandPostComments = expandPostComments;
 					}
 					calcHumanTimesOnPage();
 
-					// ??????
+					// 滚动到新评论
 					var newComment = $("#comment-" + result.id);
 					if (newComment.length > 0) {
 						$("body,html").animate({
@@ -3356,6 +3704,7 @@ function cleanupPjaxResources() {
 	// 按顺序清理各类资源
 	cleanupLazyloadObserver();
 	disconnectHighlightObserver();
+	cleanupPostFullBlur();
 	if (window.ArgonLongContentVirtualizer && typeof window.ArgonLongContentVirtualizer.destroy === "function") {
 		window.ArgonLongContentVirtualizer.destroy(false);
 		window.ArgonLongContentVirtualizer = null;
@@ -5576,6 +5925,7 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 			try { foldLongShuoshuo(); } catch (err) { ArgonDebug.error('foldLongShuoshuo failed:', err); }
 			try { handleHashNavigation(); } catch (err) { ArgonDebug.error('handleHashNavigation failed:', err); }
 			try { initArticleSkeletons(); } catch (err) { ArgonDebug.error('initArticleSkeletons failed:', err); }
+			try { initPostFullBlur(); } catch (err) { ArgonDebug.error('initPostFullBlur failed:', err); }
 			try {
 				if (typeof window.argonRequestLeftbarStickyStatusUpdate === 'function') {
 					window.argonRequestLeftbarStickyStatusUpdate();
@@ -5591,19 +5941,27 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 			}
 
 			pjaxScriptExecution.then(function () {
-			// 调用用户自定义的 PJAX 加载完成回调
-			if (typeof (window.pjaxLoaded) == "function") {
+				try { initPostFullBlur(); } catch (err) { ArgonDebug.error('initPostFullBlur after scripts failed:', err); }
+				try { initArgonPostActions(); } catch (err) { ArgonDebug.error('initArgonPostActions failed:', err); }
+				try { initArgonTodoFallbacks(); } catch (err) { ArgonDebug.error('initArgonTodoFallbacks failed:', err); }
 				try {
-					window.pjaxLoaded();
-				} catch (err) {
-					ArgonDebug.error(err);
+					if (typeof window.argonRefreshFloatActionButtons === 'function') {
+						window.argonRefreshFloatActionButtons();
+					}
+				} catch (err) { ArgonDebug.error('argonRefreshFloatActionButtons failed:', err); }
+				// 调用用户自定义的 PJAX 加载完成回调
+				if (typeof (window.pjaxLoaded) == "function") {
+					try {
+						window.pjaxLoaded();
+					} catch (err) {
+						ArgonDebug.error(err);
+					}
 				}
-			}
 
-			ArgonPjaxPrefetch.setTopProgress(96);
-			PageLoader.hide();
-			NProgress.done();
-			});
+				ArgonPjaxPrefetch.setTopProgress(96);
+				PageLoader.hide();
+				NProgress.done();
+				});
 		}).on('pjax:error', function () {
 			ArgonPjaxPrefetch.stopNavigationProgress();
 		}).on('pjax:end', function () {
@@ -6106,22 +6464,31 @@ $(document).on("keydown", function (e) {
 	}
 
 	// 移动端折叠/展开已完成任务
-	var mobileTodoListNode = document.getElementById("mobile-todo-list");
+	var mobileTodoListNode = null;
 	var mobileTodoFrame = 0;
+	var mobileTodoEmptyText = "暂无待办事项";
 	var mobileTodoState = collectMobileTodoState();
-	var mobileTodoEmptyText = (function () {
-		var empty = mobileTodoListNode ? mobileTodoListNode.querySelector(".mobile-todo-empty") : null;
-		return empty ? empty.textContent : "暂无待办事项";
-	})();
 	var scheduleMobileTodoFrame = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function (callback) {
 		return window.setTimeout(callback, 16);
 	};
 
+	function getMobileTodoListNode() {
+		mobileTodoListNode = document.getElementById("mobile-todo-list");
+		if (mobileTodoListNode) {
+			var empty = mobileTodoListNode.querySelector(".mobile-todo-empty");
+			if (empty) {
+				mobileTodoEmptyText = empty.textContent;
+			}
+		}
+		return mobileTodoListNode;
+	}
+
 	function collectMobileTodoState() {
 		var state = { active: 0, completed: 0, total: 0 };
-		if (!mobileTodoListNode) return state;
+		var listNode = getMobileTodoListNode();
+		if (!listNode) return state;
 
-		var children = mobileTodoListNode.children;
+		var children = listNode.children;
 		for (var i = 0; i < children.length; i++) {
 			var child = children[i];
 			if (!child.classList || !child.classList.contains("mobile-todo-item")) continue;
@@ -6146,13 +6513,14 @@ $(document).on("keydown", function (e) {
 			divider.toggle(mobileTodoState.completed > 0);
 		}
 
-		if (!mobileTodoListNode) return;
-		var empty = mobileTodoListNode.querySelector(".mobile-todo-empty");
+		var listNode = getMobileTodoListNode();
+		if (!listNode) return;
+		var empty = listNode.querySelector(".mobile-todo-empty");
 		if (mobileTodoState.total === 0 && !empty) {
 			var emptyItem = document.createElement("li");
 			emptyItem.className = "mobile-todo-empty";
 			emptyItem.textContent = mobileTodoEmptyText;
-			mobileTodoListNode.appendChild(emptyItem);
+			listNode.appendChild(emptyItem);
 		} else if (mobileTodoState.total > 0 && empty) {
 			empty.remove();
 		}
@@ -6173,6 +6541,7 @@ $(document).on("keydown", function (e) {
 			renderMobileTodoMeta();
 		});
 	};
+	window.argonMobileTodoRefresh = updateMobileTodoCount;
 
 	$(document).on("click", "#mobile-todo-collapse-btn", function (e) {
 		e.stopPropagation();
@@ -7133,6 +7502,9 @@ $(document).ready(function () {
 	// 原有初始化代码
 	// ==========================================================================
 	initArgonLongContentVirtualizer();
+	initPostFullBlur();
+	initArgonPostActions();
+	initArgonTodoFallbacks();
 	highlightJsRender();
 	waterflowInit();
 });
