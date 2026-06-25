@@ -163,11 +163,11 @@
 
 		<?php }?>
 
-		<?php if (get_option('argon_enable_code_highlight') == 'true') { /*Highlight.js*/?>
-
-			<link rel="stylesheet" href="<?php echo $GLOBALS['assets_path']; ?>/assets/vendor/highlight/styles/<?php echo get_option('argon_code_theme') == '' ? 'vs2015' : get_option('argon_code_theme'); ?>.css">
-
-		<?php }?>
+		<?php if (get_option('argon_enable_code_highlight') == 'true') { /*Prism.js*/?>
+		<link rel="stylesheet" href="<?php echo $GLOBALS['assets_path']; ?>/assets/vendor/prism/themes/prism-okaidia.min.css">
+		<link rel="stylesheet" href="<?php echo $GLOBALS['assets_path']; ?>/assets/vendor/prism/plugins/line-numbers/prism-line-numbers.min.css">
+		<link rel="stylesheet" href="<?php echo $GLOBALS['assets_path']; ?>/assets/vendor/prism/plugins/toolbar/prism-toolbar.min.css">
+	<?php }?>
 
 
 

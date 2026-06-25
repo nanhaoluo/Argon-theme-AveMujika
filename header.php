@@ -320,7 +320,21 @@
 
 		// 加载 argon_js_merged（包含 jQuery 和其他库）- 在头部同步加载以确保后续脚本可用
 		wp_enqueue_script("argon_js_merged", $GLOBALS['assets_path'] . "/assets/argon_js_merged.js", array(), $assets_version, false);
-	?>
+
+	// 加载 Prism.js 代码高亮库
+	if (get_option('argon_enable_code_highlight') == 'true') {
+		wp_enqueue_script("prism_core", $GLOBALS['assets_path'] . "/assets/vendor/prism/prism.min.js", array(), $assets_version, true);
+		wp_enqueue_script("prism_line_numbers", $GLOBALS['assets_path'] . "/assets/vendor/prism/plugins/line-numbers/prism-line-numbers.min.js", array('prism_core'), $assets_version, true);
+		wp_enqueue_script("prism_toolbar", $GLOBALS['assets_path'] . "/assets/vendor/prism/plugins/toolbar/prism-toolbar.min.js", array('prism_core'), $assets_version, true);
+		wp_enqueue_script("prism_copy", $GLOBALS['assets_path'] . "/assets/vendor/prism/plugins/copy-to-clipboard/prism-copy-to-clipboard.min.js", array('prism_core', 'prism_toolbar'), $assets_version, true);
+		wp_enqueue_script("prism_autoloader", $GLOBALS['assets_path'] . "/assets/vendor/prism/plugins/autoloader/prism-autoloader.min.js", array('prism_core'), $assets_version, true);
+	}
+	
+	// 加载 Mermaid 图表库
+	if (get_option('argon_enable_code_highlight') == 'true') {
+		wp_enqueue_script("mermaid", $GLOBALS['assets_path'] . "/assets/vendor/mermaid/mermaid.min.js", array(), $assets_version, true);
+	}
+?>
 	
 	<?php wp_head(); ?>
 	

@@ -2954,7 +2954,7 @@ function themeoptions_page(){
 
 							</select>
 
-							<p class="description"><a href="https://highlightjs.org/static/demo/" target="_blank"><?php _e('查看所有主题预览', 'argon');?></a></p>
+							<p class="description"><?php _e('已切换至 Prism.js，主题固定为 Okaidia', 'argon');?></p>
 
 						</td>
 

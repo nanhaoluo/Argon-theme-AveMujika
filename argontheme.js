@@ -2,14 +2,17 @@
  * Argon 主题核心 JavaScript
  */
 
-// ========== 兼容性修复 ==========
-// 确保 Prism 和 autoloader 存在
+ // ========== 兼容性修复 ==========
+// 确保 Prism 和 autoloader 存在，设置 manual: true 阻止自动高亮
 if (typeof window.Prism === 'undefined') {
 	window.Prism = {
+		manual: true,
 		highlightAll: function () { },
 		highlightElement: function () { },
 		plugins: {}
 	};
+} else {
+	window.Prism.manual = true;
 }
 if (typeof window.Prism.plugins === 'undefined') {
 	window.Prism.plugins = {};
@@ -3710,7 +3713,8 @@ function cleanupPjaxResources() {
 		window.ArgonLongContentVirtualizer = null;
 	}
 	cleanupZoomifyInstances();
-	cleanupTippyInstances(); cleanupDynamicStyles();
+	cleanupTippyInstances();
+	cleanupDynamicStyles();
 	cleanupDynamicScripts();
 	cleanupEventListeners();
 	// 清理页面特定状态（body class、页面样式等）
@@ -3936,9 +3940,6 @@ function handleHashNavigation() {
 // ==========================================================================
 // Long article virtual rendering
 // ==========================================================================
-if (typeof highlightObserver === "undefined") {
-	var highlightObserver = null;
-}
 if (typeof argonVirtualHeadIndexPatched === "undefined") {
 	var argonVirtualHeadIndexPatched = false;
 }
@@ -4713,12 +4714,12 @@ function throttleVirtualUpdate(callback, wait) {
 		var codeBlocks = root.querySelectorAll("pre > code");
 		for (var i = 0; i < codeBlocks.length; i++) {
 			try {
-				highlightObserver.unobserve(codeBlocks[i]);
+				highlightObserver.unobserve(codeBlocks[i].parentNode);
 			} catch (e) { }
 		}
 	}
 	if (typeof ClipboardJS !== "undefined") {
-		var copyButtons = root.querySelectorAll(".hljs-control-copy");
+		var copyButtons = root.querySelectorAll(".argon-code-copy");
 		for (var c = 0; c < copyButtons.length; c++) {
 			if (copyButtons[c]._clipboard && typeof copyButtons[c]._clipboard.destroy === "function") {
 				copyButtons[c]._clipboard.destroy();
@@ -4726,9 +4727,9 @@ function throttleVirtualUpdate(callback, wait) {
 			}
 		}
 	}
-	var renderedCodeBlocks = root.querySelectorAll("pre.hljs-codeblock > code[hljs-codeblock-inner]");
+	var renderedCodeBlocks = root.querySelectorAll("pre.argon-codeblock[data-prism-processed]");
 	for (var r = 0; r < renderedCodeBlocks.length; r++) {
-		renderedCodeBlocks[r].removeAttribute("hljs-codeblock-inner");
+		renderedCodeBlocks[r].removeAttribute("data-prism-processed");
 	}
 	var tips = root.querySelectorAll("[data-tippy-root], .tippy-initialized");
 	for (var t = 0; t < tips.length; t++) {
@@ -7476,7 +7477,7 @@ if ($(".hitokoto").length > 0) {
 	});
 }
 
-/*Highlight.js*/
+/*Code Highlight - Prism.js*/
 function randomString(len) {
 	len = len || 32;
 	let chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -7487,88 +7488,99 @@ function randomString(len) {
 	res[0] = chars.charAt(Math.floor(Math.random() * (chars.length - 10)));
 	return res;
 }
-var codeOfBlocks = {};
-function getCodeFromBlock(block) {
-	if (codeOfBlocks[block.id] != undefined) {
-		return codeOfBlocks[block.id];
-	}
-	let lines = $(".hljs-ln-code", block);
-	let res = "";
-	if (lines.length == 0) {
-		let code = $("code", block).first();
-		res = code.length ? code.text() : $(block).text();
-		codeOfBlocks[block.id] = res;
-		return res;
-	}
-	for (let i = 0; i < lines.length - 1; i++) {
-		res += lines[i].innerText;
-		res += "\n";
-	}
-	res += lines[lines.length - 1].innerText;
-	codeOfBlocks[block.id] = res;
-	return res;
-}
 
-function shouldSkipHighlightJsBlock(block) {
-	let $block = $(block);
-	let $pre = $block.is("pre") ? $block : $block.parent("pre");
-	if ($pre.length == 0) {
-		return false;
-	}
-	let className = (($pre.attr("class") || "") + " " + ($block.attr("class") || ""));
-	return $block.is("[hljs-codeblock-inner]") ||
-		$pre.hasClass("hljs-codeblock") ||
-		$block.find("table.hljs-ln").length > 0 ||
-		$pre.children(".hljs-control").length > 0 ||
-		$pre.closest(".code-toolbar").length > 0 ||
-		$pre.siblings(".toolbar").length > 0 ||
-		$pre.find(".line-numbers-rows").length > 0 ||
-		/\bline-numbers\b/.test(className);
-}
-
-
-function renderArgonCodeBlock(block) {
-	if ($(block).hasClass("no-hljs")) {
+function renderArgonCodeBlock(pre) {
+	if ($(pre).hasClass("no-hljs") || $(pre).attr("data-prism-processed")) {
 		return;
 	}
-	if ($(block).attr("hljs-codeblock-inner") !== undefined || $(block).parent().hasClass("hljs-codeblock")) {
+	var $pre = $(pre);
+	var $code = $pre.children("code");
+	if ($code.length === 0) return;
+
+	// 检测是否为 Mermaid 图表代码块
+	var codeClass = $code.attr("class") || "";
+	var preClass = $pre.attr("class") || "";
+	var isMermaid = codeClass.indexOf("language-mermaid") !== -1 || 
+					preClass.indexOf("language-mermaid") !== -1 ||
+					codeClass.indexOf("mermaid") !== -1 ||
+					preClass.indexOf("mermaid") !== -1;
+	
+	if (isMermaid && typeof mermaid !== 'undefined') {
+		// 标记为已处理，防止重复渲染
+		$pre.attr("data-prism-processed", "1");
+		// 渲染 Mermaid 图表
+		$pre.addClass("argon-mermaid-block");
+		var mermaidContent = $code.text();
+		var mermaidId = "mermaid_" + randomString();
+		$pre.replaceWith('<div class="argon-mermaid" id="' + mermaidId + '">' + mermaidContent + '</div>');
+		try {
+			mermaid.init(undefined, "#" + mermaidId);
+		} catch (e) {
+			console.error("Mermaid rendering error:", e);
+		}
 		return;
 	}
-	if (shouldSkipHighlightJsBlock(block)) {
+	
+	// 如果是 mermaid 类但库未加载，跳过处理
+	if (isMermaid) {
 		return;
 	}
-	$(block).parent().attr("id", randomString());
-	hljs.highlightBlock(block);
-	hljs.lineNumbersBlock(block, { singleLine: true });
-	$(block).parent().addClass("hljs-codeblock");
-	if (argonConfig.code_highlight.hide_linenumber) {
-		$(block).parent().addClass("hljs-hide-linenumber");
+
+	// 标记为已处理，防止重复渲染
+	$pre.attr("data-prism-processed", "1");
+
+	// 获取代码语言
+	var language = "text";
+	var langMatch = codeClass.match(/language-(\w+)/) || preClass.match(/language-(\w+)/);
+	if (langMatch) {
+		language = langMatch[1];
+	} else {
+		// 尝试自动检测语言（简单启发式）
+		language = detectCodeLanguage($code.text());
+		if (language !== "text") {
+			$code.addClass("language-" + language);
+			$pre.addClass("language-" + language);
+		}
+	}
+
+	// 添加 Prism.js line-numbers 类
+	if (!argonConfig.code_highlight.hide_linenumber) {
+		$pre.addClass("line-numbers");
 	}
 	if (argonConfig.code_highlight.break_line) {
-		$(block).parent().addClass("hljs-break-line");
+		$pre.addClass("argon-break-line");
 	}
 	if (argonConfig.code_highlight.transparent_linenumber) {
-		$(block).parent().addClass("hljs-transparent-linenumber");
+		$pre.addClass("argon-transparent-linenumber");
 	}
-	$(block).attr("hljs-codeblock-inner", "");
-	let copyBtnID = "copy_btn_" + randomString();
-	$(block).parent().append(`<div class="hljs-control hljs hljs-title">
-			<div class="hljs-control-btn hljs-control-toggle-linenumber" tooltip-hide-linenumber="` + __("隐藏行号") + `" tooltip-show-linenumber="` + __("显示行号") + `">
-				<i class="fa fa-list"></i>
-			</div>
-			<div class="hljs-control-btn hljs-control-toggle-break-line" tooltip-enable-breakline="` + __("开启折行") + `" tooltip-disable-breakline="` + __("关闭折行") + `">
-				<i class="fa fa-align-left"></i>
-			</div>
-			<div class="hljs-control-btn hljs-control-copy" id=` + copyBtnID + ` tooltip="` + __("复制") + `">
-				<i class="fa fa-clipboard"></i>
-			</div>
-			<div class="hljs-control-btn hljs-control-fullscreen" tooltip-fullscreen="` + __("全屏") + `" tooltip-exit-fullscreen="` + __("退出全屏") + `">
-				<i class="fa fa-arrows-alt"></i>
-			</div>
-		</div>`);
-	let clipboard = new ClipboardJS("#" + copyBtnID, {
+
+	// 使用 Prism.js 高亮
+	if (typeof Prism !== 'undefined' && Prism.highlightElement) {
+		Prism.highlightElement($code[0]);
+	}
+
+	// 注入自定义控制栏
+	$pre.addClass("argon-codeblock");
+	var copyBtnID = "copy_btn_" + randomString();
+	$pre.append(`<div class="argon-code-control">
+		<div class="argon-code-language">` + language + `</div>
+		<div class="argon-code-control-btn argon-code-toggle-linenumber" tooltip-hide-linenumber="` + __("隐藏行号") + `" tooltip-show-linenumber="` + __("显示行号") + `">
+			<i class="fa fa-list"></i>
+		</div>
+		<div class="argon-code-control-btn argon-code-toggle-break-line" tooltip-enable-breakline="` + __("开启折行") + `" tooltip-disable-breakline="` + __("关闭折行") + `">
+			<i class="fa fa-align-left"></i>
+		</div>
+		<div class="argon-code-control-btn argon-code-copy" id=` + copyBtnID + ` tooltip="` + __("复制") + `">
+			<i class="fa fa-clipboard"></i>
+		</div>
+		<div class="argon-code-control-btn argon-code-fullscreen" tooltip-fullscreen="` + __("全屏") + `" tooltip-exit-fullscreen="` + __("退出全屏") + `">
+			<i class="fa fa-arrows-alt"></i>
+		</div>
+	</div>`);
+
+	var clipboard = new ClipboardJS("#" + copyBtnID, {
 		text: function (trigger) {
-			return getCodeFromBlock($(block).parent()[0]);
+			return $pre.find("code").text();
 		}
 	});
 	var copyButton = document.getElementById(copyBtnID);
@@ -7607,8 +7619,43 @@ function renderArgonCodeBlock(block) {
 	});
 }
 
+// 简单的语言自动检测函数
+function detectCodeLanguage(code) {
+	var patterns = {
+		'javascript': [/\bfunction\b/, /\bconst\b/, /\blet\b/, /\bvar\b/, /=>/, /\.then\(/, /async\s+function/],
+		'python': [/\bdef\s+\w+\s*\(/, /\bimport\s+\w+/, /\bfrom\s+\w+\s+import/, /\bprint\s*\(/, /if\s+__name__\s*==\s*['"]__main__['"]/],
+		'java': [/\bpublic\s+class\b/, /\bprivate\s+\w+/, /\bprotected\s+\w+/, /\bSystem\.out\.print/],
+		'cpp': [/\b#include\s*</, /\bstd::/, /\bcout\s*<</, /\bcin\s*>>/, /\busing\s+namespace\s+std/],
+		'c': [/\b#include\s*<\w+\.h>/, /\bprintf\s*\(/, /\bscanf\s*\(/, /\bmalloc\s*\(/],
+		'php': [/<\?php/, /\becho\s+/, /\$[a-zA-Z_]\w*/, /\bfunction\s+\w+\s*\(/],
+		'ruby': [/\bdef\s+\w+/, /\bend\b/, /\bputs\s+/, /\bclass\s+\w+/],
+		'go': [/\bfunc\s+\w+\s*\(/, /\bpackage\s+\w+/, /\bimport\s+\(/, /\bfmt\.Print/],
+		'rust': [/\bfn\s+\w+\s*\(/, /\blet\s+mut\b/, /\buse\s+\w+/, /\bimpl\s+\w+/],
+		'sql': [/\bSELECT\b/i, /\bFROM\b/i, /\bWHERE\b/i, /\bINSERT\b/i, /\bUPDATE\b/i],
+		'html': [/<\/?[a-z][\s\S]*>/i, /<!DOCTYPE\s+html>/i],
+		'css': [/\{[\s\S]*?\}/, /\bcolor\s*:/, /\bbackground\s*:/, /\bmargin\s*:/],
+		'json': [/^\s*\{[\s\S]*\}\s*$/, /^\s*\[[\s\S]*\]\s*$/],
+		'bash': [/\b#!/, /\becho\s+/, /\bif\s+\[/, /\bfi\b/, /\bdone\b/],
+		'yaml': [/^\s*\w+:\s/m, /^\s*-\s+\w+/m],
+		'markdown': [/^#{1,6}\s+/m, /\*\*[^*]+\*\*/, /\[.+\]\(.+\)/, /^>\s+/m]
+	};
+	
+	for (var lang in patterns) {
+		var matches = 0;
+		for (var i = 0; i < patterns[lang].length; i++) {
+			if (patterns[lang][i].test(code)) {
+				matches++;
+			}
+		}
+		if (matches >= 2) {
+			return lang;
+		}
+	}
+	return "text";
+}
+
 function highlightJsRender(scope) {
-	if (typeof (hljs) == "undefined") {
+	if (typeof (Prism) == "undefined") {
 		return;
 	}
 	if (typeof (argonConfig.code_highlight.enable) == "undefined") {
@@ -7618,18 +7665,34 @@ function highlightJsRender(scope) {
 		return;
 	}
 	var $scope = scope ? $(scope) : $("article");
+
+	// 剥离外部插件注入的 code-toolbar 包裹结构
+	$scope.find(".code-toolbar").each(function () {
+		var $toolbar = $(this);
+		var $pre = $toolbar.children("pre");
+		if ($pre.length === 0) return;
+		$pre.find(".line-numbers-rows").remove();
+		$pre.removeClass("line-numbers");
+		$pre.find("code").removeClass("line-numbers");
+		$toolbar.replaceWith($pre);
+	});
+	$scope.find("pre .toolbar").remove();
+
+	// 处理 pre.code 元素（TinyMCE 产生的格式）
 	$scope.find("pre.code").addBack("pre.code").each(function (index, block) {
-		if ($(block).hasClass("no-hljs")) {
+		if ($(block).hasClass("no-hljs") || $(block).attr("data-prism-processed")) {
 			return;
 		}
-		if (shouldSkipHighlightJsBlock(block) || $(block).children("code").length > 0) {
+		if ($(block).children("code").length > 0) {
 			return;
 		}
 		$(block).html("<code>" + $(block).html() + "</code>");
 	});
+
 	var blocks = $scope.find("pre > code").addBack("pre > code").filter(function () {
-		return !$(this).hasClass("no-hljs");
+		return !$(this).hasClass("no-hljs") && !$(this).parent().attr("data-prism-processed");
 	});
+
 	if (!scope && window.ArgonLongContentVirtualizer && window.ArgonLongContentVirtualizer.isReady && window.ArgonLongContentVirtualizer.isReady() && "IntersectionObserver" in window) {
 		if (!highlightObserver) {
 			highlightObserver = new IntersectionObserver(function (entries) {
@@ -7642,12 +7705,12 @@ function highlightJsRender(scope) {
 			}, { rootMargin: "800px 0px 800px 0px", threshold: 0 });
 		}
 		blocks.each(function (index, block) {
-			highlightObserver.observe(block);
+			highlightObserver.observe(block.parentNode);
 		});
 		return;
 	}
 	blocks.each(function (index, block) {
-		renderArgonCodeBlock(block);
+		renderArgonCodeBlock(block.parentNode);
 	});
 }
 $(document).ready(function () {
@@ -7717,25 +7780,38 @@ $(document).ready(function () {
 	initPostFullBlur();
 	initArgonPostActions();
 	initArgonTodoFallbacks();
+	
+	// 初始化 Mermaid 图表
+	if (typeof mermaid !== 'undefined') {
+		mermaid.initialize({
+			startOnLoad: false,
+			theme: document.documentElement.classList.contains('darkmode') ? 'dark' : 'default',
+			securityLevel: 'loose',
+			flowchart: { useMaxWidth: true, htmlLabels: true },
+			sequence: { useMaxWidth: true },
+			gantt: { useMaxWidth: true }
+		});
+	}
+	
 	highlightJsRender();
 	waterflowInit();
 });
-$(document).on("click", ".hljs-control-fullscreen", function () {
+$(document).on("click", ".argon-code-fullscreen", function () {
 	let block = $(this).parent().parent();
-	block.toggleClass("hljs-codeblock-fullscreen");
-	if (block.hasClass("hljs-codeblock-fullscreen")) {
-		$("html").addClass("noscroll codeblock-fullscreen");
+	block.toggleClass("argon-codeblock-fullscreen");
+	if (block.hasClass("argon-codeblock-fullscreen")) {
+		$("html").addClass("noscroll");
 	} else {
-		$("html").removeClass("noscroll codeblock-fullscreen");
+		$("html").removeClass("noscroll");
 	}
 });
-$(document).on("click", ".hljs-control-toggle-break-line", function () {
+$(document).on("click", ".argon-code-toggle-break-line", function () {
 	let block = $(this).parent().parent();
-	block.toggleClass("hljs-break-line");
+	block.toggleClass("argon-break-line");
 });
-$(document).on("click", ".hljs-control-toggle-linenumber", function () {
+$(document).on("click", ".argon-code-toggle-linenumber", function () {
 	let block = $(this).parent().parent();
-	block.toggleClass("hljs-hide-linenumber");
+	block.toggleClass("argon-hide-linenumber");
 });
 
 /*时间差计算/

@@ -5364,6 +5364,24 @@ function argon_enqueue_qrcode_script() {
 }
 add_action('wp_enqueue_scripts', 'argon_enqueue_qrcode_script');
 
+// 停用 wp-editormd 插件的 Prism.js，避免与主题的 Prism.js 冲突
+function argon_dequeue_editormd_prism() {
+	if (class_exists('EditormdApp\\PrismJSAuto') || class_exists('EditormdApp\\PrismJSCustomize')) {
+		wp_dequeue_script('prism-core-js');
+		wp_dequeue_script('Prism');
+		wp_dequeue_style('Prism');
+		wp_dequeue_style('prism-theme-default');
+		wp_dequeue_style('prism-theme-style');
+		// 停用所有 prism 插件脚本和样式
+		foreach (array('autoloader', 'toolbar', 'line-numbers', 'show-language', 'copy-to-clipboard') as $plugin) {
+			wp_dequeue_script("prism-plugin-{$plugin}");
+			wp_dequeue_style("prism-plugin-{$plugin}");
+		}
+		wp_dequeue_script('copy-clipboard');
+	}
+}
+add_action('wp_enqueue_scripts', 'argon_dequeue_editormd_prism', 999);
+
 
 // 获取 Git 版本信息
 function argon_get_git_info() {

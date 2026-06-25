@@ -673,7 +673,7 @@ article .post-content a.no-hover-underline:before {
 
 }
 
-html:not(.disable-codeblock-style) article pre:not(.hljs-codeblock) {
+html:not(.disable-codeblock-style) article pre:not(.argon-codeblock) {
 
 	font-family: Consolas, Menlo, Monaco, "Andale Mono WT", "Andale Mono", "Lucida Console", "Lucida Sans Typewriter",
 
@@ -745,7 +745,7 @@ article .post-content ins {
 
 }
 
-html:not(.disable-codeblock-style) article code:not([hljs-codeblock-inner]) {
+html:not(.disable-codeblock-style) article code:not(pre.argon-codeblock > code) {
 
 	font-family: Consolas, Menlo, Monaco, "Andale Mono WT", "Andale Mono", "Lucida Console", "Lucida Sans Typewriter",
 
@@ -767,9 +767,9 @@ html:not(.disable-codeblock-style) article code:not([hljs-codeblock-inner]) {
 
 }
 
-html:not(.disable-codeblock-style) article .post-content>code:not([hljs-codeblock-inner]),
+html:not(.disable-codeblock-style) article .post-content>code:not(pre.argon-codeblock > code),
 
-article .post-content>p>code:not([hljs-codeblock-inner]) {
+article .post-content>p>code:not(pre.argon-codeblock > code) {
 
 	padding: 2px 5px;
 
@@ -10086,35 +10086,15 @@ html.darkmode .shuoshuo-content.shuoshuo-folded:after {
 
 }
 
-/*Highlight.js*/
+/*Prism.js Code Block*/
 
-article table.hljs-ln>tbody>tr>td,
-
-article table.hljs-ln>tbody>tr>th,
-
-article table.hljs-ln>tfoot>tr>td,
-
-article table.hljs-ln>tfoot>tr>th,
-
-article table.hljs-ln>thead>tr>td,
-
-article table.hljs-ln>thead>tr>th {
-
-	padding: unset;
-
-	vertical-align: unset;
-
-	border: unset !important;
-
-}
-
-.hljs {
+pre[class*="language-"] {
 
 	overflow-x: auto;
 
 }
 
-pre.hljs-codeblock {
+pre.argon-codeblock {
 
 	overflow: visible;
 
@@ -10122,9 +10102,19 @@ pre.hljs-codeblock {
 
 	tab-size: 4;
 
+	border-radius: 8px !important;
+
+	box-shadow: rgba(0, 0, 0, 0.2) 0px 5px 20px !important;
+
+	margin-top: 15px !important;
+
+	margin-bottom: 15px !important;
+
+	background: #272822 !important;
+
 }
 
-pre.hljs-codeblock:before {
+pre.argon-codeblock:before {
 
 	content: "";
 
@@ -10148,7 +10138,7 @@ pre.hljs-codeblock:before {
 
 }
 
-code[hljs-codeblock-inner] {
+pre.argon-codeblock > code {
 
 	line-height: 1.5;
 
@@ -10156,21 +10146,19 @@ code[hljs-codeblock-inner] {
 
 	padding: 22px 20px !important;
 
-	border-radius: 8px;
-
-	box-shadow: rgba(0, 0, 0, 0.2) 0px 5px 20px;
-
-	margin-top: 15px !important;
-
-	margin-bottom: 15px !important;
-
 	padding-top: 55px !important;
 
 	display: block;
 
+	background: transparent !important;
+
+	border-radius: 0 !important;
+
+	box-shadow: none !important;
+
 }
 
-.hljs-ln-numbers {
+.line-numbers-rows {
 
 	-webkit-touch-callout: none;
 
@@ -10204,7 +10192,7 @@ code[hljs-codeblock-inner] {
 
 }
 
-.hljs-ln-numbers:before {
+.line-numbers-rows > span:before {
 
 	content: "";
 
@@ -10220,13 +10208,13 @@ code[hljs-codeblock-inner] {
 
 }
 
-pre.hljs-codeblock.hljs-transparent-linenumber .hljs-ln-numbers {
+pre.argon-codeblock.argon-transparent-linenumber .line-numbers-rows {
 
 	background: transparent !important;
 
 }
 
-.hljs-ln-code {
+.argon-codeblock > code {
 
 	padding-left: 30px !important;
 
@@ -10234,7 +10222,7 @@ pre.hljs-codeblock.hljs-transparent-linenumber .hljs-ln-numbers {
 
 }
 
-pre.hljs-codeblock.hljs-break-line .hljs-ln-code {
+pre.argon-codeblock.argon-break-line > code {
 
 	line-break: anywhere;
 
@@ -10242,13 +10230,13 @@ pre.hljs-codeblock.hljs-break-line .hljs-ln-code {
 
 }
 
-pre.hljs-codeblock:not(.hljs-break-line) .hljs-ln-code {
+pre.argon-codeblock:not(.argon-break-line) > code {
 
 	white-space: pre;
 
 }
 
-code[hljs-codeblock-inner]::-webkit-scrollbar-track {
+pre.argon-codeblock > code::-webkit-scrollbar-track {
 
 	border: none;
 
@@ -10256,7 +10244,7 @@ code[hljs-codeblock-inner]::-webkit-scrollbar-track {
 
 }
 
-code[hljs-codeblock-inner]::-webkit-scrollbar-thumb {
+pre.argon-codeblock > code::-webkit-scrollbar-thumb {
 
 	background: rgba(255, 255, 255, 0.3) !important;
 
@@ -10270,13 +10258,13 @@ code[hljs-codeblock-inner]::-webkit-scrollbar-thumb {
 
 }
 
-code[hljs-codeblock-inner]::-webkit-scrollbar-thumb:hover {
+pre.argon-codeblock > code::-webkit-scrollbar-thumb:hover {
 
 	background: rgba(255, 255, 255, 0.5) !important;
 
 }
 
-code[hljs-codeblock-inner]::-webkit-scrollbar {
+pre.argon-codeblock > code::-webkit-scrollbar {
 
 	background: transparent;
 
@@ -10284,13 +10272,13 @@ code[hljs-codeblock-inner]::-webkit-scrollbar {
 
 }
 
-code[hljs-codeblock-inner] *::selection {
+pre.argon-codeblock > code *::selection {
 
 	background-color: rgba(204, 226, 255, 0.2) !important;
 
 }
 
-pre.hljs-codeblock.hljs-codeblock-fullscreen {
+pre.argon-codeblock.argon-codeblock-fullscreen {
 
 	position: fixed;
 
@@ -10310,7 +10298,7 @@ pre.hljs-codeblock.hljs-codeblock-fullscreen {
 
 }
 
-pre.hljs-codeblock.hljs-codeblock-fullscreen>code[hljs-codeblock-inner] {
+pre.argon-codeblock.argon-codeblock-fullscreen > code {
 
 	position: absolute;
 
@@ -10328,7 +10316,7 @@ pre.hljs-codeblock.hljs-codeblock-fullscreen>code[hljs-codeblock-inner] {
 
 }
 
-pre.hljs-codeblock.hljs-codeblock-fullscreen:before {
+pre.argon-codeblock.argon-codeblock-fullscreen:before {
 
 	z-index: 10001;
 
@@ -10354,7 +10342,7 @@ pre.hljs-codeblock.hljs-codeblock-fullscreen:before {
 
 }
 
-pre.hljs-codeblock.hljs-hide-linenumber .hljs-ln-numbers.hljs {
+pre.argon-codeblock.argon-hide-linenumber .line-numbers-rows {
 
 	width: 0px;
 
@@ -10362,13 +10350,13 @@ pre.hljs-codeblock.hljs-hide-linenumber .hljs-ln-numbers.hljs {
 
 }
 
-pre.hljs-codeblock.hljs-hide-linenumber .hljs-ln-code {
+pre.argon-codeblock.argon-hide-linenumber > code {
 
 	padding-left: 4px !important;
 
 }
 
-pre.hljs-codeblock .hljs-control {
+pre.argon-codeblock .argon-code-control {
 
 	display: block;
 
@@ -10380,7 +10368,7 @@ pre.hljs-codeblock .hljs-control {
 
 	user-select: none;
 
-	opacity: 0;
+	opacity: 0.3;
 
 	transition: all 0.2s ease;
 
@@ -10394,27 +10382,60 @@ pre.hljs-codeblock .hljs-control {
 
 	margin: 0;
 
-}
-
-pre.hljs-codeblock:hover .hljs-control {
-
-	opacity: 0.4;
+	z-index: 10;
 
 }
 
-pre.hljs-codeblock:hover .hljs-control:hover {
+/* 语言标签样式 */
+pre.argon-codeblock .argon-code-language {
+
+	display: inline-block;
+
+	position: absolute;
+
+	top: 20px;
+
+	left: 80px;
+
+	font-size: 12px;
+
+	color: rgba(255, 255, 255, 0.6);
+
+	background: rgba(255, 255, 255, 0.1);
+
+	padding: 2px 8px;
+
+	border-radius: 4px;
+
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+	text-transform: uppercase;
+
+	letter-spacing: 0.5px;
+
+	pointer-events: none;
+
+}
+
+pre.argon-codeblock:hover .argon-code-control {
 
 	opacity: 1;
 
 }
 
-pre.hljs-codeblock .hljs-control i.fa {
+pre.argon-codeblock:hover .argon-code-control:hover {
+
+	opacity: 1;
+
+}
+
+pre.argon-codeblock .argon-code-control i.fa {
 
 	font: normal normal normal 14px/1 FontAwesome !important;
 
 }
 
-.hljs-control .hljs-control-btn {
+.argon-code-control .argon-code-control-btn {
 
 	display: inline-block;
 
@@ -10432,13 +10453,13 @@ pre.hljs-codeblock .hljs-control i.fa {
 
 }
 
-.hljs-control .hljs-control-btn:hover {
+.argon-code-control .argon-code-control-btn:hover {
 
-	opacity: 0.5;
+	opacity: 0.8;
 
 }
 
-.hljs-control-btn:before {
+.argon-code-control-btn:before {
 
 	position: absolute;
 
@@ -10462,7 +10483,7 @@ pre.hljs-codeblock .hljs-control i.fa {
 
 }
 
-.hljs-control-btn:hover:before {
+.argon-code-control-btn:hover:before {
 
 	opacity: 1;
 
@@ -10470,51 +10491,111 @@ pre.hljs-codeblock .hljs-control i.fa {
 
 }
 
-.hljs-control-toggle-linenumber:before {
+.argon-code-toggle-linenumber:before {
 
 	content: attr(tooltip-hide-linenumber);
 
 }
 
-pre.hljs-codeblock.hljs-hide-linenumber .hljs-control-toggle-linenumber:before {
+pre.argon-codeblock.argon-hide-linenumber .argon-code-toggle-linenumber:before {
 
 	content: attr(tooltip-show-linenumber);
 
 }
 
-.hljs-control-toggle-break-line:before {
+.argon-code-toggle-break-line:before {
 
 	content: attr(tooltip-enable-breakline);
 
 }
 
-pre.hljs-codeblock.hljs-break-line .hljs-control-toggle-break-line:before {
+pre.argon-codeblock.argon-break-line .argon-code-toggle-break-line:before {
 
 	content: attr(tooltip-disable-breakline);
 
 }
 
-.hljs-control-copy:before {
+.argon-code-copy:before {
 
 	content: attr(tooltip);
 
 }
 
-.hljs-control-fullscreen:before {
+.argon-code-fullscreen:before {
 
 	content: attr(tooltip-fullscreen);
 
 }
 
-pre.hljs-codeblock.hljs-codeblock-fullscreen .hljs-control-fullscreen:before {
+pre.argon-codeblock.argon-codeblock-fullscreen .argon-code-fullscreen:before {
 
 	content: attr(tooltip-exit-fullscreen);
 
 }
 
-pre.hljs-codeblock.hljs-codeblock-fullscreen .hljs-control-fullscreen>i:before {
+pre.argon-codeblock.argon-codeblock-fullscreen .argon-code-fullscreen>i:before {
 
 	content: "\f066";
+}
+
+/*Prism.js Line Numbers*/
+pre.argon-codeblock.line-numbers {
+	position: relative;
+	padding-left: 3.8em;
+	counter-reset: linenumber;
+}
+pre.argon-codeblock.line-numbers > code {
+	position: relative;
+}
+pre.argon-codeblock .line-numbers-rows {
+	position: absolute;
+	pointer-events: none;
+	top: 55px;
+	left: 0;
+	width: 3em;
+	letter-spacing: -1px;
+	border-right: 1px solid #999;
+	user-select: none;
+}
+pre.argon-codeblock .line-numbers-rows > span {
+	display: block;
+	counter-increment: linenumber;
+}
+pre.argon-codeblock .line-numbers-rows > span:before {
+	content: counter(linenumber);
+	color: #999;
+	display: block;
+	padding-right: 0.8em;
+	text-align: right;
+}
+
+/*==========Mermaid 图表样式==========*/
+.argon-mermaid {
+	margin: 20px 0;
+	padding: 20px;
+	background: #fff;
+	border-radius: 8px;
+	box-shadow: rgba(0, 0, 0, 0.1) 0px 2px 10px;
+	text-align: center;
+	overflow-x: auto;
+}
+
+.argon-mermaid svg {
+	max-width: 100%;
+	height: auto;
+}
+
+html.darkmode .argon-mermaid {
+	background: #1e1e1e;
+}
+
+/* 代码块文字背景移除 */
+pre.argon-codeblock > code {
+	background: transparent !important;
+}
+
+pre.argon-codeblock > code > span {
+	background: transparent !important;
 }
 
 /*==========Style-Dark==========*/
@@ -10713,13 +10794,13 @@ html.darkmode #leftbar_catalog .index-item.current>.index-link {
 
 
 
-html.darkmode article .post-content pre:not(.hljs-codeblock) {
+html.darkmode article .post-content pre:not(.argon-codeblock) {
 
 	color: #eee;
 
 }
 
-html.darkmode article .post-content code:not([hljs-codeblock-inner]) {
+html.darkmode article .post-content code:not(pre.argon-codeblock > code) {
 
 	color: #eee;
 
@@ -15279,14 +15360,14 @@ article.post.card {
 	transition: all var(--m3-motion-duration-short) var(--m3-motion-standard);
 }
 
-/* M3 浠ｇ爜?*/
-article pre:not(.hljs-codeblock) {
+/* M3 代码块*/
+article pre:not(.argon-codeblock) {
 	border-radius: var(--m3-shape-md) !important;
 }
 
-.hljs-codeblock {
+.argon-codeblock {
 	border-radius: var(--m3-shape-md) !important;
-	overflow: hidden;
+	overflow: hidden !important;
 }
 
 /* M3 寮曠敤?*/
@@ -15953,13 +16034,10 @@ html.darkmode .page-link {
 	color: #fff;
 }
 
-/* 浠ｇ爜鍧椾紭?*/
-article pre,
-.hljs-codeblock {
+/* 代码块优化*/
+article pre:not(.argon-codeblock),
+.argon-codeblock {
 	background: rgba(30, 30, 40, 0.95) !important;
-	box-shadow:
-		inset 0 1px 0 rgba(255, 255, 255, 0.05),
-		0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 /* 寮曠敤鍧椾紭?*/
@@ -16457,9 +16535,9 @@ html.darkmode .modal-content {
 	border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* 浠ｇ爜鍧椾紭闆呴槾?*/
-article pre,
-.hljs-codeblock {
+/* 代码块优化阴影*/
+article pre:not(.argon-codeblock),
+.argon-codeblock {
 	box-shadow:
 		0 4px 20px rgba(0, 0, 0, 0.15),
 		inset 0 1px 0 rgba(255, 255, 255, 0.05);
@@ -18664,17 +18742,8 @@ html.darkmode .article-skeleton-thumb {
 	transition: transform var(--animation-normal) var(--ease-spring);
 }
 
-.hljs-codeblock {
+.argon-codeblock {
 	transition: box-shadow var(--animation-normal) var(--ease-standard);
-}
-
-.code-copy-btn {
-	opacity: 0;
-	transition: opacity var(--animation-fast) var(--ease-standard), background var(--animation-fast) var(--ease-standard);
-}
-
-.hljs-codeblock:hover .code-copy-btn {
-	opacity: 1;
 }
 
 /* 17. 鍑忓皯鍔ㄧ敾鍋忓ソ鏀寔 */
