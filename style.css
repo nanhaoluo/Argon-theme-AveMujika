@@ -4738,23 +4738,6 @@ html.darkmode #leftbar_catalog::-webkit-scrollbar-thumb {
 
 }
 
-.search-filter-wrapper {
-
-	display: inline-block;
-
-	margin-right: 12px;
-
-}
-
-.search-filter-wrapper>.custom-control-label {
-
-	line-height: 25px;
-
-}
-
-
-
-/*鏂囩珷瀵艰埅 (涓婁竴绡?涓嬩竴绡囨枃绔?*/
 .archive-information-card {
 	overflow: hidden;
 	border: 1px solid rgba(var(--themecolor-rgbstr), 0.12) !important;
@@ -4933,6 +4916,23 @@ html.darkmode .archive-result-list .shuoshuo-preview-container {
 	}
 }
 
+.search-filter-wrapper {
+
+	display: inline-block;
+
+	margin-right: 12px;
+
+}
+
+.search-filter-wrapper>.custom-control-label {
+
+	line-height: 25px;
+
+}
+
+
+
+/*鏂囩珷瀵艰埅 (涓婁竴绡?涓嬩竴绡囨枃绔?*/
 
 .post-navigation {
 
@@ -17767,49 +17767,79 @@ html.darkmode {
 }
 
 #leftbar .card {
-	animation: modernSlideInLeft var(--animation-slow) var(--ease-emphasized-decelerate) both;
+	opacity: 0;
+	transform: translateX(-20px);
 }
 
-#leftbar .card:nth-child(1) {
-	animation-delay: 100ms;
+#leftbar .card.animate-in {
+	opacity: 1;
+	transform: none;
+	transition: opacity var(--animation-slow) var(--ease-emphasized-decelerate),
+	            transform var(--animation-slow) var(--ease-emphasized-decelerate);
 }
 
-#leftbar .card:nth-child(2) {
-	animation-delay: 150ms;
+#leftbar .card.animate-in:nth-child(1) {
+	transition-delay: 100ms;
 }
 
-#leftbar .card:nth-child(3) {
-	animation-delay: 200ms;
+#leftbar .card.animate-in:nth-child(2) {
+	transition-delay: 150ms;
 }
 
-#leftbar .card:nth-child(4) {
-	animation-delay: 250ms;
+#leftbar .card.animate-in:nth-child(3) {
+	transition-delay: 200ms;
 }
 
-#leftbar .card:nth-child(5) {
-	animation-delay: 300ms;
+#leftbar .card.animate-in:nth-child(4) {
+	transition-delay: 250ms;
+}
+
+#leftbar .card.animate-in:nth-child(5) {
+	transition-delay: 300ms;
 }
 
 #rightbar .card {
-	animation: modernSlideInRight var(--animation-slow) var(--ease-emphasized-decelerate) both;
+	opacity: 0;
+	transform: translateX(20px);
 }
 
-#rightbar .card:nth-child(1) {
-	animation-delay: 100ms;
+#rightbar .card.animate-in {
+	opacity: 1;
+	transform: none;
+	transition: opacity var(--animation-slow) var(--ease-emphasized-decelerate),
+	            transform var(--animation-slow) var(--ease-emphasized-decelerate);
 }
 
-#rightbar .card:nth-child(2) {
-	animation-delay: 150ms;
+#rightbar .card.animate-in:nth-child(1) {
+	transition-delay: 100ms;
 }
 
-#rightbar .card:nth-child(3) {
-	animation-delay: 200ms;
+#rightbar .card.animate-in:nth-child(2) {
+	transition-delay: 150ms;
+}
+
+#rightbar .card.animate-in:nth-child(3) {
+	transition-delay: 200ms;
 }
 
 /* 5. 椤甸潰杩囨浮鍜屾诞鍔ㄦ寜閽姩?*/
 :root {
 	--pjax-transition-duration: 220ms;
 	--pjax-transition-distance: 10px;
+}
+
+/* PJAX 导航期间跳过卡片入场动画，避免卡片因动画初始状态（opacity: 0）而出现"卡死"现象 */
+html.pjax-navigating .article-list article.post,
+html.pjax-navigating #leftbar .card,
+html.pjax-navigating #rightbar .card,
+html.pjax-navigating .comment-item,
+html.pjax-navigating .timeline-item,
+html.pjax-navigating .friend-link-item {
+	animation: none !important;
+	opacity: 1 !important;
+	transform: none !important;
+	filter: none !important;
+	transition: none !important;
 }
 
 #primary.pjax-loading {
@@ -17995,31 +18025,39 @@ article.post.post-full.card>*:not(.post-full-blur-overlay) {
 }
 
 .comment-item {
-	animation: modernFadeInUp var(--animation-normal) var(--ease-emphasized-decelerate) both;
+	opacity: 0;
+	transform: translateY(20px);
 }
 
-.comment-item:nth-child(1) {
-	animation-delay: 0ms;
+.comment-item.animate-in {
+	opacity: 1;
+	transform: none;
+	transition: opacity var(--animation-normal) var(--ease-emphasized-decelerate),
+	            transform var(--animation-normal) var(--ease-emphasized-decelerate);
 }
 
-.comment-item:nth-child(2) {
-	animation-delay: 30ms;
+.comment-item.animate-in:nth-child(1) {
+	transition-delay: 0ms;
 }
 
-.comment-item:nth-child(3) {
-	animation-delay: 60ms;
+.comment-item.animate-in:nth-child(2) {
+	transition-delay: 30ms;
 }
 
-.comment-item:nth-child(4) {
-	animation-delay: 90ms;
+.comment-item.animate-in:nth-child(3) {
+	transition-delay: 60ms;
 }
 
-.comment-item:nth-child(5) {
-	animation-delay: 120ms;
+.comment-item.animate-in:nth-child(4) {
+	transition-delay: 90ms;
 }
 
-.comment-item:nth-child(n+6) {
-	animation-delay: 150ms;
+.comment-item.animate-in:nth-child(5) {
+	transition-delay: 120ms;
+}
+
+.comment-item.animate-in:nth-child(n+6) {
+	transition-delay: 150ms;
 }
 
 @keyframes modernCommentSuccess {
@@ -18039,7 +18077,7 @@ article.post.post-full.card>*:not(.post-full-blur-overlay) {
 }
 
 .comment-item.new-comment {
-	animation: modernCommentSuccess var(--animation-slow) var(--ease-spring);
+	animation: modernCommentSuccess var(--animation-slow) var(--ease-spring) both;
 }
 
 /* 7. 鍥剧墖鍜岃〃鍗曞姩?*/
@@ -18584,38 +18622,37 @@ html.darkmode .article-skeleton-thumb {
 .timeline-item {
 	opacity: 0;
 	transform: translateX(-20px);
-	animation: modernTimelineSlideIn var(--animation-slow) var(--ease-emphasized-decelerate) forwards;
 }
 
-@keyframes modernTimelineSlideIn {
-	to {
-		opacity: 1;
-		transform: translateX(0);
-	}
+.timeline-item.animate-in {
+	opacity: 1;
+	transform: none;
+	transition: opacity var(--animation-slow) var(--ease-emphasized-decelerate),
+	            transform var(--animation-slow) var(--ease-emphasized-decelerate);
 }
 
-.timeline-item:nth-child(1) {
-	animation-delay: 0ms;
+.timeline-item.animate-in:nth-child(1) {
+	transition-delay: 0ms;
 }
 
-.timeline-item:nth-child(2) {
-	animation-delay: 100ms;
+.timeline-item.animate-in:nth-child(2) {
+	transition-delay: 100ms;
 }
 
-.timeline-item:nth-child(3) {
-	animation-delay: 200ms;
+.timeline-item.animate-in:nth-child(3) {
+	transition-delay: 200ms;
 }
 
-.timeline-item:nth-child(4) {
-	animation-delay: 300ms;
+.timeline-item.animate-in:nth-child(4) {
+	transition-delay: 300ms;
 }
 
-.timeline-item:nth-child(5) {
-	animation-delay: 400ms;
+.timeline-item.animate-in:nth-child(5) {
+	transition-delay: 400ms;
 }
 
-.timeline-item:nth-child(n+6) {
-	animation-delay: 500ms;
+.timeline-item.animate-in:nth-child(n+6) {
+	transition-delay: 500ms;
 }
 
 /* 16. 鍙嬮摼鍜屼唬鐮佸潡鍔ㄧ敾 */
@@ -19413,7 +19450,6 @@ html.immersive-read #sidebar_mask {
 	}
 }
 
-
 /* Mobile tweak */
 @media screen and (max-width: 900px) {
 	html.immersive-read {
@@ -19442,6 +19478,7 @@ html.immersive-read #sidebar_mask {
 		font-size: 16px;
 		line-height: 1.86;
 	}
+
 }
 
 @media (prefers-reduced-motion: reduce) {

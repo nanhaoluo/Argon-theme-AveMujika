@@ -177,54 +177,6 @@
 
 <?php wp_footer(); ?>
 
-<!-- 长文章 backdrop-filter 模糊层 JS -->
-<script>
-(function() {
-	function initPostFullBlur() {
-		var card = document.querySelector('article.post.post-full.card');
-		if (!card) return;
-
-		// 创建模糊覆盖层
-		var overlay = card.querySelector('.post-full-blur-overlay');
-		if (!overlay) return;
-
-		var ticking = false;
-		function updateOverlay() {
-			var cardRect = card.getBoundingClientRect();
-			// 覆盖层比视口高 800px（上下各多 400px），充分溢出窗口避免穿帮
-			// offset = 卡片顶部到视口顶部的距离 - 400px 上方余量
-			var offset = Math.max(0, -cardRect.top - 400);
-			// 限制偏移量不超过卡片高度减去覆盖层高度
-			var overlayHeight = window.innerHeight + 800;
-			var maxOffset = card.offsetHeight - overlayHeight;
-			if (maxOffset > 0) {
-				offset = Math.min(offset, maxOffset);
-			}
-			overlay.style.transform = 'translateY(' + offset + 'px)';
-			ticking = false;
-		}
-
-		function onScroll() {
-			if (!ticking) {
-				ticking = true;
-				requestAnimationFrame(updateOverlay);
-			}
-		}
-
-		window.addEventListener('scroll', onScroll, { passive: true });
-		window.addEventListener('resize', onScroll, { passive: true });
-		// 初始定位
-		updateOverlay();
-	}
-
-	if (document.readyState === 'loading') {
-		document.addEventListener('DOMContentLoaded', initPostFullBlur);
-	} else {
-		initPostFullBlur();
-	}
-})();
-</script>
-
 </body>
 
 

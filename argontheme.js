@@ -3540,7 +3540,7 @@ if ($("html").hasClass("banner-as-cover")) {
 }
 
 /*Pjax*/
-var pjaxScrollTop = 0, pjaxLoading = false;
+var pjaxScrollTop = 0, pjaxLoading = false, pjaxCompleteRan = false;
 
 // ==========================================================================
 // 统一的资源清理管理器
@@ -3713,8 +3713,173 @@ function cleanupPjaxResources() {
 	cleanupTippyInstances(); cleanupDynamicStyles();
 	cleanupDynamicScripts();
 	cleanupEventListeners();
+	// 清理页面特定状态（body class、页面样式等）
+	// 作为各页面 pjax:start 清理处理器的兜底方案
+	cleanupPageSpecificState();
 
 	ArgonDebug.log('PJAX 资源清理完成');
+}
+
+/**
+ * 清理页面特定的状态（body class、页面样式等）
+ * 作为 pjax:start 中各页面自行注册的清理处理器的兜底方案
+ * 确保即使个别页面的清理处理器未触发，页面状态也能被正确清理
+ */
+function cleanupPageSpecificState() {
+	// 已知的页面特定 body class 及其对应的样式 ID
+	var pageSpecificState = [
+		{ bodyClass: 'feedback-page', styleId: 'feedback-page-style' },
+		{ bodyClass: 'flinks-page', styleId: 'flinks-page-style' },
+		{ bodyClass: 'ai-verify-page', styleId: 'ai-verify-page-style' }
+	];
+
+	pageSpecificState.forEach(function (state) {
+		document.body.classList.remove(state.bodyClass);
+		var style = document.getElementById(state.styleId);
+		if (style) {
+			style.remove();
+		}
+	});
+}
+
+/**
+ * 同步执行单个脚本元素（不使用 Promise）
+ * 用于 pjax:complete 中需要在模块初始化之前执行的场景
+ *
+ * @param {HTMLScriptElement} oldScript - 原始脚本元素
+ * @returns {boolean} 是否执行成功
+ */
+function executeScriptSync(oldScript) {
+	try {
+		var newScript = document.createElement('script');
+		var hasSrc = !!oldScript.src;
+		var scriptType = (oldScript.getAttribute('type') || '').toLowerCase();
+
+		// 复制脚本内容
+		if (oldScript.textContent && !hasSrc) {
+			newScript.textContent = oldScript.textContent;
+		}
+
+		// 复制所有属性
+		Array.from(oldScript.attributes).forEach(function (attr) {
+			if (attr.name !== 'data-pjax-executed') {
+				newScript.setAttribute(attr.name, attr.value);
+			}
+		});
+		newScript.setAttribute('data-dynamic', 'true');
+		newScript.setAttribute('data-pjax-dynamic', 'true');
+
+		// 外部脚本
+		if (hasSrc) {
+			if (isPjaxScriptAlreadyLoaded(oldScript)) {
+				ArgonDebug.log('External script already loaded, skipped:', oldScript.src);
+				return true;
+			}
+			if (!oldScript.hasAttribute('async') && !oldScript.hasAttribute('defer')) {
+				newScript.async = false;
+			}
+			document.head.appendChild(newScript);
+			return true;
+		}
+
+		// 内联脚本：同步执行
+		withPjaxReadyReplay(function () {
+			document.head.appendChild(newScript);
+		});
+
+		if (scriptType !== 'module') {
+			document.head.removeChild(newScript);
+		}
+
+		ArgonDebug.log('Sync script executed:', oldScript.textContent.substring(0, 50) + '...');
+		return true;
+	} catch (error) {
+		ArgonDebug.error('Sync script execution failed:', error);
+		return false;
+	}
+}
+
+/**
+ * 同步执行容器内所有脚本
+ *
+ * @param {HTMLElement} container - 容器元素
+ * @returns {number} 成功执行的脚本数量
+ */
+function executeInlineScriptsSync(container) {
+	if (!container) return 0;
+	var scripts = container.querySelectorAll('script');
+	var count = 0;
+
+	scripts.forEach(function (script) {
+		if (script.getAttribute('data-pjax-executed') === 'true') return;
+
+		var scriptType = (script.getAttribute('type') || '').toLowerCase();
+		if (scriptType && scriptType !== 'text/javascript' && scriptType !== 'application/javascript' && scriptType !== 'module') return;
+
+		if (script.src || (script.textContent && script.textContent.trim() !== '')) {
+			if (!script.src && (!script.textContent || script.textContent.trim() === '')) return;
+
+			var success = executeScriptSync(script);
+			if (success) {
+				script.setAttribute('data-pjax-executed', 'true');
+				count++;
+			}
+		}
+	});
+
+	return count;
+}
+
+/**
+ * 同步执行所有 pjax 容器中的脚本
+ * 在 pjax:complete 中使用，确保脚本在模块初始化之前执行
+ *
+ * @param {Array} containers - 容器选择器数组
+ * @returns {number} 成功执行的脚本总数
+ */
+function executePjaxScriptsSync(containers) {
+	var total = 0;
+	(containers && containers.length ? containers : ['#primary']).forEach(function (selector) {
+		var container = document.querySelector(selector);
+		if (container) {
+			total += (executeInlineScriptsSync(container) || 0);
+		}
+	});
+	ArgonDebug.log('Sync PJAX script execution completed, total:', total);
+	return total;
+}
+
+/**
+ * 重新激活页面脚本（用于 popstate/浏览器后退前进场景）
+ * 清除 data-pjax-executed 标记，重新执行 <script data-pjax> 脚本
+ * 解决浏览器后退/前进时 pjax:complete 不触发导致脚本不执行的问题
+ */
+function reActivatePageScripts() {
+	var executedCount = 0;
+	pjaxContainers.forEach(function (selector) {
+		var container = document.querySelector(selector);
+		if (!container) return;
+
+		// 清除 data-pjax-executed 标记（缓存的 DOM 会保留此标记）
+		container.querySelectorAll('script[data-pjax-executed]').forEach(function (script) {
+			script.removeAttribute('data-pjax-executed');
+		});
+
+		// 重新执行 <script data-pjax> 脚本（页面特定的生命周期脚本）
+		container.querySelectorAll('script[data-pjax]').forEach(function (script) {
+			try {
+				executeScriptSync(script);
+				script.setAttribute('data-pjax-executed', 'true');
+				executedCount++;
+			} catch (e) {
+				ArgonDebug.warn('reActivatePageScripts: script execution failed:', e);
+			}
+		});
+	});
+
+	if (executedCount > 0) {
+		ArgonDebug.log('reActivatePageScripts: re-executed', executedCount, 'scripts');
+	}
 }
 
 /**
@@ -5805,6 +5970,21 @@ function endPageTransition() {
 	document.documentElement.classList.remove('page-transition-active');
 	document.documentElement.classList.remove('page-transition-enter');
 	document.documentElement.classList.remove('page-transition-leave');
+
+	// 在移除 pjax-navigating 之前，将视口内已可见的元素标记为 .animate-in
+	// 避免移除 pjax-navigating 后 CSS transition 从 opacity:0 重新开始导致闪烁
+	var animatedSelectors = '#leftbar .card, #rightbar .card, .comment-item, .timeline-item';
+	var els = document.querySelectorAll(animatedSelectors);
+	var viewH = window.innerHeight || document.documentElement.clientHeight;
+	for (var i = 0; i < els.length; i++) {
+		var rect = els[i].getBoundingClientRect();
+		if (rect.top < viewH + 50 && rect.bottom > -50) {
+			els[i].classList.add('animate-in');
+		}
+	}
+
+	// 移除 PJAX 导航标记，恢复卡片入场动画
+	document.documentElement.classList.remove('pjax-navigating');
 	pjaxContainers.forEach(function (selector) {
 		var c = document.querySelector(selector);
 		if (c) c.classList.remove('page-transition-content');
@@ -5846,6 +6026,8 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 				ArgonPjaxPrefetch.beginNavigationProgress(document, 18);
 			}
 			ArgonPjaxPrefetch.setTopProgress(62);
+			// 提前添加 pjax-navigating 类，确保新内容插入 DOM 时卡片入场动画已被禁用
+			document.documentElement.classList.add('pjax-navigating');
 		}).on('pjax:beforeReplace', function (e, dom) {
 			ArgonPjaxPrefetch.setTopProgress(72);
 			// ========== 需求 1.1-1.4: 清理旧页面的所有资源 ==========
@@ -5869,78 +6051,85 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 		}).on('pjax:complete', function () {
 			// ========== 需求 1.5, 1.6: 重新初始化所有功能模块 ==========
 			pjaxLoading = false;
+			pjaxCompleteRan = true;
 			syncArgonPjaxPageClasses();
 			syncPjaxPageInfoClasses();
 			syncPjaxPrimaryClasses();
 			PageLoader.trackResources(document);
 			ArgonPjaxPrefetch.setTopProgress(82);
+
+			// 在页面切换期间，跳过卡片入场动画，避免卡片因动画初始状态（opacity: 0）而"卡死"
+			document.documentElement.classList.add('pjax-navigating');
+
 			startPageEnterTransition();
-			var pjaxScriptExecution = Promise.resolve();
 
-			// ========== 需求 4.1-4.5: 执行新页面中的内联脚本 ==========
-			try {
-				pjaxScriptExecution = executePjaxScripts(pjaxContainers);
-			} catch (err) {
-				ArgonDebug.error('executeInlineScripts failed:', err);
-			}
+			// 使用 requestAnimationFrame 延迟执行重量级初始化操作
+			// 让浏览器有机会先处理页面过渡动画（CSS transition），避免主线程阻塞导致卡片卡死
+			requestAnimationFrame(function () {
+				// ========== 同步执行新页面中的内联脚本（必须在模块初始化之前）==========
+				try {
+					executePjaxScriptsSync(pjaxContainers);
+				} catch (err) {
+					ArgonDebug.error('executePjaxScriptsSync failed:', err);
+				}
 
-			// MathJax 数学公式渲染
-			try {
-				if (MathJax != undefined) {
-					if (MathJax.Hub != undefined) {
-						MathJax.Hub.Typeset();
-					} else {
-						MathJax.typeset();
+				// MathJax 数学公式渲染
+				try {
+					if (MathJax != undefined) {
+						if (MathJax.Hub != undefined) {
+							MathJax.Hub.Typeset();
+						} else {
+							MathJax.typeset();
+						}
 					}
+				} catch (err) { }
+
+				// KaTeX 数学公式渲染
+				try {
+					if (renderMathInElement != undefined) {
+						renderMathInElement(document.body, {
+							delimiters: [
+								{ left: "$$", right: "$$", display: true },
+								{ left: "$", right: "$", display: false },
+								{ left: "\\(", right: "\\)", display: false }
+							]
+						});
+					}
+				} catch (err) { }
+
+				// 初始化各个功能模块（添加错误处理确保单个模块失败不影响其他模块）
+				try { initArgonLongContentVirtualizer(); } catch (err) { ArgonDebug.error('initArgonLongContentVirtualizer failed:', err); }
+				try { waterflowInit(); } catch (err) { ArgonDebug.error('waterflowInit failed:', err); }
+				try { syncPjaxPrimaryClasses(); } catch (err) { ArgonDebug.error('syncPjaxPrimaryClasses failed:', err); }
+				try { lazyloadInit(); } catch (err) { ArgonDebug.error('lazyloadInit failed:', err); }
+				try { zoomifyInit(); } catch (err) { ArgonDebug.error('zoomifyInit failed:', err); }
+				try { highlightJsRender(); } catch (err) { ArgonDebug.error('highlightJsRender failed:', err); }
+				try { panguInit(); } catch (err) { ArgonDebug.error('panguInit failed:', err); }
+				try { clampInit(); } catch (err) { ArgonDebug.error('clampInit failed:', err); }
+				try { tippyInit(); } catch (err) { ArgonDebug.error('tippyInit failed:', err); }
+				try { getGithubInfoCardContent(); } catch (err) { ArgonDebug.error('getGithubInfoCardContent failed:', err); }
+				try { showPostOutdateToast(); } catch (err) { ArgonDebug.error('showPostOutdateToast failed:', err); }
+				try { calcHumanTimesOnPage(); } catch (err) { ArgonDebug.error('calcHumanTimesOnPage failed:', err); }
+				try { foldLongComments(); } catch (err) { ArgonDebug.error('foldLongComments failed:', err); }
+				try { foldLongShuoshuo(); } catch (err) { ArgonDebug.error('foldLongShuoshuo failed:', err); }
+				try { handleHashNavigation(); } catch (err) { ArgonDebug.error('handleHashNavigation failed:', err); }
+				try { initArticleSkeletons(); } catch (err) { ArgonDebug.error('initArticleSkeletons failed:', err); }
+				try { initPostFullBlur(); } catch (err) { ArgonDebug.error('initPostFullBlur failed:', err); }
+				try {
+					if (typeof window.argonRequestLeftbarStickyStatusUpdate === 'function') {
+						window.argonRequestLeftbarStickyStatusUpdate();
+					}
+				} catch (err) { ArgonDebug.error('argonRequestLeftbarStickyStatusUpdate failed:', err); }
+
+				$("html").trigger("resize");
+
+				// 恢复滚动位置
+				if (pjaxScrollTop > 0) {
+					$("body,html").scrollTop(pjaxScrollTop);
+					pjaxScrollTop = 0;
 				}
-			} catch (err) { }
 
-			// KaTeX 数学公式渲染
-			try {
-				if (renderMathInElement != undefined) {
-					renderMathInElement(document.body, {
-						delimiters: [
-							{ left: "$$", right: "$$", display: true },
-							{ left: "$", right: "$", display: false },
-							{ left: "\\(", right: "\\)", display: false }
-						]
-					});
-				}
-			} catch (err) { }
-
-			// 初始化各个功能模块（添加错误处理确保单个模块失败不影响其他模块）
-			try { initArgonLongContentVirtualizer(); } catch (err) { ArgonDebug.error('initArgonLongContentVirtualizer failed:', err); }
-			try { waterflowInit(); } catch (err) { ArgonDebug.error('waterflowInit failed:', err); }
-			try { syncPjaxPrimaryClasses(); } catch (err) { ArgonDebug.error('syncPjaxPrimaryClasses failed:', err); }
-			try { lazyloadInit(); } catch (err) { ArgonDebug.error('lazyloadInit failed:', err); }
-			try { zoomifyInit(); } catch (err) { ArgonDebug.error('zoomifyInit failed:', err); }
-			try { highlightJsRender(); } catch (err) { ArgonDebug.error('highlightJsRender failed:', err); }
-			try { panguInit(); } catch (err) { ArgonDebug.error('panguInit failed:', err); }
-			try { clampInit(); } catch (err) { ArgonDebug.error('clampInit failed:', err); }
-			try { tippyInit(); } catch (err) { ArgonDebug.error('tippyInit failed:', err); }
-			try { getGithubInfoCardContent(); } catch (err) { ArgonDebug.error('getGithubInfoCardContent failed:', err); }
-			try { showPostOutdateToast(); } catch (err) { ArgonDebug.error('showPostOutdateToast failed:', err); }
-			try { calcHumanTimesOnPage(); } catch (err) { ArgonDebug.error('calcHumanTimesOnPage failed:', err); }
-			try { foldLongComments(); } catch (err) { ArgonDebug.error('foldLongComments failed:', err); }
-			try { foldLongShuoshuo(); } catch (err) { ArgonDebug.error('foldLongShuoshuo failed:', err); }
-			try { handleHashNavigation(); } catch (err) { ArgonDebug.error('handleHashNavigation failed:', err); }
-			try { initArticleSkeletons(); } catch (err) { ArgonDebug.error('initArticleSkeletons failed:', err); }
-			try { initPostFullBlur(); } catch (err) { ArgonDebug.error('initPostFullBlur failed:', err); }
-			try {
-				if (typeof window.argonRequestLeftbarStickyStatusUpdate === 'function') {
-					window.argonRequestLeftbarStickyStatusUpdate();
-				}
-			} catch (err) { ArgonDebug.error('argonRequestLeftbarStickyStatusUpdate failed:', err); }
-
-			$("html").trigger("resize");
-
-			// 恢复滚动位置
-			if (pjaxScrollTop > 0) {
-				$("body,html").scrollTop(pjaxScrollTop);
-				pjaxScrollTop = 0;
-			}
-
-			pjaxScriptExecution.then(function () {
+				// 后续初始化（原 pjaxScriptExecution.then 中的逻辑，现同步执行）
 				try { initPostFullBlur(); } catch (err) { ArgonDebug.error('initPostFullBlur after scripts failed:', err); }
 				try { initArgonPostActions(); } catch (err) { ArgonDebug.error('initArgonPostActions failed:', err); }
 				try { initArgonTodoFallbacks(); } catch (err) { ArgonDebug.error('initArgonTodoFallbacks failed:', err); }
@@ -5961,14 +6150,37 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 				ArgonPjaxPrefetch.setTopProgress(96);
 				PageLoader.hide();
 				NProgress.done();
-				});
+			});
 		}).on('pjax:error', function () {
 			ArgonPjaxPrefetch.stopNavigationProgress();
+			// 导航失败时也要移除 pjax-navigating 标记，恢复卡片动画
+			// 先将视口内元素标记为 .animate-in，避免移除后闪烁
+			var errEls = document.querySelectorAll('#leftbar .card, #rightbar .card, .comment-item, .timeline-item');
+			var errViewH = window.innerHeight || document.documentElement.clientHeight;
+			for (var j = 0; j < errEls.length; j++) {
+				var r = errEls[j].getBoundingClientRect();
+				if (r.top < errViewH + 50 && r.bottom > -50) {
+					errEls[j].classList.add('animate-in');
+				}
+			}
+			document.documentElement.classList.remove('pjax-navigating');
 		}).on('pjax:end', function () {
 			// ========== 需求 1.7: 执行特定任务 ==========
 			syncArgonPjaxPageClasses();
 			syncPjaxPageInfoClasses();
 			syncPjaxPrimaryClasses();
+
+			// ========== 修复：popstate（浏览器后退/前进）时重新激活页面脚本 ==========
+			// 浏览器后退/前进时 pjax:complete 不触发，需要在此处重新执行页面脚本
+			// 仅在 pjax:complete 未执行时才运行（避免正常导航时重复执行）
+			if (!pjaxCompleteRan) {
+				ArgonDebug.log('pjax:end without pjax:complete (popstate), re-activating page scripts');
+				// 先清理旧页面状态
+				cleanupPageSpecificState();
+				// 重新激活页面脚本
+				reActivatePageScripts();
+			}
+			pjaxCompleteRan = false;
 
 			// 重置移动端目录状态
 			if (typeof window.resetMobileCatalog === 'function') {
@@ -7624,14 +7836,21 @@ setInterval(function(){
 	}
 
 	// 3. 滚动入场动画
+	var _scrollAnimObserver = null; // 追踪 IntersectionObserver 实例，防止泄漏
 	function initScrollAnimations() {
 		if (!('IntersectionObserver' in window)) return;
+		// 断开旧的 observer，防止内存泄漏
+		if (_scrollAnimObserver) {
+			_scrollAnimObserver.disconnect();
+			_scrollAnimObserver = null;
+		}
 		var animatedElements = document.querySelectorAll('.article-list article.post, .comment-item, .timeline-item, .friend-link-item, #leftbar .card, #rightbar .card');
 		var observer = new IntersectionObserver(function (entries) {
 			entries.forEach(function (entry) {
 				if (entry.isIntersecting) { entry.target.classList.add('animate-in'); observer.unobserve(entry.target); }
 			});
 		}, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+		_scrollAnimObserver = observer;
 		animatedElements.forEach(function (el) { if (!el.classList.contains('animate-in')) observer.observe(el); });
 	}
 

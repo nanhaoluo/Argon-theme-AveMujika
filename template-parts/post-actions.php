@@ -72,7 +72,7 @@
 </div>
 
 
-<script type="text/javascript">
+<script type="text/plain" data-argon-managed-by="argontheme">
 (function() {
 	// 分享功能
 	<?php if ($argon_show_sharebtn != 'false') { ?>

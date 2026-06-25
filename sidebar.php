@@ -1056,6 +1056,8 @@ $author_desc = get_option('argon_sidebar_author_description');
 			var pendingUrgeBtn = null;
 			var geetestCaptchaObj = null;
 			var todoList = document.getElementById('todo-list');
+			if (!todoList) return;
+			todoList.setAttribute('data-argon-todo-script-ready', 'true');
 			var scheduleFrame = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function(callback) {
 				return window.setTimeout(callback, 16);
 			};
