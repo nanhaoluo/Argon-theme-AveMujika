@@ -647,7 +647,7 @@ article .post-content a:before {
 
 	background-color: var(--themecolor);
 
-	transition: all 0.2s;
+	transition: background-color 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.2s, opacity 0.2s;
 
 	transform: scaleX(0);
 
@@ -1258,14 +1258,6 @@ a.text-primary:hover {
 	box-shadow: 0 0 0 0 rgba(var(--themecolor-rgbstr), 0.5) !important;
 }
 
-.heimu:hover,
-.heimu:active,
-.heimu:hover .heimu,
-.heimu:active .heimu {
-	color: var(--color-text-deeper) !important;
-	background-color: transparent !important;
-}
-
 .btn-outline-primary {
 	border-color: var(--themecolor) !important;
 	color: var(--themecolor) !important;
@@ -1471,7 +1463,7 @@ html.single-column #leftbar {
 		overflow: auto;
 		z-index: 1002;
 		box-shadow: 0 15px 35px rgba(50, 50, 93, 0.1), 0 5px 15px rgba(0, 0, 0, 0.07) !important;
-		transition: all 0.3s ease;
+		transition: background-color var(--animation-normal) var(--ease-standard), color var(--animation-normal) var(--ease-standard), border-color var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard), transform var(--animation-normal) var(--ease-standard), opacity var(--animation-normal) var(--ease-standard), left var(--animation-normal) var(--ease-standard);
 	}
 
 	html.single-column.leftbar-opened #leftbar {
@@ -1655,12 +1647,6 @@ html.triple-column #content {
 
 }
 
-#primary {
-
-	transition: all var(--animation-normal) var(--ease-standard);
-
-}
-
 .card {
 
 	animation: card-show var(--animation-normal) var(--ease-emphasized-decelerate);
@@ -1767,15 +1753,20 @@ html.darkmode #navbar-main {
 
 #navbar-main {
 
-	transition: background 0s, padding 0.15s ease;
-
 	background-color: var(--toolbar-color) !important;
 
 	padding-top: 0.5rem;
 
 	padding-bottom: 0.5rem;
 
-	transition: all var(--animation-normal) var(--ease-standard);
+	/* One canonical transition for this viewport-pinned bar.
+	   `padding` is deliberately excluded: .navbar-ontop toggles padding-top/bottom
+	   between .5rem and 1rem, and interpolating it reflowed the whole document for
+	   ~250ms on every scroll-threshold cross. It now snaps.
+	   `backdrop-filter` is excluded too -- that only stops the browser animating the
+	   blur radius (not compositor-animatable, full-kernel re-blur per frame).
+	   The at-rest blur value is unchanged. */
+	transition: background-color var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard), transform var(--animation-normal) var(--ease-standard);
 
 }
 
@@ -1809,7 +1800,7 @@ body.leftbar-can-headroom.headroom---unpinned #navbar-main {
 
 	overflow: hidden;
 
-	transition: all var(--animation-normal) var(--ease-standard);
+	transition: background var(--animation-normal) var(--ease-standard), color var(--animation-normal) var(--ease-standard), border-color var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard), transform var(--animation-normal) var(--ease-standard), opacity var(--animation-normal) var(--ease-standard);
 
 }
 
@@ -1928,7 +1919,7 @@ body.leftbar-can-headroom.headroom---unpinned #navbar-main {
 	justify-content: center;
 	padding-top: 0.625rem;
 	padding-bottom: 0.625rem;
-	transition: all var(--animation-slow) var(--ease-emphasized);
+	transition: background var(--animation-slow) var(--ease-emphasized), color var(--animation-slow) var(--ease-emphasized), border-color var(--animation-slow) var(--ease-emphasized), box-shadow var(--animation-slow) var(--ease-emphasized), transform var(--animation-slow) var(--ease-emphasized), opacity var(--animation-slow) var(--ease-emphasized);
 }
 
 #navbar_search_input_container input.form-control {
@@ -1936,7 +1927,7 @@ body.leftbar-can-headroom.headroom---unpinned #navbar-main {
 	padding-top: 0.625rem;
 	padding-bottom: 0.625rem;
 	line-height: 1.5;
-	transition: all 0.5s cubic-bezier(0.4, 0, 0, 1);
+	transition: background 0.5s cubic-bezier(0.4, 0, 0, 1), color 0.5s cubic-bezier(0.4, 0, 0, 1), border-color 0.5s cubic-bezier(0.4, 0, 0, 1), box-shadow 0.5s cubic-bezier(0.4, 0, 0, 1), transform 0.5s cubic-bezier(0.4, 0, 0, 1), opacity 0.5s cubic-bezier(0.4, 0, 0, 1), width 0.5s cubic-bezier(0.4, 0, 0, 1), padding 0.5s cubic-bezier(0.4, 0, 0, 1);
 }
 
 #navbar_search_btn_mobile {
@@ -2160,7 +2151,7 @@ html.is-home.banner-as-cover.banner-as-cover .banner-container {
 
 	font-size: 36px;
 
-	transition: opacity 0.3s ease;
+	transition: opacity var(--animation-normal) var(--ease-standard);
 
 }
 
@@ -2292,7 +2283,7 @@ html:not(.is-home) .cover-scroll-down {
 
 	pointer-events: none;
 
-	transition: all 0.3s ease;
+	transition: background-color var(--animation-normal) var(--ease-standard), color var(--animation-normal) var(--ease-standard), border-color var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard), transform var(--animation-normal) var(--ease-standard), opacity var(--animation-normal) var(--ease-standard);
 
 }
 
@@ -2416,7 +2407,7 @@ html:not(.is-home) .cover-scroll-down {
 
 	transform: translateY(1px);
 
-	transition: all 0.3s ease;
+	transition: background-color var(--animation-normal) var(--ease-standard), color var(--animation-normal) var(--ease-standard), border-color var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard), transform var(--animation-normal) var(--ease-standard), opacity var(--animation-normal) var(--ease-standard);
 
 	pointer-events: none;
 
@@ -2430,7 +2421,7 @@ html:not(.is-home) .cover-scroll-down {
 
 	margin-top: 0;
 
-	transition: all 0.3s cubic-bezier(0.4, 0, 0, 1);
+	transition: background-color 0.3s cubic-bezier(0.4, 0, 0, 1), color 0.3s cubic-bezier(0.4, 0, 0, 1), border-color 0.3s cubic-bezier(0.4, 0, 0, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0, 1), transform 0.3s cubic-bezier(0.4, 0, 0, 1), opacity 0.3s cubic-bezier(0.4, 0, 0, 1), padding 0.3s cubic-bezier(0.4, 0, 0, 1);
 
 }
 
@@ -2520,7 +2511,7 @@ html.darkmode.amoled-dark #leftbar_search_container {
 
 	margin: 0;
 
-	transition: all 0.3s cubic-bezier(0.4, 0, 0, 1);
+	transition: background-color 0.3s cubic-bezier(0.4, 0, 0, 1), color 0.3s cubic-bezier(0.4, 0, 0, 1), border-color 0.3s cubic-bezier(0.4, 0, 0, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0, 1), transform 0.3s cubic-bezier(0.4, 0, 0, 1), opacity 0.3s cubic-bezier(0.4, 0, 0, 1);
 
 	opacity: 0;
 
@@ -2548,14 +2539,13 @@ html.darkmode.amoled-dark #leftbar_search_container {
 
 	margin-top: 10px;
 
-	transition: all var(--animation-normal) var(--ease-standard);
+	/* 曾经是 transition: all —— 会把 width / height / max-height 也做补间，
+	   于是脚本每帧重算目录高度时卡片都在"生长"，看起来就是滚动时被拉到占满屏幕。
+	   这里只保留 top（Headroom 收起时的位移）和纯视觉属性。 */
+	transition: top var(--animation-normal) var(--ease-standard),
+		box-shadow var(--animation-normal) var(--ease-standard),
+		background-color var(--animation-normal) var(--ease-standard);
 
-}
-
-#leftbar .card,
-#leftbar_part1,
-#leftbar_part2 {
-	will-change: auto !important;
 }
 
 #leftbar_part2.sticky {
@@ -2604,7 +2594,8 @@ html.navbar-absolute #leftbar_part2.sticky {
 }
 
 #leftbar_part2.sticky.leftbar-tab-catalog-active #leftbar_part2_inner {
-	height: var(--leftbar-part2-inner-height, auto);
+	height: auto;
+	max-height: var(--leftbar-part2-inner-height, none);
 	overflow: visible;
 	display: flex;
 	flex-direction: column;
@@ -2619,21 +2610,24 @@ html.navbar-absolute #leftbar_part2.sticky {
 
 #leftbar_part2.sticky.leftbar-tab-catalog-active #leftbar_part2_inner>div:not(.nav-wrapper) {
 	min-height: 0;
-	flex: 1;
+	flex: 0 1 auto;
 }
 
 #leftbar_part2.sticky.leftbar-tab-catalog-active #leftbar_part2_inner>div:not(.nav-wrapper)>.tab-content {
-	height: 100%;
+	height: auto;
 	overflow: visible;
 }
 
 /* 鍙湁鏂囩珷鐩綍鏍囩闇€瑕佹粴鍔?*/
 #leftbar_part2.sticky.leftbar-tab-catalog-active #leftbar_tab_catalog {
-	height: 100%;
-	max-height: 100%;
+	/* 只给上限，不给固定 height：目录短时按内容收缩，长时才出现滚动条。
+	   30px = #leftbar_part2_inner 的上下 padding (10+10) + .tab-content 的 padding-top (10)。 */
+	height: auto;
+	max-height: calc(var(--leftbar-part2-inner-height, 100vh) - var(--leftbar-tabs-height, 0px) - 30px);
 	overflow-y: auto;
 	overflow-x: hidden;
 	overscroll-behavior: contain;
+	scroll-padding-bottom: var(--leftbar-catalog-bottom-space, 10px);
 	-webkit-overflow-scrolling: touch;
 	scrollbar-color: rgba(var(--themecolor-rgbstr), 0.35) transparent;
 }
@@ -3116,7 +3110,7 @@ html.darkmode #leftbar_announcement {
 
 	font-size: 14px;
 
-	transition: all var(--animation-normal) var(--ease-standard);
+	transition: background-color var(--animation-normal) var(--ease-standard), color var(--animation-normal) var(--ease-standard), border-color var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard), transform var(--animation-normal) var(--ease-standard), opacity var(--animation-normal) var(--ease-standard);
 
 	user-select: none;
 
@@ -3400,7 +3394,10 @@ html.is-home.banner-as-cover #float_action_buttons.hidden {
 	border-radius: var(--card-radius);
 	background: var(--themecolor);
 	opacity: 0.12;
-	transition: width var(--animation-fast) var(--ease-standard);
+	/* No `width` transition: JS rewrites style.width on every scroll tick, so a
+	   width transition queued a fresh layout animation per tick. Width now snaps.
+	   (JS contract unchanged -- it still writes style.width.) */
+	transition: opacity var(--animation-fast) var(--ease-standard);
 	pointer-events: none;
 }
 
@@ -3585,7 +3582,7 @@ html.amoled-dark #blog_setting_toggle_darkmode_and_amoledarkmode span:first-of-t
 
 	border-radius: 3px;
 
-	transition: all 0.3s ease;
+	transition: background-color var(--animation-normal) var(--ease-standard), color var(--animation-normal) var(--ease-standard), border-color var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard), transform var(--animation-normal) var(--ease-standard), opacity var(--animation-normal) var(--ease-standard);
 
 	transform: translateX(-50%) translateY(5px);
 
@@ -3654,7 +3651,7 @@ html.amoled-dark #blog_setting_toggle_darkmode_and_amoledarkmode:before {
 
 	font-weight: 500;
 
-	transition: all var(--animation-fast) var(--ease-standard);
+	transition: color var(--animation-fast) var(--ease-standard), background-color var(--animation-fast) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), opacity var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-standard);
 
 }
 
@@ -3678,7 +3675,7 @@ html.amoled-dark #blog_setting_toggle_darkmode_and_amoledarkmode:before {
 
 	font-weight: 500;
 
-	transition: all var(--animation-fast) var(--ease-standard);
+	transition: background-color var(--animation-fast) var(--ease-standard), color var(--animation-fast) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-standard), opacity var(--animation-fast) var(--ease-standard);
 
 }
 
@@ -3742,7 +3739,7 @@ html.use-big-shadow #blog_setting_shadow_big {
 
 	font-weight: 500;
 
-	transition: all var(--animation-fast) var(--ease-standard);
+	transition: background-color var(--animation-fast) var(--ease-standard), color var(--animation-fast) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-standard), opacity var(--animation-fast) var(--ease-standard);
 
 }
 
@@ -3821,7 +3818,7 @@ html.use-big-shadow #blog_setting_shadow_big {
 	cursor: pointer;
 	font-size: 13px;
 	font-weight: 500;
-	transition: all var(--animation-fast) var(--ease-standard);
+	transition: background var(--animation-fast) var(--ease-standard), color var(--animation-fast) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-standard), opacity var(--animation-fast) var(--ease-standard);
 	background: rgba(var(--themecolor-rgbstr), 0.08);
 	color: var(--themecolor);
 }
@@ -3851,9 +3848,41 @@ html.darkmode .blog-setting-style-btn.active {
 	color: #fff;
 }
 
-html.filter-sunset {
+/* A non-none `filter` on <html> made it the containing block for EVERY
+   position:fixed descendant -- the navbar, the sidebar cards and the FAB all
+   stopped being viewport-fixed -- and forced the whole document into a single
+   composited layer that was re-filtered on every paint.
+   The same visual result comes from a full-viewport fixed overlay that filters
+   its backdrop instead, which leaves <html> unfiltered.
+   NOTE: this is the ONLY backdrop-filter introduced by this change. It replaces
+   an existing full-page filter effect; no card, sidebar or navbar blur is added,
+   removed or altered. */
+html.filter-sunset body::after,
+html.filter-grayscale body::after {
 
-	filter: sepia(30%);
+	content: "";
+
+	position: fixed;
+
+	left: 0;
+
+	top: 0;
+
+	right: 0;
+
+	bottom: 0;
+
+	z-index: 999999999;
+
+	pointer-events: none;
+
+}
+
+html.filter-sunset body::after {
+
+	-webkit-backdrop-filter: sepia(30%);
+
+	backdrop-filter: sepia(30%);
 
 }
 
@@ -3883,9 +3912,11 @@ html.filter-darkness #primary:after {
 
 }
 
-html.filter-grayscale {
+html.filter-grayscale body::after {
 
-	filter: grayscale(1);
+	-webkit-backdrop-filter: grayscale(1);
+
+	backdrop-filter: grayscale(1);
 
 }
 
@@ -3919,7 +3950,7 @@ html.filter-grayscale {
 
 	border-radius: 3px;
 
-	transition: all 0.3s ease;
+	transition: background-color var(--animation-normal) var(--ease-standard), color var(--animation-normal) var(--ease-standard), border-color var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard), transform var(--animation-normal) var(--ease-standard), opacity var(--animation-normal) var(--ease-standard);
 
 	transform: translateX(-50%) translateY(5px);
 
@@ -3987,7 +4018,7 @@ html.filter-grayscale {
 
 .post-preview {
 
-	transition: all var(--animation-slow) var(--ease-emphasized);
+	transition: background-color var(--animation-slow) var(--ease-emphasized), color var(--animation-slow) var(--ease-emphasized), border-color var(--animation-slow) var(--ease-emphasized), box-shadow var(--animation-slow) var(--ease-emphasized), transform var(--animation-slow) var(--ease-emphasized), opacity var(--animation-slow) var(--ease-emphasized);
 
 }
 
@@ -3997,31 +4028,17 @@ html.filter-grayscale {
 
 	letter-spacing: 0.5px;
 
-	transition: all var(--animation-normal) var(--ease-standard);
-
-}
-
-.post-title:hover {
-
-	letter-spacing: 1px;
+	/* letter-spacing 必须保留：.post-title:hover 会把它加宽到 1px，
+	   去掉的话标题的"展开"手感会变成生硬跳变。 */
+	transition: background-color var(--animation-normal) var(--ease-standard), color var(--animation-normal) var(--ease-standard), border-color var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard), opacity var(--animation-normal) var(--ease-standard);
 
 }
 
 #main.waterflow .post-title {
 
-	transition: all var(--animation-normal) var(--ease-standard);
+	transition: background-color var(--animation-normal) var(--ease-standard), color var(--animation-normal) var(--ease-standard), border-color var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard), opacity var(--animation-normal) var(--ease-standard);
 
 	display: inline-block;
-
-}
-
-#main.waterflow .post-title:hover {
-
-	letter-spacing: 0.5px;
-
-	transform: scale(1.02);
-
-	text-rendering: optimizeLegibility;
 
 }
 
@@ -4116,7 +4133,7 @@ html.filter-grayscale {
 
 /* 鍥剧墖鍔犺浇杩囨浮鏁堟灉 */
 .post-thumbnail {
-	transition: opacity 0.3s ease 0s;
+	transition: opacity var(--animation-normal) var(--ease-standard) 0s;
 }
 
 article.post.card:not(.post-full):not(.post-preview-layout-2)>.post-header.post-header-with-thumbnail {
@@ -4417,7 +4434,7 @@ sup.reference {
 
 	white-space: nowrap;
 
-	transition: box-shadow 0.3s ease;
+	transition: box-shadow var(--animation-normal) var(--ease-standard);
 
 	border-radius: 1px;
 
@@ -4537,7 +4554,7 @@ html.darkmode .tippy-box[data-theme~="light"] {
 
 	border-radius: 3px;
 
-	transition: background 0.3s ease;
+	transition: background var(--animation-normal) var(--ease-standard);
 
 	pointer-events: none;
 
@@ -4623,6 +4640,8 @@ html.darkmode .tippy-box[data-theme~="light"] {
 	margin-left: -5px;
 	width: calc(100% + 0px);
 	height: auto;
+	padding-bottom: var(--leftbar-catalog-bottom-space, 10px);
+	box-sizing: border-box;
 }
 
 #leftbar_catalog::-webkit-scrollbar {
@@ -4671,7 +4690,7 @@ html.darkmode #leftbar_catalog::-webkit-scrollbar-thumb {
 
 	cursor: pointer;
 
-	transition: background-color 0.3s ease, border-left-color 0.3s ease, color 0.3s ease;
+	transition: background-color var(--animation-normal) var(--ease-standard), border-left-color var(--animation-normal) var(--ease-standard), color var(--animation-normal) var(--ease-standard);
 
 	border-left: 3px solid transparent;
 
@@ -5030,7 +5049,7 @@ html.darkmode .archive-result-list .shuoshuo-preview-container {
 
 	white-space: normal;
 
-	transition: all 0.3s ease;
+	transition: background-color var(--animation-normal) var(--ease-standard), color var(--animation-normal) var(--ease-standard), border-color var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard), transform var(--animation-normal) var(--ease-standard), opacity var(--animation-normal) var(--ease-standard), filter var(--animation-normal) var(--ease-standard);
 
 	position: relative;
 
@@ -5078,7 +5097,7 @@ html.darkmode .archive-result-list .shuoshuo-preview-container {
 
 	color: #fff;
 
-	transition: all 0.3s ease;
+	transition: background var(--animation-normal) var(--ease-standard), color var(--animation-normal) var(--ease-standard), border-color var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard), transform var(--animation-normal) var(--ease-standard), opacity var(--animation-normal) var(--ease-standard);
 
 }
 
@@ -5190,7 +5209,7 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 
 	z-index: 2;
 
-	transition: all 0.3s ease;
+	transition: background var(--animation-normal) var(--ease-standard), color var(--animation-normal) var(--ease-standard), border-color var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard), transform var(--animation-normal) var(--ease-standard), opacity var(--animation-normal) var(--ease-standard), border-radius var(--animation-normal) var(--ease-standard);
 
 	transform: translate(-50%, 10px) scale(0.9);
 
@@ -5284,7 +5303,6 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 		max-height var(--animation-slow) var(--ease-emphasized),
 		margin var(--animation-slow) var(--ease-standard),
 		padding var(--animation-slow) var(--ease-standard);
-	will-change: opacity, max-height;
 }
 
 #comments.comments-collapsed,
@@ -5315,13 +5333,13 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 }
 
 #comments:not(.comments-collapsed) {
-	max-height: 9999px;
+	max-height: 2000px;
 	opacity: 1;
 	transition-delay: 0s;
 }
 
 #post_comment:not(.comments-collapsed) {
-	max-height: 9999px;
+	max-height: 2000px;
 	opacity: 1;
 	transition-delay: 0.15s;
 }
@@ -5338,7 +5356,7 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 
 #comments>.card-body {
 
-	transition: opacity 0.5s ease;
+	transition: opacity var(--animation-slow) var(--ease-standard);
 
 	overflow: visible;
 
@@ -5678,7 +5696,7 @@ html.darkmode .comment-item-avatar .avatar {
 	padding: 3px 10px;
 	font-size: 12px;
 	border-radius: var(--m3-shape-sm, 6px);
-	transition: all var(--animation-fast, 0.15s) var(--ease-standard, ease);
+	transition: background-color var(--animation-fast, 0.15s) var(--ease-standard, ease), color var(--animation-fast, 0.15s) var(--ease-standard, ease), border-color var(--animation-fast, 0.15s) var(--ease-standard, ease), box-shadow var(--animation-fast, 0.15s) var(--ease-standard, ease), transform var(--animation-fast, 0.15s) var(--ease-standard, ease), opacity var(--animation-fast, 0.15s) var(--ease-standard, ease);
 	transform: translateY(5px);
 	opacity: 0;
 	z-index: 10;
@@ -5714,7 +5732,7 @@ html.darkmode .comment-item-avatar .avatar {
 	bottom: 8px;
 	font-size: 12px;
 	padding: 4px 8px;
-	transition: all var(--animation-fast, 0.15s) var(--ease-standard, ease);
+	transition: opacity var(--animation-fast, 0.15s) var(--ease-standard, ease), transform var(--animation-fast, 0.15s) var(--ease-standard, ease);
 	opacity: 0;
 	transform: translateY(4px);
 	display: flex;
@@ -5739,7 +5757,7 @@ html.darkmode .comment-operations {
 	padding: 4px 10px;
 	font-size: 12px;
 	border-radius: var(--m3-shape-sm, 6px);
-	transition: all var(--animation-fast, 0.15s) var(--ease-standard, ease);
+	transition: background-color var(--animation-fast, 0.15s) var(--ease-standard, ease), color var(--animation-fast, 0.15s) var(--ease-standard, ease), border-color var(--animation-fast, 0.15s) var(--ease-standard, ease), box-shadow var(--animation-fast, 0.15s) var(--ease-standard, ease), transform var(--animation-fast, 0.15s) var(--ease-standard, ease), opacity var(--animation-fast, 0.15s) var(--ease-standard, ease);
 }
 
 .comment-operations .btn:hover {
@@ -5794,7 +5812,7 @@ html.darkmode .comment-operations {
 	font-size: 13px;
 	font-weight: 500;
 	cursor: pointer;
-	transition: all var(--animation-fast, 0.15s) var(--ease-standard, ease);
+	transition: background-color var(--animation-fast, 0.15s) var(--ease-standard, ease), color var(--animation-fast, 0.15s) var(--ease-standard, ease), border-color var(--animation-fast, 0.15s) var(--ease-standard, ease), box-shadow var(--animation-fast, 0.15s) var(--ease-standard, ease), transform var(--animation-fast, 0.15s) var(--ease-standard, ease), opacity var(--animation-fast, 0.15s) var(--ease-standard, ease);
 	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
@@ -5888,7 +5906,7 @@ html.darkmode .comment-upvote:hover {
 
 	max-height: 60px;
 
-	transition: all 0.3s ease;
+	transition: background var(--animation-normal) var(--ease-standard), color var(--animation-normal) var(--ease-standard), border-color var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard), transform var(--animation-normal) var(--ease-standard), opacity var(--animation-normal) var(--ease-standard);
 
 	transition-delay: 0s;
 
@@ -6514,7 +6532,7 @@ html.darkmode #post_comment.card:hover {
 	justify-content: center;
 	font-size: 12px;
 	flex-shrink: 0;
-	transition: all 0.2s ease;
+	transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
 }
 
 .post-comment-reply-close:hover {
@@ -6739,7 +6757,7 @@ html.darkmode .post-comment-reply-preview {
 
 	z-index: 3;
 
-	transition: all 0.3s ease;
+	transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
 
 	transform: translateY(5px);
 
@@ -6799,7 +6817,7 @@ html.darkmode .post-comment-reply-preview {
 
 #post_comment_toggle_extra_input i {
 
-	transition: all 0.3s ease;
+	transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
 
 }
 
@@ -6983,7 +7001,7 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 	margin-right: 8px;
 
-	transition: all 0.3s ease;
+	transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease, border-radius 0.3s ease;
 
 }
 
@@ -7018,7 +7036,7 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 	z-index: 1050;
 
-	transition: all 0.3s ease;
+	transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
 
 	display: none;
 
@@ -7104,7 +7122,7 @@ html.darkmode .emotion-keyboard {
 
 	cursor: pointer;
 
-	transition: all 0.3s ease;
+	transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
 
 }
 
@@ -7146,7 +7164,7 @@ html.darkmode .emotion-keyboard {
 
 .emotion-group:active .emotion-item:hover>img:not([src^="data:image/svg+xml;base64,PHN2ZyBjbGFzcz0iZW1vdGlvbi1sb2FkaW5nI"]) {
 
-	transition: all 0.3s ease;
+	transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
 
 	transition-delay: 0.3s;
 
@@ -7212,7 +7230,7 @@ html.darkmode .emotion-keyboard {
 
 	cursor: pointer;
 
-	transition: all 0.3s ease;
+	transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
 
 	position: relative;
 
@@ -7859,7 +7877,7 @@ html.darkmode .emotion-keyboard {
 /*鐭唬?闅愯棌鏂囨湰*/
 
 .argon-hidden-text {
-	transition: all 0.3s ease;
+	transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease, border-radius 0.3s ease, filter 0.3s ease;
 }
 
 .argon-hidden-text.argon-hidden-text-blur {
@@ -9033,7 +9051,7 @@ html.darkmode #share .wechat-qrcode .help {
 	top: calc(50vh - 27.5px) !important;
 	left: 0 !important;
 	transform: translateX(calc(-100% + 25px));
-	transition: all 0.3s ease;
+	transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
 }
 
 #wpadminbar:hover {
@@ -9054,7 +9072,7 @@ html.darkmode #share .wechat-qrcode .help {
 
 	right: 10px;
 
-	transition: all 0.3s ease;
+	transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
 
 	color: #fff;
 
@@ -9302,7 +9320,7 @@ html[lang] {
 
 	padding: 25px 35px;
 
-	transition: opacity 0.5s ease;
+	transition: opacity var(--animation-slow) var(--ease-standard);
 
 }
 
@@ -9334,7 +9352,7 @@ html[lang] {
 
 	background-repeat: no-repeat;
 
-	transition: all 0.3s ease;
+	transition: background-color var(--animation-normal) var(--ease-standard), color var(--animation-normal) var(--ease-standard), border-color var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard), transform var(--animation-normal) var(--ease-standard), opacity var(--animation-normal) var(--ease-standard), background-position var(--animation-normal) var(--ease-standard), background-size var(--animation-normal) var(--ease-standard), border-radius var(--animation-normal) var(--ease-standard);
 
 }
 
@@ -9364,7 +9382,7 @@ html[lang] {
 
 	opacity: 0.6;
 
-	transition: all 0.3s ease;
+	transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
 
 	margin-top: 10px;
 
@@ -9373,14 +9391,6 @@ html[lang] {
 .shuoshuo-preview-container .shuoshuo-preview-meta:hover {
 
 	opacity: 0.8;
-
-}
-
-.shuoshuo-preview-meta .shuoshuo-date-date,
-
-.shuoshuo-preview-meta .shuoshuo-date-month {
-
-	font-size: 14px;
 
 }
 
@@ -9394,7 +9404,7 @@ html[lang] {
 
 	opacity: 0;
 
-	transition: all 0.3s ease;
+	transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
 
 }
 
@@ -10096,8 +10106,6 @@ pre[class*="language-"] {
 
 pre.argon-codeblock {
 
-	overflow: visible;
-
 	position: relative;
 
 	tab-size: 4;
@@ -10106,35 +10114,11 @@ pre.argon-codeblock {
 
 	box-shadow: rgba(0, 0, 0, 0.2) 0px 5px 20px !important;
 
-	margin-top: 15px !important;
-
-	margin-bottom: 15px !important;
+	margin: 15px 0 !important;
 
 	background: #272822 !important;
 
-}
-
-pre.argon-codeblock:before {
-
-	content: "";
-
-	position: absolute;
-
-	background: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1NCIgaGVpZ2h0PSIxNCIgdmlld0JveD0iMCAwIDU0IDE0Ij48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDEgMSkiPjxjaXJjbGUgY3g9IjYiIGN5PSI2IiByPSI2IiBmaWxsPSIjRkY1RjU2IiBzdHJva2U9IiNFMDQ0M0UiIHN0cm9rZS13aWR0aD0iLjUiPjwvY2lyY2xlPjxjaXJjbGUgY3g9IjI2IiBjeT0iNiIgcj0iNiIgZmlsbD0iI0ZGQkQyRSIgc3Ryb2tlPSIjREVBMTIzIiBzdHJva2Utd2lkdGg9Ii41Ij48L2NpcmNsZT48Y2lyY2xlIGN4PSI0NiIgY3k9IjYiIHI9IjYiIGZpbGw9IiMyN0M5M0YiIHN0cm9rZT0iIzFBQUIyOSIgc3Ryb2tlLXdpZHRoPSIuNSI+PC9jaXJjbGU+PC9nPjwvc3ZnPg==) no-repeat;
-
-	background-position-y: center;
-
-	top: 22px;
-
-	left: 20px;
-
-	height: 14px;
-
-	width: 54px;
-
-	margin-left: 5px;
-
-	display: block;
+	padding-top: 48px !important;
 
 }
 
@@ -10142,13 +10126,7 @@ pre.argon-codeblock > code {
 
 	line-height: 1.5;
 
-	font-size: 16px;
-
-	padding: 22px 20px !important;
-
-	padding-top: 55px !important;
-
-	display: block;
+	font-size: 14px;
 
 	background: transparent !important;
 
@@ -10156,55 +10134,77 @@ pre.argon-codeblock > code {
 
 	box-shadow: none !important;
 
+	padding: 0 1em 1em 1em !important;
+
+	display: block;
+
+	white-space: pre;
+
 }
 
-.line-numbers-rows {
+pre.argon-codeblock > code *::selection {
 
-	-webkit-touch-callout: none;
+	background-color: rgba(204, 226, 255, 0.2) !important;
 
-	-webkit-user-select: none;
+}
 
-	-khtml-user-select: none;
+pre.argon-codeblock.line-numbers {
 
-	-moz-user-select: none;
+	padding-left: 2.5em !important;
 
-	-ms-user-select: none;
+	counter-reset: linenumber;
+
+}
+
+pre.argon-codeblock .line-numbers-rows {
+
+	position: absolute;
+
+	pointer-events: none;
+
+	top: 0;
+
+	left: -2.5em;
+
+	width: 2.5em;
 
 	user-select: none;
 
-	text-align: center;
+	background: rgba(0, 0, 0, 0.15);
 
-	vertical-align: top;
+	border-right: 1px solid rgba(255,255,255,0.08);
 
-	padding-right: 12px !important;
-
-	position: absolute;
-
-	left: 20px;
-
-	width: 30px;
-
-	overflow-x: visible !important;
-
-	white-space: nowrap;
-
-	transition: all 0.3s ease;
+	border-radius: 0 0 0 8px;
 
 }
 
-.line-numbers-rows > span:before {
+pre.argon-codeblock .line-numbers-rows > span {
 
-	content: "";
+	display: block;
 
-	position: absolute;
+	counter-increment: linenumber;
 
-	left: -20px;
+	height: 1.5em;
 
-	width: 20px;
+	line-height: 1.5;
 
-	height: 100%;
+	font-size: 14px;
 
-	background: inherit;
+}
+
+pre.argon-codeblock .line-numbers-rows > span:before {
+
+	content: counter(linenumber);
+
+	display: block;
+
+	padding-right: 0.8em;
+
+	text-align: right;
+
+	color: rgba(255, 255, 255, 0.3);
+
+	font-size: 12px;
 
 }
 
@@ -10212,13 +10212,31 @@ pre.argon-codeblock.argon-transparent-linenumber .line-numbers-rows {
 
 	background: transparent !important;
 
+	border-right-color: transparent;
+
 }
 
-.argon-codeblock > code {
+pre.argon-codeblock.argon-hide-linenumber .line-numbers-rows {
 
-	padding-left: 30px !important;
+	width: 0 !important;
 
-	transition: all 0.3s ease;
+	opacity: 0;
+
+	overflow: hidden;
+
+	border-right: none;
+
+}
+
+pre.argon-codeblock.argon-hide-linenumber {
+
+	padding-left: 1em !important;
+
+}
+
+pre.argon-codeblock.argon-hide-linenumber > code {
+
+	padding-left: 0 !important;
 
 }
 
@@ -10227,12 +10245,6 @@ pre.argon-codeblock.argon-break-line > code {
 	line-break: anywhere;
 
 	white-space: break-spaces;
-
-}
-
-pre.argon-codeblock:not(.argon-break-line) > code {
-
-	white-space: pre;
 
 }
 
@@ -10272,105 +10284,23 @@ pre.argon-codeblock > code::-webkit-scrollbar {
 
 }
 
-pre.argon-codeblock > code *::selection {
-
-	background-color: rgba(204, 226, 255, 0.2) !important;
-
-}
-
-pre.argon-codeblock.argon-codeblock-fullscreen {
-
-	position: fixed;
-
-	left: 0;
-
-	right: 0;
-
-	top: 0;
-
-	bottom: 0;
-
-	z-index: 10000;
-
-	margin: 0 !important;
-
-	animation: codeblock-fullscreen 0.5s cubic-bezier(0.18, 0.89, 0.37, 1.12);
-
-}
-
-pre.argon-codeblock.argon-codeblock-fullscreen > code {
-
-	position: absolute;
-
-	left: 0;
-
-	right: 0;
-
-	top: 0;
-
-	bottom: 0;
-
-	border-radius: 0;
-
-	margin: 0 !important;
-
-}
-
-pre.argon-codeblock.argon-codeblock-fullscreen:before {
-
-	z-index: 10001;
-
-}
-
-@keyframes codeblock-fullscreen {
-
-	0% {
-
-		transform: scale(0.5);
-
-		opacity: 1;
-
-	}
-
-	100% {
-
-		transform: none;
-
-		opacity: 1;
-
-	}
-
-}
-
-pre.argon-codeblock.argon-hide-linenumber .line-numbers-rows {
-
-	width: 0px;
-
-	opacity: 0;
-
-}
-
-pre.argon-codeblock.argon-hide-linenumber > code {
-
-	padding-left: 4px !important;
-
-}
-
 pre.argon-codeblock .argon-code-control {
 
-	display: block;
+	display: flex;
 
 	position: absolute;
 
-	top: 16px !important;
+	top: 12px;
 
-	right: 20px !important;
+	right: 16px;
+
+	left: 16px;
 
 	user-select: none;
 
-	opacity: 0.3;
+	opacity: 0.5;
 
-	transition: all 0.2s ease;
+	transition: opacity 0.2s ease;
 
 	white-space: nowrap;
 
@@ -10384,18 +10314,16 @@ pre.argon-codeblock .argon-code-control {
 
 	z-index: 10;
 
+	align-items: center;
+
+	pointer-events: none;
+
 }
 
 /* 语言标签样式 */
 pre.argon-codeblock .argon-code-language {
 
 	display: inline-block;
-
-	position: absolute;
-
-	top: 20px;
-
-	left: 80px;
 
 	font-size: 12px;
 
@@ -10414,6 +10342,10 @@ pre.argon-codeblock .argon-code-language {
 	letter-spacing: 0.5px;
 
 	pointer-events: none;
+
+	flex-shrink: 0;
+
+	margin-right: auto;
 
 }
 
@@ -10437,19 +10369,29 @@ pre.argon-codeblock .argon-code-control i.fa {
 
 .argon-code-control .argon-code-control-btn {
 
-	display: inline-block;
+	display: inline-flex;
+
+	align-items: center;
+
+	justify-content: center;
 
 	opacity: 0.8;
 
-	transition: all 0.2s ease;
+	transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
 
 	cursor: pointer;
 
-	margin-left: 15px;
+	margin-left: 8px;
 
-	width: 12px;
+	padding: 3px 6px;
+
+	border-radius: 4px;
 
 	position: relative;
+
+	pointer-events: auto;
+
+	background: rgba(255, 255, 255, 0.08);
 
 }
 
@@ -10475,7 +10417,7 @@ pre.argon-codeblock .argon-code-control i.fa {
 
 	pointer-events: none;
 
-	transition: all 0.2s ease;
+	transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease, top 0.2s ease;
 
 	font-size: 12px;
 
@@ -10519,54 +10461,6 @@ pre.argon-codeblock.argon-break-line .argon-code-toggle-break-line:before {
 
 	content: attr(tooltip);
 
-}
-
-.argon-code-fullscreen:before {
-
-	content: attr(tooltip-fullscreen);
-
-}
-
-pre.argon-codeblock.argon-codeblock-fullscreen .argon-code-fullscreen:before {
-
-	content: attr(tooltip-exit-fullscreen);
-
-}
-
-pre.argon-codeblock.argon-codeblock-fullscreen .argon-code-fullscreen>i:before {
-
-	content: "\f066";
-}
-
-/*Prism.js Line Numbers*/
-pre.argon-codeblock.line-numbers {
-	position: relative;
-	padding-left: 3.8em;
-	counter-reset: linenumber;
-}
-pre.argon-codeblock.line-numbers > code {
-	position: relative;
-}
-pre.argon-codeblock .line-numbers-rows {
-	position: absolute;
-	pointer-events: none;
-	top: 55px;
-	left: 0;
-	width: 3em;
-	letter-spacing: -1px;
-	border-right: 1px solid #999;
-	user-select: none;
-}
-pre.argon-codeblock .line-numbers-rows > span {
-	display: block;
-	counter-increment: linenumber;
-}
-pre.argon-codeblock .line-numbers-rows > span:before {
-	content: counter(linenumber);
-	color: #999;
-	display: block;
-	padding-right: 0.8em;
-	text-align: right;
 }
 
 /*==========Mermaid 图表样式==========*/
@@ -10986,7 +10880,7 @@ html.darkmode.amoled-dark #content:after {
 
 		backdrop-filter: blur(calc(var(--card-blur) / 2));
 		cursor: pointer;
-		transition: all var(--animation-fast) var(--ease-standard);
+		transition: background var(--animation-fast) var(--ease-standard), color var(--animation-fast) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-standard), opacity var(--animation-fast) var(--ease-standard);
 		color: #fff;
 		z-index: 1;
 	}
@@ -11010,18 +10904,12 @@ html.darkmode.amoled-dark #content:after {
 		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 		position: relative;
 		z-index: 1;
-		transition: all var(--animation-normal) var(--ease-spring);
+		transition: background-color var(--animation-normal) var(--ease-spring), color var(--animation-normal) var(--ease-spring), border-color var(--animation-normal) var(--ease-spring), box-shadow var(--animation-normal) var(--ease-spring), transform var(--animation-normal) var(--ease-spring), opacity var(--animation-normal) var(--ease-spring);
 	}
 
 	.leftbar-mobile-avatar:active {
 		transform: scale(0.95);
 		border-color: rgba(255, 255, 255, 0.6);
-	}
-
-	.leftbar-mobile-avatar img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
 	}
 
 	.leftbar-mobile-user-info {
@@ -11062,14 +10950,6 @@ html.darkmode.amoled-dark #content:after {
 		z-index: 1;
 	}
 
-	.leftbar-mobile-stat {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		position: relative;
-	}
-
 	.leftbar-mobile-stat:not(:last-child)::after {
 		content: "";
 		position: absolute;
@@ -11107,7 +10987,7 @@ html.darkmode.amoled-dark #content:after {
 		border-radius: 14px;
 		padding: 12px 16px;
 		gap: 12px;
-		transition: all var(--animation-fast) var(--ease-standard);
+		transition: background var(--animation-fast) var(--ease-standard), color var(--animation-fast) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-standard), opacity var(--animation-fast) var(--ease-standard);
 		border: 1px solid transparent;
 	}
 
@@ -11122,23 +11002,6 @@ html.darkmode.amoled-dark #content:after {
 		color: #999;
 		font-size: 15px;
 		transition: color var(--animation-fast) var(--ease-standard);
-	}
-
-	.leftbar-mobile-search-inner:focus-within i {
-		color: var(--themecolor);
-	}
-
-	.leftbar-mobile-search-inner input {
-		flex: 1;
-		border: none;
-		background: transparent;
-		font-size: 15px;
-		color: var(--color-text-deeper);
-		outline: none;
-	}
-
-	.leftbar-mobile-search-inner input::placeholder {
-		color: #aaa;
 	}
 
 	/* 瀵艰埅鑿滃崟鍖哄煙 - 浼樺寲闂磋窛鍜屾牱?*/
@@ -11156,16 +11019,6 @@ html.darkmode.amoled-dark #content:after {
 		margin-bottom: 0;
 	}
 
-	.leftbar-mobile-menu {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-	}
-
-	.leftbar-mobile-menu-item {
-		margin-bottom: 4px;
-	}
-
 	.leftbar-mobile-menu-item>a {
 		display: flex;
 		align-items: center;
@@ -11173,7 +11026,7 @@ html.darkmode.amoled-dark #content:after {
 		color: var(--color-text-deeper);
 		text-decoration: none;
 		border-radius: 14px;
-		transition: all var(--animation-fast) var(--ease-standard);
+		transition: background var(--animation-fast) var(--ease-standard), color var(--animation-fast) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-standard), opacity var(--animation-fast) var(--ease-standard), border-radius var(--animation-fast) var(--ease-standard);
 		font-size: 15px;
 		font-weight: 500;
 		position: relative;
@@ -11187,11 +11040,6 @@ html.darkmode.amoled-dark #content:after {
 
 	.leftbar-mobile-menu-item>a:active::before {
 		content: none;
-	}
-
-	.leftbar-mobile-menu-item>a:active {
-		background: rgba(var(--themecolor-rgbstr), 0.1);
-		transform: scale(0.98);
 	}
 
 	.leftbar-mobile-menu-item.current>a {
@@ -11211,19 +11059,11 @@ html.darkmode.amoled-dark #content:after {
 		border-radius: 0 4px 4px 0;
 	}
 
-	.leftbar-mobile-menu-item .menu-text {
-		flex: 1;
-	}
-
 	.leftbar-mobile-menu-item .submenu-arrow {
 		font-size: 12px;
 		color: #999;
 		transition: transform var(--animation-normal) var(--ease-standard);
 		margin-left: 8px;
-	}
-
-	.leftbar-mobile-menu-item.expanded .submenu-arrow {
-		transform: rotate(180deg);
 	}
 
 	.leftbar-mobile-submenu {
@@ -11270,23 +11110,6 @@ html.darkmode.amoled-dark #content:after {
 		animation-delay: 0.3s;
 	}
 
-	.leftbar-mobile-submenu .leftbar-mobile-menu-item {
-		margin-bottom: 2px;
-	}
-
-	.leftbar-mobile-submenu .leftbar-mobile-menu-item>a {
-		padding: 11px 14px;
-		font-size: 14px;
-		font-weight: 400;
-		color: #666;
-		border-radius: 10px;
-	}
-
-	.leftbar-mobile-submenu .leftbar-mobile-menu-item>a:active {
-		color: var(--themecolor);
-		background: rgba(var(--themecolor-rgbstr), 0.08);
-	}
-
 	/* 搴曢儴鎿嶄綔?- 浼樺寲璁捐 */
 	.leftbar-mobile-footer {
 		margin-top: auto;
@@ -11316,7 +11139,7 @@ html.darkmode.amoled-dark #content:after {
 		font-weight: 500;
 		cursor: pointer;
 		border-radius: 14px;
-		transition: all var(--animation-fast) var(--ease-standard);
+		transition: background var(--animation-fast) var(--ease-standard), color var(--animation-fast) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-standard), opacity var(--animation-fast) var(--ease-standard);
 		position: relative;
 		overflow: hidden;
 	}
@@ -11336,11 +11159,6 @@ html.darkmode.amoled-dark #content:after {
 		transform: scale(0.96);
 	}
 
-	.leftbar-mobile-action i {
-		font-size: 20px;
-		transition: transform var(--animation-fast) var(--ease-spring);
-	}
-
 	.leftbar-mobile-action:active i {
 		transform: scale(1.1);
 	}
@@ -11352,7 +11170,7 @@ html.darkmode.amoled-dark #content:after {
 		border-radius: 14px;
 		overflow: hidden;
 		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-		transition: all var(--animation-normal) var(--ease-emphasized),
+		transition: background-color var(--animation-normal) var(--ease-emphasized), color var(--animation-normal) var(--ease-emphasized), border-color var(--animation-normal) var(--ease-emphasized), box-shadow var(--animation-normal) var(--ease-emphasized), transform var(--animation-normal) var(--ease-emphasized), opacity var(--animation-normal) var(--ease-emphasized), margin var(--animation-normal) var(--ease-emphasized),
 			box-shadow var(--animation-normal) var(--ease-standard);
 	}
 
@@ -11368,7 +11186,7 @@ html.darkmode.amoled-dark #content:after {
 		padding: 10px 14px;
 		cursor: pointer;
 		user-select: none;
-		transition: all var(--animation-fast) var(--ease-standard);
+		transition: background var(--animation-fast) var(--ease-standard), color var(--animation-fast) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-standard), opacity var(--animation-fast) var(--ease-standard);
 		position: relative;
 		overflow: hidden;
 	}
@@ -11403,7 +11221,7 @@ html.darkmode.amoled-dark #content:after {
 		color: var(--themecolor);
 		border-radius: 8px;
 		font-size: 12px;
-		transition: all var(--animation-normal) var(--ease-spring);
+		transition: background-color var(--animation-normal) var(--ease-spring), color var(--animation-normal) var(--ease-spring), border-color var(--animation-normal) var(--ease-spring), box-shadow var(--animation-normal) var(--ease-spring), transform var(--animation-normal) var(--ease-spring), opacity var(--animation-normal) var(--ease-spring);
 	}
 
 	.leftbar-mobile-collapse-section.expanded .collapse-icon {
@@ -11420,10 +11238,6 @@ html.darkmode.amoled-dark #content:after {
 		transition: color var(--animation-fast) var(--ease-standard);
 	}
 
-	.leftbar-mobile-collapse-section.expanded .collapse-title {
-		color: var(--themecolor);
-	}
-
 	.collapse-badge {
 		background: var(--themecolor);
 		color: #fff;
@@ -11435,7 +11249,7 @@ html.darkmode.amoled-dark #content:after {
 		text-align: center;
 		margin-left: auto;
 		margin-right: 10px;
-		transition: all var(--animation-normal) var(--ease-spring);
+		transition: background-color var(--animation-normal) var(--ease-spring), color var(--animation-normal) var(--ease-spring), border-color var(--animation-normal) var(--ease-spring), box-shadow var(--animation-normal) var(--ease-spring), transform var(--animation-normal) var(--ease-spring), opacity var(--animation-normal) var(--ease-spring);
 		box-shadow: 0 2px 6px rgba(var(--themecolor-rgbstr), 0.3);
 	}
 
@@ -11447,7 +11261,7 @@ html.darkmode.amoled-dark #content:after {
 	.collapse-arrow {
 		font-size: 11px;
 		color: #aaa;
-		transition: all var(--animation-normal) var(--ease-emphasized);
+		transition: background-color var(--animation-normal) var(--ease-emphasized), color var(--animation-normal) var(--ease-emphasized), border-color var(--animation-normal) var(--ease-emphasized), box-shadow var(--animation-normal) var(--ease-emphasized), transform var(--animation-normal) var(--ease-emphasized), opacity var(--animation-normal) var(--ease-emphasized);
 		width: 20px;
 		height: 20px;
 		display: flex;
@@ -11535,7 +11349,7 @@ html.darkmode.amoled-dark #content:after {
 		color: #666;
 		text-decoration: none;
 		border-radius: 8px;
-		transition: all var(--animation-fast) var(--ease-standard),
+		transition: background var(--animation-fast) var(--ease-standard), color var(--animation-fast) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-standard), opacity var(--animation-fast) var(--ease-standard), border-radius var(--animation-fast) var(--ease-standard),
 			transform var(--animation-fast) var(--ease-spring);
 		position: relative;
 		overflow: hidden;
@@ -11678,7 +11492,6 @@ html.darkmode.amoled-dark #content:after {
 			box-shadow var(--animation-fast) var(--ease-standard);
 		animation: mobileTodoSlideIn 0.2s var(--ease-emphasized-decelerate) both;
 		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-		will-change: transform, opacity;
 	}
 
 	@keyframes mobileTodoSlideIn {
@@ -11982,11 +11795,14 @@ html.darkmode.amoled-dark #content:after {
 		box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
 		transform: translateX(-100%);
 		transition: transform var(--animation-normal) var(--ease-emphasized);
-		will-change: transform;
 	}
 
+	/* Promotion is scoped to the open state only. Unscoped, this fixed 300px
+	   overflow:auto drawer held a full-height composited layer in VRAM for the
+	   whole session even while closed. */
 	html.leftbar-opened #leftbar {
 		transform: translateX(0);
+		will-change: transform;
 	}
 
 	/* 绉诲姩绔晶杈规爮鍏ュ満鍔ㄧ敾鍏抽敭?*/
@@ -12323,12 +12139,6 @@ html.darkmode.amoled-dark #content:after {
 
 
 
-	.post-header.post-header-with-thumbnail .post-header-text-container {
-
-		padding-bottom: 20px;
-
-	}
-
 	.post-thumbnail {
 
 		max-height: 30vh;
@@ -12521,7 +12331,7 @@ html.darkmode.amoled-dark #content:after {
 	/* ========== 绉诲姩绔悳绱㈡鍔ㄧ敾 (鐓ф惉妗岄潰? ========== */
 	.leftbar-mobile-search-inner {
 		position: relative;
-		transition: all 0.3s cubic-bezier(0.4, 0, 0, 1);
+		transition: background 0.3s cubic-bezier(0.4, 0, 0, 1), color 0.3s cubic-bezier(0.4, 0, 0, 1), border-color 0.3s cubic-bezier(0.4, 0, 0, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0, 1), transform 0.3s cubic-bezier(0.4, 0, 0, 1), opacity 0.3s cubic-bezier(0.4, 0, 0, 1);
 	}
 
 	.leftbar-mobile-search-inner:focus-within {
@@ -12530,7 +12340,7 @@ html.darkmode.amoled-dark #content:after {
 	}
 
 	.leftbar-mobile-search-inner input {
-		transition: all 0.3s cubic-bezier(0.4, 0, 0, 1);
+		transition: background-color 0.3s cubic-bezier(0.4, 0, 0, 1), color 0.3s cubic-bezier(0.4, 0, 0, 1), border-color 0.3s cubic-bezier(0.4, 0, 0, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0, 1), transform 0.3s cubic-bezier(0.4, 0, 0, 1), opacity 0.3s cubic-bezier(0.4, 0, 0, 1);
 	}
 
 	/* 鎼滅储妗嗚仛鐒︽椂鐨勫厜鏍囧姩?*/
@@ -12663,10 +12473,6 @@ html.darkmode.amoled-dark #content:after {
 		transition: transform 0.3s var(--ease-spring);
 	}
 
-	.leftbar-mobile-menu-item.expanded .submenu-arrow {
-		transform: rotate(180deg);
-	}
-
 	/* 閬僵灞傛贰鍏ュ?*/
 	#sidebar_mask {
 		transition: opacity 0.35s var(--ease-emphasized),
@@ -12790,16 +12596,6 @@ html.darkmode.amoled-dark #content:after {
 
 	}
 
-	.navbar-nav:not(#navbar_search_btn_mobile)>.nav-item i:not(.d-lg-none) {
-
-		margin-right: 8px;
-
-		text-align: center;
-
-		width: 14px;
-
-	}
-
 
 
 	.navbar-nav:not(#navbar_search_btn_mobile)>.nav-item i:not(.d-lg-none) {
@@ -12884,7 +12680,7 @@ html.darkmode.amoled-dark #content:after {
 
 		transform: translateY(15px);
 
-		transition: all 0.3s ease;
+		transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
 
 		animation: none !important;
 
@@ -13450,38 +13246,6 @@ article .post-content .huhua a:before {
 
 
 /* ===== Git 鐗堟湰寰界珷 ===== */
-.git-version-badge {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	margin-left: 8px;
-	padding: 2px 8px;
-	background: rgba(0, 0, 0, 0.15);
-	border-radius: 10px;
-	font-size: 11px;
-	font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-	color: inherit;
-	text-decoration: none;
-	opacity: 0.7;
-	transition: opacity 0.2s ease;
-	vertical-align: middle;
-	cursor: pointer;
-	user-select: none;
-}
-
-.git-version-badge:hover {
-	opacity: 1;
-	color: inherit;
-	text-decoration: none;
-}
-
-.git-version-badge .git-icon {
-	width: 11px;
-	height: 11px;
-	color: #f05033;
-	flex-shrink: 0;
-}
-
 /* Git 褰╄泲寮圭獥 */
 .git-easter-egg-overlay {
 	position: fixed;
@@ -13618,17 +13382,12 @@ article .post-content .huhua a:before {
 }
 
 /* 绉诲姩?*/
-@media screen and (max-width: 576px) {
-	.git-version-badge {
-		display: none;
-	}
-}
-
 
 /* ===== TODO 鍒楄〃 ===== */
 #leftbar_part3 {
 	margin-top: 10px;
-	transition: top 0.3s ease, transform 0.3s ease;
+	/* top 由 --leftbar-part2-height 驱动，过渡它会让 part3 滚动时"追着"part2 抖动 */
+	transition: transform 0.3s ease;
 }
 
 #leftbar_part3.sticky {
@@ -13760,7 +13519,7 @@ html.navbar-absolute #leftbar_part3.sticky {
 	background: var(--color-foreground);
 	border-radius: 8px;
 	cursor: pointer;
-	transition: all var(--animation-fast) var(--ease-standard);
+	transition: background var(--animation-fast) var(--ease-standard), color var(--animation-fast) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-standard), opacity var(--animation-fast) var(--ease-standard);
 	user-select: none;
 	border-top: 1px dashed rgba(var(--themecolor-rgbstr), 0.2);
 	border-bottom: 1px dashed rgba(var(--themecolor-rgbstr), 0.2);
@@ -13892,7 +13651,6 @@ html.navbar-absolute #leftbar_part3.sticky {
 		opacity var(--animation-fast) var(--ease-standard),
 		transform var(--animation-fast) var(--ease-standard);
 	animation: todoSlideIn 0.18s ease;
-	will-change: transform, opacity;
 }
 
 @keyframes todoSlideIn {
@@ -14156,11 +13914,17 @@ html.darkmode .todo-add-form input:focus {
 .duolingo-flame {
 	width: 14px;
 	height: 17px;
+	/* Glow is now a STATIC drop-shadow rasterised once; only opacity+transform are
+	   animated below, so the pulse runs on the compositor instead of re-rasterising
+	   a drop-shadow kernel every frame. .duolingo-flame is an <img> (replaced
+	   element), so a pseudo-element glow is not renderable on it. */
+	filter: drop-shadow(0 0 4px rgba(255, 150, 0, 0.6));
 	animation: duolingoFlameGlow 2s ease-in-out infinite;
 }
 
 .duolingo-streak.not-done .duolingo-flame {
 	animation: none;
+	filter: none;
 	opacity: 0.6;
 }
 
@@ -14169,12 +13933,12 @@ html.darkmode .todo-add-form input:focus {
 
 	0%,
 	100% {
-		filter: drop-shadow(0 0 2px rgba(255, 150, 0, 0.4));
+		opacity: 0.86;
 		transform: scale(1);
 	}
 
 	50% {
-		filter: drop-shadow(0 0 6px rgba(255, 150, 0, 0.8));
+		opacity: 1;
 		transform: scale(1.05);
 	}
 }
@@ -14214,7 +13978,15 @@ html.darkmode .todo-add-form input:focus {
 .leftbar-mobile-user-name .duolingo-flame {
 	width: 16px;
 	height: 19px;
-	filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+	/* Keeps the orange glow the old animated filter used to paint here, plus this
+	   rule's own dark shadow. Static -- see .duolingo-flame above. */
+	filter: drop-shadow(0 0 4px rgba(255, 150, 0, 0.6)) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+/* The mobile drawer is translated off-screen unless html.leftbar-opened, so this
+   badge is normally invisible; don't keep the document animating for it. */
+html:not(.leftbar-opened) .leftbar-mobile-user-name .duolingo-flame {
+	animation-play-state: paused;
 }
 
 
@@ -14252,7 +14024,6 @@ img {
 /* ===== 淇璇勮妗嗘孩鍑?===== */
 #post_comment.card {
 	overflow: hidden;
-	will-change: auto;
 }
 
 #post_comment .card-body {
@@ -14297,7 +14068,7 @@ img {
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 	text-decoration: none;
 	color: inherit;
-	transition: all 0.3s ease;
+	transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
 }
 
 .friend-link-card:hover {
@@ -14463,7 +14234,7 @@ html.darkmode .friend-link-name {
 	background: var(--color-background);
 	border-radius: var(--card-radius);
 	text-decoration: none !important;
-	transition: all 0.3s ease;
+	transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
 	border: 1px solid transparent;
 }
 
@@ -14542,7 +14313,7 @@ html.darkmode .friend-link-name {
 	color: var(--color-text-secondary);
 	opacity: 0;
 	transform: translateX(-10px);
-	transition: all 0.3s ease;
+	transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
 }
 
 .argon-fl-item:hover .argon-fl-arrow {
@@ -14678,7 +14449,7 @@ html.darkmode .friend-link-name {
 	font-size: 14px;
 	background: var(--color-background);
 	color: var(--color-text);
-	transition: all 0.2s ease;
+	transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
 }
 
 .argon-fl-field input:focus,
@@ -14798,7 +14569,7 @@ html.toolbar-border.darkmode #navbar-main {
 .navbar-brand.navbar-title {
 	font-weight: 600;
 	letter-spacing: 0.5px;
-	transition: all 0.3s ease;
+	transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
 }
 
 .navbar-brand.navbar-title:hover {
@@ -14807,7 +14578,7 @@ html.toolbar-border.darkmode #navbar-main {
 
 /* 椤舵爮鍥炬爣澧炲己 */
 .navbar-brand.navbar-icon img {
-	transition: all 0.3s ease;
+	transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
 	border-radius: 6px;
 }
 
@@ -14819,7 +14590,7 @@ html.toolbar-border.darkmode #navbar-main {
 /* 椤舵爮鑿滃崟椤瑰?*/
 .navbar-nav .nav-link {
 	position: relative;
-	transition: all 0.25s ease;
+	transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease, opacity 0.25s ease, border-radius 0.25s ease;
 }
 
 .navbar-nav .nav-link::after {
@@ -14830,7 +14601,7 @@ html.toolbar-border.darkmode #navbar-main {
 	width: 0;
 	height: 2px;
 	background: rgba(255, 255, 255, 0.8);
-	transition: all 0.3s ease;
+	transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease, width 0.3s ease;
 	transform: translateX(-50%);
 	border-radius: 1px;
 }
@@ -14864,7 +14635,7 @@ html.toolbar-border.darkmode #navbar-main {
 .navbar-nav .dropdown-item {
 	padding: 10px 20px;
 	font-size: 14px;
-	transition: all 0.2s ease;
+	transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease, padding-left 0.2s ease;
 	border-radius: 0;
 }
 
@@ -14997,7 +14768,6 @@ html.darkmode {
 article.post.card {
 	overflow: hidden;
 	border: none !important;
-	will-change: auto;
 	position: relative;
 }
 
@@ -15006,7 +14776,7 @@ article.post.card {
 	border-radius: var(--m3-shape-xl) !important;
 	font-weight: 500;
 	letter-spacing: 0.1px;
-	transition: all var(--m3-motion-duration-short) var(--m3-motion-standard);
+	transition: color var(--m3-motion-duration-short) var(--m3-motion-standard), background-color var(--m3-motion-duration-short) var(--m3-motion-standard), border-color var(--m3-motion-duration-short) var(--m3-motion-standard), box-shadow var(--m3-motion-duration-short) var(--m3-motion-standard), opacity var(--m3-motion-duration-short) var(--m3-motion-standard), transform var(--m3-motion-duration-short) var(--m3-motion-standard);
 	position: relative;
 	overflow: hidden;
 }
@@ -15041,7 +14811,7 @@ article.post.card {
 .form-control {
 	border-radius: var(--m3-shape-sm) !important;
 	border: 1px solid var(--color-border);
-	transition: all var(--m3-motion-duration-short) var(--m3-motion-standard);
+	transition: background-color var(--m3-motion-duration-short) var(--m3-motion-standard), color var(--m3-motion-duration-short) var(--m3-motion-standard), border-color var(--m3-motion-duration-short) var(--m3-motion-standard), box-shadow var(--m3-motion-duration-short) var(--m3-motion-standard), transform var(--m3-motion-duration-short) var(--m3-motion-standard), opacity var(--m3-motion-duration-short) var(--m3-motion-standard);
 	padding: 12px 16px;
 }
 
@@ -15054,23 +14824,20 @@ article.post.card {
 /* M3 渚ц竟鏍忔牱寮?*/
 #leftbar .card {
 	border-radius: var(--m3-shape-lg) !important;
-	will-change: transform;
 }
 
 #leftbar_part1 {
 	border-radius: var(--m3-shape-lg) !important;
-	will-change: transform;
 }
 
 #leftbar_part2 {
 	border-radius: var(--m3-shape-lg) !important;
-	will-change: transform;
 }
 
 /* M3 渚ц竟鏍忚彍?*/
 .leftbar-menu-item>a {
 	border-radius: var(--m3-shape-xl);
-	transition: all var(--m3-motion-duration-short) var(--m3-motion-standard);
+	transition: background var(--m3-motion-duration-short) var(--m3-motion-standard), color var(--m3-motion-duration-short) var(--m3-motion-standard), border-color var(--m3-motion-duration-short) var(--m3-motion-standard), box-shadow var(--m3-motion-duration-short) var(--m3-motion-standard), transform var(--m3-motion-duration-short) var(--m3-motion-standard), opacity var(--m3-motion-duration-short) var(--m3-motion-standard);
 	margin: 2px 8px;
 	padding: 10px 16px !important;
 }
@@ -15088,7 +14855,7 @@ article.post.card {
 /* M3 鎼滅储鎸夐挳 */
 #leftbar_search_container {
 	border-radius: var(--m3-shape-xl) !important;
-	transition: all var(--m3-motion-duration-short) var(--m3-motion-standard);
+	transition: background var(--m3-motion-duration-short) var(--m3-motion-standard), color var(--m3-motion-duration-short) var(--m3-motion-standard), border-color var(--m3-motion-duration-short) var(--m3-motion-standard), box-shadow var(--m3-motion-duration-short) var(--m3-motion-standard), transform var(--m3-motion-duration-short) var(--m3-motion-standard), opacity var(--m3-motion-duration-short) var(--m3-motion-standard);
 }
 
 #leftbar_search_container:hover {
@@ -15098,7 +14865,7 @@ article.post.card {
 /* M3 鏍囩?*/
 .nav-pills .nav-link {
 	border-radius: var(--m3-shape-xl);
-	transition: all var(--m3-motion-duration-short) var(--m3-motion-standard);
+	transition: background var(--m3-motion-duration-short) var(--m3-motion-standard), color var(--m3-motion-duration-short) var(--m3-motion-standard), border-color var(--m3-motion-duration-short) var(--m3-motion-standard), box-shadow var(--m3-motion-duration-short) var(--m3-motion-standard), transform var(--m3-motion-duration-short) var(--m3-motion-standard), opacity var(--m3-motion-duration-short) var(--m3-motion-standard);
 	font-weight: 500;
 }
 
@@ -15124,7 +14891,7 @@ article.post.card {
 	display: block;
 	padding: 12px 8px;
 	border-radius: var(--m3-shape-md);
-	transition: all var(--m3-motion-duration-short) var(--m3-motion-standard);
+	transition: background var(--m3-motion-duration-short) var(--m3-motion-standard), color var(--m3-motion-duration-short) var(--m3-motion-standard), border-color var(--m3-motion-duration-short) var(--m3-motion-standard), box-shadow var(--m3-motion-duration-short) var(--m3-motion-standard), transform var(--m3-motion-duration-short) var(--m3-motion-standard), opacity var(--m3-motion-duration-short) var(--m3-motion-standard);
 }
 
 .site-state-item a:hover {
@@ -15164,7 +14931,7 @@ article.post.card {
 	border-radius: var(--m3-shape-xl);
 	background: var(--m3-surface-2);
 	color: var(--themecolor);
-	transition: all var(--m3-motion-duration-short) var(--m3-motion-standard);
+	transition: background var(--m3-motion-duration-short) var(--m3-motion-standard), color var(--m3-motion-duration-short) var(--m3-motion-standard), border-color var(--m3-motion-duration-short) var(--m3-motion-standard), box-shadow var(--m3-motion-duration-short) var(--m3-motion-standard), transform var(--m3-motion-duration-short) var(--m3-motion-standard), opacity var(--m3-motion-duration-short) var(--m3-motion-standard);
 }
 
 .site-author-links-item a:hover {
@@ -15200,7 +14967,7 @@ article.post.card {
 	border-radius: var(--m3-shape-sm) !important;
 	padding: 4px 10px;
 	font-weight: 500;
-	transition: all var(--m3-motion-duration-short) var(--m3-motion-standard);
+	transition: background var(--m3-motion-duration-short) var(--m3-motion-standard), color var(--m3-motion-duration-short) var(--m3-motion-standard), border-color var(--m3-motion-duration-short) var(--m3-motion-standard), box-shadow var(--m3-motion-duration-short) var(--m3-motion-standard), transform var(--m3-motion-duration-short) var(--m3-motion-standard), opacity var(--m3-motion-duration-short) var(--m3-motion-standard), border var(--m3-motion-duration-short) var(--m3-motion-standard);
 }
 
 .badge:hover,
@@ -15213,7 +14980,7 @@ article.post.card {
 .page-link {
 	border-radius: var(--m3-shape-sm) !important;
 	margin: 0 2px;
-	transition: all var(--m3-motion-duration-short) var(--m3-motion-standard);
+	transition: background var(--m3-motion-duration-short) var(--m3-motion-standard), color var(--m3-motion-duration-short) var(--m3-motion-standard), border-color var(--m3-motion-duration-short) var(--m3-motion-standard), box-shadow var(--m3-motion-duration-short) var(--m3-motion-standard), transform var(--m3-motion-duration-short) var(--m3-motion-standard), opacity var(--m3-motion-duration-short) var(--m3-motion-standard);
 }
 
 .page-item.active .page-link {
@@ -15225,7 +14992,6 @@ article.post.card {
 #post_comment.card {
 	border-radius: var(--m3-shape-lg) !important;
 	overflow: hidden;
-	will-change: auto;
 }
 
 .comment-item {
@@ -15251,7 +15017,7 @@ article.post.card {
 .float-action-buttons .fabtn {
 	border-radius: var(--card-radius) !important;
 	box-shadow: var(--m3-elevation-2) !important;
-	transition: all var(--m3-motion-duration-short) var(--m3-motion-standard);
+	transition: background-color var(--m3-motion-duration-short) var(--m3-motion-standard), color var(--m3-motion-duration-short) var(--m3-motion-standard), border-color var(--m3-motion-duration-short) var(--m3-motion-standard), box-shadow var(--m3-motion-duration-short) var(--m3-motion-standard), transform var(--m3-motion-duration-short) var(--m3-motion-standard), opacity var(--m3-motion-duration-short) var(--m3-motion-standard);
 }
 
 .float-action-buttons .fabtn:hover {
@@ -15300,7 +15066,7 @@ article.post.card {
 .dropdown-item {
 	padding: 10px 16px;
 	border-radius: 0;
-	transition: all var(--m3-motion-duration-short) var(--m3-motion-standard);
+	transition: background var(--m3-motion-duration-short) var(--m3-motion-standard), color var(--m3-motion-duration-short) var(--m3-motion-standard), border-color var(--m3-motion-duration-short) var(--m3-motion-standard), box-shadow var(--m3-motion-duration-short) var(--m3-motion-standard), transform var(--m3-motion-duration-short) var(--m3-motion-standard), opacity var(--m3-motion-duration-short) var(--m3-motion-standard);
 }
 
 .dropdown-item:hover {
@@ -15357,7 +15123,7 @@ article.post.card {
 
 .related-post-card {
 	border-radius: var(--m3-shape-md);
-	transition: all var(--m3-motion-duration-short) var(--m3-motion-standard);
+	transition: background-color var(--m3-motion-duration-short) var(--m3-motion-standard), color var(--m3-motion-duration-short) var(--m3-motion-standard), border-color var(--m3-motion-duration-short) var(--m3-motion-standard), box-shadow var(--m3-motion-duration-short) var(--m3-motion-standard), transform var(--m3-motion-duration-short) var(--m3-motion-standard), opacity var(--m3-motion-duration-short) var(--m3-motion-standard), filter var(--m3-motion-duration-short) var(--m3-motion-standard);
 }
 
 /* M3 代码块*/
@@ -15398,15 +15164,6 @@ article table>thead>tr>th {
 }
 
 /* M3 婊氬姩?*/
-::-webkit-scrollbar {
-	width: 8px;
-	height: 8px;
-}
-
-::-webkit-scrollbar-track {
-	background: transparent;
-}
-
 ::-webkit-scrollbar-thumb {
 	background: rgba(var(--themecolor-rgbstr), 0.3);
 	border-radius: var(--m3-shape-xl);
@@ -15463,7 +15220,7 @@ article .post-content a:hover {
 	border-radius: var(--m3-shape-sm);
 	font-size: 12px;
 	font-weight: 500;
-	transition: all var(--m3-motion-duration-short) var(--m3-motion-standard);
+	transition: background var(--m3-motion-duration-short) var(--m3-motion-standard), color var(--m3-motion-duration-short) var(--m3-motion-standard), border-color var(--m3-motion-duration-short) var(--m3-motion-standard), box-shadow var(--m3-motion-duration-short) var(--m3-motion-standard), transform var(--m3-motion-duration-short) var(--m3-motion-standard), opacity var(--m3-motion-duration-short) var(--m3-motion-standard);
 }
 
 .post-meta .badge:hover,
@@ -15476,7 +15233,7 @@ article .post-content a:hover {
 /* M3 澶村儚?*/
 #leftbar_overview_author_image {
 	border: 3px solid var(--m3-surface-3);
-	transition: all var(--m3-motion-duration-short) var(--m3-motion-standard);
+	transition: background-color var(--m3-motion-duration-short) var(--m3-motion-standard), color var(--m3-motion-duration-short) var(--m3-motion-standard), border-color var(--m3-motion-duration-short) var(--m3-motion-standard), box-shadow var(--m3-motion-duration-short) var(--m3-motion-standard), transform var(--m3-motion-duration-short) var(--m3-motion-standard), opacity var(--m3-motion-duration-short) var(--m3-motion-standard);
 }
 
 #leftbar_overview_author_image:hover {
@@ -15557,7 +15314,7 @@ article .post-content a:hover {
 
 /* 1. 鎼滅储鎸夐挳鍔ㄧ敾浼樺寲 - 姣涚幓鐠冩晥鏋滃拰宸︾Щ婊戝叆鍔ㄧ敾 */
 #navbar_search_input_container .input-group {
-	transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+	transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 	overflow: hidden;
 }
 
@@ -15708,7 +15465,7 @@ article .post-content a:hover {
 	font-size: 13px;
 	padding: 5px 12px;
 	border-radius: 18px;
-	transition: all 0.25s ease;
+	transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease, opacity 0.25s ease;
 	text-decoration: none;
 	white-space: nowrap;
 }
@@ -15780,7 +15537,6 @@ html.darkmode body {
 	-webkit-backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
 	backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
 	overflow: hidden;
-	will-change: auto;
 }
 
 html.darkmode .card {
@@ -15806,14 +15562,12 @@ article.post.card:hover {
 .post-navigation.card {
 	background: var(--color-foreground);
 	overflow: hidden;
-	will-change: transform;
 }
 
 /* 鐩稿叧鏂囩珷鍗＄墖閫忔槑搴?*/
 .related-posts.card {
 	background: var(--color-foreground);
 	overflow: hidden;
-	will-change: transform;
 }
 
 /* 鏂囩珷鏍囬浼樺寲 */
@@ -15822,7 +15576,7 @@ article.post.card:hover {
 	-webkit-background-clip: text;
 	background-clip: text;
 	-webkit-text-fill-color: transparent;
-	transition: all 0.3s ease;
+	transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease, filter 0.3s ease;
 }
 
 .post-title a:hover {
@@ -15921,7 +15675,7 @@ html.darkmode #leftbar_part2 {
 
 /* 璇勮椤规偓娴晥?*/
 .comment-body {
-	transition: all 0.25s ease;
+	transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease, opacity 0.25s ease;
 	border-radius: var(--m3-shape-md);
 	padding: 12px;
 	margin: -12px;
@@ -15998,7 +15752,7 @@ html.darkmode #float_action_buttons .fabtn:hover {
 .page-link {
 	background: rgba(255, 255, 255, 0.8);
 	border: 1px solid rgba(var(--themecolor-rgbstr), 0.1);
-	transition: all 0.25s ease;
+	transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease, opacity 0.25s ease;
 }
 
 .page-link:hover {
@@ -16051,7 +15805,7 @@ article .post-content blockquote {
 
 /* 鐩綍浼樺寲 */
 #post_toc a {
-	transition: all 0.2s ease;
+	transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
 	border-radius: 4px;
 	padding: 4px 8px;
 	margin: -4px -8px;
@@ -16069,25 +15823,8 @@ article .post-content blockquote {
 }
 
 /* 鍔犺浇鍔ㄧ敾浼樺寲 */
-@keyframes skeleton-loading {
-	0% {
-		background-position: -200% 0;
-	}
-
-	100% {
-		background-position: 200% 0;
-	}
-}
-
-.skeleton-loading {
-	background: linear-gradient(90deg,
-			rgba(var(--themecolor-rgbstr), 0.06) 25%,
-			rgba(var(--themecolor-rgbstr), 0.12) 50%,
-			rgba(var(--themecolor-rgbstr), 0.06) 75%);
-	background-size: 200% 100%;
-	animation: skeleton-loading 1.5s infinite;
-}
-
+/* .skeleton-loading removed: class appears in no PHP template or JS -- the keyframes
+   kept the document permanently animating for markup that is never rendered. */
 /* 閾炬帴涓嬪垝绾垮姩?*/
 a {
 	text-decoration: none;
@@ -16123,7 +15860,7 @@ article table>tbody>tr:hover {
 /* 鍙嬫儏閾炬帴鍗＄墖浼樺寲 */
 .friend-link-card {
 	border: 1px solid rgba(var(--themecolor-rgbstr), 0.08);
-	transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+	transition: background-color var(--animation-normal) var(--ease-standard), color var(--animation-normal) var(--ease-standard), border-color var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard), transform var(--animation-normal) var(--ease-standard), opacity var(--animation-normal) var(--ease-standard);
 }
 
 .friend-link-card:hover {
@@ -16153,7 +15890,7 @@ html.darkmode .friend-link-card {
 	background: var(--themecolor);
 	border-radius: 50%;
 	box-shadow: 0 0 0 4px rgba(var(--themecolor-rgbstr), 0.2);
-	transition: all 0.3s ease;
+	transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
 }
 
 .timeline-item:hover::before {
@@ -16181,27 +15918,12 @@ body {
 		backdrop-filter: blur(calc(var(--card-blur) / 3));
 	}
 
-	article.post.card:hover {
-		transform: none;
-	}
-
 	.banner::after {
 		height: 80px;
 	}
 }
 
 /* 鍑忓皯鍔ㄧ敾鍋忓ソ */
-@media (prefers-reduced-motion: reduce) {
-
-	*,
-	*::before,
-	*::after {
-		animation-duration: 0.01ms !important;
-		animation-iteration-count: 1 !important;
-		transition-duration: 0.01ms !important;
-	}
-}
-
 /* ========================================
    Apple & Material 3 椋庢牸澧炲己
    ======================================== */
@@ -16217,7 +15939,6 @@ body {
 	-webkit-backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
 	backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate));
 	overflow: hidden;
-	will-change: auto;
 }
 
 html.darkmode .card {
@@ -16253,7 +15974,7 @@ html.darkmode article.post.card {
 .btn {
 	font-weight: 500;
 	letter-spacing: -0.01em;
-	transition: all var(--animation-fast) var(--ease-standard);
+	transition: color var(--animation-fast) var(--ease-standard), background-color var(--animation-fast) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), opacity var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-standard);
 }
 
 /* 娑熸吉鏁堟灉 (Ripple Effect) */
@@ -16346,7 +16067,7 @@ html.darkmode article.post.card {
 .form-control {
 	border: 1px solid rgba(0, 0, 0, 0.1);
 	box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
-	transition: all 0.2s ease;
+	transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
 }
 
 .form-control:focus {
@@ -16386,7 +16107,7 @@ html.darkmode #leftbar_part2 {
 	box-shadow:
 		0 0 0 1px rgba(var(--themecolor-rgbstr), 0.2),
 		0 4px 15px rgba(0, 0, 0, 0.1);
-	transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+	transition: background-color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 #leftbar_overview_author_image:hover {
@@ -16403,7 +16124,7 @@ html.darkmode #leftbar_part2 {
 		0 2px 8px rgba(0, 0, 0, 0.1),
 		0 8px 20px rgba(0, 0, 0, 0.06),
 		inset 0 1px 0 rgba(255, 255, 255, 0.5);
-	transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+	transition: background 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), border 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), border-radius 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 #float_action_buttons .fabtn:hover {
@@ -16425,7 +16146,7 @@ html.darkmode #float_action_buttons .fabtn {
 .page-link {
 	border: 1px solid rgba(0, 0, 0, 0.08);
 	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-	transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+	transition: background 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .page-link:hover {
@@ -16447,7 +16168,7 @@ html.darkmode #float_action_buttons .fabtn {
 	color: var(--themecolor);
 	border: none;
 	font-weight: 500;
-	transition: all 0.2s ease;
+	transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease, border 0.2s ease;
 }
 
 .badge:hover,
@@ -16477,7 +16198,7 @@ html.darkmode #post_comment.card {
 
 /* 璇勮澶村儚鎮诞 */
 .comment-avatar img {
-	transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+	transition: background-color 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -16567,7 +16288,7 @@ article table>thead>tr>th {
 
 /* 鍥剧墖鎮诞鏁堟灉 */
 article .post-content img {
-	transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+	transition: background-color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 	border-radius: 8px;
 }
 
@@ -16660,7 +16381,7 @@ html.darkmode ::-webkit-scrollbar-thumb:hover {
 	font-size: 13px;
 	font-weight: 500;
 	cursor: pointer;
-	transition: all var(--animation-fast) var(--ease-standard);
+	transition: background var(--animation-fast) var(--ease-standard), color var(--animation-fast) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-standard), opacity var(--animation-fast) var(--ease-standard);
 }
 
 .segmented-control-item:hover {
@@ -16864,7 +16585,7 @@ html.darkmode.style-glass article.post.post-full.card {
 		color: #fff;
 		cursor: pointer;
 		z-index: 2;
-		transition: all var(--animation-fast) var(--ease-spring);
+		transition: background var(--animation-fast) var(--ease-spring), color var(--animation-fast) var(--ease-spring), border-color var(--animation-fast) var(--ease-spring), box-shadow var(--animation-fast) var(--ease-spring), transform var(--animation-fast) var(--ease-spring), opacity var(--animation-fast) var(--ease-spring);
 	}
 
 	.leftbar-mobile-close:active {
@@ -16887,7 +16608,7 @@ html.darkmode.style-glass article.post.post-full.card {
 		box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
 		position: relative;
 		z-index: 1;
-		transition: all var(--animation-normal) var(--ease-spring);
+		transition: background-color var(--animation-normal) var(--ease-spring), color var(--animation-normal) var(--ease-spring), border-color var(--animation-normal) var(--ease-spring), box-shadow var(--animation-normal) var(--ease-spring), transform var(--animation-normal) var(--ease-spring), opacity var(--animation-normal) var(--ease-spring);
 	}
 
 	.leftbar-mobile-avatar:active {
@@ -16986,7 +16707,7 @@ html.darkmode.style-glass article.post.post-full.card {
 		padding: 12px 16px;
 		gap: 12px;
 		border: 1.5px solid transparent;
-		transition: all var(--animation-fast) var(--ease-standard);
+		transition: background var(--animation-fast) var(--ease-standard), color var(--animation-fast) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-standard), opacity var(--animation-fast) var(--ease-standard);
 	}
 
 	.leftbar-mobile-search-inner:focus-within {
@@ -17051,7 +16772,7 @@ html.darkmode.style-glass article.post.post-full.card {
 		border-radius: 14px;
 		font-size: 15px;
 		font-weight: 500;
-		transition: all var(--animation-fast) var(--ease-standard);
+		transition: background var(--animation-fast) var(--ease-standard), color var(--animation-fast) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-standard), opacity var(--animation-fast) var(--ease-standard), border-radius var(--animation-fast) var(--ease-standard);
 	}
 
 	.leftbar-mobile-menu-item>a:active {
@@ -17117,7 +16838,7 @@ html.darkmode.style-glass article.post.post-full.card {
 		background: var(--color-background);
 		border-radius: 16px;
 		overflow: hidden;
-		transition: all var(--animation-normal) var(--ease-emphasized);
+		transition: background-color var(--animation-normal) var(--ease-emphasized), color var(--animation-normal) var(--ease-emphasized), border-color var(--animation-normal) var(--ease-emphasized), box-shadow var(--animation-normal) var(--ease-emphasized), transform var(--animation-normal) var(--ease-emphasized), opacity var(--animation-normal) var(--ease-emphasized), margin var(--animation-normal) var(--ease-emphasized);
 	}
 
 	.leftbar-mobile-collapse-section.expanded {
@@ -17155,7 +16876,7 @@ html.darkmode.style-glass article.post.post-full.card {
 		color: var(--themecolor);
 		border-radius: 10px;
 		font-size: 13px;
-		transition: all var(--animation-normal) var(--ease-spring);
+		transition: background-color var(--animation-normal) var(--ease-spring), color var(--animation-normal) var(--ease-spring), border-color var(--animation-normal) var(--ease-spring), box-shadow var(--animation-normal) var(--ease-spring), transform var(--animation-normal) var(--ease-spring), opacity var(--animation-normal) var(--ease-spring);
 	}
 
 	.leftbar-mobile-collapse-section.expanded .collapse-icon {
@@ -17188,7 +16909,7 @@ html.darkmode.style-glass article.post.post-full.card {
 		margin-left: auto;
 		margin-right: 12px;
 		box-shadow: 0 2px 8px rgba(var(--themecolor-rgbstr), 0.3);
-		transition: all var(--animation-normal) var(--ease-spring);
+		transition: background-color var(--animation-normal) var(--ease-spring), color var(--animation-normal) var(--ease-spring), border-color var(--animation-normal) var(--ease-spring), box-shadow var(--animation-normal) var(--ease-spring), transform var(--animation-normal) var(--ease-spring), opacity var(--animation-normal) var(--ease-spring);
 	}
 
 	.leftbar-mobile-collapse-section.expanded .collapse-badge {
@@ -17198,7 +16919,7 @@ html.darkmode.style-glass article.post.post-full.card {
 	.collapse-arrow {
 		font-size: 11px;
 		color: #aaa;
-		transition: all var(--animation-normal) var(--ease-emphasized);
+		transition: background-color var(--animation-normal) var(--ease-emphasized), color var(--animation-normal) var(--ease-emphasized), border-color var(--animation-normal) var(--ease-emphasized), box-shadow var(--animation-normal) var(--ease-emphasized), transform var(--animation-normal) var(--ease-emphasized), opacity var(--animation-normal) var(--ease-emphasized);
 	}
 
 	.leftbar-mobile-collapse-section.expanded .collapse-arrow {
@@ -17303,7 +17024,6 @@ html.darkmode.style-glass article.post.post-full.card {
 		transition: background-color var(--animation-fast) var(--ease-standard),
 			opacity var(--animation-fast) var(--ease-standard),
 			transform var(--animation-fast) var(--ease-standard);
-		will-change: transform, opacity;
 	}
 
 	.mobile-todo-content {
@@ -17388,7 +17108,7 @@ html.darkmode.style-glass article.post.post-full.card {
 		font-weight: 500;
 		cursor: pointer;
 		border-radius: 14px;
-		transition: all var(--animation-fast) var(--ease-spring);
+		transition: background var(--animation-fast) var(--ease-spring), color var(--animation-fast) var(--ease-spring), border-color var(--animation-fast) var(--ease-spring), box-shadow var(--animation-fast) var(--ease-spring), transform var(--animation-fast) var(--ease-spring), opacity var(--animation-fast) var(--ease-spring);
 	}
 
 	.leftbar-mobile-action:active {
@@ -17681,7 +17401,7 @@ html.darkmode {
 /* 3. 鎸夐挳鍜岄摼鎺ユ偓鍋滄晥?*/
 @media (hover: hover) and (pointer: fine) {
 	.btn {
-		transition: all var(--animation-fast) var(--ease-standard);
+		transition: color var(--animation-fast) var(--ease-standard), background-color var(--animation-fast) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), opacity var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-standard);
 		position: relative;
 		overflow: hidden;
 	}
@@ -17902,8 +17622,7 @@ html.darkmode {
 
 /* 5. 椤甸潰杩囨浮鍜屾诞鍔ㄦ寜閽姩?*/
 :root {
-	--pjax-transition-duration: 220ms;
-	--pjax-transition-distance: 10px;
+	--pjax-transition-duration: 260ms;
 }
 
 /* PJAX 导航期间跳过卡片入场动画，避免卡片因动画初始状态（opacity: 0）而出现"卡死"现象 */
@@ -17920,6 +17639,16 @@ html.pjax-navigating .friend-link-item {
 	transition: none !important;
 }
 
+html.page-transition-enter .page-transition-content .article-list article.post,
+html.page-transition-enter .page-transition-content #leftbar .card,
+html.page-transition-enter .page-transition-content #rightbar .card,
+html.page-transition-enter .page-transition-content .comment-item,
+html.page-transition-enter .page-transition-content .timeline-item,
+html.page-transition-enter .page-transition-content .friend-link-item {
+	opacity: 1 !important;
+	transform: none !important;
+}
+
 #primary.pjax-loading {
 	opacity: 1;
 	pointer-events: auto;
@@ -17930,38 +17659,13 @@ html.pjax-navigating .friend-link-item {
 }
 
 .page-transition-content {
-	transition:
-		opacity var(--pjax-transition-duration) var(--ease-standard),
-		transform var(--pjax-transition-duration) var(--ease-standard),
-		filter var(--pjax-transition-duration) var(--ease-standard);
-	will-change: opacity, transform, filter;
+	transition: none;
 }
 
 html.page-transition-leave.page-transition-active .page-transition-content {
-	opacity: 0.72;
-	transform: translate3d(0, calc(var(--pjax-transition-distance) * -1), 0);
-	filter: blur(1px);
 	pointer-events: none;
 }
 
-html.page-transition-enter .page-transition-content {
-	opacity: 0;
-	transform: translate3d(0, var(--pjax-transition-distance), 0);
-}
-
-html.page-transition-enter.page-transition-active .page-transition-content {
-	opacity: 1;
-	transform: translate3d(0, 0, 0);
-	filter: blur(0);
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.page-transition-content {
-		transition: opacity 120ms var(--ease-standard) !important;
-		transform: none !important;
-		filter: none !important;
-	}
-}
 
 @keyframes modernContentFadeIn {
 	from {
@@ -18086,16 +17790,12 @@ article.post.post-full.card>*:not(.post-full-blur-overlay) {
 }
 
 /* 6. 椤舵爮鍜岃瘎璁哄尯鍔ㄧ敾 */
-#navbar-main {
-	transition: background-color var(--animation-normal) var(--ease-standard), padding var(--animation-normal) var(--ease-standard), box-shadow var(--animation-normal) var(--ease-standard), transform var(--animation-normal) var(--ease-standard), backdrop-filter var(--animation-normal) var(--ease-standard);
-}
-
 #navbar-main:not(.navbar-ontop) {
 	box-shadow: var(--shadow-2);
 }
 
 #navbar_search_input_container .input-group {
-	transition: width var(--animation-normal) var(--ease-out-expo), background var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard);
+	transition: width var(--animation-normal) var(--ease-out-expo), background var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), backdrop-filter var(--animation-fast) var(--ease-standard), -webkit-backdrop-filter var(--animation-fast) var(--ease-standard);
 }
 
 #navbar_search_input_container.open .input-group {
@@ -18194,7 +17894,7 @@ article img:not([loading="lazy"]),
 	left: 12px;
 	top: 50%;
 	transform: translateY(-50%);
-	transition: all var(--animation-fast) var(--ease-standard);
+	transition: background-color var(--animation-fast) var(--ease-standard), color var(--animation-fast) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-standard), opacity var(--animation-fast) var(--ease-standard);
 	pointer-events: none;
 	color: #999;
 	background: var(--color-foreground);
@@ -18311,22 +18011,7 @@ article img:not([loading="lazy"]),
 }
 
 /* 11. 楠ㄦ灦灞忓拰鍔犺浇鍔ㄧ敾 */
-@keyframes modernSkeletonPulse {
-	0% {
-		background-position: -200% 0;
-	}
-
-	100% {
-		background-position: 200% 0;
-	}
-}
-
-.skeleton {
-	background: linear-gradient(90deg, var(--color-border-on-foreground) 25%, var(--color-border-on-foreground-deeper) 50%, var(--color-border-on-foreground) 75%);
-	background-size: 200% 100%;
-	animation: modernSkeletonPulse 1.5s ease-in-out infinite;
-	border-radius: var(--card-radius);
-}
+/* .skeleton + modernSkeletonPulse removed: class appears in no PHP template or JS. */
 
 /* ==========================================================================
    鐜颁唬鍖栭〉闈㈠姞杞界郴?
@@ -18346,8 +18031,8 @@ article img:not([loading="lazy"]),
 	opacity: 0;
 	visibility: hidden;
 	transition:
-		opacity var(--animation-normal, 250ms) var(--ease-standard, ease),
-		visibility var(--animation-normal, 250ms) var(--ease-standard, ease);
+		opacity var(--animation-fast) var(--ease-standard, ease),
+		visibility var(--animation-fast) var(--ease-standard, ease);
 }
 
 .page-loader.is-visible {
@@ -18385,26 +18070,16 @@ html.darkmode .page-loader-backdrop {
 	height: 100%;
 	border-radius: 0;
 	background: var(--themecolor, #5e72e4);
-	transition: width var(--animation-fast, 150ms) var(--ease-standard, ease);
+	/* No `width` transition: JS rewrites style.width per progress tick, which queued
+	   a layout animation each time. Width now snaps. JS contract unchanged. */
+	transition: opacity var(--animation-fast, 150ms) var(--ease-standard, ease);
 }
 
-@media (prefers-reduced-motion: reduce) {
-	.page-loader,
-	.loader-progress,
-	.loader-progress-bar {
-		transition: none !important;
-	}
-}
 
 /* ---------- 鏂囩珷鍗＄墖楠ㄦ灦灞?---------- */
-@keyframes article-skeleton-pulse {
-	0% {
-		background-position: 100% 50%;
-	}
-	100% {
-		background-position: 0 50%;
-	}
-}
+/* article-skeleton-pulse removed. get_article_skeleton() in functions.php is defined
+   but never called, and argontheme.js only ever *removes* .article-skeleton nodes --
+   the markup is never rendered (see the note above). Layout rules kept as-is. */
 
 .article-skeleton {
 	position: absolute;
@@ -18439,8 +18114,7 @@ html.darkmode .article-skeleton::before {
 		var(--skeleton-highlight, rgba(0, 0, 0, 0.1)) 50%,
 		var(--skeleton-bg, rgba(0, 0, 0, 0.06)) 75%
 	);
-	background-size: 400% 100%;
-	animation: article-skeleton-pulse 1.5s ease-in-out infinite;
+	background-size: 200% 100%;
 }
 
 html.darkmode .article-skeleton-title,
@@ -18456,14 +18130,6 @@ html.darkmode .article-skeleton-thumb {
 	transition: opacity 0.3s ease;
 }
 
-@media (prefers-reduced-motion: reduce) {
-	.article-skeleton-title,
-	.article-skeleton-line,
-	.article-skeleton-badge,
-	.article-skeleton-thumb {
-		animation: none !important;
-	}
-}
 
 /* 榛樿甯冨眬楠ㄦ灦灞?(content-preview-1) */
 .article-skeleton-default {
@@ -18666,7 +18332,7 @@ html.darkmode .article-skeleton-thumb {
 }
 
 .pagination .page-link {
-	transition: all var(--animation-fast) var(--ease-standard);
+	transition: background-color var(--animation-fast) var(--ease-standard), color var(--animation-fast) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-standard), opacity var(--animation-fast) var(--ease-standard);
 }
 
 .pagination .page-link:active {
@@ -18675,7 +18341,7 @@ html.darkmode .article-skeleton-thumb {
 
 /* 14. 鐩綍瀵艰埅鍔ㄧ敾 */
 .index-link {
-	transition: all var(--animation-fast) var(--ease-standard);
+	transition: background var(--animation-fast) var(--ease-standard), color var(--animation-fast) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-standard), opacity var(--animation-fast) var(--ease-standard), border-radius var(--animation-fast) var(--ease-standard);
 	position: relative;
 }
 
@@ -18762,6 +18428,19 @@ html.darkmode .article-skeleton-thumb {
 	a {
 		transition: none !important;
 	}
+
+	.page-transition-content {
+		transition: none !important;
+		transform: none !important;
+		filter: none !important;
+	}
+
+	.page-loader,
+	.loader-progress,
+	.loader-progress-bar {
+		transition: none !important;
+	}
+
 }
 
 /* 18. 鎵撳嵃鏍峰紡浼樺寲 */
@@ -18779,7 +18458,7 @@ html.darkmode .article-skeleton-thumb {
 
 
 .argon-hidden-text {
-	transition: all 0.3s ease;
+	transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease, border-radius 0.3s ease, filter 0.3s ease;
 }
 
 .argon-hidden-text-background {
