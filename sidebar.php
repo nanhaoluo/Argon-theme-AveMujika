@@ -9,19 +9,49 @@ if (empty($author_name)) {
 }
 $author_image = get_option('argon_sidebar_auther_image');
 $author_desc = get_option('argon_sidebar_author_description');
+
+if (!class_exists('mobileToolbarMenuWalker')) {
+	class mobileToolbarMenuWalker extends Walker_Nav_Menu {
+		public function start_lvl(&$output, $depth = 0, $args = array()) {
+			$output .= '<ul class="leftbar-mobile-submenu">';
+		}
+
+		public function end_lvl(&$output, $depth = 0, $args = array()) {
+			$output .= '</ul>';
+		}
+
+		public function start_el(&$output, $object, $depth = 0, $args = array(), $current_object_id = 0) {
+			$has_children = !empty($args->walker->has_children);
+			$is_current = !empty($object->current) || !empty($object->current_item_ancestor);
+			$target = !empty($object->target) ? ' target="' . esc_attr($object->target) . '"' : '';
+			$rel = !empty($object->target) && $object->target === '_blank' ? ' rel="noopener"' : '';
+			$output .= '<li class="leftbar-mobile-menu-item' . ($has_children ? ' has-children' : '') . ($is_current ? ' current' : '') . '">';
+			$output .= '<a href="' . esc_url($object->url) . '"' . ($has_children ? ' class="has-submenu" aria-haspopup="true" aria-expanded="false"' : '') . $target . $rel . '>';
+			$output .= '<span class="menu-text">' . esc_html($object->title) . '</span>';
+			if ($has_children) {
+				$output .= '<i class="fa fa-angle-down submenu-arrow" aria-hidden="true"></i>';
+			}
+			$output .= '</a>';
+		}
+
+		public function end_el(&$output, $object, $depth = 0, $args = array(), $current_object_id = 0) {
+			$output .= '</li>';
+		}
+	}
+}
 ?>
 
 <div id="sidebar_mask"></div>
 
-<aside id="leftbar" class="<?php echo $leftbar_class; ?>" role="complementary">
+<aside id="leftbar" class="<?php echo esc_attr($leftbar_class); ?>" role="complementary" aria-label="<?php esc_attr_e('站点侧栏', 'argon'); ?>">
 
 		<!-- 移动端侧边栏 - 重新设计的布局 -->
-		<div id="leftbar_mobile_nav" class="leftbar-mobile-nav">
+		<div id="leftbar_mobile_nav" class="leftbar-mobile-nav" aria-hidden="true">
 			<!-- 顶部用户信息区 -->
 			<div class="leftbar-mobile-profile">
-				<div class="leftbar-mobile-close" id="leftbar_close_btn">
-					<i class="fa fa-times"></i>
-				</div>
+				<button type="button" class="leftbar-mobile-close" id="leftbar_close_btn" aria-label="<?php esc_attr_e('关闭侧栏', 'argon'); ?>">
+					<i class="fa fa-times" aria-hidden="true"></i>
+				</button>
 				<?php if (!empty($author_image)) : ?>
 				<div class="leftbar-mobile-avatar">
 					<img src="<?php echo esc_url($author_image); ?>" alt="avatar">
@@ -49,21 +79,30 @@ $author_desc = get_option('argon_sidebar_author_description');
 					<?php endif; ?>
 				</div>
 				<!-- 统计数据 -->
-				<div class="leftbar-mobile-stats">
-					<div class="leftbar-mobile-stat">
+				<div class="leftbar-mobile-stats" aria-label="<?php esc_attr_e('站点概览', 'argon'); ?>">
+					<a class="leftbar-mobile-stat" href="<?php echo esc_url(get_option('argon_archives_timeline_url') ?: home_url('/')); ?>">
 						<span class="stat-num"><?php echo wp_count_posts()->publish; ?></span>
 						<span class="stat-label"><?php _e('文章', 'argon'); ?></span>
-					</div>
-					<div class="leftbar-mobile-stat">
+					</a>
+					<button type="button" class="leftbar-mobile-stat" data-toggle="modal" data-target="#blog_categories">
 						<span class="stat-num"><?php echo wp_count_terms('category'); ?></span>
 						<span class="stat-label"><?php _e('分类', 'argon'); ?></span>
-					</div>
-					<div class="leftbar-mobile-stat">
+					</button>
+					<button type="button" class="leftbar-mobile-stat" data-toggle="modal" data-target="#blog_tags">
 						<span class="stat-num"><?php echo wp_count_terms('post_tag'); ?></span>
 						<span class="stat-label"><?php _e('标签', 'argon'); ?></span>
-					</div>
+					</button>
 				</div>
 			</div>
+
+			<?php if (get_option('argon_sidebar_announcement') != '') : ?>
+			<section class="leftbar-mobile-notice" aria-labelledby="leftbar_mobile_notice_title">
+				<h2 id="leftbar_mobile_notice_title" class="leftbar-mobile-section-title">
+					<i class="fa fa-bullhorn" aria-hidden="true"></i><?php _e('公告', 'argon'); ?>
+				</h2>
+				<div class="leftbar-mobile-notice-content"><?php echo wp_kses_post(get_option('argon_sidebar_announcement')); ?></div>
+			</section>
+			<?php endif; ?>
 			
 			<!-- 搜索框 -->
 			<div class="leftbar-mobile-search">
@@ -79,32 +118,6 @@ $author_desc = get_option('argon_sidebar_author_description');
 				<div class="leftbar-mobile-section-title"><?php _e('导航', 'argon'); ?></div>
 				<ul class="leftbar-mobile-menu">
 				<?php
-				// 使用简化的 Walker 输出顶栏菜单
-				if (!class_exists('mobileToolbarMenuWalker')) {
-					class mobileToolbarMenuWalker extends Walker_Nav_Menu {
-						public function start_lvl( &$output, $depth = 0, $args = array() ) {
-							$output .= '<ul class="leftbar-mobile-submenu">';
-						}
-						public function end_lvl( &$output, $depth = 0, $args = array() ) {
-							$output .= '</ul>';
-						}
-						public function start_el( &$output, $object, $depth = 0, $args = array(), $current_object_id = 0 ) {
-							$has_children = $args->walker->has_children;
-							$is_current = $object->current;
-							$output .= '<li class="leftbar-mobile-menu-item' . ($has_children ? ' has-children' : '') . ($is_current ? ' current' : '') . '">';
-							$output .= '<a href="' . esc_url($object->url) . '"' . ($has_children ? ' class="has-submenu"' : '') . '>';
-							$output .= '<span class="menu-text">' . esc_html($object->title) . '</span>';
-							if ($has_children) {
-								$output .= '<i class="fa fa-angle-down submenu-arrow"></i>';
-							}
-							$output .= '</a>';
-						}
-						public function end_el( &$output, $object, $depth = 0, $args = array(), $current_object_id = 0 ) {
-							$output .= '</li>';
-						}
-					}
-				}
-				
 				wp_nav_menu( array(
 					'container'  => '',
 					'theme_location'  => 'toolbar_menu',
@@ -134,17 +147,51 @@ $author_desc = get_option('argon_sidebar_author_description');
 				</ul>
 			</div>
 			<?php endif; ?>
+
+			<?php if (has_nav_menu('leftbar_author_links')) : ?>
+			<nav class="leftbar-mobile-menu-section leftbar-mobile-link-section" aria-labelledby="leftbar_mobile_author_links_title">
+				<h2 id="leftbar_mobile_author_links_title" class="leftbar-mobile-section-title"><?php _e('作者链接', 'argon'); ?></h2>
+				<ul class="leftbar-mobile-menu leftbar-mobile-link-list">
+				<?php
+				wp_nav_menu(array(
+					'container' => '',
+					'theme_location' => 'leftbar_author_links',
+					'items_wrap' => '%3$s',
+					'depth' => 1,
+					'walker' => new mobileToolbarMenuWalker()
+				));
+				?>
+				</ul>
+			</nav>
+			<?php endif; ?>
+
+			<?php if (has_nav_menu('leftbar_friend_links')) : ?>
+			<nav class="leftbar-mobile-menu-section leftbar-mobile-link-section" aria-labelledby="leftbar_mobile_friend_links_title">
+				<h2 id="leftbar_mobile_friend_links_title" class="leftbar-mobile-section-title"><?php _e('友情链接', 'argon'); ?></h2>
+				<ul class="leftbar-mobile-menu leftbar-mobile-link-list">
+				<?php
+				wp_nav_menu(array(
+					'container' => '',
+					'theme_location' => 'leftbar_friend_links',
+					'items_wrap' => '%3$s',
+					'depth' => 1,
+					'walker' => new mobileToolbarMenuWalker()
+				));
+				?>
+				</ul>
+			</nav>
+			<?php endif; ?>
 			
 			<!-- 文章目录折叠面板 (仅在文章页显示) -->
 			<?php if (have_catalog()) : ?>
 			<div class="leftbar-mobile-collapse-section">
-				<div class="leftbar-mobile-collapse-header" id="mobile_catalog_toggle">
+				<button type="button" class="leftbar-mobile-collapse-header" id="mobile_catalog_toggle" aria-expanded="false" aria-controls="mobile_catalog_content">
 					<div class="collapse-header-left">
 						<i class="fa fa-list-ol collapse-icon"></i>
 						<span class="collapse-title"><?php _e('文章目录', 'argon'); ?></span>
 					</div>
 					<i class="fa fa-chevron-down collapse-arrow"></i>
-				</div>
+				</button>
 				<div class="leftbar-mobile-collapse-content" id="mobile_catalog_content">
 					<div id="leftbar_mobile_catalog" class="mobile-catalog-container"></div>
 				</div>
@@ -160,14 +207,14 @@ $author_desc = get_option('argon_sidebar_author_description');
 				$mobile_uncompleted_count = count(array_filter($mobile_todos, function($t) { return empty($t['completed']); }));
 			?>
 			<div class="leftbar-mobile-collapse-section">
-				<div class="leftbar-mobile-collapse-header" id="mobile_todo_toggle">
+				<button type="button" class="leftbar-mobile-collapse-header" id="mobile_todo_toggle" aria-expanded="false" aria-controls="mobile_todo_content">
 					<div class="collapse-header-left">
 						<i class="fa fa-check-square-o collapse-icon"></i>
 						<span class="collapse-title"><?php _e('TODO', 'argon'); ?></span>
-						<span class="collapse-badge" id="mobile_todo_count"><?php echo $mobile_uncompleted_count; ?></span>
+						<span class="collapse-badge" id="mobile_todo_count" aria-live="polite"><?php echo $mobile_uncompleted_count; ?></span>
 					</div>
 					<i class="fa fa-chevron-down collapse-arrow"></i>
-				</div>
+				</button>
 				<div class="leftbar-mobile-collapse-content" id="mobile_todo_content">
 					<div class="mobile-todo-container">
 						<?php if ($mobile_is_author) : ?>
@@ -212,7 +259,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 								
 								<?php if (!empty($mobile_completed_todos)) : ?>
 								<!-- 已完成任务分隔栏 -->
-								<li class="mobile-todo-completed-divider collapsed" id="mobile-todo-collapse-btn">
+								<li class="mobile-todo-completed-divider collapsed" id="mobile-todo-collapse-btn" role="button" tabindex="0" aria-expanded="false">
 									<span class="divider-text">
 										<i class="fa fa-check-circle"></i>
 										<?php _e('已完成', 'argon'); ?>
@@ -275,7 +322,10 @@ $author_desc = get_option('argon_sidebar_author_description');
 					isAuthor: mobileIsAuthor,
 					needCaptcha: mobileNeedCaptcha,
 					captchaType: mobileCaptchaType,
-					geetestId: mobileGeetestId
+					geetestId: mobileGeetestId,
+					completedText: <?php echo wp_json_encode(__('已完成', 'argon')); ?>,
+					completeTitle: <?php echo wp_json_encode(__('完成', 'argon')); ?>,
+					deleteTitle: <?php echo wp_json_encode(__('删除', 'argon')); ?>
 				};
 			})();
 			</script>
@@ -328,28 +378,51 @@ $author_desc = get_option('argon_sidebar_author_description');
 				</ul>
 			</div>
 			<?php endif; ?>
+
+			<?php if (get_option('argon_show_rss_link', 'false') == 'true') : ?>
+			<?php
+				$argon_mobile_rss2_url = get_feed_link('rss2');
+				$argon_mobile_atom_url = get_feed_link('atom');
+				$argon_mobile_comments_rss2_url = get_bloginfo('comments_rss2_url');
+			?>
+			<details class="site-rss site-rss-mobile">
+				<summary class="site-rss-btn" aria-label="<?php esc_attr_e('RSS 订阅选项', 'argon'); ?>">
+					<span class="site-rss-btn-icon"><i class="fa fa-rss" aria-hidden="true"></i></span>
+					<span class="site-rss-btn-text"><?php _e('订阅更新', 'argon'); ?></span>
+					<span class="site-rss-btn-caret"><i class="fa fa-angle-down" aria-hidden="true"></i></span>
+				</summary>
+				<div class="site-rss-menu" role="list">
+					<a href="<?php echo esc_url($argon_mobile_rss2_url); ?>" target="_blank" rel="noopener" no-pjax role="listitem">
+						<span class="site-rss-menu-label"><i class="fa fa-newspaper-o" aria-hidden="true"></i><?php _e('文章更新', 'argon'); ?></span>
+						<span class="site-rss-menu-meta">RSS 2.0</span>
+					</a>
+					<a href="<?php echo esc_url($argon_mobile_comments_rss2_url); ?>" target="_blank" rel="noopener" no-pjax role="listitem">
+						<span class="site-rss-menu-label"><i class="fa fa-comments-o" aria-hidden="true"></i><?php _e('评论更新', 'argon'); ?></span>
+						<span class="site-rss-menu-meta">RSS</span>
+					</a>
+					<a href="<?php echo esc_url($argon_mobile_atom_url); ?>" target="_blank" rel="noopener" no-pjax role="listitem">
+						<span class="site-rss-menu-label"><i class="fa fa-code" aria-hidden="true"></i>Atom</span>
+						<span class="site-rss-menu-meta">Feed</span>
+					</a>
+				</div>
+			</details>
+			<?php endif; ?>
 			
 			<!-- 底部操作区 -->
 			<div class="leftbar-mobile-footer">
 				<div class="leftbar-mobile-actions">
-					<button class="leftbar-mobile-action" onclick="toggleDarkmode()">
-						<i class="fa fa-moon-o"></i>
+					<button type="button" id="leftbar_mobile_darkmode" class="leftbar-mobile-action" onclick="toggleDarkmode()" aria-pressed="false" data-light-label="<?php esc_attr_e('夜间模式', 'argon'); ?>" data-dark-label="<?php esc_attr_e('日间模式', 'argon'); ?>">
+						<i class="fa fa-moon-o" aria-hidden="true"></i>
 						<span><?php _e('夜间模式', 'argon'); ?></span>
 					</button>
-					<button class="leftbar-mobile-action" data-toggle="modal" data-target="#blog_categories">
-						<i class="fa fa-folder-o"></i>
+					<button type="button" class="leftbar-mobile-action" data-toggle="modal" data-target="#blog_categories">
+						<i class="fa fa-folder-o" aria-hidden="true"></i>
 						<span><?php _e('分类', 'argon'); ?></span>
 					</button>
-					<button class="leftbar-mobile-action" data-toggle="modal" data-target="#blog_tags">
-						<i class="fa fa-tags"></i>
+					<button type="button" class="leftbar-mobile-action" data-toggle="modal" data-target="#blog_tags">
+						<i class="fa fa-tags" aria-hidden="true"></i>
 						<span><?php _e('标签', 'argon'); ?></span>
 					</button>
-					<?php if (get_option('argon_show_rss_link', 'false') == 'true') : ?>
-					<a class="leftbar-mobile-action leftbar-mobile-rss-action" href="<?php echo esc_url(get_feed_link('rss2')); ?>" target="_blank" rel="noopener" no-pjax aria-label="<?php esc_attr_e('RSS 订阅', 'argon'); ?>">
-						<i class="fa fa-rss"></i>
-						<span>RSS</span>
-					</a>
-					<?php endif; ?>
 				</div>
 			</div>
 		</div>
@@ -589,13 +662,33 @@ $author_desc = get_option('argon_sidebar_author_description');
 
 								<script type="text/javascript">
 									// 桌面端目录初始化 - 等待 jQuery 和 headIndex 插件加载完成
-									(function initDesktopCatalog() {
+									(function initDesktopCatalog(attempt) {
+										attempt = attempt || 0;
+										var maxAttempts = 100;
+										// PJAX 会重复执行本脚本，先取消上一次导航遗留的轮询，保证同一时间只有一个
+										if (attempt === 0 && window.__argonDesktopCatalogTimer) {
+											clearTimeout(window.__argonDesktopCatalogTimer);
+											window.__argonDesktopCatalogTimer = null;
+										}
+										function retryDesktopCatalog() {
+											if (attempt >= maxAttempts) {
+												window.__argonDesktopCatalogTimer = null;
+												return false;
+											}
+											clearTimeout(window.__argonDesktopCatalogTimer);
+											window.__argonDesktopCatalogTimer = setTimeout(function() {
+												initDesktopCatalog(attempt + 1);
+											}, 50);
+											return true;
+										}
 										var postContent = document.getElementById('post_content');
 										var virtualSource = postContent && postContent.querySelector('script.argon-virtual-content-source[type="application/json"]');
 										var virtualizer = window.ArgonLongContentVirtualizer;
 										if (virtualSource && (!virtualizer || !virtualizer.isReady || !virtualizer.isReady())) {
-											setTimeout(initDesktopCatalog, 50);
-											return;
+											// 超过重试上限后不再等待虚拟化，直接构建普通目录
+											if (retryDesktopCatalog()) {
+												return;
+											}
 										}
 										// 检查 jQuery 和 headIndex 是否都已加载
 										if (typeof jQuery !== 'undefined' && typeof jQuery.fn.headIndex === 'function') {
@@ -611,6 +704,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 													itemClass: "index-item",
 													linkClass: "index-link",
 													offset: 80,
+											activeViewportRatio: 0.32,
 													defaultExpanded: true
 												});
 												
@@ -618,6 +712,11 @@ $author_desc = get_option('argon_sidebar_author_description');
 												var headIndexInstance = $(document).data('headIndex');
 												
 												// 添加额外的滚动监听，确保目录跟随
+												// PJAX 会重复执行本脚本，先解绑上一次导航遗留的全局监听，避免逐次累积
+												$(window).off('scroll.desktopCatalog');
+												$(document).off('pjax:complete.desktopCatalog');
+												$(document).off('argon:longContentVirtualized.desktopCatalog');
+												window.__argonDesktopCatalogBound = true;
 												var scrollTicking = false;
 												$(window).on('scroll.desktopCatalog', function() {
 													if (!scrollTicking) {
@@ -632,14 +731,14 @@ $author_desc = get_option('argon_sidebar_author_description');
 												});
 												
 												// PJAX 后重新绑定
-												$(document).on('pjax:complete', function() {
+												$(document).on('pjax:complete.desktopCatalog', function() {
 													if (headIndexInstance && typeof headIndexInstance.updateCurrent === 'function') {
 														setTimeout(function() {
 															headIndexInstance.updateCurrent();
 														}, 300);
 													}
 												});
-												$(document).one('argon:longContentVirtualized', function() {
+												$(document).one('argon:longContentVirtualized.desktopCatalog', function() {
 													if (headIndexInstance && typeof headIndexInstance.updateCurrent === 'function') {
 														headIndexInstance.updateCurrent();
 													}
@@ -647,7 +746,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 											});
 										} else {
 											// 如果还没加载完成，等待后重试
-											setTimeout(initDesktopCatalog, 50);
+											retryDesktopCatalog();
 										}
 									})();
 								</script>
@@ -656,17 +755,33 @@ $author_desc = get_option('argon_sidebar_author_description');
 
 									<script>
 									(function() {
+										var catalogNumberAttempts = 0;
+										var catalogNumberMaxAttempts = 50;
+										// PJAX 会重复执行本脚本，先取消上一次导航遗留的轮询，保证同一时间只有一个
+										if (window.__argonCatalogNumberTimer) {
+											clearTimeout(window.__argonCatalogNumberTimer);
+											window.__argonCatalogNumberTimer = null;
+										}
+										function retryCatalogNumbers() {
+											if (catalogNumberAttempts >= catalogNumberMaxAttempts) {
+												window.__argonCatalogNumberTimer = null;
+												return;
+											}
+											catalogNumberAttempts++;
+											clearTimeout(window.__argonCatalogNumberTimer);
+											window.__argonCatalogNumberTimer = setTimeout(initCatalogNumbers, 100);
+										}
 										// 智能检测标题是否已有序号，避免重复添加
 										function initCatalogNumbers() {
 											var catalog = document.getElementById('leftbar_catalog');
 											if (!catalog) {
-												setTimeout(initCatalogNumbers, 100);
+												retryCatalogNumbers();
 												return;
 											}
 											
 											var items = catalog.querySelectorAll('li.index-item > a.index-link');
 											if (items.length === 0) {
-												setTimeout(initCatalogNumbers, 100);
+												retryCatalogNumbers();
 												return;
 											}
 											
@@ -690,7 +805,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 												if (!existingStyle) {
 													var style = document.createElement('style');
 													style.id = 'argon_catalog_number_style';
-													style.textContent = '#leftbar_catalog ul { counter-reset: blog_catalog_number; } #leftbar_catalog li.index-item { counter-increment: blog_catalog_number; display: flex; align-items: flex-start; } #leftbar_catalog li.index-item::before { content: counters(blog_catalog_number, \".\") \" \"; display: inline-block; margin-right: 6px; white-space: nowrap; } #leftbar_catalog li.index-item > a.index-link { flex: 1; word-break: break-word; }';
+													style.textContent = '#leftbar_catalog ul, #leftbar_mobile_catalog ul { counter-reset: blog_catalog_number; } #leftbar_catalog li.index-item, #leftbar_mobile_catalog li.index-item { counter-increment: blog_catalog_number; display: flex; flex-wrap: wrap; align-items: flex-start; } #leftbar_catalog li.index-item::before, #leftbar_mobile_catalog li.index-item::before { content: counters(blog_catalog_number, \".\") \" \"; display: inline-block; margin-right: 6px; white-space: nowrap; } #leftbar_catalog li.index-item > a.index-link, #leftbar_mobile_catalog li.index-item > a.index-link { flex: 1; word-break: break-word; } #leftbar_catalog li.index-item > ul, #leftbar_mobile_catalog li.index-item > ul { width: 100%; }';
 													document.head.appendChild(style);
 												}
 											}
@@ -699,7 +814,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 										if (document.readyState === 'loading') {
 											document.addEventListener('DOMContentLoaded', initCatalogNumbers);
 										} else {
-											setTimeout(initCatalogNumbers, 100);
+											retryCatalogNumbers();
 										}
 									})();
 									</script>
@@ -941,7 +1056,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 					$uncompleted_count = count(array_filter($todos, function($t) { return empty($t['completed']); }));
 					$completed_count = count(array_filter($todos, function($t) { return !empty($t['completed']); }));
 					?>
-					<span class="todo-count" title="<?php echo $is_author ? __('未完成', 'argon') : __('待办事项', 'argon'); ?>"><?php echo $uncompleted_count; ?></span>
+					<span class="todo-count" aria-live="polite" title="<?php echo $is_author ? __('未完成', 'argon') : __('待办事项', 'argon'); ?>"><?php echo $uncompleted_count; ?></span>
 				</h6>
 				
 				<?php if ($is_author) : ?>
@@ -987,7 +1102,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 						
 						<?php if (!empty($completed_todos)) : ?>
 						<!-- 已完成任务分隔栏 -->
-						<li class="todo-completed-divider collapsed" id="todo-collapse-btn">
+						<li class="todo-completed-divider collapsed" id="todo-collapse-btn" role="button" tabindex="0" aria-expanded="false">
 							<span class="divider-text">
 								<i class="fa fa-check-circle"></i>
 								<?php _e('已完成', 'argon'); ?>
@@ -1125,19 +1240,47 @@ $author_desc = get_option('argon_sidebar_author_description');
 				return state;
 			}
 
+			function createTodoDivider() {
+				var divider = document.createElement('li');
+				divider.className = 'todo-completed-divider collapsed';
+				divider.id = 'todo-collapse-btn';
+				divider.setAttribute('role', 'button');
+				divider.setAttribute('tabindex', '0');
+				divider.setAttribute('aria-expanded', 'false');
+				divider.innerHTML = '<span class="divider-text"><i class="fa fa-check-circle" aria-hidden="true"></i>' +
+					'<span class="todo-completed-label"></span> <span class="todo-completed-count">0</span></span>' +
+					'<i class="fa fa-chevron-down divider-arrow" aria-hidden="true"></i>';
+				divider.querySelector('.todo-completed-label').textContent = '<?php echo esc_js(__('已完成', 'argon')); ?>';
+				return divider;
+			}
+
+			function ensureTodoDivider() {
+				if (!todoList) return null;
+				var firstCompleted = todoList.querySelector('.todo-item.todo-completed');
+				var divider = todoList.querySelector('#todo-collapse-btn');
+				if (!firstCompleted) {
+					if (divider) divider.remove();
+					return null;
+				}
+				if (!divider) divider = createTodoDivider();
+				if (divider.nextElementSibling !== firstCompleted) {
+					todoList.insertBefore(divider, firstCompleted);
+				}
+				return divider;
+			}
+
 			function renderTodoMeta() {
 				if (!todoList) return;
 
 				var countEl = document.querySelector('.todo-count');
 				if (countEl) countEl.textContent = todoState.active;
 
-				var divider = document.getElementById('todo-collapse-btn');
+				var divider = ensureTodoDivider();
 				if (divider) {
 					var completedCountEl = divider.querySelector('.todo-completed-count');
 					if (completedCountEl) {
 						completedCountEl.textContent = todoState.completed;
 					}
-					divider.style.display = todoState.completed > 0 ? 'flex' : 'none';
 				}
 
 				if (todoState.total > 4) {
@@ -1198,29 +1341,51 @@ $author_desc = get_option('argon_sidebar_author_description');
 
 			window.argonTodoRefresh = updateCount;
 
-			var collapseBtn = document.getElementById('todo-collapse-btn');
-			if (collapseBtn) {
-				collapseBtn.addEventListener('click', function(e) {
-					e.stopPropagation();
-					var completedItems = document.querySelectorAll('.todo-item.todo-completed');
-					var isCollapsed = collapseBtn.classList.contains('collapsed');
-					
-					if (isCollapsed) {
-						// 展开
-						collapseBtn.classList.remove('collapsed');
-						completedItems.forEach(function(item) {
-							item.classList.remove('collapsed');
-						});
-					} else {
-						// 折叠
-						collapseBtn.classList.add('collapsed');
-						completedItems.forEach(function(item) {
-							item.classList.add('collapsed');
-						});
+			// 桌面端操作同步到移动端列表（镜像 argontheme.js 的 syncTodoToDesktop）
+			function syncTodoToMobile(id, content, action) {
+				var mobileList = document.getElementById('mobile-todo-list');
+				if (!mobileList) return;
+				var item;
+
+				if (action === 'add') {
+					var mobileEmpty = mobileList.querySelector('.mobile-todo-empty');
+					if (mobileEmpty) mobileEmpty.remove();
+					item = document.createElement('li');
+					item.className = 'mobile-todo-item';
+					item.dataset.id = id;
+					var contentEl = document.createElement('span');
+					contentEl.className = 'mobile-todo-content';
+					contentEl.textContent = content;
+					item.appendChild(contentEl);
+					item.appendChild(createTodoButton('mobile-todo-complete-btn', '<?php echo esc_js(__('完成', 'argon')); ?>', 'fa fa-check'));
+					mobileList.insertBefore(item, mobileList.firstChild);
+					if (window.argonMobileTodoRefresh) window.argonMobileTodoRefresh({ active: 1, total: 1 });
+				} else if (action === 'complete') {
+					item = mobileList.querySelector('.mobile-todo-item[data-id="' + id + '"]');
+					if (!item) return;
+					item.classList.add('todo-completed', 'collapsed');
+					mobileList.appendChild(item);
+					var completeBtn = item.querySelector('.mobile-todo-complete-btn');
+					if (completeBtn) {
+						completeBtn.parentNode.replaceChild(createTodoButton('mobile-todo-delete-btn', '<?php echo esc_js(__('删除', 'argon')); ?>', 'fa fa-trash'), completeBtn);
 					}
-				});
+					if (window.argonMobileTodoRefresh) window.argonMobileTodoRefresh({ active: -1, completed: 1 });
+				} else if (action === 'delete') {
+					item = mobileList.querySelector('.mobile-todo-item[data-id="' + id + '"]');
+					if (item) item.remove();
+					if (window.argonMobileTodoRefresh) window.argonMobileTodoRefresh({ completed: -1, total: -1 });
+				} else if (action === 'urge') {
+					var urgeBtn = mobileList.querySelector('.mobile-todo-item[data-id="' + id + '"] .mobile-todo-urge-btn');
+					if (urgeBtn) {
+						urgeBtn.classList.add('urged');
+						urgeBtn.disabled = true;
+						urgeBtn.innerHTML = '<i class="fa fa-check"></i>';
+					}
+				}
 			}
-			
+
+			// 已完成列表的展开/收起由 argontheme.js 的双端委托处理。
+
 			// 添加 TODO
 			if (isAuthor) {
 				var input = document.getElementById('todo-input');
@@ -1247,9 +1412,10 @@ $author_desc = get_option('argon_sidebar_author_description');
 								
 								var li = createTodoItem(res.data.id, content);
 								list.insertBefore(li, list.firstChild);
-								
+
 								input.value = '';
 								updateCount({ active: 1, total: 1 });
+								syncTodoToMobile(res.data.id, content, 'add');
 							}
 							addBtn.disabled = false;
 						});
@@ -1280,13 +1446,16 @@ $author_desc = get_option('argon_sidebar_author_description');
 						.then(function(r) { return r.json(); })
 						.then(function(res) {
 							if (res.success) {
-								item.classList.add('todo-completed');
+								item.classList.add('todo-completed', 'collapsed');
+								todoList.appendChild(item);
+								ensureTodoDivider();
 								var newBtn = document.createElement('button');
 								newBtn.className = 'todo-delete-btn';
 								newBtn.title = '<?php _e('删除', 'argon'); ?>';
 								newBtn.innerHTML = '<i class="fa fa-trash"></i>';
 								btn.parentNode.replaceChild(newBtn, btn);
 								updateCount({ active: -1, completed: 1 });
+								syncTodoToMobile(id, '', 'complete');
 							} else {
 								btn.disabled = false;
 							}
@@ -1307,6 +1476,7 @@ $author_desc = get_option('argon_sidebar_author_description');
 									item.remove();
 									updateCount({ completed: -1, total: -1 });
 								}, 300);
+								syncTodoToMobile(id, '', 'delete');
 							}
 						});
 				} else if (btn.classList.contains('todo-urge-btn')) {
@@ -1422,6 +1592,8 @@ $author_desc = get_option('argon_sidebar_author_description');
 					btn.innerHTML = '<i class="fa fa-check"></i>';
 					btn.classList.add('urged');
 					btn.title = '<?php _e('已提醒', 'argon'); ?>';
+					var urgedItem = btn.closest('.todo-item');
+					if (urgedItem) syncTodoToMobile(urgedItem.dataset.id, '', 'urge');
 					if (res.data && res.data.captcha) {
 						var captchaText = document.querySelector('.todo-captcha-text');
 						if (captchaText) captchaText.textContent = res.data.captcha;

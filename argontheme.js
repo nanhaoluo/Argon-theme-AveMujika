@@ -6933,8 +6933,45 @@ $(document).on("keydown", function (e) {
 
 /*侧栏 & 顶栏菜单手机适配*/
 !function () {
+	var lastSidebarTrigger = null;
+
+	function syncMobileDarkmodeAction(enable) {
+		var button = document.getElementById("leftbar_mobile_darkmode");
+		if (!button) return;
+		var isDark = typeof enable === "boolean" ? enable : document.documentElement.classList.contains("darkmode");
+		var icon = button.querySelector("i");
+		var label = button.querySelector("span");
+		button.setAttribute("aria-pressed", isDark ? "true" : "false");
+		if (icon) icon.className = isDark ? "fa fa-sun-o" : "fa fa-moon-o";
+		if (label) label.textContent = button.getAttribute(isDark ? "data-dark-label" : "data-light-label") || label.textContent;
+	}
+
+	function setSidebarOpen(open, trigger, restoreFocus) {
+		$("html").toggleClass("leftbar-opened", open);
+		$("#fabtn_open_sidebar, #open_sidebar").attr("aria-expanded", open ? "true" : "false");
+		$("#leftbar_mobile_nav").attr("aria-hidden", open ? "false" : "true");
+		if (open && trigger) {
+			lastSidebarTrigger = trigger;
+			syncMobileDarkmodeAction();
+		} else if (!open && restoreFocus && lastSidebarTrigger && document.contains(lastSidebarTrigger)) {
+			lastSidebarTrigger.focus();
+		}
+	}
+
+	document.addEventListener("argon:theme-switched", function (event) {
+		syncMobileDarkmodeAction(event.detail && event.detail.darkmode);
+	});
+	syncMobileDarkmodeAction();
+
+	function collapseMobileSections() {
+		$(".leftbar-mobile-collapse-section.expanded")
+			.removeClass("expanded")
+			.find(".leftbar-mobile-collapse-header")
+			.attr("aria-expanded", "false");
+	}
+
 	$(document).on("click", "#fabtn_open_sidebar, #open_sidebar", function () {
-		$("html").addClass("leftbar-opened");
+		setSidebarOpen(true, this, false);
 		// 侧边栏打开时初始化移动端文章目录
 		initMobileCatalog();
 		// 如果有文章目录，默认展开
@@ -6942,25 +6979,32 @@ $(document).on("keydown", function (e) {
 			var catalogSection = $("#mobile_catalog_toggle").closest(".leftbar-mobile-collapse-section");
 			if (catalogSection.length > 0 && !catalogSection.hasClass("expanded")) {
 				catalogSection.addClass("expanded");
+				$("#mobile_catalog_toggle").attr("aria-expanded", "true");
 				initMobileCatalog();
 				setTimeout(scrollMobileCatalogToActive, 200);
 			}
 		}, 100);
 	});
 	$(document).on("click", "#sidebar_mask, #leftbar_close_btn", function () {
-		$("html").removeClass("leftbar-opened");
+		setSidebarOpen(false, null, true);
 		// 关闭侧边栏时折叠所有面板
-		$(".leftbar-mobile-collapse-section.expanded").removeClass("expanded");
+		collapseMobileSections();
 	});
 	$(document).on("click", "#leftbar a[href]:not([no-pjax]):not([href^='#']):not(.has-submenu)", function () {
-		$("html").removeClass("leftbar-opened");
+		setSidebarOpen(false, null, false);
 		// 关闭侧边栏时折叠所有面板
-		$(".leftbar-mobile-collapse-section.expanded").removeClass("expanded");
+		collapseMobileSections();
+	});
+	$(document).on("click", "#leftbar_mobile_nav [data-toggle='modal']", function () {
+		setSidebarOpen(false, null, false);
+		collapseMobileSections();
 	});
 	// 移动端子菜单展开/收起
 	$(document).on("click", ".leftbar-mobile-menu-item.has-children > a.has-submenu", function (e) {
 		e.preventDefault();
-		$(this).parent().toggleClass("expanded");
+		var item = $(this).parent();
+		item.toggleClass("expanded");
+		$(this).attr("aria-expanded", item.hasClass("expanded") ? "true" : "false");
 	});
 	// 移动端侧边栏搜索
 	$(document).on("keydown", "#leftbar_mobile_search_input", function (e) {
@@ -6971,10 +7015,17 @@ $(document).on("keydown", function (e) {
 		if (word == "") {
 			return;
 		}
-		$("html").removeClass("leftbar-opened");
+		setSidebarOpen(false, null, false);
 		// 关闭侧边栏时折叠所有面板
-		$(".leftbar-mobile-collapse-section.expanded").removeClass("expanded");
+		collapseMobileSections();
 		searchPosts(word);
+	});
+	$(document).on("keydown", function (e) {
+		if (e.key === "Escape" && $("html").hasClass("leftbar-opened")) {
+			e.preventDefault();
+			setSidebarOpen(false, null, true);
+			collapseMobileSections();
+		}
 	});
 	$(document).on("click", "#navbar_global.show .navbar-nav a[href]:not([no-pjax]):not([href^='#'])", function () {
 		$("#navbar_global .navbar-toggler").click();
@@ -6991,6 +7042,7 @@ $(document).on("keydown", function (e) {
 
 		// 切换展开状态
 		section.toggleClass("expanded");
+		header.attr("aria-expanded", section.hasClass("expanded") ? "true" : "false");
 
 		// 如果是文章目录面板展开，初始化目录并滚动到当前位置
 		if (!isExpanded && header.attr("id") === "mobile_catalog_toggle") {
@@ -7096,9 +7148,9 @@ $(document).on("keydown", function (e) {
 					}, 500, 'easeOutExpo');
 					// 点击后关闭侧边栏
 					setTimeout(function () {
-						$("html").removeClass("leftbar-opened");
+						setSidebarOpen(false, null, false);
 						// 关闭侧边栏时折叠所有面板
-						$(".leftbar-mobile-collapse-section.expanded").removeClass("expanded");
+						collapseMobileSections();
 					}, 150);
 				}
 			}
@@ -7283,18 +7335,55 @@ $(document).on("keydown", function (e) {
 		return state;
 	}
 
+	function createMobileTodoDivider() {
+		var divider = document.createElement("li");
+		divider.className = "mobile-todo-completed-divider collapsed";
+		divider.id = "mobile-todo-collapse-btn";
+		divider.setAttribute("role", "button");
+		divider.setAttribute("tabindex", "0");
+		divider.setAttribute("aria-expanded", "false");
+		var completedText = window.mobileTodoConfig && window.mobileTodoConfig.completedText ? window.mobileTodoConfig.completedText : "已完成";
+		divider.innerHTML = '<span class="divider-text"><i class="fa fa-check-circle" aria-hidden="true"></i>' +
+			'<span class="mobile-todo-completed-label"></span> <span class="mobile-todo-completed-count">0</span></span>' +
+			'<i class="fa fa-chevron-down divider-arrow" aria-hidden="true"></i>';
+		divider.querySelector(".mobile-todo-completed-label").textContent = completedText;
+		return divider;
+	}
+
+	function ensureMobileTodoDivider(listNode) {
+		if (!listNode) return null;
+		var firstCompleted = listNode.querySelector(".mobile-todo-item.todo-completed");
+		var divider = listNode.querySelector("#mobile-todo-collapse-btn");
+		if (!firstCompleted) {
+			if (divider) divider.remove();
+			return null;
+		}
+		if (!divider) divider = createMobileTodoDivider();
+		if (divider.nextElementSibling !== firstCompleted) {
+			listNode.insertBefore(divider, firstCompleted);
+		}
+		return divider;
+	}
+
+	function moveMobileTodoToCompleted(item) {
+		var listNode = getMobileTodoListNode();
+		if (!listNode || !item) return;
+		item.classList.add("todo-completed", "collapsed");
+		listNode.appendChild(item);
+		ensureMobileTodoDivider(listNode);
+	}
+
 	function renderMobileTodoMeta() {
 		$("#mobile_todo_count").text(mobileTodoState.active);
 		$(".todo-count").text(mobileTodoState.active);
 
-		var divider = $("#mobile-todo-collapse-btn");
-		if (divider.length) {
-			divider.find(".mobile-todo-completed-count").text(mobileTodoState.completed);
-			divider.toggle(mobileTodoState.completed > 0);
-		}
-
 		var listNode = getMobileTodoListNode();
 		if (!listNode) return;
+		var dividerNode = ensureMobileTodoDivider(listNode);
+		if (dividerNode) {
+			var completedCount = dividerNode.querySelector(".mobile-todo-completed-count");
+			if (completedCount) completedCount.textContent = mobileTodoState.completed;
+		}
 		var empty = listNode.querySelector(".mobile-todo-empty");
 		if (mobileTodoState.total === 0 && !empty) {
 			var emptyItem = document.createElement("li");
@@ -7323,20 +7412,10 @@ $(document).on("keydown", function (e) {
 	};
 	window.argonMobileTodoRefresh = updateMobileTodoCount;
 
-	$(document).on("click", "#mobile-todo-collapse-btn", function (e) {
-		e.stopPropagation();
-		var btn = $(this);
-		var completedItems = $("#mobile-todo-list .mobile-todo-item.todo-completed");
-		var isCollapsed = btn.hasClass("collapsed");
-
-		if (isCollapsed) {
-			// 展开
-			btn.removeClass("collapsed");
-			completedItems.removeClass("collapsed");
-		} else {
-			// 折叠
-			btn.addClass("collapsed");
-			completedItems.addClass("collapsed");
+	$(document).on("keydown", "#mobile-todo-collapse-btn, #todo-collapse-btn", function (e) {
+		if (e.key === "Enter" || e.key === " ") {
+			e.preventDefault();
+			this.click();
 		}
 	});
 
@@ -7373,10 +7452,11 @@ $(document).on("keydown", function (e) {
 				if (res.success) {
 					var list = $("#mobile-todo-list");
 					list.find(".mobile-todo-empty").remove();
+					var completeTitle = window.mobileTodoConfig.completeTitle || "完成";
 
 					var newItem = $('<li class="mobile-todo-item" data-id="' + res.data.id + '">' +
 						'<span class="mobile-todo-content">' + $("<div>").text(content).html() + '</span>' +
-						'<button class="mobile-todo-complete-btn" title="完成"><i class="fa fa-check"></i></button>' +
+						'<button class="mobile-todo-complete-btn" title="' + $("<div>").text(completeTitle).html() + '"><i class="fa fa-check"></i></button>' +
 						'</li>');
 					list.prepend(newItem);
 
@@ -7418,13 +7498,17 @@ $(document).on("keydown", function (e) {
 				},
 				success: function (res) {
 					if (res.success) {
-						item.addClass("todo-completed");
-						btn.replaceWith('<button class="mobile-todo-delete-btn" title="删除"><i class="fa fa-trash"></i></button>');
+						moveMobileTodoToCompleted(item[0]);
+						var deleteTitle = window.mobileTodoConfig.deleteTitle || "删除";
+						btn.replaceWith('<button class="mobile-todo-delete-btn" title="' + $("<div>").text(deleteTitle).html() + '"><i class="fa fa-trash"></i></button>');
 						updateMobileTodoCount({ active: -1, completed: 1 });
 						syncTodoToDesktop(id, "", "complete");
 					} else {
 						btn.prop("disabled", false);
 					}
+				},
+				error: function () {
+					btn.prop("disabled", false);
 				}
 			});
 		} else if (btn.hasClass("mobile-todo-delete-btn")) {
@@ -7445,7 +7529,12 @@ $(document).on("keydown", function (e) {
 							updateMobileTodoCount({ completed: -1, total: -1 });
 						}, 350);
 						syncTodoToDesktop(id, "", "delete");
+					} else {
+						btn.prop("disabled", false);
 					}
+				},
+				error: function () {
+					btn.prop("disabled", false);
 				}
 			});
 		} else if (btn.hasClass("mobile-todo-urge-btn") && !btn.hasClass("urged")) {
@@ -7613,25 +7702,60 @@ $(document).on("keydown", function (e) {
 	}
 
 	// 同步TODO操作到桌面端
+	function createDesktopTodoDivider() {
+		var divider = document.createElement("li");
+		divider.className = "todo-completed-divider collapsed";
+		divider.id = "todo-collapse-btn";
+		divider.setAttribute("role", "button");
+		divider.setAttribute("tabindex", "0");
+		divider.setAttribute("aria-expanded", "false");
+		var completedText = window.mobileTodoConfig && window.mobileTodoConfig.completedText ? window.mobileTodoConfig.completedText : "已完成";
+		divider.innerHTML = '<span class="divider-text"><i class="fa fa-check-circle" aria-hidden="true"></i>' +
+			'<span class="todo-completed-label"></span> <span class="todo-completed-count">0</span></span>' +
+			'<i class="fa fa-chevron-down divider-arrow" aria-hidden="true"></i>';
+		divider.querySelector(".todo-completed-label").textContent = completedText;
+		return divider;
+	}
+
+	function ensureDesktopTodoDivider(listNode) {
+		if (!listNode) return null;
+		var firstCompleted = listNode.querySelector(".todo-item.todo-completed");
+		var divider = listNode.querySelector("#todo-collapse-btn");
+		if (!firstCompleted) {
+			if (divider) divider.remove();
+			return null;
+		}
+		if (!divider) divider = createDesktopTodoDivider();
+		if (divider.nextElementSibling !== firstCompleted) {
+			listNode.insertBefore(divider, firstCompleted);
+		}
+		return divider;
+	}
+
 	function syncTodoToDesktop(id, content, action) {
 		var desktopList = $("#todo-list");
 		if (desktopList.length === 0) return;
 
 		if (action === "add") {
 			desktopList.find(".todo-empty").remove();
+			var completeTitle = window.mobileTodoConfig && window.mobileTodoConfig.completeTitle ? window.mobileTodoConfig.completeTitle : "完成";
 			var newItem = $('<li class="todo-item" data-id="' + id + '">' +
 				'<span class="todo-content">' + $("<div>").text(content).html() + '</span>' +
-				'<button class="todo-complete-btn" title="完成"><i class="fa fa-check"></i></button>' +
+				'<button class="todo-complete-btn" title="' + $("<div>").text(completeTitle).html() + '"><i class="fa fa-check"></i></button>' +
 				'</li>');
 			desktopList.prepend(newItem);
 			if (window.argonTodoRefresh) window.argonTodoRefresh({ active: 1, total: 1 });
 		} else if (action === "complete") {
 			var item = desktopList.find('.todo-item[data-id="' + id + '"]');
-			item.addClass("todo-completed");
+			item.addClass("todo-completed collapsed");
+			if (item.length) desktopList[0].appendChild(item[0]);
+			ensureDesktopTodoDivider(desktopList[0]);
 			if (window.argonTodoRefresh) window.argonTodoRefresh({ active: -1, completed: 1 });
-			item.find(".todo-complete-btn").replaceWith('<button class="todo-delete-btn" title="删除"><i class="fa fa-trash"></i></button>');
+			var deleteTitle = window.mobileTodoConfig && window.mobileTodoConfig.deleteTitle ? window.mobileTodoConfig.deleteTitle : "删除";
+			item.find(".todo-complete-btn").replaceWith('<button class="todo-delete-btn" title="' + $("<div>").text(deleteTitle).html() + '"><i class="fa fa-trash"></i></button>');
 		} else if (action === "delete") {
 			desktopList.find('.todo-item[data-id="' + id + '"]').remove();
+			ensureDesktopTodoDivider(desktopList[0]);
 			if (window.argonTodoRefresh) window.argonTodoRefresh({ completed: -1, total: -1 });
 		} else if (action === "urge") {
 			var urgeBtn = desktopList.find('.todo-item[data-id="' + id + '"] .todo-urge-btn');

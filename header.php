@@ -812,7 +812,7 @@ if ($bg_opacity == '') {
 
 			<div class="container">
 
-				<button id="open_sidebar" class="navbar-toggler" type="button" aria-expanded="false" aria-label="Toggle sidebar">
+				<button id="open_sidebar" class="navbar-toggler" type="button" aria-controls="leftbar" aria-expanded="false" aria-label="<?php esc_attr_e('打开侧栏', 'argon'); ?>">
 
 					<span class="navbar-toggler-icon"></span>
 
@@ -1410,6 +1410,12 @@ if (apply_filters('argon_page_background_url', get_option('argon_page_background
 		<span class="btn-inner--icon fabtn-show-on-right"><i class="fa fa-caret-left"></i></span>
 
 		<span class="btn-inner--icon fabtn-show-on-left"><i class="fa fa-caret-right"></i></span>
+
+	</button>
+
+	<button id="fabtn_open_sidebar" class="btn btn-icon btn-neutral fabtn shadow-sm" type="button" aria-controls="leftbar" aria-expanded="false" aria-label="<?php esc_attr_e('打开侧栏', 'argon'); ?>" tooltip="<?php esc_attr_e('打开侧栏', 'argon'); ?>">
+
+		<span class="btn-inner--icon"><i class="fa fa-bars"></i></span>
 
 	</button>
 
