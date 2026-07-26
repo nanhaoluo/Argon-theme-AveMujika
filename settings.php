@@ -202,73 +202,11 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="text" class="regular-text" name="argon_seo_keywords" value="<?php echo get_option('argon_seo_keywords'); ?>"/>
+							<input type="text" class="regular-text" name="argon_seo_keywords" value="<?php echo esc_attr(get_option('argon_seo_keywords')); ?>"/>
 
 							<p class="description"><?php _e('设置针对搜索引擎使用的关键词（Keywords Meta 标签内容）。用英文逗号隔开。不设置则不输出该 Meta 标签。', 'argon');?></p>
 
 						</td>
-
-					</tr>
-
-					<tr><th class="subtitle"><h3 id="section-cdn"><?php _e('CDN 加速', 'argon');?></h3></th></tr>
-
-					<tr>
-
-						<th><label>CDN</label></th>
-
-						<td>
-
-							<select name="argon_assets_path">
-
-								<?php $argon_assets_path = get_option('argon_assets_path'); ?>
-
-								<option value="default" <?php if ($argon_assets_path=='default'){echo 'selected';} ?>><?php _e('不使用', 'argon');?></option>
-
-								<option value="jsdelivr" <?php if ($argon_assets_path=='jsdelivr'){echo 'selected';} ?>>Jsdelivr</option>
-
-								<option value="fastgit" <?php if ($argon_assets_path=='fastgit'){echo 'selected';} ?>>Fastgit</option>
-
-								<option value="sourcegcdn" <?php if ($argon_assets_path=='sourcegcdn'){echo 'selected';} ?>>Source Global CDN</option>
-
-								<option value="jsdelivr_gcore" <?php if ($argon_assets_path=='jsdelivr_gcore'){echo 'selected';} ?>>Jsdelivr (gcore)</option>
-
-								<option value="jsdelivr_fastly" <?php if ($argon_assets_path=='jsdelivr_fastly'){echo 'selected';} ?>>Jsdelivr (fastly)</option>
-
-								<option value="jsdelivr_cf" <?php if ($argon_assets_path=='jsdelivr_cf'){echo 'selected';} ?>>Jsdelivr (cf)</option>
-
-								<option value="custom" <?php if ($argon_assets_path=='custom'){echo 'selected';} ?>><?php _e('自定义...', 'argon');?></option>
-
-							</select>
-
-							<input type="text" class="regular-text" name="argon_custom_assets_path" placeholder="https://" value="<?php echo get_option('argon_custom_assets_path', ''); ?>" autocomplete="off">
-
-							<p class="description"><?php _e('选择主题资源文件的引用地址。使用 CDN 可以加速资源文件的访问并减少服务器压力。', 'argon');?></p>
-
-							<p class="description custom-assets-path-desctiption"><?php _e('在自定义路径中使用 <code>%theme_version%</code> 来表示主题版本号。', 'argon');?></p>
-
-						</td>
-
-						<script>
-
-							$("select[name='argon_assets_path']").change(function(){
-
-								if ($(this).val() == 'custom') {
-
-									$("input[name='argon_custom_assets_path']").css('display', '');
-
-									$(".custom-assets-path-desctiption").css('display', '');
-
-								} else {
-
-									$("input[name='argon_custom_assets_path']").css('display', 'none');
-
-									$(".custom-assets-path-desctiption").css('display', 'none');
-
-								}
-
-							}).change();
-
-						</script>
 
 					</tr>
 
@@ -280,7 +218,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="text" class="regular-text" name="argon_wp_path" value="<?php echo get_option('argon_wp_path', '/'); ?>"/>
+							<input type="text" class="regular-text" name="argon_wp_path" value="<?php echo esc_attr(get_option('argon_wp_path', '/')); ?>"/>
 
 							<p class="description"><?php _e('如果 WordPress 安装在子目录中，请在此填写子目录地址（例如', 'argon');?> <code>/blog/</code><?php _e('），注意前后各有一个斜杠。默认为', 'argon');?> <code>/</code> <?php _e('。', 'argon');?><br/><?php _e('如果不清楚该选项的用处，请保持默认。', 'argon');?></p>
 
@@ -327,9 +265,9 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="color" class="regular-text" name="argon_theme_color" value="<?php echo get_option('argon_theme_color') == "" ? "#5e72e4" : get_option('argon_theme_color'); ?>" style="height:40px;width: 80px;cursor: pointer;"/>
+							<input type="color" class="regular-text" name="argon_theme_color" value="<?php echo esc_attr(get_option('argon_theme_color') == "" ? "#5e72e4" : get_option('argon_theme_color')); ?>" style="height:40px;width: 80px;cursor: pointer;"/>
 
-							<input type="text" readonly name="argon_theme_color_hex_preview" value="<?php echo get_option('argon_theme_color') == "" ? "#5e72e4" : get_option('argon_theme_color'); ?>" style="height: 40px;width: 80px;vertical-align: bottom;background: #fff;cursor: pointer;" onclick="$('input[name=\'argon_theme_color\']').click()"/></p>
+							<input type="text" readonly name="argon_theme_color_hex_preview" value="<?php echo esc_attr(get_option('argon_theme_color') == "" ? "#5e72e4" : get_option('argon_theme_color')); ?>" style="height: 40px;width: 80px;vertical-align: bottom;background: #fff;cursor: pointer;" onclick="$('input[name=\'argon_theme_color\']').click()"/></p>
 
 							<p class="description"><div style="margin-top: 15px;"><?php _e("选择预置颜色 或", 'argon');?> <span onclick="$('input[name=\'argon_theme_color\']').click()" style="text-decoration: underline;cursor: pointer;"><?php _e("自定义色值", 'argon');?></span>
 
@@ -526,7 +464,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="number" name="argon_card_radius" min="0" max="30" step="0.5" value="<?php echo (get_option('argon_card_radius') == '' ? '4' : get_option('argon_card_radius')); ?>"/>	px
+							<input type="number" name="argon_card_radius" min="0" max="30" step="0.5" value="<?php echo esc_attr(get_option('argon_card_radius') == '' ? '4' : get_option('argon_card_radius')); ?>"/>	px
 
 							<p class="description"><?php _e('卡片的圆角大小，默认为', 'argon');?> <code>4px</code><?php _e('。建议设置为', 'argon');?> <code>2px</code> - <code>15px</code></p>
 
@@ -715,7 +653,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="text" class="regular-text" name="argon_toolbar_title" value="<?php echo get_option('argon_toolbar_title'); ?>"/></p>
+							<input type="text" class="regular-text" name="argon_toolbar_title" value="<?php echo esc_attr(get_option('argon_toolbar_title')); ?>"/></p>
 
 							<p class="description"><?php _e('留空则显示博客名称，输入 <code>--hidden--</code> 可以隐藏标题', 'argon');?></p>
 
@@ -731,7 +669,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="text" class="regular-text" name="argon_toolbar_icon" value="<?php echo get_option('argon_toolbar_icon'); ?>"/>
+							<input type="text" class="regular-text" name="argon_toolbar_icon" value="<?php echo esc_attr(get_option('argon_toolbar_icon')); ?>"/>
 
 							<p class="description"><?php _e('图片地址，留空则不显示', 'argon');?></p>
 
@@ -745,7 +683,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="text" class="regular-text" name="argon_toolbar_icon_link" value="<?php echo get_option('argon_toolbar_icon_link'); ?>"/>
+							<input type="text" class="regular-text" name="argon_toolbar_icon_link" value="<?php echo esc_attr(get_option('argon_toolbar_icon_link')); ?>"/>
 
 							<p class="description"><?php _e('点击图标后会跳转到的链接，留空则不跳转', 'argon');?></p>
 
@@ -930,7 +868,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="text" class="regular-text" name="argon_banner_title" value="<?php echo get_option('argon_banner_title'); ?>"/>
+							<input type="text" class="regular-text" name="argon_banner_title" value="<?php echo esc_attr(get_option('argon_banner_title')); ?>"/>
 
 							<p class="description"><?php _e('留空则显示博客名称', 'argon');?></p>
 
@@ -944,7 +882,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="text" class="regular-text" name="argon_banner_subtitle" value="<?php echo get_option('argon_banner_subtitle'); ?>"/>
+							<input type="text" class="regular-text" name="argon_banner_subtitle" value="<?php echo esc_attr(get_option('argon_banner_subtitle')); ?>"/>
 
 							<p class="description"><?php _e('显示在 Banner 标题下，留空则不显示', 'argon');?></p>
 
@@ -1020,7 +958,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="text" class="regular-text" name="argon_banner_background_url" value="<?php echo get_option('argon_banner_background_url'); ?>"/>
+							<input type="text" class="regular-text" name="argon_banner_background_url" value="<?php echo esc_attr(get_option('argon_banner_background_url')); ?>"/>
 
 							<p class="description"><?php _e('需带上 http(s) ，留空则显示默认背景', 'argon');?><br/><?php _e('输入', 'argon');?> <code>--bing--</code> <?php _e('调用必应每日一图', 'argon');?></p>
 
@@ -1128,7 +1066,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="number" name="argon_banner_typing_effect_interval" min="1" max="10000"  value="<?php echo (get_option('argon_banner_typing_effect_interval') == '' ? '100' : get_option('argon_banner_typing_effect_interval')); ?>"/> <?php _e('ms/字', 'argon');?>
+							<input type="number" name="argon_banner_typing_effect_interval" min="1" max="10000"  value="<?php echo esc_attr(get_option('argon_banner_typing_effect_interval') == '' ? '100' : get_option('argon_banner_typing_effect_interval')); ?>"/> <?php _e('ms/字', 'argon');?>
 
 							<p class="description"></p>
 
@@ -1147,7 +1085,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="text" class="regular-text" name="argon_page_background_url" value="<?php echo get_option('argon_page_background_url'); ?>"/>
+							<input type="text" class="regular-text" name="argon_page_background_url" value="<?php echo esc_attr(get_option('argon_page_background_url')); ?>"/>
 
 							<p class="description"><?php _e('页面背景的地址，需带上 http(s)。留空则不设置页面背景。如果设置了背景，推荐开启 Banner 透明化。', 'argon');?></p>
 
@@ -1161,7 +1099,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="text" class="regular-text" name="argon_page_background_dark_url" value="<?php echo get_option('argon_page_background_dark_url'); ?>"/>
+							<input type="text" class="regular-text" name="argon_page_background_dark_url" value="<?php echo esc_attr(get_option('argon_page_background_dark_url')); ?>"/>
 
 							<p class="description"><?php _e('夜间模式时页面背景的地址，需带上 http(s)。设置后日间模式和夜间模式会使用不同的背景。留空则跟随日间模式背景。该选项仅在设置了日间模式背景时生效。', 'argon');?></p>
 
@@ -1182,8 +1120,8 @@ function themeoptions_page(){
 									<div style="margin-bottom: 20px;">
 										<label style="display: block; font-weight: 600; margin-bottom: 8px; color: #1d2327;"><?php _e('背景不透明度', 'argon');?></label>
 										<div style="display: flex; align-items: center; gap: 12px;">
-											<input type="range" name="argon_page_background_opacity" id="argon_page_bg_opacity_slider" min="0" max="1" step="0.01" value="<?php echo (get_option('argon_page_background_opacity') == '' ? '1' : get_option('argon_page_background_opacity')); ?>" style="flex: 1; cursor: pointer; height: 6px;">
-											<span id="argon_page_bg_opacity_value" style="min-width: 50px; text-align: center; font-family: monospace; font-size: 13px; background: #f0f0f1; padding: 4px 8px; border-radius: 4px;"><?php echo (get_option('argon_page_background_opacity') == '' ? '1.00' : number_format(floatval(get_option('argon_page_background_opacity')), 2)); ?></span>
+											<input type="range" name="argon_page_background_opacity" id="argon_page_bg_opacity_slider" min="0" max="1" step="0.01" value="<?php echo esc_attr(get_option('argon_page_background_opacity') == '' ? '1' : get_option('argon_page_background_opacity')); ?>" style="flex: 1; cursor: pointer; height: 6px;">
+											<span id="argon_page_bg_opacity_value" style="min-width: 50px; text-align: center; font-family: monospace; font-size: 13px; background: #f0f0f1; padding: 4px 8px; border-radius: 4px;"><?php echo esc_html(get_option('argon_page_background_opacity') == '' ? '1.00' : number_format(floatval(get_option('argon_page_background_opacity')), 2)); ?></span>
 										</div>
 										<p style="margin: 6px 0 0; font-size: 12px; color: #646970;"><?php _e('控制页面背景图片的不透明度', 'argon');?></p>
 									</div>
@@ -1192,8 +1130,8 @@ function themeoptions_page(){
 									<div style="margin-bottom: 20px;">
 										<label style="display: block; font-weight: 600; margin-bottom: 8px; color: #1d2327;"><?php _e('卡片透明度', 'argon');?></label>
 										<div style="display: flex; align-items: center; gap: 12px;">
-											<input type="range" name="argon_post_background_opacity" id="argon_post_bg_opacity_slider" min="0" max="1" step="0.01" value="<?php echo (get_option('argon_post_background_opacity') == '' ? '0.7' : get_option('argon_post_background_opacity')); ?>" style="flex: 1; cursor: pointer; height: 6px;">
-											<span id="argon_post_bg_opacity_value" style="min-width: 50px; text-align: center; font-family: monospace; font-size: 13px; background: #f0f0f1; padding: 4px 8px; border-radius: 4px;"><?php echo (get_option('argon_post_background_opacity') == '' ? '0.70' : number_format(floatval(get_option('argon_post_background_opacity')), 2)); ?></span>
+											<input type="range" name="argon_post_background_opacity" id="argon_post_bg_opacity_slider" min="0" max="1" step="0.01" value="<?php echo esc_attr(get_option('argon_post_background_opacity') == '' ? '0.7' : get_option('argon_post_background_opacity')); ?>" style="flex: 1; cursor: pointer; height: 6px;">
+											<span id="argon_post_bg_opacity_value" style="min-width: 50px; text-align: center; font-family: monospace; font-size: 13px; background: #f0f0f1; padding: 4px 8px; border-radius: 4px;"><?php echo esc_html(get_option('argon_post_background_opacity') == '' ? '0.70' : number_format(floatval(get_option('argon_post_background_opacity')), 2)); ?></span>
 										</div>
 										<p style="margin: 6px 0 0; font-size: 12px; color: #646970;"><?php _e('控制文章、评论等卡片的背景透明度，推荐 0.7', 'argon');?></p>
 									</div>
@@ -1202,8 +1140,8 @@ function themeoptions_page(){
 									<div style="margin-bottom: 20px;">
 										<label style="display: block; font-weight: 600; margin-bottom: 8px; color: #1d2327;"><?php _e('毛玻璃模糊', 'argon');?></label>
 										<div style="display: flex; align-items: center; gap: 12px;">
-											<input type="range" name="argon_card_blur" min="0" max="30" step="1" value="<?php echo (get_option('argon_card_blur', '20')); ?>" id="argon_card_blur_slider" style="flex: 1; cursor: pointer; height: 6px;">
-											<span id="argon_card_blur_value" style="min-width: 50px; text-align: center; font-family: monospace; font-size: 13px; background: #f0f0f1; padding: 4px 8px; border-radius: 4px;"><?php echo (get_option('argon_card_blur', '20')); ?>px</span>
+											<input type="range" name="argon_card_blur" min="0" max="30" step="1" value="<?php echo esc_attr(get_option('argon_card_blur', '20')); ?>" id="argon_card_blur_slider" style="flex: 1; cursor: pointer; height: 6px;">
+											<span id="argon_card_blur_value" style="min-width: 50px; text-align: center; font-family: monospace; font-size: 13px; background: #f0f0f1; padding: 4px 8px; border-radius: 4px;"><?php echo esc_html(get_option('argon_card_blur', '20')); ?>px</span>
 										</div>
 										<p style="margin: 6px 0 0; font-size: 12px; color: #646970;"><?php _e('为卡片添加毛玻璃模糊效果，推荐 20px', 'argon');?></p>
 									</div>
@@ -1212,8 +1150,8 @@ function themeoptions_page(){
 									<div style="margin-bottom: 10px;">
 										<label style="display: block; font-weight: 600; margin-bottom: 8px; color: #1d2327;"><?php _e('毛玻璃饱和度', 'argon');?></label>
 										<div style="display: flex; align-items: center; gap: 12px;">
-											<input type="range" name="argon_card_saturate" min="100" max="250" step="10" value="<?php echo (get_option('argon_card_saturate', '180')); ?>" id="argon_card_saturate_slider" style="flex: 1; cursor: pointer; height: 6px;">
-											<span id="argon_card_saturate_value" style="min-width: 50px; text-align: center; font-family: monospace; font-size: 13px; background: #f0f0f1; padding: 4px 8px; border-radius: 4px;"><?php echo (get_option('argon_card_saturate', '180')); ?>%</span>
+											<input type="range" name="argon_card_saturate" min="100" max="250" step="10" value="<?php echo esc_attr(get_option('argon_card_saturate', '180')); ?>" id="argon_card_saturate_slider" style="flex: 1; cursor: pointer; height: 6px;">
+											<span id="argon_card_saturate_value" style="min-width: 50px; text-align: center; font-family: monospace; font-size: 13px; background: #f0f0f1; padding: 4px 8px; border-radius: 4px;"><?php echo esc_html(get_option('argon_card_saturate', '180')); ?>%</span>
 										</div>
 										<p style="margin: 6px 0 0; font-size: 12px; color: #646970;"><?php _e('毛玻璃背景的色彩饱和度，推荐 180%', 'argon');?></p>
 									</div>
@@ -1225,10 +1163,10 @@ function themeoptions_page(){
 									<?php $page_bg_url = get_option('argon_page_background_url'); ?>
 									<div id="effect_preview_box" style="position: relative; width: 200px; height: 140px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.12); background: #f4f5f7;">
 										<?php if (!empty($page_bg_url)) { ?>
-										<img id="effect_preview_bg" src="<?php echo esc_url($page_bg_url); ?>" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: <?php echo get_option('argon_page_background_opacity', '1'); ?>;">
+										<img id="effect_preview_bg" src="<?php echo esc_url($page_bg_url); ?>" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: <?php echo esc_attr(get_option('argon_page_background_opacity', '1')); ?>;">
 										<?php } ?>
 										<div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;">
-											<div id="blur_preview_card" style="width: 140px; height: 85px; background: rgba(255,255,255,<?php echo get_option('argon_post_background_opacity', '0.7'); ?>); border-radius: 10px; backdrop-filter: blur(<?php echo get_option('argon_card_blur', '20'); ?>px) saturate(<?php echo get_option('argon_card_saturate', '180'); ?>%); -webkit-backdrop-filter: blur(<?php echo get_option('argon_card_blur', '20'); ?>px) saturate(<?php echo get_option('argon_card_saturate', '180'); ?>%); display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 2px 12px rgba(0,0,0,0.08); border: 1px solid rgba(255,255,255,0.4);">
+											<div id="blur_preview_card" style="width: 140px; height: 85px; background: rgba(255,255,255,<?php echo esc_attr(get_option('argon_post_background_opacity', '0.7')); ?>); border-radius: 10px; backdrop-filter: blur(<?php echo esc_attr(get_option('argon_card_blur', '20')); ?>px) saturate(<?php echo esc_attr(get_option('argon_card_saturate', '180')); ?>%); -webkit-backdrop-filter: blur(<?php echo esc_attr(get_option('argon_card_blur', '20')); ?>px) saturate(<?php echo esc_attr(get_option('argon_card_saturate', '180')); ?>%); display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 2px 12px rgba(0,0,0,0.08); border: 1px solid rgba(255,255,255,0.4);">
 												<span style="font-size: 12px; font-weight: 500; color: #333;"><?php _e('卡片效果', 'argon'); ?></span>
 												<span id="blur_preview_info" style="font-size: 10px; color: #666; margin-top: 4px;"></span>
 											</div>
@@ -1319,7 +1257,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="text" class="regular-text" name="argon_archives_timeline_url" value="<?php echo get_option('argon_archives_timeline_url'); ?>"/>
+							<input type="text" class="regular-text" name="argon_archives_timeline_url" value="<?php echo esc_attr(get_option('argon_archives_timeline_url')); ?>"/>
 
 							<p class="description"><?php _e('归档页面的 URL。点击左侧栏 "博客概览" 中的 "博文总数" 一栏时可跳转到该地址。', 'argon');?></p>
 
@@ -1646,7 +1584,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="text" class="regular-text" name="argon_article_meta" value="<?php echo get_option('argon_article_meta', 'time|views|comments|categories'); ?>" style="display: none;"/>
+							<input type="text" class="regular-text" name="argon_article_meta" value="<?php echo esc_attr(get_option('argon_article_meta', 'time|views|comments|categories')); ?>" style="display: none;"/>
 
 							<?php _e('拖动来自定义文章 Meta 信息的显示和顺序', 'argon');?>
 
@@ -1762,7 +1700,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="number" name="argon_reading_speed" min="1" max="5000"  value="<?php echo (get_option('argon_reading_speed') == '' ? '300' : get_option('argon_reading_speed')); ?>"/>
+							<input type="number" name="argon_reading_speed" min="1" max="5000"  value="<?php echo esc_attr(get_option('argon_reading_speed') == '' ? '300' : get_option('argon_reading_speed')); ?>"/>
 
 							<?php _e('字/分钟', 'argon');?>
 
@@ -1778,7 +1716,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="number" name="argon_reading_speed_en" min="1" max="5000"  value="<?php echo (get_option('argon_reading_speed_en') == '' ? '160' : get_option('argon_reading_speed_en')); ?>"/>
+							<input type="number" name="argon_reading_speed_en" min="1" max="5000"  value="<?php echo esc_attr(get_option('argon_reading_speed_en') == '' ? '160' : get_option('argon_reading_speed_en')); ?>"/>
 
 							<?php _e('单词/分钟', 'argon');?>
 
@@ -1792,7 +1730,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="number" name="argon_reading_speed_code" min="1" max="5000"  value="<?php echo (get_option('argon_reading_speed_code') == '' ? '20' : get_option('argon_reading_speed_code')); ?>"/>
+							<input type="number" name="argon_reading_speed_code" min="1" max="5000"  value="<?php echo esc_attr(get_option('argon_reading_speed_code') == '' ? '20' : get_option('argon_reading_speed_code')); ?>"/>
 
 							<?php _e('行/分钟', 'argon');?>
 
@@ -1859,7 +1797,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="text" class="regular-text" name="argon_reference_list_title" value="<?php echo (get_option('argon_reference_list_title') == "" ? __('参考', 'argon') : get_option('argon_reference_list_title')); ?>"/>
+							<input type="text" class="regular-text" name="argon_reference_list_title" value="<?php echo esc_attr(get_option('argon_reference_list_title') == "" ? __('参考', 'argon') : get_option('argon_reference_list_title')); ?>"/>
 
 							<p class="description"><?php _e('脚注列表显示在文末，在文章中有脚注的时候会显示。<br/>使用 <code>ref</code> 短代码可以在文中插入脚注。', 'argon');?></p>
 
@@ -1927,7 +1865,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="text" class="regular-text" name="argon_donate_qrcode_url" value="<?php echo get_option('argon_donate_qrcode_url'); ?>"/>
+							<input type="text" class="regular-text" name="argon_donate_qrcode_url" value="<?php echo esc_attr(get_option('argon_donate_qrcode_url')); ?>"/>
 
 							<p class="description"><?php _e('赞赏二维码图片链接，填写后会在文章最后显示赞赏按钮，留空则不显示赞赏按钮', 'argon');?></p>
 
@@ -2033,7 +1971,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="number" name="argon_related_post_limit" min="1" max="100" value="<?php echo get_option('argon_related_post_limit' , '10'); ?>"/>
+							<input type="number" name="argon_related_post_limit" min="1" max="100" value="<?php echo esc_attr(get_option('argon_related_post_limit' , '10')); ?>"/>
 
 							<p class="description"><?php _e('最多推荐多少篇文章', 'argon');?></p>
 
@@ -2161,7 +2099,7 @@ function themeoptions_page(){
 
 							<?php _e('距离现在超过', 'argon');?>
 
-							<input type="number" name="argon_outdated_info_days" min="-1" max="99999"  value="<?php echo (get_option('argon_outdated_info_days') == '' ? '-1' : get_option('argon_outdated_info_days')); ?>"/>
+							<input type="number" name="argon_outdated_info_days" min="-1" max="99999"  value="<?php echo esc_attr(get_option('argon_outdated_info_days') == '' ? '-1' : get_option('argon_outdated_info_days')); ?>"/>
 
 							<?php _e('天时，用', 'argon');?>
 
@@ -2179,7 +2117,7 @@ function themeoptions_page(){
 
 							<br/>
 
-							<textarea type="text" name="argon_outdated_info_tip_content" rows="3" cols="100" style="margin-top: 15px;"><?php echo get_option('argon_outdated_info_tip_content') == '' ? __('本文最后更新于 %date_delta% 天前，其中的信息可能已经有所发展或是发生改变。', 'argpm') : get_option('argon_outdated_info_tip_content'); ?></textarea>
+							<textarea type="text" name="argon_outdated_info_tip_content" rows="3" cols="100" style="margin-top: 15px;"><?php echo esc_textarea(get_option('argon_outdated_info_tip_content') == '' ? __('本文最后更新于 %date_delta% 天前，其中的信息可能已经有所发展或是发生改变。', 'argpm') : get_option('argon_outdated_info_tip_content')); ?></textarea>
 
 							<p class="description"><?php _e('天数为 -1 表示永不提示。', 'argon');?><br/><code>%date_delta%</code> <?php _e('表示文章发布/修改时间与当前时间的差距，', 'argon');?><code>%post_date_delta%</code> <?php _e('表示文章发布时间与当前时间的差距，', 'argon');?><code>%modify_date_delta%</code> <?php _e('表示文章修改时间与当前时间的差距（单位: 天）。', 'argon');?></p>
 
@@ -2624,7 +2562,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="text" class="regular-text" name="argon_sidebar_banner_title" value="<?php echo get_option('argon_sidebar_banner_title'); ?>"/>
+							<input type="text" class="regular-text" name="argon_sidebar_banner_title" value="<?php echo esc_attr(get_option('argon_sidebar_banner_title')); ?>"/>
 
 							<p class="description"><?php _e('留空则显示博客名称', 'argon');?></p>
 
@@ -2638,7 +2576,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="text" class="regular-text" name="argon_sidebar_banner_subtitle" value="<?php echo get_option('argon_sidebar_banner_subtitle'); ?>"/>
+							<input type="text" class="regular-text" name="argon_sidebar_banner_subtitle" value="<?php echo esc_attr(get_option('argon_sidebar_banner_subtitle')); ?>"/>
 
 							<p class="description"><?php _e('留空则不显示', 'argon');?><br/><?php _e('输入', 'argon');?> <code>--hitokoto--</code> <?php _e('调用一言 API', 'argon');?></p>
 
@@ -2652,7 +2590,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="text" class="regular-text" name="argon_sidebar_auther_name" value="<?php echo get_option('argon_sidebar_auther_name'); ?>"/>
+							<input type="text" class="regular-text" name="argon_sidebar_auther_name" value="<?php echo esc_attr(get_option('argon_sidebar_auther_name')); ?>"/>
 
 							<p class="description"><?php _e('留空则显示博客名', 'argon');?></p>
 
@@ -2666,7 +2604,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="text" class="regular-text" name="argon_sidebar_auther_image" value="<?php echo get_option('argon_sidebar_auther_image'); ?>"/>
+							<input type="text" class="regular-text" name="argon_sidebar_auther_image" value="<?php echo esc_attr(get_option('argon_sidebar_auther_image')); ?>"/>
 
 							<p class="description"><?php _e('需带上 http(s) 开头', 'argon');?></p>
 
@@ -2680,7 +2618,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="text" class="regular-text" name="argon_sidebar_author_description" value="<?php echo get_option('argon_sidebar_author_description'); ?>"/>
+							<input type="text" class="regular-text" name="argon_sidebar_author_description" value="<?php echo esc_attr(get_option('argon_sidebar_author_description')); ?>"/>
 
 							<p class="description"><?php _e('留空则不显示', 'argon');?></p>
 
@@ -2740,7 +2678,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input name="argon_duolingo_username" type="text" class="regular-text" value="<?php echo get_option('argon_duolingo_username', ''); ?>">
+							<input name="argon_duolingo_username" type="text" class="regular-text" value="<?php echo esc_attr(get_option('argon_duolingo_username', '')); ?>">
 
 							<p class="description"><?php _e('填写你的多邻国用户名以自动获取连胜天数（需要在多邻国隐私设置中开启公开资料）', 'argon');?></p>
 
@@ -3081,7 +3019,7 @@ function themeoptions_page(){
 
 													Mathjax 3 CDN <?php _e('地址', 'argon');?>:
 
-													<input type="text" class="regular-text" name="argon_mathjax_cdn_url" value="<?php echo get_option('argon_mathjax_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js' : get_option('argon_mathjax_cdn_url'); ?>"/>
+													<input type="text" class="regular-text" name="argon_mathjax_cdn_url" value="<?php echo esc_attr(get_option('argon_mathjax_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js' : get_option('argon_mathjax_cdn_url')); ?>"/>
 
 													<p class="description">Mathjax 3.0+<?php _e('，默认为', 'argon');?> <code>//cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js</code><br/><?php _e('勾选"使用本地镜像"后将优先使用主题内置的完整版本', 'argon');?></p>
 
@@ -3112,7 +3050,7 @@ function themeoptions_page(){
 
 													Mathjax 2 CDN <?php _e('地址', 'argon');?>:
 
-													<input type="text" class="regular-text" name="argon_mathjax_v2_cdn_url" value="<?php echo get_option('argon_mathjax_v2_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/mathjax@2.7.5/MathJax.js?config=TeX-AMS_HTML' : get_option('argon_mathjax_v2_cdn_url'); ?>"/>
+													<input type="text" class="regular-text" name="argon_mathjax_v2_cdn_url" value="<?php echo esc_attr(get_option('argon_mathjax_v2_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/mathjax@2.7.5/MathJax.js?config=TeX-AMS_HTML' : get_option('argon_mathjax_v2_cdn_url')); ?>"/>
 
 													<p class="description">Mathjax 2.0+<?php _e('，默认为', 'argon');?> <code>//cdn.jsdelivr.net/npm/mathjax@2.7.5/MathJax.js?config=TeX-AMS_HTML</code><br/><?php _e('勾选"使用本地镜像"后将优先使用主题内置的完整版本', 'argon');?></p>
 
@@ -3143,7 +3081,7 @@ function themeoptions_page(){
 
 													Katex CDN <?php _e('地址', 'argon');?>:
 
-													<input type="text" class="regular-text" name="argon_katex_cdn_url" value="<?php echo get_option('argon_katex_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/katex@0.11.1/dist/' : get_option('argon_katex_cdn_url'); ?>"/>
+													<input type="text" class="regular-text" name="argon_katex_cdn_url" value="<?php echo esc_attr(get_option('argon_katex_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/katex@0.11.1/dist/' : get_option('argon_katex_cdn_url')); ?>"/>
 
 													<p class="description"><?php _e('Argon 会同时引用', 'argon');?> <code>katex.min.css</code> <?php _e('和', 'argon');?> <code>katex.min.js</code> <?php _e('两个文件，所以在此填写的是上层的路径，而不是具体的文件。注意路径后要带一个斜杠。', 'argon');?><br/><?php _e('默认为', 'argon');?> <code>//cdn.jsdelivr.net/npm/katex@0.11.1/dist/</code><br/><?php _e('勾选"使用本地镜像"后将优先使用主题内置的完整版本', 'argon');?></p>
 
@@ -3195,7 +3133,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="number" name="argon_lazyload_threshold" min="0" max="2500"  value="<?php echo (get_option('argon_lazyload_threshold') == '' ? '800' : get_option('argon_lazyload_threshold')); ?>"/>
+							<input type="number" name="argon_lazyload_threshold" min="0" max="2500"  value="<?php echo esc_attr(get_option('argon_lazyload_threshold') == '' ? '800' : get_option('argon_lazyload_threshold')); ?>"/>
 
 							<p class="description"><?php _e('图片距离页面底部还有多少距离就开始提前加载', 'argon');?></p>
 
@@ -3347,7 +3285,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="number" name="argon_zoomify_duration" min="0" max="10000" value="<?php echo (get_option('argon_zoomify_duration') == '' ? '200' : get_option('argon_zoomify_duration')); ?>"/>	ms
+							<input type="number" name="argon_zoomify_duration" min="0" max="10000" value="<?php echo esc_attr(get_option('argon_zoomify_duration') == '' ? '200' : get_option('argon_zoomify_duration')); ?>"/>	ms
 
 							<p class="description"><?php _e('图片被单击后缩放到全屏动画的时间长度', 'argon');?></p>
 
@@ -3361,7 +3299,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="text" class="regular-text" name="argon_zoomify_easing" value="<?php echo (get_option('argon_zoomify_easing') == '' ? 'cubic-bezier(0.4,0,0,1)' : get_option('argon_zoomify_easing')); ?>"/>
+							<input type="text" class="regular-text" name="argon_zoomify_easing" value="<?php echo esc_attr(get_option('argon_zoomify_easing') == '' ? 'cubic-bezier(0.4,0,0,1)' : get_option('argon_zoomify_easing')); ?>"/>
 
 							<p class="description">
 
@@ -3379,7 +3317,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="number" name="argon_zoomify_scale" min="0.01" max="1" step="0.01" value="<?php echo (get_option('argon_zoomify_scale') == '' ? '0.9' : get_option('argon_zoomify_scale')); ?>"/>
+							<input type="number" name="argon_zoomify_scale" min="0.01" max="1" step="0.01" value="<?php echo esc_attr(get_option('argon_zoomify_scale') == '' ? '0.9' : get_option('argon_zoomify_scale')); ?>"/>
 
 							<p class="description"><?php _e('图片相对于页面的最大缩放比例 (0 ~ 1 的小数)', 'argon');?></p>
 
@@ -3664,15 +3602,28 @@ function themeoptions_page(){
 				<tr>
 					<th><label><?php _e('摘要提示词', 'argon');?></label></th>
 					<td>
-						<textarea name="argon_ai_summary_prompt" rows="5" cols="70" style="font-family: monospace;"><?php echo get_option('argon_ai_summary_prompt', '你是一个专业的内容摘要助手。请仔细阅读以下文章内容，用简洁、准确的语言总结文章的核心观点和主要内容。要求：1) 控制在 100-150 字以内；2) 突出文章的关键信息和亮点；3) 使用通俗易懂的语言；4) 保持客观中立的语气。'); ?></textarea>
+						<textarea name="argon_ai_summary_prompt" rows="12" cols="70" style="font-family: monospace;"><?php echo esc_textarea(function_exists('argon_get_ai_summary_prompt') ? argon_get_ai_summary_prompt() : get_option('argon_ai_summary_prompt', '')); ?></textarea>
 						<p class="description"><?php _e('AI 生成摘要时使用的提示词。文章内容会自动附加在提示词后面。', 'argon');?></p>
+					</td>
+				</tr>
+
+				<tr>
+					<th><label><?php _e('摘要思考模式', 'argon');?></label></th>
+					<td>
+						<?php $argon_ai_summary_thinking_mode = get_option('argon_ai_summary_thinking_mode', 'disabled'); ?>
+						<select name="argon_ai_summary_thinking_mode">
+							<option value="disabled" <?php selected($argon_ai_summary_thinking_mode, 'disabled'); ?>><?php _e('关闭', 'argon');?></option>
+							<option value="auto" <?php selected($argon_ai_summary_thinking_mode, 'auto'); ?>><?php _e('自动', 'argon');?></option>
+							<option value="enabled" <?php selected($argon_ai_summary_thinking_mode, 'enabled'); ?>><?php _e('启用', 'argon');?></option>
+						</select>
+						<p class="description"><?php _e('控制摘要提示词中的思考模式约束。无论选择哪项，前台都会自动隐藏模型返回的思考过程。', 'argon');?></p>
 					</td>
 				</tr>
 
 				<tr>
 					<th><label><?php _e('排除文章 ID', 'argon');?></label></th>
 					<td>
-						<input type="text" class="regular-text" name="argon_ai_summary_exclude_posts" value="<?php echo get_option('argon_ai_summary_exclude_posts', ''); ?>" placeholder="1,2,3"/>
+						<input type="text" class="regular-text" name="argon_ai_summary_exclude_posts" value="<?php echo esc_attr(get_option('argon_ai_summary_exclude_posts', '')); ?>" placeholder="1,2,3"/>
 						<p class="description"><?php _e('不生成 AI 摘要的文章 ID，多个 ID 用英文逗号分隔', 'argon');?></p>
 					</td>
 				</tr>
@@ -3743,7 +3694,7 @@ function themeoptions_page(){
 				<tr>
 					<th><label><?php _e('抽查基础概率', 'argon');?></label></th>
 					<td>
-						<input type="number" name="argon_comment_spam_detection_sample_rate" min="1" max="100" value="<?php echo get_option('argon_comment_spam_detection_sample_rate', '20'); ?>" style="width: 80px;"/> %
+						<input type="number" name="argon_comment_spam_detection_sample_rate" min="1" max="100" value="<?php echo esc_attr(get_option('argon_comment_spam_detection_sample_rate', '20')); ?>" style="width: 80px;"/> %
 						<p class="description">
 							<?php _e('智能抽查模式的基础概率，默认 20%。系统会根据用户历史通过率自动调整：', 'argon');?><br/>
 							<?php _e('• 信誉好的用户降低检测（最低 5%）', 'argon');?><br/>
@@ -3755,65 +3706,18 @@ function themeoptions_page(){
 				<tr>
 					<th><label><?php _e('触发关键字', 'argon');?></label></th>
 					<td>
-						<textarea name="argon_comment_spam_detection_trigger_keywords" rows="4" cols="70" placeholder="<?php _e('每行一个关键字', 'argon');?>"><?php echo get_option('argon_comment_spam_detection_trigger_keywords', ''); ?></textarea>
+						<textarea name="argon_comment_spam_detection_trigger_keywords" rows="4" cols="70" placeholder="<?php _e('每行一个关键字', 'argon');?>"><?php echo esc_textarea(get_option('argon_comment_spam_detection_trigger_keywords', '')); ?></textarea>
 						<p class="description">
 							<?php _e('包含这些关键字的评论会触发 AI 检测（关键字必查模式）或提高检测概率（智能抽查模式）。每行一个关键字。', 'argon');?><br/>
 							<?php _e('示例：广告、推广、加微信、点击链接等', 'argon');?>
 						</p>
-						<?php
-						$learned_keywords = get_option('argon_comment_spam_learned_keywords', []);
-						$trigger_keywords_manual = array_filter(array_map('trim', explode("\n", get_option('argon_comment_spam_detection_trigger_keywords', ''))));
-						$trigger_keywords_learned = [];
-						if (!empty($learned_keywords)) {
-							foreach ($learned_keywords as $keyword => $stats) {
-								if (!in_array($keyword, $trigger_keywords_manual) && ($stats['spam_count'] ?? 0) >= 2) {
-									$trigger_keywords_learned[$keyword] = $stats;
-								}
-							}
-						}
-						?>
-						<div class="argon-keyword-cache-display" style="margin-top: 15px; padding: 12px; background: #f0f6fc; border: 1px solid #c3d9ff; border-radius: 4px;">
-							<p style="margin: 0 0 10px 0; font-weight: 600; color: #1e4a7d;"><span class="dashicons dashicons-database-import" style="margin-top: 2px;"></span> <?php _e('关键字缓存', 'argon');?></p>
-							<?php if (!empty($trigger_keywords_manual)): ?>
-							<div style="margin-bottom: 8px;">
-								<span style="font-size: 12px; color: #666;"><?php _e('手动添加', 'argon');?> (<?php echo count($trigger_keywords_manual); ?>):</span>
-								<div style="margin-top: 4px;">
-									<?php foreach ($trigger_keywords_manual as $keyword): ?>
-									<span style="display: inline-block; margin: 2px 4px 2px 0; padding: 3px 8px; background: #bbdefb; border-radius: 3px; font-size: 12px; color: #0d47a1;">
-										<?php echo esc_html($keyword); ?>
-									</span>
-									<?php endforeach; ?>
-								</div>
-							</div>
-							<?php else: ?>
-							<div style="margin-bottom: 8px;">
-								<span style="font-size: 12px; color: #999;"><?php _e('手动添加: 暂无', 'argon');?></span>
-							</div>
-							<?php endif; ?>
-							<?php if (!empty($trigger_keywords_learned)): ?>
-							<div>
-								<span style="font-size: 12px; color: #666;"><?php _e('自动学习', 'argon');?> (<?php echo count($trigger_keywords_learned); ?>):</span>
-								<div style="margin-top: 4px; max-height: 120px; overflow-y: auto;">
-									<?php foreach ($trigger_keywords_learned as $keyword => $stats): ?>
-									<span style="display: inline-block; margin: 2px 4px 2px 0; padding: 3px 8px; background: #e3f2fd; border-radius: 3px; font-size: 12px; color: #1565c0;" title="<?php echo esc_attr(sprintf(__('置信度: %.0f%% | 垃圾: %d | 正常: %d', 'argon'), ($stats['confidence'] ?? 0) * 100, ($stats['spam_count'] ?? 0), ($stats['normal_count'] ?? 0))); ?>">
-										<?php echo esc_html($keyword); ?>
-									</span>
-									<?php endforeach; ?>
-								</div>
-							</div>
-							<?php else: ?>
-							<div>
-								<span style="font-size: 12px; color: #999;"><?php _e('自动学习: 暂无（系统会从AI审核结果中自动学习）', 'argon');?></span>
-							</div>
-							<?php endif; ?>
-						</div>
 					</td>
 				</tr>
 
 				<tr>
 					<th><label><?php _e('黑名单关键字', 'argon');?></label></th>
 					<td>
-						<textarea name="argon_comment_spam_detection_keywords" rows="4" cols="70" placeholder="<?php _e('每行一个关键字', 'argon');?>"><?php echo get_option('argon_comment_spam_detection_keywords', ''); ?></textarea>
+						<textarea name="argon_comment_spam_detection_keywords" rows="4" cols="70" placeholder="<?php _e('每行一个关键字', 'argon');?>"><?php echo esc_textarea(get_option('argon_comment_spam_detection_keywords', '')); ?></textarea>
 						<p class="description">
 							<?php _e('包含这些关键字的评论会被直接标记为垃圾评论，无需 AI 检测。每行一个关键字。', 'argon');?><br/>
 							<?php _e('适用于明确的垃圾内容，如特定广告词、违禁词等。', 'argon');?>
@@ -3830,41 +3734,23 @@ function themeoptions_page(){
 							}
 						}
 						?>
+						<?php if (!empty($blacklist_keywords_manual) || !empty($blacklist_keywords_learned)): ?>
 						<div class="argon-keyword-cache-display" style="margin-top: 15px; padding: 12px; background: #fef6f6; border: 1px solid #f5c6cb; border-radius: 4px;">
-							<p style="margin: 0 0 10px 0; font-weight: 600; color: #721c24;"><span class="dashicons dashicons-database-import" style="margin-top: 2px;"></span> <?php _e('关键字缓存', 'argon');?></p>
-							<?php if (!empty($blacklist_keywords_manual)): ?>
-							<div style="margin-bottom: 8px;">
-								<span style="font-size: 12px; color: #666;"><?php _e('手动添加', 'argon');?> (<?php echo count($blacklist_keywords_manual); ?>):</span>
-								<div style="margin-top: 4px;">
-									<?php foreach ($blacklist_keywords_manual as $keyword): ?>
-									<span style="display: inline-block; margin: 2px 4px 2px 0; padding: 3px 8px; background: #ffcdd2; border-radius: 3px; font-size: 12px; color: #b71c1c;">
-										<?php echo esc_html($keyword); ?>
-									</span>
-									<?php endforeach; ?>
-								</div>
+							<p style="margin: 0 0 8px 0; font-weight: 600; color: #721c24;"><span class="dashicons dashicons-database-import" style="margin-top: 2px;"></span> <?php _e('已有关键字', 'argon');?></p>
+							<div style="max-height: 150px; overflow-y: auto;">
+								<?php foreach ($blacklist_keywords_manual as $keyword): ?>
+								<span style="display: inline-block; margin: 2px 4px 2px 0; padding: 3px 8px; background: #ffcdd2; border-radius: 3px; font-size: 12px; color: #b71c1c;" title="<?php _e('手动添加', 'argon'); ?>">
+									<?php echo esc_html($keyword); ?>
+								</span>
+								<?php endforeach; ?>
+								<?php foreach ($blacklist_keywords_learned as $keyword => $stats): ?>
+								<span style="display: inline-block; margin: 2px 4px 2px 0; padding: 3px 8px; background: #fce4ec; border-radius: 3px; font-size: 12px; color: #c62828;" title="<?php echo esc_attr(sprintf(__('自动学习 | 置信度: %.0f%% | 垃圾: %d | 正常: %d', 'argon'), ($stats['confidence'] ?? 0) * 100, ($stats['spam_count'] ?? 0), ($stats['normal_count'] ?? 0))); ?>">
+									<?php echo esc_html($keyword); ?>
+								</span>
+								<?php endforeach; ?>
 							</div>
-							<?php else: ?>
-							<div style="margin-bottom: 8px;">
-								<span style="font-size: 12px; color: #999;"><?php _e('手动添加: 暂无', 'argon');?></span>
-							</div>
-							<?php endif; ?>
-							<?php if (!empty($blacklist_keywords_learned)): ?>
-							<div>
-								<span style="font-size: 12px; color: #666;"><?php _e('自动学习（高置信度）', 'argon');?> (<?php echo count($blacklist_keywords_learned); ?>):</span>
-								<div style="margin-top: 4px; max-height: 120px; overflow-y: auto;">
-									<?php foreach ($blacklist_keywords_learned as $keyword => $stats): ?>
-									<span style="display: inline-block; margin: 2px 4px 2px 0; padding: 3px 8px; background: #fce4ec; border-radius: 3px; font-size: 12px; color: #c62828;" title="<?php echo esc_attr(sprintf(__('置信度: %.0f%% | 垃圾: %d | 正常: %d', 'argon'), ($stats['confidence'] ?? 0) * 100, ($stats['spam_count'] ?? 0), ($stats['normal_count'] ?? 0))); ?>">
-										<?php echo esc_html($keyword); ?>
-									</span>
-									<?php endforeach; ?>
-								</div>
-							</div>
-							<?php else: ?>
-							<div>
-								<span style="font-size: 12px; color: #999;"><?php _e('自动学习: 暂无（系统会从AI审核结果中自动学习高置信度关键词）', 'argon');?></span>
-							</div>
-							<?php endif; ?>
 						</div>
+						<?php endif; ?>
 					</td>
 				</tr>
 
@@ -3883,7 +3769,7 @@ function themeoptions_page(){
 				<tr>
 					<th><label><?php _e('白名单', 'argon');?></label></th>
 					<td>
-						<textarea rows="4" cols="70" name="argon_comment_spam_detection_whitelist" placeholder="<?php _e('每行一个邮箱或 IP 地址', 'argon');?>"><?php echo get_option('argon_comment_spam_detection_whitelist', ''); ?></textarea>
+						<textarea rows="4" cols="70" name="argon_comment_spam_detection_whitelist" placeholder="<?php _e('每行一个邮箱或 IP 地址', 'argon');?>"><?php echo esc_textarea(get_option('argon_comment_spam_detection_whitelist', '')); ?></textarea>
 						<p class="description">
 							<?php _e('白名单中的邮箱或 IP 地址的评论不会被检测，每行一个。', 'argon');?><br/>
 							<?php _e('示例：user@example.com 或 192.168.1.1', 'argon');?>
@@ -3913,7 +3799,7 @@ function themeoptions_page(){
 					<td>
 						<label style="display: block; margin-bottom: 8px;">
 							<?php _e('置信度阈值', 'argon');?>: 
-							<input type="number" name="argon_comment_spam_detection_confidence_threshold" min="0" max="100" step="5" value="<?php echo get_option('argon_comment_spam_detection_confidence_threshold', '85'); ?>" style="width: 80px;"/> %
+							<input type="number" name="argon_comment_spam_detection_confidence_threshold" min="0" max="100" step="5" value="<?php echo esc_attr(get_option('argon_comment_spam_detection_confidence_threshold', '85')); ?>" style="width: 80px;"/> %
 						</label>
 						<p class="description">
 							<?php _e('只有 AI 判断的置信度高于此阈值时，才会自动处理垃圾评论。', 'argon');?><br/>
@@ -4017,7 +3903,7 @@ function themeoptions_page(){
 				<tr class="argon-custom-prompt-row" style="<?php echo ($argon_comment_spam_detection_prompt_mode !== 'custom') ? 'display:none;' : ''; ?>">
 					<th><label><?php _e('自定义 Prompt', 'argon');?></label></th>
 					<td>
-						<textarea name="argon_comment_spam_detection_custom_prompt" rows="8" cols="70" style="font-family: monospace;"><?php echo get_option('argon_comment_spam_detection_custom_prompt', ''); ?></textarea>
+						<textarea name="argon_comment_spam_detection_custom_prompt" rows="8" cols="70" style="font-family: monospace;"><?php echo esc_textarea(get_option('argon_comment_spam_detection_custom_prompt', '')); ?></textarea>
 						<p class="description">
 							<?php _e('自定义 AI 检测时使用的 Prompt。评论内容会自动附加在 Prompt 后面。', 'argon');?>
 						</p>
@@ -4838,7 +4724,7 @@ function themeoptions_page(){
 				<tr class="panic-mode-settings" style="<?php echo ($argon_panic_mode_enable !== 'true') ? 'display:none;' : ''; ?>">
 					<th><label><?php _e('触发标签', 'argon');?></label></th>
 					<td>
-						<textarea name="argon_panic_mode_tags" rows="4" cols="70" placeholder="<?php _e('每行一个标签', 'argon');?>"><?php echo get_option('argon_panic_mode_tags', ''); ?></textarea>
+						<textarea name="argon_panic_mode_tags" rows="4" cols="70" placeholder="<?php _e('每行一个标签', 'argon');?>"><?php echo esc_textarea(get_option('argon_panic_mode_tags', '')); ?></textarea>
 						<p class="description">
 							<?php _e('包含这些标签的文章会自动触发怕死模式。每行一个标签。', 'argon');?><br/>
 							<?php _e('示例：政治、时政、社会热点等', 'argon');?>
@@ -5046,7 +4932,7 @@ function themeoptions_page(){
 
 					<td>
 
-						<textarea name="argon_global_blocked_ips" rows="8" cols="70" placeholder="<?php _e('每行一个 IP 地址', 'argon');?>"><?php echo get_option('argon_global_blocked_ips', ''); ?></textarea>
+						<textarea name="argon_global_blocked_ips" rows="8" cols="70" placeholder="<?php _e('每行一个 IP 地址', 'argon');?>"><?php echo esc_textarea(get_option('argon_global_blocked_ips', '')); ?></textarea>
 
 						<p class="description">
 							<?php _e('被屏蔽的 IP 地址将无法提交评论、反馈、友链申请等操作。支持以下格式：', 'argon');?><br>
@@ -5065,8 +4951,8 @@ function themeoptions_page(){
 
 					<td>
 
-						<input type="number" name="argon_flink_apply_limit" min="1" max="50" value="<?php echo get_option('argon_flink_apply_limit', '3'); ?>" style="width:80px;"/> <?php _e('次', 'argon');?> / 
-						<input type="number" name="argon_flink_apply_period" min="60" max="86400" value="<?php echo get_option('argon_flink_apply_period', '3600'); ?>" style="width:100px;"/> <?php _e('秒', 'argon');?>
+						<input type="number" name="argon_flink_apply_limit" min="1" max="50" value="<?php echo esc_attr(get_option('argon_flink_apply_limit', '3')); ?>" style="width:80px;"/> <?php _e('次', 'argon');?> / 
+					<input type="number" name="argon_flink_apply_period" min="60" max="86400" value="<?php echo esc_attr(get_option('argon_flink_apply_period', '3600')); ?>" style="width:100px;"/> <?php _e('秒', 'argon');?>
 
 						<p class="description"><?php _e('限制单个用户在指定时间内提交友链申请的次数。默认：1小时内最多3次', 'argon');?></p>
 
@@ -5080,8 +4966,8 @@ function themeoptions_page(){
 
 					<td>
 
-						<input type="number" name="argon_feedback_submit_limit" min="1" max="100" value="<?php echo get_option('argon_feedback_submit_limit', '5'); ?>" style="width:80px;"/> <?php _e('次', 'argon');?> / 
-						<input type="number" name="argon_feedback_submit_period" min="60" max="86400" value="<?php echo get_option('argon_feedback_submit_period', '3600'); ?>" style="width:100px;"/> <?php _e('秒', 'argon');?>
+						<input type="number" name="argon_feedback_submit_limit" min="1" max="100" value="<?php echo esc_attr(get_option('argon_feedback_submit_limit', '5')); ?>" style="width:80px;"/> <?php _e('次', 'argon');?> / 
+						<input type="number" name="argon_feedback_submit_period" min="60" max="86400" value="<?php echo esc_attr(get_option('argon_feedback_submit_period', '3600')); ?>" style="width:100px;"/> <?php _e('秒', 'argon');?>
 
 						<p class="description"><?php _e('限制单个用户在指定时间内提交反馈的次数，防止恶意刷屏。默认：1小时内最多5次', 'argon');?></p>
 
@@ -5095,8 +4981,8 @@ function themeoptions_page(){
 
 					<td>
 
-						<input type="number" name="argon_feedback_upload_limit" min="1" max="100" value="<?php echo get_option('argon_feedback_upload_limit', '20'); ?>" style="width:80px;"/> <?php _e('张', 'argon');?> / 
-						<input type="number" name="argon_feedback_upload_period" min="60" max="86400" value="<?php echo get_option('argon_feedback_upload_period', '3600'); ?>" style="width:100px;"/> <?php _e('秒', 'argon');?>
+						<input type="number" name="argon_feedback_upload_limit" min="1" max="100" value="<?php echo esc_attr(get_option('argon_feedback_upload_limit', '20')); ?>" style="width:80px;"/> <?php _e('张', 'argon');?> / 
+						<input type="number" name="argon_feedback_upload_period" min="60" max="86400" value="<?php echo esc_attr(get_option('argon_feedback_upload_period', '3600')); ?>" style="width:100px;"/> <?php _e('秒', 'argon');?>
 
 						<p class="description"><?php _e('限制单个用户在指定时间内上传图片的数量。默认：1小时内最多20张', 'argon');?></p>
 
@@ -5110,10 +4996,10 @@ function themeoptions_page(){
 
 					<td>
 
-						<input type="number" name="argon_feedback_image_max_count" min="1" max="10" value="<?php echo get_option('argon_feedback_image_max_count', '10'); ?>" style="width:80px;"/> <?php _e('张 / 次提交', 'argon');?>&nbsp;&nbsp;
-						<input type="number" name="argon_feedback_image_max_size_kb" min="80" max="2048" value="<?php echo get_option('argon_feedback_image_max_size_kb', '250'); ?>" style="width:90px;"/> KB <?php _e('/ 张', 'argon');?>&nbsp;&nbsp;
-						<input type="number" name="argon_feedback_image_max_dimension" min="640" max="4096" value="<?php echo get_option('argon_feedback_image_max_dimension', '2048'); ?>" style="width:90px;"/> px&nbsp;&nbsp;
-						<input type="number" name="argon_feedback_image_source_max_mb" min="1" max="32" value="<?php echo get_option('argon_feedback_image_source_max_mb', '12'); ?>" style="width:80px;"/> MB <?php _e('原图', 'argon');?>
+						<input type="number" name="argon_feedback_image_max_count" min="1" max="10" value="<?php echo esc_attr(get_option('argon_feedback_image_max_count', '10')); ?>" style="width:80px;"/> <?php _e('张 / 次提交', 'argon');?>&nbsp;&nbsp;
+						<input type="number" name="argon_feedback_image_max_size_kb" min="80" max="2048" value="<?php echo esc_attr(get_option('argon_feedback_image_max_size_kb', '250')); ?>" style="width:90px;"/> KB <?php _e('/ 张', 'argon');?>&nbsp;&nbsp;
+						<input type="number" name="argon_feedback_image_max_dimension" min="640" max="4096" value="<?php echo esc_attr(get_option('argon_feedback_image_max_dimension', '2048')); ?>" style="width:90px;"/> px&nbsp;&nbsp;
+					<input type="number" name="argon_feedback_image_source_max_mb" min="1" max="32" value="<?php echo esc_attr(get_option('argon_feedback_image_source_max_mb', '12')); ?>" style="width:80px;"/> MB <?php _e('原图', 'argon');?>
 
 						<p class="description"><?php _e('控制提点建议页单次提交的图片数量、压缩后的单张大小、最长边尺寸和原图读取上限。前端会按此配置压缩，后端会再次校验。', 'argon');?></p>
 
@@ -5482,7 +5368,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="text" class="regular-text" name="argon_gravatar_cdn" value="<?php echo get_option('argon_gravatar_cdn' , ''); ?>"/>
+							<input type="text" class="regular-text" name="argon_gravatar_cdn" value="<?php echo esc_attr(get_option('argon_gravatar_cdn' , '')); ?>"/>
 
 							<p class="description"><?php _e('使用 CDN 来加速 Gravatar 在某些地区的访问，填写 CDN 地址，留空则不使用。', 'argon');?><br/><?php _e('在中国速度较快的一些 CDN :', 'argon');?><code onclick="$('input[name=\'argon_gravatar_cdn\']').val(this.innerText);" style="cursor: pointer;">gravatar.pho.ink/avatar/</code> , <code onclick="$('input[name=\'argon_gravatar_cdn\']').val(this.innerText);" style="cursor: pointer;">cdn.v2ex.com/gravatar/</code> , <code onclick="$('input[name=\'argon_gravatar_cdn\']').val(this.innerText);" style="cursor: pointer;">dn-qiniu-avatar.qbox.me/avatar/</code></p>
 
@@ -5636,7 +5522,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="text" class="regular-text" name="argon_search_filters_type" value="<?php echo get_option('argon_search_filters_type', '*post,*page,shuoshuo'); ?>" style="display: none;"/>
+							<input type="text" class="regular-text" name="argon_search_filters_type" value="<?php echo esc_attr(get_option('argon_search_filters_type', '*post,*page,shuoshuo')); ?>" style="display: none;"/>
 
 							<?php _e('拖动来自定义启用的过滤器，单击来切换默认勾选状态', 'argon');?>
 
@@ -6071,7 +5957,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="text" class="regular-text" name="argon_hide_categories" value="<?php echo get_option('argon_hide_categories'); ?>"/>
+							<input type="text" class="regular-text" name="argon_hide_categories" value="<?php echo esc_attr(get_option('argon_hide_categories')); ?>"/>
 
 							<p class="description"><?php _e('输入要隐藏的 分类/Tag 的 ID，用英文逗号分隔，留空则不隐藏', 'argon');?><br/><a onclick="$('#id_of_categories_and_tags').slideDown(500);" style="cursor: pointer;"><?php _e('点此查看', 'argon');?></a><?php _e('所有分类和 Tag 的 ID', 'argon');?>
 
@@ -6277,7 +6163,7 @@ function themeoptions_page(){
 
 						<td>
 
-							<input type="number" name="argon_trim_words_count" min="0" max="1000" value="<?php echo get_option('argon_trim_words_count', 175); ?>"/>
+							<input type="number" name="argon_trim_words_count" min="0" max="1000" value="<?php echo esc_attr(get_option('argon_trim_words_count', 175)); ?>"/>
 
 							<p class="description"><?php _e('设为 0 来隐藏文章内容预览', 'argon');?></p>
 
@@ -7741,10 +7627,6 @@ function argon_update_themeoptions(){
 
 		argon_update_option('argon_enable_pangu');
 
-		argon_update_option('argon_assets_path');
-
-		argon_update_option('argon_custom_assets_path');
-
 		argon_update_option('argon_comment_ua');
 
 		argon_update_option('argon_wp_path');
@@ -7897,6 +7779,7 @@ function argon_update_themeoptions(){
 	argon_update_option_checkbox('argon_ai_summary_enable');
 	argon_update_option('argon_ai_summary_active_api');
 	argon_update_option('argon_ai_summary_prompt');
+	argon_update_option('argon_ai_summary_thinking_mode');
 	argon_update_option('argon_ai_summary_exclude_posts');
 	
 	//AI 垃圾评论识别
