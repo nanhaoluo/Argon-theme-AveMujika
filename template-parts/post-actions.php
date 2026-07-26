@@ -174,9 +174,7 @@
 				text.text("<?php _e('折叠评论', 'argon'); ?>");
 				setTimeout(function() {
 					if (commentsArea.length > 0) {
-						$('html, body').animate({
-							scrollTop: commentsArea.offset().top - 100
-						}, 500);
+						window.ArgonMotion.scrollTo(commentsArea.offset().top - 100);
 					}
 				}, 300);
 			} else {

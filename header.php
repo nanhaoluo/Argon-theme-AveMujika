@@ -306,6 +306,7 @@
 		
 		// 集成外部资源备用机制
 		wp_enqueue_script("resource_loader", $GLOBALS['assets_path'] . "/assets/vendor/external/resource-loader.js", array(), $assets_version, false);
+		wp_enqueue_script("argon_motion", $GLOBALS['assets_path'] . "/assets/js/argon-motion.js", array(), $assets_version, false);
 
 		if (get_option('argon_disable_googlefont') != 'true') {
 			// 使用备用机制加载Google Fonts
@@ -319,7 +320,7 @@
 		}
 
 		// 加载 argon_js_merged（包含 jQuery 和其他库）- 在头部同步加载以确保后续脚本可用
-		wp_enqueue_script("argon_js_merged", $GLOBALS['assets_path'] . "/assets/argon_js_merged.js", array(), $assets_version, false);
+		wp_enqueue_script("argon_js_merged", $GLOBALS['assets_path'] . "/assets/argon_js_merged.js", array('argon_motion'), $assets_version, false);
 
 	// 加载 Prism.js 代码高亮库
 	if (get_option('argon_enable_code_highlight') == 'true') {

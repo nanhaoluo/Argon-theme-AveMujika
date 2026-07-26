@@ -16,6 +16,7 @@
         var overlay = document.createElement('div');
         overlay.className = 'git-easter-egg-overlay';
         overlay.id = 'git-easter-egg-overlay';
+        overlay.setAttribute('aria-hidden', 'true');
         overlay.innerHTML = 
             '<div class="git-easter-egg-modal">' +
                 '<div class="git-easter-egg-emoji">😈</div>' +
@@ -48,6 +49,7 @@
             setTimeout(function() {
                 badBtn.style.transition = '';
                 overlay.classList.add('show');
+                overlay.setAttribute('aria-hidden', 'false');
                 startTracking();
             }, 20);
         }, 10);
@@ -57,6 +59,7 @@
         var overlay = document.getElementById('git-easter-egg-overlay');
         if (overlay) {
             overlay.classList.remove('show');
+            overlay.setAttribute('aria-hidden', 'true');
         }
         stopTracking();
     }
@@ -201,6 +204,13 @@
         
         overlay.addEventListener('selectstart', function(e) {
             e.preventDefault();
+        });
+
+        overlay.addEventListener('click', function(e) {
+            var modal = overlay.querySelector('.git-easter-egg-modal');
+            if (e.target === overlay && window.ArgonMotion.isOutsideClick(e, modal)) {
+                hideModal();
+            }
         });
     }
     

@@ -98,10 +98,11 @@
 			if (!article) return;
 			var rect = article.getBoundingClientRect();
 			var scrollTarget = Math.max(0, window.scrollY + rect.top - 18);
-			window.scrollTo({
-				top: scrollTarget,
-				behavior: prefersReducedMotion ? 'auto' : 'smooth'
-			});
+			if (window.ArgonMotion) {
+				window.ArgonMotion.scrollTo(scrollTarget);
+			} else {
+				window.scrollTo(window.pageXOffset || 0, scrollTarget);
+			}
 		}
 
 		function enterImmersive() {

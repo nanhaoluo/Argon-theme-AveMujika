@@ -169,9 +169,11 @@ $(document).ready(function() {
         }
 
         // Animate scroll to the selected section
-        $('html, body').stop(true, true).animate({
-            scrollTop: $target.offset().top - offset
-        }, 600);
+        if (window.ArgonMotion) {
+            window.ArgonMotion.scrollTo($target.offset().top - offset);
+        } else {
+            $('html, body').stop(true, true).animate({scrollTop: $target.offset().top - offset}, 420);
+        }
 
         event.preventDefault();
     });

@@ -146,22 +146,35 @@
                 if (!this.settings.defaultExpanded) {
                     this.indexBox.find('ul.open').removeClass('open');
                 }
+                var motionDuration = window.ArgonMotion ? window.ArgonMotion.duration('popup') : null;
                 
                 subBox = indexItem.children('.' + this.settings.subItemBoxClass);
                 if (subBox.length > 0) {
-                    subBox.addClass('open').slideDown();
+                    if (motionDuration === null) {
+                        subBox.addClass('open').slideDown();
+                    } else {
+                        subBox.addClass('open').stop(true, false).slideDown(motionDuration, 'easeOutExpo');
+                    }
                 }
                 
                 var parentsBox = indexItem.parents('ul.' + this.settings.subItemBoxClass);
                 if (parentsBox.length > 0) {
-                    parentsBox.addClass('open').slideDown();
+                    if (motionDuration === null) {
+                        parentsBox.addClass('open').slideDown();
+                    } else {
+                        parentsBox.addClass('open').stop(true, false).slideDown(motionDuration, 'easeOutExpo');
+                    }
                 }
                 
                 // 如果设置了默认展开，则不折叠其他子项
                 if (!this.settings.defaultExpanded) {
                     subBox = this.indexBox.find('ul.' + this.settings.subItemBoxClass).not('.open');
                     if (subBox.length > 0) {
-                        subBox.slideUp();
+                        if (motionDuration === null) {
+                            subBox.slideUp();
+                        } else {
+                            subBox.stop(true, false).slideUp(motionDuration, 'easeOutExpo');
+                        }
                     }
                 }
                 
@@ -218,7 +231,11 @@
                     return;
                 }
 
-                scrollBox.stop(true, false).animate({scrollTop: target}, 'normal', 'easeOutExpo');
+                if (window.ArgonMotion) {
+                    window.ArgonMotion.scrollTo(target, {container: scrollBox, compact: true});
+                } else {
+                    scrollBox.stop(true, false).animate({scrollTop: target}, 'normal', 'easeOutExpo');
+                }
             },
             
             buildHtml: function(tree) {
@@ -320,9 +337,12 @@
             },
             
             scrollTo: function(eid) {
-                this.scrollBody.stop().animate({
-                    scrollTop: this.offsetTop(document.getElementById(eid.substr(1))) + 8
-                }, 'normal', 'easeOutExpo');
+                var target = this.offsetTop(document.getElementById(eid.substr(1))) + 8;
+                if (window.ArgonMotion) {
+                    window.ArgonMotion.scrollTo(target);
+                } else {
+                    this.scrollBody.stop().animate({scrollTop: target}, 'normal', 'easeOutExpo');
+                }
             },
             
             updateCurrent: function() {

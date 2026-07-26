@@ -210,6 +210,18 @@ License URI: https://www.gnu.org/licenses/gpl-3.0.html
 	--animation-normal: 250ms;
 	--animation-slow: 400ms;
 	--animation-slower: 600ms;
+	/* Semantic motion tokens: every popup, scroll and zoom reuses these values. */
+	--motion-popup-duration: 200ms;
+	--motion-popup-stagger: 20ms;
+	--motion-popup-stagger-close: 10ms;
+	--motion-layer-duration: 400ms;
+	--motion-scroll-duration: 420ms;
+	--motion-scroll-compact-duration: 260ms;
+	--motion-zoom-duration: 360ms;
+	--motion-ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+	--motion-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+	--motion-popup-offset: 10px;
+	--motion-popup-scale: 0.96;
 
 	/* 缂撳姩鍑芥暟 - Material 3 鏍囧噯鏇茬嚎 */
 	--ease-standard: cubic-bezier(0.2, 0, 0, 1);
@@ -3447,10 +3459,10 @@ html.darkmode #float_action_buttons #fabtn_toggle_darkmode i.fa-lightbulb-o {
 	max-height: calc(100vh - 70px);
 	opacity: 0;
 	pointer-events: none;
-	transform: translateX(12px) scale(0.96);
+	transform: translateX(var(--motion-popup-offset)) scale(var(--motion-popup-scale));
 	transition:
-		opacity var(--animation-normal) var(--ease-emphasized),
-		transform var(--animation-normal) var(--ease-emphasized);
+		opacity var(--motion-popup-duration) var(--motion-ease-exit),
+		transform var(--motion-popup-duration) var(--motion-ease-exit);
 	animation: none !important;
 	border-radius: 20px;
 	background: var(--color-foreground);
@@ -3465,7 +3477,7 @@ html.darkmode #float_action_buttons #fabtn_toggle_darkmode i.fa-lightbulb-o {
 #float_action_buttons.fabtns-float-left #fabtn_blog_settings_popup {
 	left: 85px;
 	right: unset;
-	transform: translateX(-12px) scale(0.96);
+	transform: translateX(calc(var(--motion-popup-offset) * -1)) scale(var(--motion-popup-scale));
 }
 
 /* 璁剧疆寮圭獥鎵撳紑鐘舵€?*/
@@ -3473,6 +3485,7 @@ html.darkmode #float_action_buttons #fabtn_toggle_darkmode i.fa-lightbulb-o {
 	opacity: 1 !important;
 	transform: none !important;
 	pointer-events: auto !important;
+	transition-timing-function: var(--motion-ease-enter);
 }
 
 .blog_settings_opened #fabtn_toggle_blog_settings_popup {
@@ -8717,8 +8730,8 @@ body.noscroll:before {
 	border-color: var(--themecolor) !important;
 	transform: translateY(0);
 	opacity: 1;
-	transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-		opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+	transition: transform var(--motion-popup-duration) var(--motion-ease-enter),
+		opacity var(--motion-popup-duration) var(--motion-ease-enter);
 }
 
 #share_show:hover {
@@ -8742,16 +8755,16 @@ body.noscroll:before {
 	transform: translateY(15px);
 	opacity: 0;
 	pointer-events: none;
-	transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-		opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+	transition: transform var(--motion-popup-duration) var(--motion-ease-exit),
+		opacity var(--motion-popup-duration) var(--motion-ease-exit);
 }
 
 /* 鍒嗕韩娓犻亾鎸夐挳鍒濆鐘?*/
 #share>a {
 	opacity: 0;
 	transform: translateY(10px);
-	transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-		opacity 0.2s ease-out;
+	transition: transform var(--motion-popup-duration) var(--motion-ease-exit),
+		opacity var(--motion-popup-duration) var(--motion-ease-exit);
 }
 
 /* 灞曞紑鐘?- 鍒嗕韩鎸夐挳涓婃粦娣″嚭 */
@@ -8759,6 +8772,7 @@ body.noscroll:before {
 	transform: translateY(-15px);
 	opacity: 0;
 	pointer-events: none;
+	transition-timing-function: var(--motion-ease-exit);
 }
 
 /* 灞曞紑鐘?- 鍒嗕韩闈㈡澘涓婃粦娣″叆 */
@@ -8766,44 +8780,46 @@ body.noscroll:before {
 	transform: translateY(0);
 	opacity: 1;
 	pointer-events: auto;
+	transition-timing-function: var(--motion-ease-enter);
 }
 
 /* 灞曞紑鏃跺悇鎸夐挳閿欒惤婊戝叆 */
 #share_container.opened #share>a {
 	opacity: 1;
 	transform: translateY(0);
+	transition-timing-function: var(--motion-ease-enter);
 }
 
 #share_container.opened #share>a:nth-child(1) {
-	transition-delay: 30ms;
+	transition-delay: 0ms;
 }
 
 #share_container.opened #share>a:nth-child(2) {
-	transition-delay: 60ms;
+	transition-delay: var(--motion-popup-stagger);
 }
 
 #share_container.opened #share>a:nth-child(3) {
-	transition-delay: 90ms;
+	transition-delay: calc(var(--motion-popup-stagger) * 2);
 }
 
 #share_container.opened #share>a:nth-child(4) {
-	transition-delay: 120ms;
+	transition-delay: calc(var(--motion-popup-stagger) * 3);
 }
 
 #share_container.opened #share>a:nth-child(5) {
-	transition-delay: 150ms;
+	transition-delay: calc(var(--motion-popup-stagger) * 4);
 }
 
 #share_container.opened #share>a:nth-child(6) {
-	transition-delay: 180ms;
+	transition-delay: calc(var(--motion-popup-stagger) * 5);
 }
 
 #share_container.opened #share>a:nth-child(7) {
-	transition-delay: 210ms;
+	transition-delay: calc(var(--motion-popup-stagger) * 6);
 }
 
 #share_container.opened #share>a:nth-child(8) {
-	transition-delay: 240ms;
+	transition-delay: calc(var(--motion-popup-stagger) * 7);
 }
 
 /* 鏀惰捣鏃跺悇鎸夐挳閿欒惤婊戝嚭 */
@@ -8812,31 +8828,31 @@ body.noscroll:before {
 }
 
 #share_container:not(.opened) #share>a:nth-child(7) {
-	transition-delay: 15ms;
+	transition-delay: var(--motion-popup-stagger-close);
 }
 
 #share_container:not(.opened) #share>a:nth-child(6) {
-	transition-delay: 30ms;
+	transition-delay: calc(var(--motion-popup-stagger-close) * 2);
 }
 
 #share_container:not(.opened) #share>a:nth-child(5) {
-	transition-delay: 45ms;
+	transition-delay: calc(var(--motion-popup-stagger-close) * 3);
 }
 
 #share_container:not(.opened) #share>a:nth-child(4) {
-	transition-delay: 60ms;
+	transition-delay: calc(var(--motion-popup-stagger-close) * 4);
 }
 
 #share_container:not(.opened) #share>a:nth-child(3) {
-	transition-delay: 75ms;
+	transition-delay: calc(var(--motion-popup-stagger-close) * 5);
 }
 
 #share_container:not(.opened) #share>a:nth-child(2) {
-	transition-delay: 90ms;
+	transition-delay: calc(var(--motion-popup-stagger-close) * 6);
 }
 
 #share_container:not(.opened) #share>a:nth-child(1) {
-	transition-delay: 105ms;
+	transition-delay: calc(var(--motion-popup-stagger-close) * 7);
 }
 
 /* 鍒嗕韩鎸夐挳閫氱敤鏍峰紡 */
@@ -11794,7 +11810,9 @@ html.darkmode.amoled-dark #content:after {
 		z-index: 1002;
 		box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
 		transform: translateX(-100%);
-		transition: transform var(--animation-normal) var(--ease-emphasized);
+		visibility: hidden;
+		transition: transform var(--motion-layer-duration) var(--motion-ease-exit),
+			visibility 0s linear var(--motion-layer-duration);
 	}
 
 	/* Promotion is scoped to the open state only. Unscoped, this fixed 300px
@@ -11803,6 +11821,9 @@ html.darkmode.amoled-dark #content:after {
 	html.leftbar-opened #leftbar {
 		transform: translateX(0);
 		will-change: transform;
+		visibility: visible;
+		transition: transform var(--motion-layer-duration) var(--motion-ease-enter),
+			visibility 0s linear 0s;
 	}
 
 	/* 绉诲姩绔晶杈规爮鍏ュ満鍔ㄧ敾鍏抽敭?*/
@@ -12011,13 +12032,17 @@ html.darkmode.amoled-dark #content:after {
 		backdrop-filter: blur(calc(var(--toolbar-blur) / 6));
 		opacity: 0;
 		visibility: hidden;
-		transition: opacity var(--animation-normal) var(--ease-standard),
-			visibility var(--animation-normal) var(--ease-standard);
+		transition: opacity var(--motion-layer-duration) var(--motion-ease-exit),
+			visibility 0s linear var(--motion-layer-duration),
+			backdrop-filter var(--motion-layer-duration) var(--motion-ease-exit);
 	}
 
 	html.leftbar-opened #sidebar_mask {
 		opacity: 1;
 		visibility: visible;
+		transition: opacity var(--motion-layer-duration) var(--motion-ease-enter),
+			visibility 0s linear 0s,
+			backdrop-filter var(--motion-layer-duration) var(--motion-ease-enter);
 	}
 
 	.leftbar-menu-item {
@@ -12475,14 +12500,17 @@ html.darkmode.amoled-dark #content:after {
 
 	/* 閬僵灞傛贰鍏ュ?*/
 	#sidebar_mask {
-		transition: opacity 0.35s var(--ease-emphasized),
-			visibility 0.35s var(--ease-emphasized),
-			backdrop-filter 0.35s var(--ease-emphasized);
+		transition: opacity var(--motion-layer-duration) var(--motion-ease-exit),
+			visibility 0s linear var(--motion-layer-duration),
+			backdrop-filter var(--motion-layer-duration) var(--motion-ease-exit);
 	}
 
 	html.leftbar-opened #sidebar_mask {
 		-webkit-backdrop-filter: blur(calc(var(--toolbar-blur) / 3));
 		backdrop-filter: blur(calc(var(--toolbar-blur) / 3));
+		transition: opacity var(--motion-layer-duration) var(--motion-ease-enter),
+			visibility 0s linear 0s,
+			backdrop-filter var(--motion-layer-duration) var(--motion-ease-enter);
 	}
 }
 
@@ -12576,24 +12604,37 @@ html.darkmode.amoled-dark #content:after {
 
 	}
 
-	#navbar_global.show+#navbar_menu_mask {
-
+	#navbar_menu_mask {
 		display: block;
-
 		position: fixed;
-
 		left: 0;
-
 		top: 0;
-
 		height: 100vh;
-
 		width: 100vw;
-
 		z-index: 1049;
-
 		background: transparent;
+		opacity: 0;
+		visibility: hidden;
+		pointer-events: none;
+		transition: opacity var(--motion-layer-duration) var(--motion-ease-exit),
+			visibility 0s linear var(--motion-layer-duration);
+	}
 
+	#navbar_global.show+#navbar_menu_mask,
+	#navbar_global.argon-navbar-opening+#navbar_menu_mask {
+		opacity: 1;
+		visibility: visible;
+		pointer-events: auto;
+		transition: opacity var(--motion-layer-duration) var(--motion-ease-enter),
+			visibility 0s linear 0s;
+	}
+
+	#navbar_global.argon-navbar-opening.collapsing {
+		transition: height var(--motion-layer-duration) var(--motion-ease-enter);
+	}
+
+	#navbar_global.argon-navbar-closing.collapsing {
+		transition: height var(--motion-layer-duration) var(--motion-ease-exit);
 	}
 
 
@@ -13262,12 +13303,15 @@ article .post-content .huhua a:before {
 	z-index: 10000;
 	opacity: 0;
 	visibility: hidden;
-	transition: opacity 0.3s ease, visibility 0.3s ease;
+	transition: opacity var(--motion-layer-duration) var(--motion-ease-exit),
+		visibility 0s linear var(--motion-layer-duration);
 }
 
 .git-easter-egg-overlay.show {
 	opacity: 1;
 	visibility: visible;
+	transition: opacity var(--motion-layer-duration) var(--motion-ease-enter),
+		visibility 0s linear 0s;
 }
 
 .git-easter-egg-modal {
@@ -13276,9 +13320,10 @@ article .post-content .huhua a:before {
 	box-shadow: 0 25px 80px rgba(0, 0, 0, 0.3);
 	padding: 40px 50px;
 	text-align: center;
-	transform: scale(0.7) translateY(30px);
+	transform: translateY(var(--motion-popup-offset)) scale(var(--motion-popup-scale));
 	opacity: 0;
-	transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+	transition: transform var(--motion-layer-duration) var(--motion-ease-exit),
+		opacity var(--motion-layer-duration) var(--motion-ease-exit);
 	max-width: 90%;
 	min-width: 300px;
 	position: relative;
@@ -13290,8 +13335,9 @@ article .post-content .huhua a:before {
 }
 
 .git-easter-egg-overlay.show .git-easter-egg-modal {
-	transform: scale(1) translateY(0);
+	transform: translateY(0) scale(1);
 	opacity: 1;
+	transition-timing-function: var(--motion-ease-enter);
 }
 
 .git-easter-egg-emoji {
@@ -13361,7 +13407,9 @@ article .post-content .huhua a:before {
 		top 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
 		transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
 		box-shadow 0.2s ease,
-		background 0.3s ease;
+		background 0.3s ease,
+		opacity var(--motion-layer-duration) var(--motion-ease-exit),
+		visibility 0s linear var(--motion-layer-duration);
 	opacity: 0;
 	visibility: hidden;
 }
@@ -13369,6 +13417,13 @@ article .post-content .huhua a:before {
 .git-easter-egg-overlay.show .git-easter-egg-btn.btn-bad {
 	opacity: 1;
 	visibility: visible;
+	transition: left 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+		top 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+		transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+		box-shadow 0.2s ease,
+		background 0.3s ease,
+		opacity var(--motion-layer-duration) var(--motion-ease-enter),
+		visibility 0s linear 0s;
 }
 
 .git-easter-egg-btn.btn-bad:hover {
@@ -17950,14 +18005,21 @@ article img:not([loading="lazy"]),
 /* 10. 绉诲姩绔晶杈规爮鍔ㄧ敾澧炲己 */
 @media screen and (max-width: 900px) {
 	#leftbar {
-		transition: transform var(--animation-normal) var(--ease-out-expo), box-shadow var(--animation-normal) var(--ease-standard);
+		transition: transform var(--motion-layer-duration) var(--motion-ease-exit),
+			box-shadow var(--motion-layer-duration) var(--motion-ease-exit),
+			visibility 0s linear var(--motion-layer-duration);
 		transform: translateX(-100%);
 		box-shadow: none;
+		visibility: hidden;
 	}
 
 	html.leftbar-opened #leftbar {
 		transform: translateX(0);
 		box-shadow: 4px 0 25px rgba(0, 0, 0, 0.15);
+		visibility: visible;
+		transition: transform var(--motion-layer-duration) var(--motion-ease-enter),
+			box-shadow var(--motion-layer-duration) var(--motion-ease-enter),
+			visibility 0s linear 0s;
 	}
 
 	#leftbar_backdrop {
@@ -18249,22 +18311,26 @@ html.darkmode .article-skeleton-thumb {
 
 /* 12. 妯℃€佹鍜屼笅鎷夎彍鍗曞姩鐢?*/
 .modal {
-	transition: opacity var(--animation-normal) var(--ease-standard);
+	opacity: 0;
+	transition: opacity var(--motion-layer-duration) var(--motion-ease-exit);
 }
 
 .modal.show {
 	opacity: 1;
+	transition-timing-function: var(--motion-ease-enter);
 }
 
-.modal-dialog {
-	transition: transform var(--animation-normal) var(--ease-emphasized-decelerate), opacity var(--animation-normal) var(--ease-standard);
-	transform: scale(0.9) translateY(-20px);
+.modal .modal-dialog,
+.modal.fade .modal-dialog {
+	transition: transform var(--motion-layer-duration) var(--motion-ease-exit), opacity var(--motion-layer-duration) var(--motion-ease-exit);
+	transform: translateY(calc(var(--motion-popup-offset) * -1)) scale(var(--motion-popup-scale));
 	opacity: 0;
 }
 
 .modal.show .modal-dialog {
 	transform: scale(1) translateY(0);
 	opacity: 1;
+	transition-timing-function: var(--motion-ease-enter);
 }
 
 .modal {
@@ -18273,10 +18339,12 @@ html.darkmode .article-skeleton-thumb {
 
 .modal-backdrop {
 	z-index: 2147483090;
+	transition: opacity var(--motion-layer-duration) var(--motion-ease-exit);
 }
 
 @media screen and (max-width: 900px) {
-	.modal-dialog.modal-bottom {
+	.modal-dialog.modal-bottom,
+	.modal.fade .modal-dialog.modal-bottom {
 		position: fixed;
 		bottom: 0;
 		left: 0;
@@ -18293,16 +18361,38 @@ html.darkmode .article-skeleton-thumb {
 
 .dropdown-menu {
 	opacity: 0;
-	transform: translateY(-10px) scale(0.95);
+	transform: translateY(calc(var(--motion-popup-offset) * -1)) scale(var(--motion-popup-scale));
 	transform-origin: top center;
-	transition: opacity var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-emphasized-decelerate), visibility var(--animation-fast);
+	animation: none !important;
+	transition: opacity var(--motion-popup-duration) var(--motion-ease-exit), transform var(--motion-popup-duration) var(--motion-ease-exit), visibility 0s linear var(--motion-popup-duration);
 	visibility: hidden;
+	pointer-events: none;
 }
 
-.dropdown-menu.show {
+.dropdown-menu.show:not(.argon-dropdown-opening):not(.argon-dropdown-closing) {
 	opacity: 1;
 	transform: translateY(0) scale(1);
 	visibility: visible;
+	pointer-events: auto;
+	transition-timing-function: var(--motion-ease-enter), var(--motion-ease-enter), linear;
+	transition-delay: 0s;
+	will-change: transform, opacity;
+}
+
+/* Bootstrap normally toggles display and .show in one frame. These lifecycle
+   classes keep the menu renderable for both the first and the final frame. */
+.dropdown-menu.argon-dropdown-opening,
+.dropdown-menu.argon-dropdown-closing {
+	display: block;
+	visibility: visible;
+	will-change: transform, opacity;
+}
+
+.dropdown-menu.show.argon-dropdown-opening,
+.dropdown-menu.show.argon-dropdown-closing {
+	opacity: 0;
+	transform: translateY(calc(var(--motion-popup-offset) * -1)) scale(var(--motion-popup-scale));
+	pointer-events: none;
 }
 
 .dropdown-item {
@@ -18313,12 +18403,13 @@ html.darkmode .article-skeleton-thumb {
 .tooltip {
 	opacity: 0;
 	transform: translateY(5px);
-	transition: opacity var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-emphasized-decelerate);
+	transition: opacity var(--motion-popup-duration) var(--motion-ease-exit), transform var(--motion-popup-duration) var(--motion-ease-exit);
 }
 
 .tooltip.show {
 	opacity: 1;
 	transform: translateY(0);
+	transition-timing-function: var(--motion-ease-enter);
 }
 
 .badge,
@@ -18833,7 +18924,7 @@ html.darkmode .comment-content .heimu[aria-expanded="true"] {
 	width: min(100%, 230px);
 	display: grid;
 	gap: 5px;
-	margin: 8px auto 0;
+	margin: 0 auto;
 	padding: 8px;
 	border: 1px solid var(--color-border-on-foreground-deeper);
 	border-radius: min(var(--card-radius, 8px), 8px);
@@ -18842,21 +18933,28 @@ html.darkmode .comment-content .heimu[aria-expanded="true"] {
 	-webkit-backdrop-filter: blur(var(--card-blur, 16px)) saturate(var(--card-saturate, 160%));
 	box-shadow: 0 10px 24px rgba(31, 35, 40, 0.08);
 	text-align: left;
+	overflow: hidden;
+	max-height: 0;
 	opacity: 0;
 	transform: translateY(-6px) scale(0.98);
 	transform-origin: top center;
 	pointer-events: none;
-	transition: opacity var(--animation-fast) var(--ease-standard),
-		transform var(--animation-fast) var(--ease-emphasized);
+	transition: opacity var(--motion-popup-duration) var(--motion-ease-exit),
+		transform var(--motion-popup-duration) var(--motion-ease-exit),
+		max-height var(--motion-popup-duration) var(--motion-ease-exit),
+		margin-top var(--motion-popup-duration) var(--motion-ease-exit);
 }
 
-.site-rss-opened .site-rss-menu,
-.site-rss-opening .site-rss-menu {
+.site-rss-opened .site-rss-menu {
 	opacity: 1;
 	transform: translateY(0) scale(1);
+	max-height: 240px;
+	margin-top: 8px;
 	pointer-events: auto;
+	transition-timing-function: var(--motion-ease-enter);
 }
 
+.site-rss-opening .site-rss-menu,
 .site-rss-closing .site-rss-menu {
 	opacity: 0;
 	transform: translateY(-5px) scale(0.98);
@@ -19346,4 +19444,27 @@ article.post.card.post-preview-layout-3>.post-header.post-header-with-thumbnail 
 		border-color: rgba(var(--themecolor-rgbstr), 0.22);
 		background: rgba(var(--themecolor-rgbstr), 0.12);
 	}
+}
+
+/* Unified popup/zoom motion for third-party surfaces loaded before style.css. */
+.pcr-app {
+	transform: translateY(var(--motion-popup-offset)) scale(var(--motion-popup-scale));
+	transform-origin: top center;
+	transition: opacity var(--motion-popup-duration) var(--motion-ease-exit),
+		transform var(--motion-popup-duration) var(--motion-ease-exit),
+		visibility 0s linear var(--motion-popup-duration) !important;
+}
+
+.pcr-app.visible {
+	transform: translateY(0) scale(1);
+	transition: opacity var(--motion-popup-duration) var(--motion-ease-enter),
+		transform var(--motion-popup-duration) var(--motion-ease-enter),
+		visibility 0s linear 0s !important;
+	will-change: transform, opacity;
+}
+
+.zoomify.zoomed,
+.zoomify-shadow.zoomed,
+.fancybox-container.fancybox-is-open .fancybox-slide--image .fancybox-content {
+	will-change: transform, opacity;
 }

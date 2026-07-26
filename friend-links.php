@@ -600,9 +600,10 @@ html.darkmode body.flinks-page {
 .flinks-add-form .form-actions .btn { display: inline-flex; align-items: center; justify-content: center; text-align: center; }
 
 /* 编辑弹窗 */
-.flink-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9998; display: none; align-items: center; justify-content: center; }
-.flink-modal-overlay.show { display: flex; }
-.flink-modal { background: var(--color-foreground); border-radius: var(--card-radius); padding: 20px; width: 90%; max-width: 560px; max-height: 90vh; overflow-y: auto; color: var(--flinks-text-main); box-shadow: 0 24px 80px rgba(0,0,0,0.28); }
+.flink-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9998; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--motion-layer-duration) var(--motion-ease-exit), visibility 0s linear var(--motion-layer-duration); }
+.flink-modal-overlay.show { opacity: 1; visibility: visible; pointer-events: auto; transition-timing-function: var(--motion-ease-enter), linear; transition-delay: 0s; }
+.flink-modal { background: var(--color-foreground); border-radius: var(--card-radius); padding: 20px; width: 90%; max-width: 560px; max-height: 90vh; overflow-y: auto; color: var(--flinks-text-main); box-shadow: 0 24px 80px rgba(0,0,0,0.28); opacity: 0; transform: translateY(var(--motion-popup-offset)) scale(var(--motion-popup-scale)); transition: opacity var(--motion-layer-duration) var(--motion-ease-exit), transform var(--motion-layer-duration) var(--motion-ease-exit); }
+.flink-modal-overlay.show .flink-modal { opacity: 1; transform: translateY(0) scale(1); transition-timing-function: var(--motion-ease-enter); }
 .flink-modal-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; color: var(--flinks-text-main); }
 .flink-modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--flinks-text-soft); padding: 0; line-height: 1; }
 .flink-modal-close:hover { color: var(--flinks-text-main); }
@@ -627,6 +628,8 @@ html.darkmode body.flinks-page {
 .flink-action-message.success { background: var(--flinks-success-bg); color: var(--flinks-success-text); }
 .flink-action-message.error { background: var(--flinks-danger-bg); color: var(--flinks-danger-text); }
 .flink-action-message.info { background: rgba(var(--themecolor-rgbstr), 0.1); color: var(--themecolor); }
+.flink-copy-tip { position: fixed; top: 50%; left: 50%; z-index: 9999; padding: 10px 20px; border-radius: 8px; background: rgba(0,0,0,0.75); color: #fff; font-size: 14px; opacity: 0; transform: translate(-50%, calc(-50% + var(--motion-popup-offset))) scale(var(--motion-popup-scale)); pointer-events: none; transition: opacity var(--motion-popup-duration) var(--motion-ease-exit), transform var(--motion-popup-duration) var(--motion-ease-exit); }
+.flink-copy-tip.is-visible { opacity: 1; transform: translate(-50%, -50%) scale(1); transition-timing-function: var(--motion-ease-enter); }
 
 @media (max-width: 768px) {
     .flinks-header-card { padding: 30px 16px 24px; }
@@ -1072,10 +1075,18 @@ function copyText(t) {
 }
 function showCopyTip() {
     var tip = document.createElement('span');
+	var hideDelay = 1200;
+	var transitionDelay = window.ArgonMotion ? window.ArgonMotion.duration('popup') : 250;
     tip.textContent = '<?php _e('已复制', 'argon'); ?>';
-    tip.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.75);color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:9999;';
+	tip.className = 'flink-copy-tip';
     document.body.appendChild(tip);
-    setTimeout(function() { tip.remove(); }, 1200);
+	requestAnimationFrame(function() {
+		requestAnimationFrame(function() { tip.classList.add('is-visible'); });
+	});
+	setTimeout(function() {
+		tip.classList.remove('is-visible');
+		setTimeout(function() { tip.remove(); }, transitionDelay);
+	}, hideDelay);
 }
 
 // 刷新验证码
@@ -1093,7 +1104,9 @@ function refreshCaptcha() {
 document.addEventListener('DOMContentLoaded', function() {
     var s = document.getElementById('apply-section');
     openApplyForm();
-    if (s) s.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (s && window.ArgonMotion) {
+		window.ArgonMotion.scrollTo(s.getBoundingClientRect().top + window.pageYOffset - (window.innerHeight - s.offsetHeight) / 2);
+	}
     
     // 清除 URL 中的申请结果参数
     if (window.history && window.history.replaceState) {
@@ -1343,7 +1356,9 @@ if (typeof initGeetest4 === 'function') {
     var editModal = document.getElementById('edit-modal');
     if (editModal) {
         editModal.addEventListener('click', function(e) {
-            if (e.target === this) closeEditModal();
+            if (e.target === this && window.ArgonMotion.isOutsideClick(e, this.querySelector('.flink-modal'))) {
+                closeEditModal();
+            }
         });
     }
 
