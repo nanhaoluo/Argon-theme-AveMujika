@@ -469,7 +469,7 @@ html.darkmode body.flinks-page {
 .flinks-category-title i { color: var(--themecolor); font-size: 16px; }
 .flinks-category-count { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--themecolor); background: rgba(var(--themecolor-rgbstr), 0.1); padding: 5px 12px; border-radius: var(--card-radius-sm); white-space: nowrap; }
 
-.flinks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 4px; padding: 14px; }
+.flinks-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 14px; }
 .flink-card { display: flex; align-items: flex-start; gap: 14px; padding: 14px; background: transparent; border-radius: var(--card-radius-sm); text-decoration: none !important; color: inherit; border: 1px solid transparent; transition: all var(--animation-fast) var(--ease-standard); min-height: 88px; position: relative; }
 .flink-card:hover { 
 	transform: translateY(-2px); 
@@ -494,10 +494,12 @@ html.darkmode body.flinks-page {
 .flink-card.editable .flink-status-badge { right: 40px; }
 .flink-card.editable .flink-status-badge.no-backlink { top: auto; right: auto; bottom: 6px; left: 6px; display: inline-flex; align-items: center; line-height: 1; padding: 4px 8px; border-radius: var(--card-radius) !important; overflow: hidden; }
 
-.flink-avatar { width: 52px; height: 52px; flex-shrink: 0; border-radius: var(--card-radius); background: var(--themecolor-gradient); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 600; color: #fff; position: relative; overflow: hidden; box-shadow: 0 2px 8px rgba(var(--themecolor-rgbstr), 0.2); transition: transform var(--animation-fast) var(--ease-standard); }
+.flink-avatar { width: var(--flink-avatar-width, 52px); max-width: 42%; height: 52px; flex-shrink: 0; border-radius: var(--card-radius); background: var(--themecolor-gradient); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 600; color: #fff; position: relative; overflow: hidden; box-shadow: 0 2px 8px rgba(var(--themecolor-rgbstr), 0.2); transition: width var(--animation-normal) var(--ease-standard), transform var(--animation-fast) var(--ease-standard); }
 .flink-card:hover .flink-avatar { transform: scale(1.05); }
 .flink-avatar::before { content: attr(data-letter); }
-.flink-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; padding: 4px; box-sizing: border-box; object-fit: contain; object-position: center; border-radius: var(--card-radius); opacity: 0; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .2)) drop-shadow(0 0 1px rgba(255, 255, 255, .22)); transition: opacity var(--animation-normal) var(--ease-standard); }
+.flink-avatar.has-image { background: transparent !important; box-shadow: none; }
+.flink-avatar.has-image::before { display: none; }
+.flink-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; box-sizing: border-box; object-fit: contain; object-position: center; border-radius: var(--card-radius); opacity: 0; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .2)) drop-shadow(0 0 1px rgba(255, 255, 255, .22)); transition: opacity var(--animation-normal) var(--ease-standard); }
 .flink-avatar img.is-loaded { opacity: 1; }
 
 .flink-info { flex: 1; min-width: 0; padding-top: 2px; }
@@ -669,10 +671,22 @@ html.darkmode .flinks-add-form input { background: var(--color-background); }
 			img.onload = function() {
 				img.dataset.avatarLoading = 'false';
 				img.classList.add('is-loaded');
+				var avatar = img.parentElement && img.parentElement.classList.contains('flink-avatar') ? img.parentElement : null;
+				if (avatar) {
+					var aspectRatio = img.naturalHeight > 0 ? img.naturalWidth / img.naturalHeight : 1;
+					var avatarWidth = Math.max(52, Math.min(144, 52 * aspectRatio));
+					avatar.style.setProperty('--flink-avatar-width', avatarWidth.toFixed(2) + 'px');
+					avatar.classList.add('has-image');
+				}
 			};
 			img.onerror = function() {
 				img.dataset.avatarLoading = 'false';
 				img.classList.remove('is-loaded');
+				var avatar = img.parentElement && img.parentElement.classList.contains('flink-avatar') ? img.parentElement : null;
+				if (avatar) {
+					avatar.classList.remove('has-image');
+					avatar.style.removeProperty('--flink-avatar-width');
+				}
 				img.removeAttribute('src');
 			};
 			img.src = source;
@@ -846,7 +860,7 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
             <a href="<?php echo esc_url($link['url']); ?>" class="flink-card <?php echo $is_admin ? 'editable' : ''; ?>" target="_blank" rel="noopener noreferrer" data-id="<?php echo esc_attr($link['id']); ?>">
                 <?php echo $status_badge; ?>
                 <?php if ($is_admin) : ?><button type="button" class="flink-edit-btn" onclick="event.preventDefault();event.stopPropagation();openEditModal('<?php echo esc_attr($link['id']); ?>')"><i class="fa fa-pencil"></i></button><?php endif; ?>
-                <div class="flink-avatar" data-letter="<?php echo esc_attr($first_letter); ?>" data-color="<?php echo $color_index; ?>">
+                <div class="flink-avatar <?php echo !empty($link['avatar']) ? 'has-image' : ''; ?>" data-letter="<?php echo esc_attr($first_letter); ?>" data-color="<?php echo $color_index; ?>">
                     <?php if (!empty($link['avatar'])) : ?><img data-avatar-src="<?php echo esc_url($link['avatar']); ?>" alt="<?php echo esc_attr($main_name); ?>" decoding="async"><?php endif; ?>
                 </div>
                 <div class="flink-info">
