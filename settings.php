@@ -53,6 +53,35 @@ function themeoptions_page(){
 				padding: 0;
 
 			}
+			.argon-spam-section-heading th {
+				padding: 24px 0 8px;
+				border-top: 1px solid #dcdcde;
+			}
+			.argon-spam-section-heading h4 {
+				margin: 0;
+				font-size: 15px;
+				line-height: 1.5;
+				color: #1d2327;
+			}
+			.argon-spam-section-heading p {
+				margin: 3px 0 0;
+				color: #646970;
+				font-size: 12px;
+				font-weight: 400;
+			}
+			.argon-spam-section-heading.is-disabled,
+			.argon-spam-dependent-row.is-disabled {
+				opacity: .5;
+			}
+			.argon-spam-rule-card {
+				max-width: 760px;
+				padding: 14px;
+				border: 1px solid #dcdcde;
+				border-radius: 6px;
+				background: #f6f7f7;
+			}
+			.argon-spam-rule-card > :first-child { margin-top: 0; }
+			.argon-spam-rule-card > :last-child { margin-bottom: 0; }
 			.argon-ai-api-table {
 				table-layout: fixed;
 				width: 100%;
@@ -3641,6 +3670,12 @@ function themeoptions_page(){
 				
 				<!-- ========== 评论审核 ========== -->
 				<tr><th class="subtitle"><h3 id="ai-spam-detection"><?php _e('评论审核', 'argon');?></h3></th></tr>
+				<tr class="argon-spam-section-heading" id="argon-spam-section-api">
+					<th colspan="2">
+						<h4><?php _e('1. AI 检测总开关与 API', 'argon');?></h4>
+						<p><?php _e('控制评论 AI 审核是否启用，并选择专用 API。', 'argon');?></p>
+					</th>
+				</tr>
 
 				<tr>
 					<th><label><?php _e('启用 AI 识别', 'argon');?></label></th>
@@ -3656,7 +3691,7 @@ function themeoptions_page(){
 					</td>
 				</tr>
 
-				<tr>
+				<tr class="argon-spam-dependent-row">
 					<th><label><?php _e('默认使用 API', 'argon');?></label></th>
 					<td>
 						<select name="argon_ai_spam_active_api">
@@ -3672,7 +3707,14 @@ function themeoptions_page(){
 					</td>
 				</tr>
 
-				<tr>
+				<tr class="argon-spam-section-heading argon-spam-dependent-row" id="argon-spam-section-strategy">
+					<th colspan="2">
+						<h4><?php _e('2. 新评论检测策略', 'argon');?></h4>
+						<p><?php _e('决定哪些新评论需要调用 AI；无效参数会随模式自动隐藏。', 'argon');?></p>
+					</th>
+				</tr>
+
+				<tr class="argon-spam-dependent-row">
 					<th><label><?php _e('实时检测模式', 'argon');?></label></th>
 					<td>
 						<select name="argon_comment_spam_detection_mode">
@@ -3691,7 +3733,7 @@ function themeoptions_page(){
 					</td>
 				</tr>
 
-				<tr>
+				<tr class="argon-spam-dependent-row argon-spam-sample-row">
 					<th><label><?php _e('抽查基础概率', 'argon');?></label></th>
 					<td>
 						<input type="number" name="argon_comment_spam_detection_sample_rate" min="1" max="100" value="<?php echo esc_attr(get_option('argon_comment_spam_detection_sample_rate', '20')); ?>" style="width: 80px;"/> %
@@ -3703,7 +3745,14 @@ function themeoptions_page(){
 					</td>
 				</tr>
 
-				<tr>
+				<tr class="argon-spam-section-heading argon-spam-dependent-row" id="argon-spam-section-rules">
+					<th colspan="2">
+						<h4><?php _e('3. 关键词与本地规则', 'argon');?></h4>
+						<p><?php _e('触发词、人工黑名单与自动学习规则分开管理，规则来源互不覆盖。', 'argon');?></p>
+					</th>
+				</tr>
+
+				<tr class="argon-spam-dependent-row argon-spam-rules-row argon-spam-trigger-row">
 					<th><label><?php _e('触发关键字', 'argon');?></label></th>
 					<td>
 						<textarea name="argon_comment_spam_detection_trigger_keywords" rows="4" cols="70" placeholder="<?php _e('每行一个关键字', 'argon');?>"><?php echo esc_textarea(get_option('argon_comment_spam_detection_trigger_keywords', '')); ?></textarea>
@@ -3714,47 +3763,25 @@ function themeoptions_page(){
 					</td>
 				</tr>
 
-				<tr>
-					<th><label><?php _e('黑名单关键字', 'argon');?></label></th>
+				<tr class="argon-spam-dependent-row argon-spam-rules-row">
+					<th><label><?php _e('手动黑名单', 'argon');?></label></th>
 					<td>
 						<textarea name="argon_comment_spam_detection_keywords" rows="4" cols="70" placeholder="<?php _e('每行一个关键字', 'argon');?>"><?php echo esc_textarea(get_option('argon_comment_spam_detection_keywords', '')); ?></textarea>
 						<p class="description">
-							<?php _e('包含这些关键字的评论会被直接标记为垃圾评论，无需 AI 检测。每行一个关键字。', 'argon');?><br/>
-							<?php _e('适用于明确的垃圾内容，如特定广告词、违禁词等。', 'argon');?>
+							<?php _e('由管理员维护的确定性规则；命中后直接拦截，不调用 AI。每行一个关键字。', 'argon');?><br/>
+							<?php _e('自动学习规则不会写入此列表，便于追踪每条规则的来源。', 'argon');?>
 						</p>
-						<?php
-						$blacklist_learned_keywords = get_option('argon_comment_spam_learned_keywords', []);
-						$blacklist_keywords_manual = array_filter(array_map('trim', explode("\n", get_option('argon_comment_spam_detection_keywords', ''))));
-						$blacklist_keywords_learned = [];
-						if (!empty($blacklist_learned_keywords)) {
-							foreach ($blacklist_learned_keywords as $keyword => $stats) {
-								if (!in_array($keyword, $blacklist_keywords_manual) && ($stats['confidence'] ?? 0) > 0.85 && ($stats['spam_count'] ?? 0) >= 3) {
-									$blacklist_keywords_learned[$keyword] = $stats;
-								}
-							}
-						}
-						?>
-						<?php if (!empty($blacklist_keywords_manual) || !empty($blacklist_keywords_learned)): ?>
-						<div class="argon-keyword-cache-display" style="margin-top: 15px; padding: 12px; background: #fef6f6; border: 1px solid #f5c6cb; border-radius: 4px;">
-							<p style="margin: 0 0 8px 0; font-weight: 600; color: #721c24;"><span class="dashicons dashicons-database-import" style="margin-top: 2px;"></span> <?php _e('已有关键字', 'argon');?></p>
-							<div style="max-height: 150px; overflow-y: auto;">
-								<?php foreach ($blacklist_keywords_manual as $keyword): ?>
-								<span style="display: inline-block; margin: 2px 4px 2px 0; padding: 3px 8px; background: #ffcdd2; border-radius: 3px; font-size: 12px; color: #b71c1c;" title="<?php _e('手动添加', 'argon'); ?>">
-									<?php echo esc_html($keyword); ?>
-								</span>
-								<?php endforeach; ?>
-								<?php foreach ($blacklist_keywords_learned as $keyword => $stats): ?>
-								<span style="display: inline-block; margin: 2px 4px 2px 0; padding: 3px 8px; background: #fce4ec; border-radius: 3px; font-size: 12px; color: #c62828;" title="<?php echo esc_attr(sprintf(__('自动学习 | 置信度: %.0f%% | 垃圾: %d | 正常: %d', 'argon'), ($stats['confidence'] ?? 0) * 100, ($stats['spam_count'] ?? 0), ($stats['normal_count'] ?? 0))); ?>">
-									<?php echo esc_html($keyword); ?>
-								</span>
-								<?php endforeach; ?>
-							</div>
-						</div>
-						<?php endif; ?>
 					</td>
 				</tr>
 
-				<tr>
+				<tr class="argon-spam-section-heading argon-spam-dependent-row" id="argon-spam-section-exclusions">
+					<th colspan="2">
+						<h4><?php _e('4. 检测豁免', 'argon');?></h4>
+						<p><?php _e('按登录状态、邮箱或 IP 跳过可信评论者。', 'argon');?></p>
+					</th>
+				</tr>
+
+				<tr class="argon-spam-dependent-row">
 					<th><label><?php _e('检测范围', 'argon');?></label></th>
 					<td>
 						<?php $argon_comment_spam_detection_exclude_logged_in = get_option('argon_comment_spam_detection_exclude_logged_in', 'true'); ?>
@@ -3766,7 +3793,7 @@ function themeoptions_page(){
 					</td>
 				</tr>
 
-				<tr>
+				<tr class="argon-spam-dependent-row">
 					<th><label><?php _e('白名单', 'argon');?></label></th>
 					<td>
 						<textarea rows="4" cols="70" name="argon_comment_spam_detection_whitelist" placeholder="<?php _e('每行一个邮箱或 IP 地址', 'argon');?>"><?php echo esc_textarea(get_option('argon_comment_spam_detection_whitelist', '')); ?></textarea>
@@ -3777,8 +3804,15 @@ function themeoptions_page(){
 					</td>
 				</tr>
 
-				<tr>
-					<th><label><?php _e('自动处理方式', 'argon');?></label></th>
+				<tr class="argon-spam-section-heading argon-spam-dependent-row" id="argon-spam-section-decision">
+					<th colspan="2">
+						<h4><?php _e('5. 判定阈值与处理动作', 'argon');?></h4>
+						<p><?php _e('配置 AI 判断强度，以及高、低置信度结果的处理方式。', 'argon');?></p>
+					</th>
+				</tr>
+
+				<tr class="argon-spam-dependent-row argon-spam-decision-row">
+					<th><label><?php _e('高置信度处理', 'argon');?></label></th>
 					<td>
 						<select name="argon_comment_spam_detection_auto_action">
 							<?php $argon_comment_spam_detection_auto_action = get_option('argon_comment_spam_detection_auto_action', 'trash'); ?>
@@ -3786,15 +3820,11 @@ function themeoptions_page(){
 							<option value="hold" <?php if ($argon_comment_spam_detection_auto_action=='hold'){echo 'selected';} ?>><?php _e('标记为待审核', 'argon');?></option>
 							<option value="mark" <?php if ($argon_comment_spam_detection_auto_action=='mark'){echo 'selected';} ?>><?php _e('仅标记不处理', 'argon');?></option>
 						</select>
-						<p class="description">
-							<strong><?php _e('自动移入回收站', 'argon');?>：</strong><?php _e('检测到垃圾评论立即移入回收站（推荐）', 'argon');?><br/>
-							<strong><?php _e('标记为待审核', 'argon');?>：</strong><?php _e('将垃圾评论状态改为待审核，需要管理员手动审核', 'argon');?><br/>
-							<strong><?php _e('仅标记不处理', 'argon');?>：</strong><?php _e('只在评论元数据中标记，不改变评论状态', 'argon');?>
-						</p>
+						<p class="description"><?php _e('仅当 AI 判为垃圾且置信度达到下方阈值时执行。低于阈值或 AI 建议复核的评论统一转为待审核。', 'argon');?></p>
 					</td>
 				</tr>
 
-				<tr>
+				<tr class="argon-spam-dependent-row argon-spam-decision-row">
 					<th><label><?php _e('自动处理阈值', 'argon');?></label></th>
 					<td>
 						<label style="display: block; margin-bottom: 8px;">
@@ -3802,14 +3832,12 @@ function themeoptions_page(){
 							<input type="number" name="argon_comment_spam_detection_confidence_threshold" min="0" max="100" step="5" value="<?php echo esc_attr(get_option('argon_comment_spam_detection_confidence_threshold', '85')); ?>" style="width: 80px;"/> %
 						</label>
 						<p class="description">
-							<?php _e('只有 AI 判断的置信度高于此阈值时，才会自动处理垃圾评论。', 'argon');?><br/>
-							<?php _e('建议值：小型博客 90%，中型博客 85%，大型博客 80%', 'argon');?><br/>
-							<?php _e('置信度低于阈值的评论会被标记为待审核，由管理员人工判断。', 'argon');?>
+							<?php _e('达到阈值才执行高置信度处理；建议值 85%。证据不足时保留给管理员复核。', 'argon');?>
 						</p>
 					</td>
 				</tr>
 
-				<tr>
+				<tr class="argon-spam-dependent-row argon-spam-rules-row">
 					<th><label><?php _e('黑名单拦截通知', 'argon');?></label></th>
 					<td>
 						<?php $argon_comment_spam_blacklist_notify = get_option('argon_comment_spam_blacklist_notify', 'true'); ?>
@@ -3823,7 +3851,7 @@ function themeoptions_page(){
 					</td>
 				</tr>
 
-				<tr>
+				<tr class="argon-spam-dependent-row argon-spam-rules-row">
 					<th><label><?php _e('关键字优化日志', 'argon');?></label></th>
 					<td>
 						<?php
@@ -3832,6 +3860,10 @@ function themeoptions_page(){
 							// 倒序显示，最新的在前
 							$optimization_log = array_reverse($optimization_log);
 						?>
+							<details class="argon-spam-rule-card">
+								<summary style="cursor: pointer; font-weight: 600;">
+									<?php printf(__('查看 %d 条误判复审优化记录', 'argon'), count($optimization_log)); ?>
+								</summary>
 							<div style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 15px; background: #f9f9f9;">
 								<?php foreach ($optimization_log as $log): ?>
 									<div style="background: white; padding: 12px; margin-bottom: 10px; border-left: 3px solid #5e72e4; border-radius: 3px;">
@@ -3878,40 +3910,41 @@ function themeoptions_page(){
 									<?php _e('清除日志', 'argon'); ?>
 								</button>
 							</p>
+							</details>
 						<?php else: ?>
 							<p class="description"><?php _e('暂无优化记录。当用户反馈黑名单误判并通过 AI 复审后，系统会自动优化关键字并记录在此。', 'argon');?></p>
 						<?php endif; ?>
 					</td>
 				</tr>
 
-				<tr>
+				<tr class="argon-spam-dependent-row argon-spam-decision-row">
 					<th><label><?php _e('Prompt 模式', 'argon');?></label></th>
 					<td>
 						<select name="argon_comment_spam_detection_prompt_mode">
 							<?php $argon_comment_spam_detection_prompt_mode = get_option('argon_comment_spam_detection_prompt_mode', 'standard'); ?>
-							<option value="minimal" <?php if ($argon_comment_spam_detection_prompt_mode=='minimal'){echo 'selected';} ?>><?php _e('极简模式（省 token）', 'argon');?></option>
-							<option value="standard" <?php if ($argon_comment_spam_detection_prompt_mode=='standard'){echo 'selected';} ?>><?php _e('标准模式（推荐）', 'argon');?></option>
-							<option value="enhanced" <?php if ($argon_comment_spam_detection_prompt_mode=='enhanced'){echo 'selected';} ?>><?php _e('增强模式（更准确）', 'argon');?></option>
+							<option value="minimal" <?php if ($argon_comment_spam_detection_prompt_mode=='minimal'){echo 'selected';} ?>><?php _e('极简模式（低成本）', 'argon');?></option>
+							<option value="standard" <?php if ($argon_comment_spam_detection_prompt_mode=='standard'){echo 'selected';} ?>><?php _e('标准模式（均衡，推荐）', 'argon');?></option>
+							<option value="enhanced" <?php if ($argon_comment_spam_detection_prompt_mode=='enhanced'){echo 'selected';} ?>><?php _e('增强模式（深度识别）', 'argon');?></option>
 							<option value="custom" <?php if ($argon_comment_spam_detection_prompt_mode=='custom'){echo 'selected';} ?>><?php _e('自定义 Prompt', 'argon');?></option>
 						</select>
 						<p class="description">
-							<?php _e('不同模式使用不同的 Prompt，平衡准确性和 API 成本', 'argon');?>
+							<?php _e('三个预设均包含结构化输出、变体识别、提示词注入防护和引用场景误判保护；增强模式会增加深度核验。', 'argon');?>
 						</p>
 					</td>
 				</tr>
 
-				<tr class="argon-custom-prompt-row" style="<?php echo ($argon_comment_spam_detection_prompt_mode !== 'custom') ? 'display:none;' : ''; ?>">
+				<tr class="argon-spam-dependent-row argon-spam-decision-row argon-custom-prompt-row" style="<?php echo ($argon_comment_spam_detection_prompt_mode !== 'custom') ? 'display:none;' : ''; ?>">
 					<th><label><?php _e('自定义 Prompt', 'argon');?></label></th>
 					<td>
 						<textarea name="argon_comment_spam_detection_custom_prompt" rows="8" cols="70" style="font-family: monospace;"><?php echo esc_textarea(get_option('argon_comment_spam_detection_custom_prompt', '')); ?></textarea>
 						<p class="description">
-							<?php _e('自定义 AI 检测时使用的 Prompt。评论内容会自动附加在 Prompt 后面。', 'argon');?>
+							<?php _e('自定义检测规则。系统仍会强制追加不可信数据边界和 JSON 输出契约，评论内容不会获得指令权限。', 'argon');?>
 						</p>
 					</td>
 				</tr>
 
-				<tr>
-					<th><label><?php _e('关键词缓存状态', 'argon');?></label></th>
+				<tr class="argon-spam-dependent-row argon-spam-rules-row">
+					<th><label><?php _e('自动学习规则', 'argon');?></label></th>
 					<td>
 						<?php
 						$learned_keywords = get_option('argon_comment_spam_learned_keywords', []);
@@ -3919,18 +3952,18 @@ function themeoptions_page(){
 						$high_confidence_count = 0;
 						if (!empty($learned_keywords)) {
 							foreach ($learned_keywords as $k => $v) {
-								if (isset($v['confidence']) && $v['confidence'] > 0.9 && isset($v['spam_count']) && $v['spam_count'] >= 3) {
+								if (argon_is_learned_spam_rule_ready($v)) {
 									$high_confidence_count++;
 								}
 							}
 						}
 						?>
-						<div class="argon-keyword-cache-status" style="padding: 12px; background: #f8f9fe; border: 1px solid #d0d5dd; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+						<div class="argon-keyword-cache-status argon-spam-rule-card">
 							<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid #e9ecef;">
-								<strong style="font-size: 14px; color: #1d2327;"><?php _e('关键词智能管理', 'argon'); ?></strong>
+								<strong style="font-size: 14px; color: #1d2327;"><?php _e('本地学习规则', 'argon'); ?></strong>
 							</div>
 							<p style="margin: 0; font-size: 13px;">
-								<?php printf(__('当前本地特征库包含 %d 个关键词，其中 %d 个已进入高置信度快速路径（可直接拦截以节省 AI 费用）。', 'argon'), count($learned_keywords), $high_confidence_count); ?>
+								<?php printf(__('已学习 %d 条候选规则，其中 %d 条满足高置信度快速拦截条件。', 'argon'), count($learned_keywords), $high_confidence_count); ?>
 							</p>
 							
 							<?php if (!empty($learned_keywords)): ?>
@@ -3939,7 +3972,7 @@ function themeoptions_page(){
 									<span class="dashicons dashicons-list-view" style="margin-top: 2px; font-size: 14px;"></span> <?php _e('查看关键词列表', 'argon'); ?>
 								</button>
 								<button type="button" class="button button-small" id="argon-clear-learned-keywords" style="margin-left: 5px;">
-									<?php _e('清空学习缓存', 'argon'); ?>
+									<?php _e('清空学习规则', 'argon'); ?>
 								</button>
 							</div>
 							<div class="keyword-list-display" id="keyword-list-display" style="display: none; margin-top: 10px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; max-height: 300px; overflow-y: auto;">
@@ -3965,7 +3998,7 @@ function themeoptions_page(){
 											$confidence = isset($stats['confidence']) ? round($stats['confidence'] * 100, 1) : 0;
 											$spam_count = isset($stats['spam_count']) ? $stats['spam_count'] : 0;
 											$normal_count = isset($stats['normal_count']) ? $stats['normal_count'] : 0;
-											$is_high = $confidence > 90 && $spam_count >= 3;
+											$is_high = argon_is_learned_spam_rule_ready($stats);
 										?>
 										<tr>
 											<td>
@@ -3997,13 +4030,13 @@ function themeoptions_page(){
 							<?php else: ?>
 							<div style="margin-top: 10px;">
 								<button type="button" class="button button-small" id="argon-clear-learned-keywords">
-									<?php _e('清空学习缓存', 'argon'); ?>
+									<?php _e('清空学习规则', 'argon'); ?>
 								</button>
 							</div>
 							<?php endif; ?>
 							
 						<p class="description" style="margin-top: 10px;">
-							<?php _e('系统会自动从 AI 审计结果中提取共性特征并进行交叉训练和遗传修正。命中高置信度特征的评论将不再调用 AI，直接本地返回。', 'argon');?>
+							<?php _e('系统从高置信度 AI 结果中学习候选特征。只有多次命中、置信度高于 92% 且没有正常样本的规则才会本地快速拦截；学习规则不会进入手动黑名单。', 'argon');?>
 						</p>
 						
 						<!-- 关键词编辑模态框 -->
@@ -4048,8 +4081,15 @@ function themeoptions_page(){
 					</td>
 				</tr>
 
-				<tr>
-					<th><label><?php _e('全站扫描', 'argon');?></label></th>
+				<tr class="argon-spam-section-heading argon-spam-dependent-row" id="argon-spam-section-history">
+					<th colspan="2">
+						<h4><?php _e('6. 历史评论扫描', 'argon');?></h4>
+						<p><?php _e('按需检查尚未经过 AI 审核的已有评论。', 'argon');?></p>
+					</th>
+				</tr>
+
+				<tr class="argon-spam-dependent-row">
+					<th><label><?php _e('历史评论扫描', 'argon');?></label></th>
 					<td>
 						<button type="button" class="button button-primary" id="argon-spam-scan-all">
 							<span class="dashicons dashicons-search" style="margin-top: 3px;"></span>
@@ -4073,8 +4113,7 @@ function themeoptions_page(){
 						</div>
 						
 						<p class="description">
-							<?php _e('扫描现有评论，识别垃圾评论。自动跳过已经过 AI 审核的评论，避免重复检测。', 'argon');?><br/>
-							<?php _e('检测到的垃圾评论会被标记，您可以选择性地移入回收站。', 'argon');?>
+							<?php _e('自动跳过已有 AI 审核记录的评论，避免重复消耗 API。扫描结果先集中展示，再由管理员选择处理。', 'argon');?>
 						</p>
 					</td>
 				</tr>
@@ -4391,16 +4430,48 @@ function themeoptions_page(){
 						});
 					});
 					
-					// ========== Prompt 模式切换 ==========
-					$('select[name="argon_comment_spam_detection_prompt_mode"]').on('change', function() {
-						if ($(this).val() === 'custom') {
-							$('.argon-custom-prompt-row').slideDown();
-						} else {
-							$('.argon-custom-prompt-row').slideUp();
+					// ========== 评论审核分区与条件字段 ==========
+					// 将同属“关键词与本地规则”的兼容旧字段归拢到第三分区。
+					$('.argon-spam-rules-row').insertBefore($('#argon-spam-section-exclusions'));
+
+					function toggleSpamReviewRow($row, visible, animate) {
+						$row.stop(true, true);
+						if (!animate) {
+							$row.toggle(visible);
+							return;
 						}
+						if (visible) {
+							$row.slideDown(200);
+						} else {
+							$row.slideUp(200);
+						}
+					}
+
+					function syncSpamReviewSettings(animate) {
+						let enabled = $('input[name="argon_comment_spam_detection_enable"]').is(':checked');
+						let mode = $('select[name="argon_comment_spam_detection_mode"]').val();
+						let promptMode = $('select[name="argon_comment_spam_detection_prompt_mode"]').val();
+						$('.argon-spam-dependent-row')
+							.toggleClass('is-disabled', !enabled)
+							.attr('aria-disabled', enabled ? 'false' : 'true')
+							.find('input, select, textarea, button')
+							.prop('disabled', !enabled);
+
+						toggleSpamReviewRow($('.argon-spam-sample-row'), enabled && mode === 'sample', animate);
+						toggleSpamReviewRow($('.argon-spam-trigger-row'), enabled && (mode === 'keyword' || mode === 'sample'), animate);
+						toggleSpamReviewRow($('.argon-custom-prompt-row'), enabled && promptMode === 'custom', animate);
+					}
+
+					$('input[name="argon_comment_spam_detection_enable"], select[name="argon_comment_spam_detection_mode"], select[name="argon_comment_spam_detection_prompt_mode"]').on('change', function() {
+						syncSpamReviewSettings(true);
 					});
+					$('#main_form').on('submit', function() {
+						// 提交前恢复字段，避免关闭总开关时把已保存的从属配置误清空。
+						$('.argon-spam-dependent-row').find('input, select, textarea, button').prop('disabled', false);
+					});
+					syncSpamReviewSettings(false);
 					
-					// ========== 全站扫描 ==========
+					// ========== 历史评论扫描 ==========
 					let scanInProgress = false;
 					
 					function startSpamScan(scanType) {
@@ -4678,9 +4749,9 @@ function themeoptions_page(){
 						});
 					});
 
-					// 清空学习缓存
+					// 清空自动学习规则
 					$(document).on('click', '#argon-clear-learned-keywords', function() {
-						if (!confirm('<?php _e('确定要清空所有已学习的关键词缓存吗？这将导致系统需要重新通过 AI 学习特征。', 'argon'); ?>')) {
+						if (!confirm('<?php _e('确定要清空所有自动学习规则吗？之后系统需要重新通过 AI 积累特征。', 'argon'); ?>')) {
 							return;
 						}
 						let $btn = $(this);
@@ -4694,7 +4765,7 @@ function themeoptions_page(){
 								location.reload();
 							} else {
 								alert(response.data);
-								$btn.prop('disabled', false).text('<?php _e('清空学习缓存', 'argon'); ?>');
+								$btn.prop('disabled', false).text('<?php _e('清空学习规则', 'argon'); ?>');
 							}
 						});
 					});
