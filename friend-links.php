@@ -587,7 +587,7 @@ html.darkmode body.flinks-page {
 .flinks-pending-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .flinks-pending-actions .btn { padding: 4px 12px; font-size: 12px; }
 
-.flinks-add-form { background: var(--flinks-surface-soft); border-radius: var(--card-radius); padding: 14px; border: 1px solid var(--color-border-on-foreground); }
+.flinks-add-form { background: transparent; border-radius: 0; padding: 0; border: 0; }
 .flinks-add-form .form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 8px; }
 .flinks-add-form .form-row.full { grid-template-columns: 1fr; }
 .flinks-add-form label { font-size: 12px; font-weight: 500; color: var(--color-text-deeper); margin-bottom: 3px; display: block; }
