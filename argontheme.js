@@ -5245,7 +5245,7 @@ function scrollCatalogItemIntoView(indexScrollBox, indexItem, centerWhenNeeded) 
 	if (Math.abs(target - scrollTop) < 4) {
 		return;
 	}
-	scrollBox.stop(true, false).animate({ scrollTop: target }, 180, "linear");
+	scrollBox.stop(true, false).animate({ scrollTop: target }, "normal", "easeOutExpo");
 }
 
 function createVirtualHeadIndexInstance(options, virtualizer) {

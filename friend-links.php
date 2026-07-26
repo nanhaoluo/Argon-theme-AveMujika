@@ -469,7 +469,7 @@ html.darkmode body.flinks-page {
 .flinks-category-title i { color: var(--themecolor); font-size: 16px; }
 .flinks-category-count { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--themecolor); background: rgba(var(--themecolor-rgbstr), 0.1); padding: 5px 12px; border-radius: var(--card-radius-sm); white-space: nowrap; }
 
-.flinks-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 14px; }
+.flinks-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 4px; padding: 14px; }
 .flink-card { display: flex; align-items: flex-start; gap: 14px; padding: 14px; background: transparent; border-radius: var(--card-radius-sm); text-decoration: none !important; color: inherit; border: 1px solid transparent; transition: all var(--animation-fast) var(--ease-standard); min-height: 88px; position: relative; }
 .flink-card:hover { 
 	transform: translateY(-2px); 
@@ -869,7 +869,7 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
                         <?php if ($sub_name) : ?><span class="sub-name"><?php echo esc_html($sub_name); ?></span><?php endif; ?>
                         <?php if (!empty($link['verified'])) : ?><i class="fa fa-check-circle flink-verified"></i><?php endif; ?>
                     </div>
-                    <div class="flink-desc"><?php echo esc_html($desc); ?></div>
+                    <div class="flink-desc" title="<?php echo esc_attr($desc); ?>"><?php echo esc_html($desc); ?></div>
                     <div class="flink-url">
                         <span class="flink-url-text"><i class="fa fa-link" style="margin-right:4px;font-size:10px;"></i><?php echo esc_html($host); ?></span>
                         <i class="fa fa-external-link flink-open-icon" aria-hidden="true"></i>

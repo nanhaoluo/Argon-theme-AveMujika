@@ -850,7 +850,7 @@ html.darkmode .feedback-admin-stat .stat-label { color: #aaa; }
 
 /* 本页图片预览 */
 body.feedback-viewer-open { overflow: hidden !important; }
-.feedback-image-viewer { --feedback-viewer-duration: 180ms; --feedback-viewer-easing: cubic-bezier(.16, 1, .3, 1); --feedback-viewer-glass: rgba(18, 23, 36, .52); --feedback-viewer-glass-hover: rgba(31, 38, 55, .68); position: fixed; inset: 0; z-index: 10050; display: block; padding: 0; background: rgba(8, 11, 18, .88); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--feedback-viewer-duration) var(--feedback-viewer-easing), visibility var(--feedback-viewer-duration) var(--feedback-viewer-easing); }
+.feedback-image-viewer { --feedback-viewer-duration: 360ms; --feedback-viewer-easing: cubic-bezier(.16, 1, .3, 1); --feedback-viewer-glass: rgba(18, 23, 36, .52); --feedback-viewer-glass-hover: rgba(31, 38, 55, .68); position: fixed; inset: 0; z-index: 10050; display: block; padding: 0; background: rgba(8, 11, 18, .88); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--feedback-viewer-duration) var(--feedback-viewer-easing), visibility var(--feedback-viewer-duration) var(--feedback-viewer-easing); }
 .feedback-image-viewer.is-open { opacity: 1; visibility: visible; pointer-events: auto; }
 .feedback-image-viewer.is-closing { opacity: 0; pointer-events: none; }
 .feedback-viewer-topbar { position: absolute; top: max(16px, env(safe-area-inset-top)); left: 16px; right: 16px; z-index: 4; margin: 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; color: #fff; pointer-events: none; transform: translateY(-10px); transition: transform var(--feedback-viewer-duration) var(--feedback-viewer-easing); }
@@ -1637,7 +1637,7 @@ function initFeedbackImageViewer() {
 		if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 0;
 		let rawDuration = getComputedStyle(viewer).getPropertyValue('--feedback-viewer-duration').trim();
 		let duration = parseFloat(rawDuration);
-		if (!Number.isFinite(duration)) return 180;
+		if (!Number.isFinite(duration)) return 360;
 		return rawDuration.indexOf('ms') !== -1 ? duration : duration * 1000;
 	}
 

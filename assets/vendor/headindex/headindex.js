@@ -218,7 +218,7 @@
                     return;
                 }
 
-                scrollBox.stop(true, false).animate({scrollTop: target}, 180, 'linear');
+                scrollBox.stop(true, false).animate({scrollTop: target}, 'normal', 'easeOutExpo');
             },
             
             buildHtml: function(tree) {
