@@ -18457,260 +18457,203 @@ html.darkmode .article-skeleton-thumb {
 /* ========== End of Modern UI Enhancements ========== */
 
 
-.argon-hidden-text {
-	transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease, border-radius 0.3s ease, filter 0.3s ease;
+/* Theme-native spoiler, curtain and blurred text effects. */
+.argon-hidden-text,
+.heimu,
+.color-curtain,
+.text-blur,
+.huhua {
+	-webkit-box-decoration-break: clone;
+	box-decoration-break: clone;
+	border-radius: calc(var(--card-radius, 8px) * .38);
+	transition: color var(--animation-fast, .2s) ease, background-color var(--animation-fast, .2s) ease, box-shadow var(--animation-fast, .2s) ease, filter var(--text-blur-transition-time, .2s) ease;
 }
 
+.heimu,
+a.heimu,
 .argon-hidden-text-background {
-	background-color: #252525;
-	color: #252525;
-	text-shadow: none;
-	border-radius: 2px;
-	padding: 0 2px;
-}
-
-.argon-hidden-text-background:hover,
-.argon-hidden-text-background:active {
-	color: #fff;
-}
-
-html.darkmode .argon-hidden-text-background {
-	background-color: #ddd;
-	color: #ddd;
-}
-
-html.darkmode .argon-hidden-text-background:hover,
-html.darkmode .argon-hidden-text-background:active {
-	color: #000;
-}
-
-.argon-hidden-text-blur {
-	filter: blur(5px);
-	-webkit-filter: blur(5px);
-	cursor: default;
-	user-select: none;
-}
-
-.argon-hidden-text-blur:hover,
-.argon-hidden-text-blur:active {
-	filter: none;
-	-webkit-filter: none;
-	user-select: auto;
-}
-
-/* Special inline effects used in posts, comments, and shuoshuo content. */
-.post-content .heimu,
-.post-content a.heimu,
-.comment-item-text .heimu,
-.comment-item-text a.heimu,
-.shuoshuo-content .heimu,
-.shuoshuo-content a.heimu,
-.post-content .color-curtain,
-.comment-item-text .color-curtain,
-.shuoshuo-content .color-curtain,
-.post-content .argon-hidden-text-background,
-.comment-item-text .argon-hidden-text-background,
-.shuoshuo-content .argon-hidden-text-background {
-	display: inline;
-	padding: 0 2px;
-	border-radius: 2px;
-	background-image: none !important;
-	background-position: initial !important;
-	background-repeat: initial !important;
-	background-size: auto !important;
+	padding: .08em .32em;
+	background: var(--color-text-deeper, #252525) !important;
+	color: var(--color-text-deeper, #252525) !important;
 	text-shadow: none !important;
 	text-decoration: none !important;
 	cursor: pointer;
-	transition: color 0.2s ease, background-color 0.2s ease;
 }
 
-.post-content .heimu,
-.post-content a.heimu,
-.comment-item-text .heimu,
-.comment-item-text a.heimu,
-.shuoshuo-content .heimu,
-.shuoshuo-content a.heimu,
-.post-content .argon-hidden-text-background,
-.comment-item-text .argon-hidden-text-background,
-.shuoshuo-content .argon-hidden-text-background {
-	background-color: #252525 !important;
-	background-image: none !important;
-	color: #252525 !important;
+article .post-content .heimu,
+article .entry-content .heimu,
+.article-content .heimu {
+	background: var(--color-text-deeper, #252525) !important;
+	color: var(--color-text-deeper, #252525) !important;
 }
 
-.post-content .heimu:hover,
-.post-content .heimu:active,
-.post-content a.heimu:hover,
-.post-content a.heimu:active,
-.comment-item-text .heimu:hover,
-.comment-item-text .heimu:active,
-.comment-item-text a.heimu:hover,
-.comment-item-text a.heimu:active,
-.shuoshuo-content .heimu:hover,
-.shuoshuo-content .heimu:active,
-.shuoshuo-content a.heimu:hover,
-.shuoshuo-content a.heimu:active,
-.post-content .argon-hidden-text-background:hover,
-.post-content .argon-hidden-text-background:active,
-.comment-item-text .argon-hidden-text-background:hover,
-.comment-item-text .argon-hidden-text-background:active,
-.shuoshuo-content .argon-hidden-text-background:hover,
-.shuoshuo-content .argon-hidden-text-background:active {
-	background-color: transparent !important;
-	background-image: none !important;
-	color: var(--color-text-deeper) !important;
+.heimu:hover,
+.heimu:active,
+.heimu.is-revealed,
+.heimu[aria-expanded="true"],
+.argon-hidden-text-background:hover,
+.argon-hidden-text-background:active,
+.argon-hidden-text-background.is-revealed,
+.argon-hidden-text-background[aria-expanded="true"] {
+	background: rgba(var(--themecolor-rgbstr), .08) !important;
+	color: var(--color-text-deeper, #172b4d) !important;
 }
 
-.post-content .color-curtain,
-.comment-item-text .color-curtain,
-.shuoshuo-content .color-curtain {
-	background-color: var(--curtain-bg, #252525) !important;
+article .post-content .heimu:hover,
+article .post-content .heimu:active,
+article .post-content .heimu.is-revealed,
+article .post-content .heimu[aria-expanded="true"],
+article .entry-content .heimu:hover,
+article .entry-content .heimu:active,
+article .entry-content .heimu.is-revealed,
+article .entry-content .heimu[aria-expanded="true"],
+.article-content .heimu:hover,
+.article-content .heimu:active,
+.article-content .heimu.is-revealed,
+.article-content .heimu[aria-expanded="true"] {
+	background: rgba(var(--themecolor-rgbstr), .08) !important;
+	color: var(--color-text-deeper, #172b4d) !important;
+}
+
+.color-curtain {
+	padding: .08em .32em;
+	background: var(--curtain-bg, #252525) !important;
 	color: var(--curtain-bg, #252525) !important;
+	text-shadow: none !important;
+	text-decoration: none !important;
+	cursor: pointer;
 }
 
-.post-content .color-curtain:hover,
-.post-content .color-curtain:active,
-.comment-item-text .color-curtain:hover,
-.comment-item-text .color-curtain:active,
-.shuoshuo-content .color-curtain:hover,
-.shuoshuo-content .color-curtain:active {
+.color-curtain:hover,
+.color-curtain:active,
+.color-curtain.is-revealed,
+.color-curtain[aria-expanded="true"] {
 	color: var(--curtain-fg, #fff) !important;
 }
 
-.post-content .text-blur,
-.comment-item-text .text-blur,
-.shuoshuo-content .text-blur,
-.post-content .argon-hidden-text-blur,
-.comment-item-text .argon-hidden-text-blur,
-.shuoshuo-content .argon-hidden-text-blur {
-	display: inline;
-	filter: blur(4px) !important;
-	-webkit-filter: blur(4px) !important;
-	cursor: pointer;
-	user-select: none;
-	transition: filter var(--text-blur-transition-time, 0.2s) ease, color var(--text-blur-transition-time, 0.2s) ease;
+html.darkmode .comment-content .color-curtain {
+	background: var(--curtain-bg, #252525) !important;
+	color: var(--curtain-bg, #252525) !important;
 }
 
-.post-content .text-blur:hover,
-.post-content .text-blur:active,
-.comment-item-text .text-blur:hover,
-.comment-item-text .text-blur:active,
-.shuoshuo-content .text-blur:hover,
-.shuoshuo-content .text-blur:active,
-.post-content .argon-hidden-text-blur:hover,
-.post-content .argon-hidden-text-blur:active,
-.comment-item-text .argon-hidden-text-blur:hover,
-.comment-item-text .argon-hidden-text-blur:active,
-.shuoshuo-content .argon-hidden-text-blur:hover,
-.shuoshuo-content .argon-hidden-text-blur:active {
+html.darkmode .comment-content .color-curtain:hover,
+html.darkmode .comment-content .color-curtain:active,
+html.darkmode .comment-content .color-curtain.is-revealed,
+html.darkmode .comment-content .color-curtain[aria-expanded="true"] {
+	background: var(--curtain-bg, #252525) !important;
+	color: var(--curtain-fg, #fff) !important;
+}
+
+.text-blur,
+.argon-hidden-text-blur {
+	display: inline;
+	filter: blur(3.5px) !important;
+	-webkit-filter: blur(3.5px) !important;
+	cursor: pointer;
+	user-select: none;
+}
+
+.text-blur:hover,
+.text-blur:active,
+.text-blur.is-revealed,
+.text-blur[aria-expanded="true"],
+.argon-hidden-text-blur:hover,
+.argon-hidden-text-blur:active,
+.argon-hidden-text-blur.is-revealed,
+.argon-hidden-text-blur[aria-expanded="true"] {
 	filter: none !important;
 	-webkit-filter: none !important;
 	color: var(--text-blur-color, inherit) !important;
 	user-select: auto;
 }
 
-.post-content .huhua,
-.comment-item-text .huhua,
-.shuoshuo-content .huhua {
-	color: #9ea3a9 !important;
+.text-blur.is-revealed a,
+.text-blur[aria-expanded="true"] a,
+.argon-hidden-text-blur.is-revealed a,
+.argon-hidden-text-blur[aria-expanded="true"] a {
+	filter: none !important;
+	-webkit-filter: none !important;
+}
+
+.huhua {
+	color: var(--color-text-shallow, #8898aa) !important;
 	text-decoration: line-through !important;
+	text-decoration-color: rgba(var(--themecolor-rgbstr), .45) !important;
+	text-decoration-thickness: 1.5px !important;
 	text-shadow: none !important;
-	transition: color 0.2s ease;
+	cursor: help;
 }
 
-.post-content .huhua:hover,
-.post-content .huhua:active,
-.comment-item-text .huhua:hover,
-.comment-item-text .huhua:active,
-.shuoshuo-content .huhua:hover,
-.shuoshuo-content .huhua:active {
-	color: #7f858b !important;
+.huhua:hover,
+.huhua:active,
+.huhua.is-revealed,
+.huhua[aria-expanded="true"] {
+	background-color: rgba(var(--themecolor-rgbstr), .06);
+	color: var(--color-text-deeper, #525f7f) !important;
 }
 
-.post-content .heimu a,
-.post-content a.heimu,
-.post-content .color-curtain a,
-.post-content .text-blur a,
-.post-content .huhua a,
-.comment-item-text .heimu a,
-.comment-item-text a.heimu,
-.comment-item-text .color-curtain a,
-.comment-item-text .text-blur a,
-.comment-item-text .huhua a,
-.shuoshuo-content .heimu a,
-.shuoshuo-content a.heimu,
-.shuoshuo-content .color-curtain a,
-.shuoshuo-content .text-blur a,
-.shuoshuo-content .huhua a {
-	background-color: inherit !important;
-	background-image: none !important;
-	background-position: initial !important;
-	background-size: auto !important;
+.heimu a,
+a.heimu,
+.color-curtain a,
+.text-blur a,
+.huhua a {
+	background: inherit !important;
 	color: inherit !important;
 	text-decoration: inherit !important;
 	transition: inherit !important;
 }
 
-.post-content .heimu a:before,
-.post-content a.heimu:before,
-.post-content a.heimu::before,
-.post-content a.heimu::after,
-.post-content .color-curtain a:before,
-.post-content .text-blur a:before,
-.post-content .huhua a:before,
-.comment-item-text .heimu a:before,
-.comment-item-text a.heimu:before,
-.comment-item-text a.heimu::before,
-.comment-item-text a.heimu::after,
-.comment-item-text .color-curtain a:before,
-.comment-item-text .text-blur a:before,
-.comment-item-text .huhua a:before,
-.shuoshuo-content .heimu a:before,
-.shuoshuo-content a.heimu:before,
-.shuoshuo-content a.heimu::before,
-.shuoshuo-content a.heimu::after,
-.shuoshuo-content .color-curtain a:before,
-.shuoshuo-content .text-blur a:before,
-.shuoshuo-content .huhua a:before {
+.heimu a::before,
+a.heimu::before,
+a.heimu::after,
+.color-curtain a::before,
+.text-blur a::before,
+.huhua a::before {
 	display: none !important;
 	content: none !important;
 }
 
-html.darkmode .post-content .heimu,
-html.darkmode .post-content a.heimu,
-html.darkmode .comment-item-text .heimu,
-html.darkmode .comment-item-text a.heimu,
-html.darkmode .shuoshuo-content .heimu,
-html.darkmode .shuoshuo-content a.heimu,
-html.darkmode .post-content .argon-hidden-text-background,
-html.darkmode .comment-item-text .argon-hidden-text-background,
-html.darkmode .shuoshuo-content .argon-hidden-text-background {
-	background-color: #1a1a1a !important;
-	background-image: none !important;
-	color: #1a1a1a !important;
+.heimu:focus-visible,
+.color-curtain:focus-visible,
+.text-blur:focus-visible,
+.huhua:focus-visible,
+.argon-hidden-text:focus-visible {
+	outline: 2px solid rgba(var(--themecolor-rgbstr), .48);
+	outline-offset: 2px;
 }
 
-html.darkmode .post-content .heimu:hover,
-html.darkmode .post-content .heimu:active,
-html.darkmode .post-content a.heimu:hover,
-html.darkmode .post-content a.heimu:active,
-html.darkmode .comment-item-text .heimu:hover,
-html.darkmode .comment-item-text .heimu:active,
-html.darkmode .comment-item-text a.heimu:hover,
-html.darkmode .comment-item-text a.heimu:active,
-html.darkmode .shuoshuo-content .heimu:hover,
-html.darkmode .shuoshuo-content .heimu:active,
-html.darkmode .shuoshuo-content a.heimu:hover,
-html.darkmode .shuoshuo-content a.heimu:active,
-html.darkmode .post-content .argon-hidden-text-background:hover,
-html.darkmode .post-content .argon-hidden-text-background:active,
-html.darkmode .comment-item-text .argon-hidden-text-background:hover,
-html.darkmode .comment-item-text .argon-hidden-text-background:active,
-html.darkmode .shuoshuo-content .argon-hidden-text-background:hover,
-html.darkmode .shuoshuo-content .argon-hidden-text-background:active {
-	background-color: transparent !important;
-	background-image: none !important;
-	color: var(--color-text-deeper) !important;
+html.darkmode .heimu,
+html.darkmode a.heimu,
+html.darkmode .argon-hidden-text-background {
+	background: #343740 !important;
+	color: #343740 !important;
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08);
+}
+
+html.darkmode .comment-content .heimu {
+	background: #343740 !important;
+	color: #343740 !important;
+}
+
+html.darkmode .heimu:hover,
+html.darkmode .heimu:active,
+html.darkmode .heimu.is-revealed,
+html.darkmode .heimu[aria-expanded="true"],
+html.darkmode .argon-hidden-text-background:hover,
+html.darkmode .argon-hidden-text-background:active,
+html.darkmode .argon-hidden-text-background.is-revealed,
+html.darkmode .argon-hidden-text-background[aria-expanded="true"] {
+	background: rgba(var(--themecolor-rgbstr), .16) !important;
+	color: var(--color-text-deeper, #f1f3f5) !important;
+	box-shadow: none;
+}
+
+html.darkmode .comment-content .heimu:hover,
+html.darkmode .comment-content .heimu:active,
+html.darkmode .comment-content .heimu.is-revealed,
+html.darkmode .comment-content .heimu[aria-expanded="true"] {
+	background: rgba(var(--themecolor-rgbstr), .16) !important;
+	color: var(--color-text-deeper, #f1f3f5) !important;
 }
 
 .site-rss {

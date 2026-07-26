@@ -3462,6 +3462,71 @@ $.fancybox.defaults.i18n = {
 	}
 };
 
+/* Special inline text effects (spoiler / curtain / blur / huhua). */
+function initArgonSpecialText(scope) {
+	var root = scope && scope.querySelectorAll ? scope : document;
+	var selector = '.heimu, .color-curtain, .text-blur, .huhua, .argon-hidden-text';
+	var items = root.querySelectorAll(selector);
+
+	items.forEach(function (item) {
+		if (!item.hasAttribute('aria-expanded')) {
+			item.setAttribute('aria-expanded', item.classList.contains('is-revealed') ? 'true' : 'false');
+		}
+		if (item.tagName !== 'A' && !item.closest('a') && !item.querySelector('a')) {
+			if (!item.hasAttribute('tabindex')) item.setAttribute('tabindex', '0');
+			if (!item.hasAttribute('role')) item.setAttribute('role', 'button');
+		}
+	});
+
+	if (window.__argonSpecialTextEventsBound) return;
+	window.__argonSpecialTextEventsBound = true;
+
+	function findSpecialText(target) {
+		if (!target || !target.closest) return null;
+		var item = target.closest(selector);
+		if (item) return item;
+		var wrappingLink = target.closest('a');
+		return wrappingLink ? wrappingLink.querySelector(selector) : null;
+	}
+
+	function setRevealed(item, revealed) {
+		item.classList.toggle('is-revealed', revealed);
+		item.setAttribute('aria-expanded', revealed ? 'true' : 'false');
+	}
+
+	document.addEventListener('click', function (event) {
+		var item = findSpecialText(event.target);
+		if (!item) return;
+		var link = event.target.closest ? event.target.closest('a') : null;
+		if (!link) link = item.closest('a') || item.querySelector('a');
+		var isRevealed = item.classList.contains('is-revealed');
+
+		// A concealed link needs one deliberate reveal before navigation.
+		if (link && isRevealed) return;
+		if (link) event.preventDefault();
+		setRevealed(item, link ? true : !isRevealed);
+	});
+
+	document.addEventListener('keydown', function (event) {
+		if (event.key !== 'Enter' && event.key !== ' ') return;
+		var item = findSpecialText(event.target);
+		if (!item) return;
+		var link = event.target.closest ? event.target.closest('a') : null;
+		if (!link) link = item.closest('a') || item.querySelector('a');
+		var isRevealed = item.classList.contains('is-revealed');
+		if (link && isRevealed && event.key === 'Enter') return;
+		if (item !== event.target && link !== event.target) return;
+		event.preventDefault();
+		setRevealed(item, link ? true : !isRevealed);
+	});
+}
+
+if (document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', function () { initArgonSpecialText(); });
+} else {
+	initArgonSpecialText();
+}
+
 /*Lazyload - 使用 IntersectionObserver 实现懒加载
 /*
  * 优化说明：
@@ -6622,6 +6687,7 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 				// 先以默认流式布局渲染若干帧再突然吸附成瀑布流，出现肉眼可见的跳动。
 				function () { waterflowInit(); },
 				function () { syncPjaxPrimaryClasses(); },
+				function () { initArgonSpecialText(); },
 				function () { lazyloadInit(); },
 				function () { zoomifyInit(); },
 				function () { highlightJsRender(); },

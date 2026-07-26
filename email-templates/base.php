@@ -249,7 +249,7 @@ function argon_get_email_settings() {
         $blog_name = get_bloginfo('name');
     }
     if (empty($footer_text)) {
-        $footer_text = '© ' . date('Y') . ' ' . $blog_name . '. All rights reserved.';
+        $footer_text = '© ' . date('Y') . ' ' . $blog_name . ' · 感谢你的关注';
     }
     
     return array(
@@ -302,9 +302,9 @@ function argon_get_email_base_template($include_unsubscribe = false) {
     // 页眉部分
     $header_html = '';
     if (!empty($settings['logo_url'])) {
-        $header_html = '<img src="' . esc_url($settings['logo_url']) . '" alt="' . esc_attr($settings['blog_name']) . '" style="max-height: 48px; max-width: 200px;">';
+        $header_html = '<img src="' . esc_url($settings['logo_url']) . '" alt="' . esc_attr($settings['blog_name']) . '" style="display: block; max-height: 42px; max-width: 180px; border: 0;">';
     } else {
-        $header_html = '<h1 style="margin: 0; font-size: 24px; font-weight: 600; color: ' . esc_attr($settings['theme_color']) . ';">' . esc_html($settings['blog_name']) . '</h1>';
+        $header_html = '<a href="' . esc_url(home_url('/')) . '" style="display: inline-block; color: #172b4d; font-size: 20px; font-weight: 700; line-height: 1.3; text-decoration: none; letter-spacing: -0.2px;">' . esc_html($settings['blog_name']) . '</a>';
     }
 
     // 社交链接部分
@@ -322,61 +322,77 @@ function argon_get_email_base_template($include_unsubscribe = false) {
         foreach ($settings['social_links'] as $key => $url) {
             if (!empty($url)) {
                 $name = isset($social_names[$key]) ? $social_names[$key] : ucfirst($key);
-                $social_items[] = '<a href="' . esc_url($url) . '" style="display: inline-block; margin: 0 8px; color: #8898aa; text-decoration: none;">' . esc_html($name) . '</a>';
+                $social_items[] = '<a href="' . esc_url($url) . '" style="display: inline-block; margin: 0 4px 8px; padding: 5px 10px; color: #6b7280; background: #f3f4f6; border-radius: 999px; font-size: 12px; line-height: 1.2; text-decoration: none;">' . esc_html($name) . '</a>';
             }
         }
         if (!empty($social_items)) {
-            $social_html = '<p style="margin: 0 0 12px 0;">' . implode('', $social_items) . '</p>';
+            $social_html = '<div style="margin: 0 0 10px;">' . implode('', $social_items) . '</div>';
         }
     }
     
     // 退订链接部分
     $unsubscribe_html = '';
     if ($include_unsubscribe) {
-        $unsubscribe_html = '<p style="margin: 12px 0 0 0; font-size: 12px; color: #8898aa;">
-            <a href="{{unsubscribe_url}}" style="color: #8898aa; text-decoration: none;">退订邮件通知</a>
+        $unsubscribe_html = '<p style="margin: 10px 0 0; font-size: 12px; line-height: 1.6; color: #9aa4b2;">
+            <a href="{{unsubscribe_url}}" style="color: #7b8794; text-decoration: underline; text-underline-offset: 2px;">退订此类邮件通知</a>
         </p>';
     }
     
     $template = '<!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
     <title>{{email_subject}}</title>
+    <style>
+        @media only screen and (max-width: 640px) {
+            .argon-email-shell { padding: 18px 10px !important; }
+            .argon-email-card { border-radius: 14px !important; }
+            .argon-email-header { padding: 20px 20px 16px !important; }
+            .argon-email-content { padding: 24px 20px 28px !important; }
+            .argon-email-label { display: none !important; }
+        }
+    </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f4f5f7; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, \'Helvetica Neue\', Arial, sans-serif;">
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f5f7; padding: 40px 20px;">
+<body style="margin: 0; padding: 0; background-color: #f5f7fb; color: #344767; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, \'Helvetica Neue\', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+    <div style="display: none; max-height: 0; overflow: hidden; opacity: 0; color: transparent; mso-hide: all;">{{email_subject}}&#8199;&#65279;&#847;</div>
+    <table class="argon-email-shell" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; background-color: #f5f7fb; padding: 34px 16px;">
         <tr>
             <td align="center">
-                <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; width: 100%;">
-                    <!-- 页眉 -->
+                <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 600px;">
                     <tr>
-                        <td style="padding: 24px; text-align: center;">
-                            ' . $header_html . '
-                        </td>
-                    </tr>
-                    
-                    <!-- 内容区 -->
-                    <tr>
-                        <td style="background: #ffffff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                        <td class="argon-email-card" style="overflow: hidden; background: #ffffff; border: 1px solid #e7ebf2; border-radius: 18px; box-shadow: 0 12px 32px rgba(23, 43, 77, 0.08);">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                 <tr>
-                                    <td style="padding: 32px;">
+                                    <td height="4" style="height: 4px; background: ' . esc_attr($settings['theme_color']) . '; font-size: 0; line-height: 0;">&nbsp;</td>
+                                </tr>
+                                <tr>
+                                    <td class="argon-email-header" style="padding: 24px 30px 19px; border-bottom: 1px solid #edf0f5;">
+                                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                            <tr>
+                                                <td align="left" valign="middle">' . $header_html . '</td>
+                                                <td class="argon-email-label" align="right" valign="middle" style="color: #8a94a6; font-size: 12px; white-space: nowrap;">站点通知</td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="argon-email-content" style="padding: 30px 30px 34px; font-size: 15px; line-height: 1.75; color: #525f7f;">
                                         {{email_content}}
                                     </td>
                                 </tr>
                             </table>
                         </td>
                     </tr>
-                    
-                    <!-- 页脚 -->
                     <tr>
-                        <td style="padding: 24px; text-align: center;">
+                        <td style="padding: 22px 18px 4px; text-align: center;">
                             ' . $social_html . '
-                            <p style="margin: 0; font-size: 12px; color: #8898aa;">
+                            <p style="margin: 0; font-size: 12px; line-height: 1.6; color: #8a94a6;">
                                 ' . esc_html($settings['footer_text']) . '
                             </p>
+                            <p style="margin: 5px 0 0; font-size: 11px; line-height: 1.6; color: #a7afbd;">此邮件由系统自动发送，请勿直接回复。</p>
                             ' . $unsubscribe_html . '
                         </td>
                     </tr>
