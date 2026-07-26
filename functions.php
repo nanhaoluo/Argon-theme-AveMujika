@@ -5637,21 +5637,25 @@ function argon_get_duolingo_data($force_refresh = false) {
 
     $cache_key = 'argon_duolingo_data_' . md5($username);
     $cached = get_transient($cache_key);
-    
-    if (!$force_refresh && $cached !== false) {
-        // 如果今日已完成，直接返回缓存（到第二天0点前不会变）
-        if (isset($cached['today']) && $cached['today']) {
-            // 检查是否还是同一天
-            if (isset($cached['date']) && $cached['date'] === date('Y-m-d')) {
-                return $cached;
-            }
-            // 已经是新的一天，需要重新请求
-        } else {
-            // 未完成时使用缓存（15分钟内）
-            return $cached;
-        }
+
+    // 用站点本地时区判断「今天」，不受 PHP 默认时区（可能被改成 UTC）影响
+    $today = current_time('Y-m-d');
+
+    // 跨零点强制熄灭：缓存里的点亮状态只在当天有效。
+    // 过了本地零点先把徽章打回灰色并落盘，再进入后面的检查流程，
+    // 这样即使远端请求失败，回退到旧缓存也是灰的。
+    $stale_day = is_array($cached) && (!isset($cached['date']) || $cached['date'] !== $today);
+    if ($stale_day) {
+        $cached['today'] = false;
+        $cached['date'] = $today;
+        set_transient($cache_key, $cached, 15 * MINUTE_IN_SECONDS);
     }
-    
+
+    // 当天的缓存直接用：点亮态的 TTL 到本地零点，未完成态的 TTL 是 15 分钟
+    if (!$force_refresh && !$stale_day && is_array($cached)) {
+        return $cached;
+    }
+
     $url = 'https://www.duolingo.com/2017-06-30/users?username=' . urlencode($username) . '&fields=users%7Bstreak,streakData%7BcurrentStreak,previousStreak%7D%7D';
     
     $response = wp_remote_get($url, array(
@@ -5662,20 +5666,19 @@ function argon_get_duolingo_data($force_refresh = false) {
     ));
     
     if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {
-        // 请求失败时返回旧缓存（如果有）
-        return $cached !== false ? $cached : false;
+        // 请求失败时返回旧缓存（跨天的已在上面熄灭）
+        return is_array($cached) ? $cached : false;
     }
     
     $body = wp_remote_retrieve_body($response);
     $data = json_decode($body, true);
     
     if (empty($data['users'][0])) {
-        return $cached !== false ? $cached : false;
+        return is_array($cached) ? $cached : false;
     }
-    
+
     $user = $data['users'][0];
-    $today = date('Y-m-d');
-    
+
     // 获取连胜数
     $streak = max(
         isset($user['streak']) ? intval($user['streak']) : 0,
@@ -5693,11 +5696,11 @@ function argon_get_duolingo_data($force_refresh = false) {
         'date' => $today
     );
     
-    // 如果今日已完成，缓存到明天0点；否则缓存15分钟
+    // 如果今日已完成，缓存到本地时区的次日0点；否则缓存15分钟
     if ($is_today_done) {
-        $tomorrow = strtotime('tomorrow');
-        $seconds_until_tomorrow = $tomorrow - time();
-        set_transient($cache_key, $result, $seconds_until_tomorrow);
+        // current_time('timestamp') = time() + gmt_offset，对 86400 取模即为本地零点起的秒数
+        $seconds_until_tomorrow = DAY_IN_SECONDS - (current_time('timestamp') % DAY_IN_SECONDS);
+        set_transient($cache_key, $result, max(MINUTE_IN_SECONDS, $seconds_until_tomorrow));
     } else {
         set_transient($cache_key, $result, 15 * MINUTE_IN_SECONDS);
     }
