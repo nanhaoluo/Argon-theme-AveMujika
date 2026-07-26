@@ -118,7 +118,8 @@ if (isset($_POST['flink_action'])) {
                 $response = array('success' => false, 'message' => __('友链 ID 不能为空', 'argon'));
                 break;
             }
-            if (!argon_get_friend_link($id)) {
+            $existing_link = argon_get_friend_link($id);
+            if (!$existing_link) {
                 $response = array('success' => false, 'message' => __('友链不存在或已被删除，请刷新页面后重试', 'argon'));
                 break;
             }
@@ -132,6 +133,11 @@ if (isset($_POST['flink_action'])) {
                 $avatar = trim((string)$data['avatar']);
                 $existing_avatar = isset($existing_link['avatar']) ? trim((string)$existing_link['avatar']) : '';
                 $data['user_avatar'] = $avatar !== '' && ($avatar !== $existing_avatar || !empty($existing_link['user_avatar']));
+            }
+            if (array_key_exists('display_name', $data)) {
+                $display_name = trim((string)$data['display_name']);
+                $existing_display_name = isset($existing_link['display_name']) ? trim((string)$existing_link['display_name']) : '';
+                $data['user_display_name'] = $display_name !== '' && ($display_name !== $existing_display_name || !empty($existing_link['user_display_name']));
             }
             if (empty($data)) {
                 $response = array('success' => true, 'message' => __('没有需要保存的变化', 'argon'));
@@ -165,44 +171,31 @@ if (isset($_POST['flink_action'])) {
                     $raw_url = 'https://' . $raw_url;
                 }
                 $url = $raw_url !== '' ? esc_url_raw($raw_url) : $link['url'];
-                $has_backlink = $links_page ? argon_check_backlink($links_page) : null;
+                $has_backlink = $links_page ? argon_check_backlink($links_page, true) : null;
                 $accessible = argon_check_site_accessible($url);
-                argon_update_friend_link($id, array('url' => $url, 'links_page' => $links_page, 'has_backlink' => $has_backlink, 'accessible' => $accessible, 'last_check' => time()));
-                $response = array('success' => true, 'has_backlink' => $has_backlink, 'accessible' => $accessible, 'links_page' => $links_page);
+                $check_update = array('url' => $url, 'links_page' => $links_page, 'accessible' => $accessible, 'last_check' => time());
+                if ($has_backlink !== null) $check_update['has_backlink'] = $has_backlink;
+                argon_update_friend_link($id, $check_update);
+                $response = array(
+                    'success' => $has_backlink !== null,
+                    'message' => $has_backlink === null ? __('暂时无法完整读取对方友链页面，请稍后重试', 'argon') : '',
+                    'has_backlink' => $has_backlink,
+                    'accessible' => $accessible,
+                    'links_page' => $links_page
+                );
             } else {
                 $response = array('success' => false, 'message' => __('友链不存在或已被删除，请刷新页面后重试', 'argon'));
             }
             break;
             
         case 'check_all':
-            $links = argon_get_friend_links_raw('approved');
-            $results = array();
-            foreach ($links as $link) {
-                $links_page = !empty($link['links_page']) ? $link['links_page'] : '';
-                $has_backlink = $links_page ? argon_check_backlink($links_page) : null;
-                $site_info = argon_fetch_site_info($link['url']);
-                $best_image = argon_select_friend_link_image($site_info);
-                $update_data = array(
-                    'has_backlink' => $has_backlink,
-                    'accessible' => !empty($site_info['accessible']),
-                    'blocked_by_waf' => !empty($site_info['blocked_by_waf']),
-                    'error_reason' => !empty($site_info['error_reason']) ? $site_info['error_reason'] : '',
-                    'last_check' => time(),
-                    'last_info_update' => time()
-                );
-                foreach (array('author_avatar', 'favicon', 'site_image', 'image') as $field) {
-                    if (!empty($site_info[$field])) $update_data[$field] = $site_info[$field];
-                }
-                if ($best_image && empty($link['user_avatar'])) $update_data['avatar'] = $best_image;
-                if (!empty($site_info['description'])) $update_data['auto_description'] = $site_info['description'];
-                argon_update_friend_link($link['id'], $update_data);
-                $results[$link['id']] = array(
-                    'has_backlink' => $has_backlink,
-                    'accessible' => !empty($site_info['accessible']),
-                    'avatar' => $best_image
-                );
+            $batch_size = isset($_POST['batch_size']) ? intval($_POST['batch_size']) : 3;
+            $response = argon_process_friend_link_check_batch($batch_size, true);
+            if (!empty($response['locked'])) {
+                $response['message'] = __('自动检测任务正在运行，请稍后重试', 'argon');
+            } else {
+                $response['message'] = sprintf(__('本批已检测 %d 条友链，其余友链将继续由自动任务分批检测', 'argon'), intval($response['processed']));
             }
-            $response = array('success' => true, 'results' => $results);
             break;
             
         case 'fetch_info':
@@ -210,7 +203,7 @@ if (isset($_POST['flink_action'])) {
             if (empty($url)) {
                 $response = array('success' => false, 'message' => __('请输入网址', 'argon'));
             } else {
-                $info = argon_fetch_site_info($url);
+                $info = argon_fetch_site_info($url, true);
                 $response = array('success' => true, 'data' => $info);
             }
             break;
@@ -236,29 +229,35 @@ if (isset($_POST['flink_action'])) {
                 break;
             }
 
-            $info = argon_fetch_site_info($url);
+            $info = argon_fetch_site_info($url, true);
             $best_image = function_exists('argon_select_friend_link_image') ? argon_select_friend_link_image($info) : '';
             $update_data = array(
                 'url' => $url,
-                'last_info_update' => time(),
                 'last_check' => time(),
                 'accessible' => !empty($info['accessible']),
                 'blocked_by_waf' => !empty($info['blocked_by_waf']),
                 'is_wordpress' => !empty($info['is_wordpress']),
                 'error_reason' => !empty($info['error_reason']) ? $info['error_reason'] : ''
             );
+            if (!empty($info['accessible'])) $update_data['last_info_update'] = time();
 
-            if (!empty($info['title'])) {
+            $can_update_display_name = array_key_exists('user_display_name', $link) ? empty($link['user_display_name']) : empty($link['display_name']);
+            if ($can_update_display_name && !empty($info['title'])) {
                 $update_data['display_name'] = $info['title'];
             }
             if (!empty($info['description'])) {
                 $description = wp_strip_all_tags($info['description']);
-                $update_data['description'] = function_exists('mb_substr') ? mb_substr($description, 0, 100) : substr($description, 0, 100);
+                $description = function_exists('mb_substr') ? mb_substr($description, 0, 100) : substr($description, 0, 100);
+                $update_data['auto_description'] = $description;
+                if (empty($link['description'])) $update_data['description'] = $description;
             }
-            foreach (array('author_avatar', 'favicon', 'site_image', 'image') as $field) {
+            foreach (array('author_avatar', 'site_logo', 'favicon', 'site_image', 'image', 'canonical_url', 'feed_url') as $field) {
                 if (!empty($info[$field])) {
                     $update_data[$field] = $info[$field];
                 }
+            }
+            foreach (array('author_name', 'language', 'keywords', 'theme_color') as $field) {
+                if (!empty($info[$field])) $update_data[$field] = $info[$field];
             }
             if (!empty($info['favicon'])) {
                 $update_data['auto_favicon'] = $info['favicon'];
@@ -274,7 +273,10 @@ if (isset($_POST['flink_action'])) {
                 $info['url'] = $url;
                 $info['avatar'] = !empty($update_data['avatar']) ? $update_data['avatar'] : (isset($link['avatar']) ? $link['avatar'] : '');
                 $info['user_avatar'] = !empty($link['user_avatar']);
-                $info['last_info_update'] = $update_data['last_info_update'];
+                $info['user_display_name'] = !$can_update_display_name;
+                if (!$can_update_display_name) $info['title'] = $link['display_name'];
+                if (!empty($link['description'])) $info['description'] = $link['description'];
+                $info['last_info_update'] = $update_data['last_info_update'] ?? ($link['last_info_update'] ?? 0);
                 $info['last_check'] = $update_data['last_check'];
                 $response = array('success' => true, 'message' => __('已更新并保存', 'argon'), 'data' => $info);
             } else {
@@ -312,7 +314,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['argon_link_apply'])) 
 
 // 从 URL 参数或 session 获取申请结果
 if (isset($_GET['apply_success'])) {
-    $apply_result = array('success' => true, 'message' => __('申请已提交，请等待审核', 'argon'));
+    $apply_result = array('success' => true, 'message' => __('申请已提交，系统将在后台自动检测互链', 'argon'));
 } elseif (isset($_GET['apply_error'])) {
     if (!session_id()) session_start();
     $error_msg = isset($_SESSION['flink_apply_error']) ? $_SESSION['flink_apply_error'] : __('申请失败', 'argon');
@@ -763,7 +765,7 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
 <!-- 管理面板（仅管理员可见） -->
 <?php if ($is_admin) : ?>
 <article class="post card shadow-sm bg-white border-0 flinks-admin-card" style="margin-bottom: 16px;" id="admin-panel">
-    <div class="flinks-admin-title"><i class="fa fa-cog"></i><?php _e('友链管理', 'argon'); ?> <button class="btn btn-sm btn-secondary" style="margin-left:auto;font-size:11px;" id="check-all-btn"><?php _e('检测所有友链', 'argon'); ?></button></div>
+    <div class="flinks-admin-title"><i class="fa fa-cog"></i><?php _e('友链管理', 'argon'); ?> <button class="btn btn-sm btn-secondary" style="margin-left:auto;font-size:11px;" id="check-all-btn" title="<?php esc_attr_e('系统每 6 小时自动检测一批友链', 'argon'); ?>"><?php _e('立即检测一批', 'argon'); ?></button></div>
     
     <?php if (!empty($pending_links)) : ?>
     <div class="flinks-admin-section">
@@ -1295,11 +1297,14 @@ if (typeof initGeetest4 === 'function') {
     var checkAllBtn = document.getElementById('check-all-btn');
     if (checkAllBtn) {
         checkAllBtn.addEventListener('click', function() {
-            if (!confirm('<?php _e('将检测所有友链的状态，可能需要一些时间，确定继续？', 'argon'); ?>')) return;
+            if (!confirm('<?php _e('将立即检测最多 3 条友链，其余友链会由自动任务分批完成，确定继续？', 'argon'); ?>')) return;
             this.disabled = true; this.textContent = '<?php _e('检测中...', 'argon'); ?>';
-            flinkAction('check_all', {}, function(res) {
-                if (res.success) location.reload();
-                else { checkAllBtn.disabled = false; checkAllBtn.textContent = '<?php _e('检测所有友链', 'argon'); ?>'; alert(res.message || '<?php _e('检测失败', 'argon'); ?>'); }
+            flinkAction('check_all', { batch_size: 3 }, function(res) {
+                if (res.success) {
+                    alert(res.message || '<?php _e('本批检测完成', 'argon'); ?>');
+                    location.reload();
+                }
+                else { checkAllBtn.disabled = false; checkAllBtn.textContent = '<?php _e('立即检测一批', 'argon'); ?>'; alert(res.message || '<?php _e('检测失败', 'argon'); ?>'); }
             });
         });
     }

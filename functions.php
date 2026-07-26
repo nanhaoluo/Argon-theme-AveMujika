@@ -12,6 +12,7 @@
 // 引入彩蛋系统
 require_once get_template_directory() . '/easter-eggs.php';
 require_once get_template_directory() . '/inc/ai-spam-prompts.php';
+require_once get_template_directory() . '/inc/friend-link-algorithms.php';
 
 // 禁止移动端浏览器缓存 HTML 页面
 function argon_prevent_mobile_cache() {
@@ -5951,6 +5952,65 @@ function argon_is_same_root_domain($host1, $host2) {
 }
 
 /**
+ * 友链站点信息缓存键。
+ * 按规范化后的协议、主机、端口和路径缓存，避免串用不同服务的站点资料。
+ */
+function argon_friend_link_info_cache_key($url) {
+    $url = trim((string)$url);
+    if ($url !== '' && !preg_match('/^https?:\/\//i', $url)) {
+        $url = 'https://' . $url;
+    }
+    $parts = wp_parse_url($url);
+    $scheme = !empty($parts['scheme']) ? strtolower($parts['scheme']) : 'https';
+    $host = !empty($parts['host']) ? strtolower($parts['host']) : '';
+    $port = !empty($parts['port']) ? ':' . intval($parts['port']) : '';
+    $path = !empty($parts['path']) ? rtrim($parts['path'], '/') : '';
+    return 'argon_flink_site_' . md5($scheme . '://' . $host . $port . $path);
+}
+
+function argon_friend_link_info_cache_ttl() {
+    $ttl = intval(get_option('argon_friend_link_info_cache_ttl', 12 * HOUR_IN_SECONDS));
+    return max(15 * MINUTE_IN_SECONDS, min(7 * DAY_IN_SECONDS, $ttl));
+}
+
+function argon_friend_link_info_refresh_interval() {
+    $interval = intval(get_option('argon_friend_link_info_refresh_interval', 7 * DAY_IN_SECONDS));
+    return max(DAY_IN_SECONDS, min(30 * DAY_IN_SECONDS, $interval));
+}
+
+/**
+ * 从 JSON-LD 中提取博客作者和站点 Logo，作为普通 meta 的补充。
+ */
+function argon_extract_site_profile_data($body) {
+    $profile = array('author_name' => '', 'site_logo' => '');
+    if (!preg_match_all('/<script\b[^>]+type=["\']application\/ld\+json["\'][^>]*>(.*?)<\/script>/is', (string)$body, $matches)) {
+        return $profile;
+    }
+
+    $walk = function($node) use (&$walk, &$profile) {
+        if (!is_array($node)) return;
+        $type = isset($node['@type']) ? strtolower(is_array($node['@type']) ? implode(' ', $node['@type']) : (string)$node['@type']) : '';
+        if ($type !== '' && strpos($type, 'person') !== false && empty($profile['author_name']) && !empty($node['name'])) {
+            $profile['author_name'] = argon_pick_first_non_empty(array($node['name']));
+        }
+        if ($type !== '' && preg_match('/organization|website|blog|publisher/', $type) && empty($profile['site_logo'])) {
+            $logo = isset($node['logo']) ? $node['logo'] : (isset($node['image']) ? $node['image'] : '');
+            if (is_array($logo)) $logo = isset($logo['url']) ? $logo['url'] : (isset($logo['contentUrl']) ? $logo['contentUrl'] : '');
+            if (!empty($logo)) $profile['site_logo'] = trim((string)$logo);
+        }
+        foreach ($node as $value) {
+            if (is_array($value)) $walk($value);
+        }
+    };
+
+    foreach ($matches[1] as $json) {
+        $decoded = json_decode(html_entity_decode($json, ENT_QUOTES, 'UTF-8'), true);
+        if (is_array($decoded)) $walk($decoded);
+    }
+    return $profile;
+}
+
+/**
  * 通过代理获取网站信息（防止源站 IP 泄露）
  * 注意：由于服务器在国内，代理服务可能不可用，建议使用浏览器端获取
  */
@@ -5962,14 +6022,29 @@ function argon_fetch_site_info_proxy($url) {
 /**
  * 自动获取网站信息
  */
-function argon_fetch_site_info($url) {
+function argon_fetch_site_info($url, $force_refresh = false) {
+    $cache_key = argon_friend_link_info_cache_key($url);
+    if (!$force_refresh) {
+        $cached = get_transient($cache_key);
+        if (is_array($cached) && isset($cached['accessible'])) {
+            return $cached;
+        }
+    }
+
     $info = array(
         'favicon' => '',
         'title' => '',
         'description' => '',
+        'author_name' => '',
         'author_avatar' => '',
+        'site_logo' => '',
         'site_image' => '',
         'image' => '',
+        'canonical_url' => '',
+        'feed_url' => '',
+        'language' => '',
+        'keywords' => '',
+        'theme_color' => '',
         'is_wordpress' => false,
         'accessible' => false,
         'blocked_by_waf' => false,
@@ -5982,6 +6057,7 @@ function argon_fetch_site_info($url) {
     $url_candidates = array_values(array_unique(array_filter(array_map('esc_url_raw', $url_candidates))));
     if (empty($url_candidates)) {
         $info['error_reason'] = __('请输入有效的网站地址', 'argon');
+        set_transient($cache_key, $info, 5 * MINUTE_IN_SECONDS);
         return $info;
     }
     
@@ -6032,6 +6108,7 @@ function argon_fetch_site_info($url) {
         if (empty($info['error_reason'])) {
             $info['error_reason'] = __('无法访问该网站', 'argon');
         }
+        set_transient($cache_key, $info, 15 * MINUTE_IN_SECONDS);
         return $info;
     }
     
@@ -6069,6 +6146,7 @@ function argon_fetch_site_info($url) {
     $info['accessible'] = ($code >= 200 && $code < 400);
     
     if (!$info['accessible']) {
+        set_transient($cache_key, $info, 30 * MINUTE_IN_SECONDS);
         return $info;
     }
     
@@ -6115,6 +6193,39 @@ function argon_fetch_site_info($url) {
     }
     
     $meta = argon_extract_site_meta($body);
+    $profile_data = argon_extract_site_profile_data($body);
+    $info['author_name'] = argon_pick_first_non_empty(array(
+        $meta['author'] ?? '',
+        $meta['byl'] ?? '',
+        $meta['creator'] ?? '',
+        $profile_data['author_name'] ?? ''
+    ));
+    $site_logo = argon_normalize_url($profile_data['site_logo'] ?? '', $scheme, $host, $base_path);
+    if ($site_logo && argon_is_valid_remote_image($site_logo)) $info['site_logo'] = $site_logo;
+    $info['language'] = argon_pick_first_non_empty(array(
+        $meta['language'] ?? '',
+        $meta['content-language'] ?? '',
+        $meta['og:locale'] ?? ''
+    ));
+    if (preg_match('/<html\b[^>]*\blang=["\']([^"\']+)["\']/i', $body, $lang_match) && empty($info['language'])) {
+        $info['language'] = sanitize_text_field($lang_match[1]);
+    }
+    $info['keywords'] = argon_pick_first_non_empty(array($meta['keywords'] ?? '', $meta['news_keywords'] ?? ''));
+    $info['theme_color'] = argon_pick_first_non_empty(array($meta['theme-color'] ?? '', $meta['msapplication-tilecolor'] ?? ''));
+    if (preg_match_all('/<link\b[^>]*>/i', $body, $link_tags)) {
+        foreach ($link_tags[0] as $link_tag) {
+            $link_attrs = argon_extract_html_attrs($link_tag);
+            $rel = strtolower(trim($link_attrs['rel'] ?? ''));
+            $type = strtolower(trim($link_attrs['type'] ?? ''));
+            if (empty($link_attrs['href'])) continue;
+            if (preg_match('/(^|\s)canonical(\s|$)/', $rel) && empty($info['canonical_url'])) {
+                $info['canonical_url'] = argon_normalize_url($link_attrs['href'], $scheme, $host, $base_path);
+            }
+            if (preg_match('/alternate|feed|rss|atom/', $rel) && preg_match('/rss|atom|xml/', $type . ' ' . $link_attrs['href']) && empty($info['feed_url'])) {
+                $info['feed_url'] = argon_normalize_url($link_attrs['href'], $scheme, $host, $base_path);
+            }
+        }
+    }
     $info['title'] = argon_pick_first_non_empty(array(
         $meta['application-name'] ?? '',
         $meta['og:site_name'] ?? '',
@@ -6170,7 +6281,7 @@ function argon_fetch_site_info($url) {
         );
 
         // REST 根端点的 site_icon_url 比普通 OG 图更适合做站点头像。
-        if (empty($info['site_image'])) {
+        if (empty($info['site_image']) || empty($info['title']) || empty($info['description']) || empty($info['canonical_url'])) {
             $index_response = wp_remote_get($base_url . '/wp-json/', $rest_args);
             if (!is_wp_error($index_response) && wp_remote_retrieve_response_code($index_response) === 200) {
                 $index_data = json_decode(wp_remote_retrieve_body($index_response), true);
@@ -6179,10 +6290,25 @@ function argon_fetch_site_info($url) {
                 if ($site_icon_url && argon_is_valid_remote_image($site_icon_url)) {
                     $info['site_image'] = $site_icon_url;
                 }
+                if (is_array($index_data)) {
+                    if (empty($info['title']) && !empty($index_data['name'])) {
+                        $info['title'] = argon_pick_first_non_empty(array($index_data['name']));
+                    }
+                    if (empty($info['description']) && !empty($index_data['description'])) {
+                        $info['description'] = argon_pick_first_non_empty(array($index_data['description']));
+                    }
+                    if (empty($info['canonical_url'])) {
+                        $info['canonical_url'] = esc_url_raw($index_data['url'] ?? ($index_data['home'] ?? ''));
+                    }
+                }
             }
         }
 
         // REST 文章作者不能可靠代表站长；没有显式站长信息时保留站点图标兜底。
+    }
+
+    if ($info['is_wordpress'] && empty($info['feed_url'])) {
+        $info['feed_url'] = $base_url . '/feed/';
     }
 
     $image_candidates = argon_extract_site_image_candidates($body, $meta, $scheme, $host, $base_path, $base_url);
@@ -6208,7 +6334,8 @@ function argon_fetch_site_info($url) {
     }
 
     $info['image'] = argon_select_friend_link_image($info);
-    
+    set_transient($cache_key, $info, argon_friend_link_info_cache_ttl());
+
     return $info;
 }
 
@@ -6708,7 +6835,7 @@ function argon_select_friend_link_image($site_info) {
     if (!is_array($site_info)) {
         return '';
     }
-    foreach (array('site_image', 'author_avatar', 'favicon') as $key) {
+    foreach (array('site_logo', 'site_image', 'author_avatar', 'favicon') as $key) {
         if (!empty($site_info[$key])) {
             return trim((string)$site_info[$key]);
         }
@@ -6768,23 +6895,28 @@ function argon_add_friend_link($data) {
     }
     
     // 自动获取网站信息
-    $site_info = array();
-    if (empty($data['avatar']) || empty($data['description'])) {
-        $site_info = argon_fetch_site_info($url);
-    }
+    $site_info = argon_fetch_site_info($url);
     $user_avatar = array_key_exists('user_avatar', $data) ? !empty($data['user_avatar']) : !empty($data['avatar']);
     
     $new_link = array(
         'id' => uniqid('fl_'),
         'name' => sanitize_text_field($data['name']),
         'display_name' => isset($data['display_name']) ? sanitize_text_field($data['display_name']) : '',
+        'user_display_name' => !empty($data['display_name']),
         'url' => $url,
         'avatar' => !empty($data['avatar']) ? esc_url_raw($data['avatar']) : argon_select_friend_link_image($site_info),
         'user_avatar' => $user_avatar,
         'author_avatar' => !empty($site_info['author_avatar']) ? esc_url_raw($site_info['author_avatar']) : '',
+        'author_name' => !empty($site_info['author_name']) ? sanitize_text_field($site_info['author_name']) : '',
+        'site_logo' => !empty($site_info['site_logo']) ? esc_url_raw($site_info['site_logo']) : '',
         'favicon' => !empty($site_info['favicon']) ? esc_url_raw($site_info['favicon']) : '',
         'site_image' => !empty($site_info['site_image']) ? esc_url_raw($site_info['site_image']) : '',
         'image' => !empty($site_info['image']) ? esc_url_raw($site_info['image']) : '',
+        'canonical_url' => !empty($site_info['canonical_url']) ? esc_url_raw($site_info['canonical_url']) : '',
+        'feed_url' => !empty($site_info['feed_url']) ? esc_url_raw($site_info['feed_url']) : '',
+        'language' => !empty($site_info['language']) ? sanitize_text_field($site_info['language']) : '',
+        'keywords' => !empty($site_info['keywords']) ? sanitize_text_field($site_info['keywords']) : '',
+        'theme_color' => !empty($site_info['theme_color']) ? sanitize_hex_color($site_info['theme_color']) : '',
         'description' => !empty($data['description']) ? sanitize_text_field($data['description']) : (!empty($site_info['description']) ? mb_substr($site_info['description'], 0, 100) : ''),
         'category' => isset($data['category']) ? sanitize_text_field($data['category']) : '',
         'email' => isset($data['email']) ? sanitize_email($data['email']) : '',
@@ -6794,6 +6926,8 @@ function argon_add_friend_link($data) {
         'is_wordpress' => !empty($site_info['is_wordpress']),
         'accessible' => !empty($site_info['accessible']),
         'last_check' => time(),
+        'last_info_update' => time(),
+        'next_check_at' => time() + 6 * HOUR_IN_SECONDS,
         'created_at' => time()
     );
     
@@ -6823,7 +6957,7 @@ function argon_update_friend_link($id, $data) {
                 if (!is_bool($value)) {
                     $value = wp_unslash($value);
                 }
-                if (in_array($field, array('url', 'links_page', 'avatar', 'author_avatar', 'favicon', 'auto_favicon', 'site_image', 'image'), true)) {
+                if (in_array($field, array('url', 'links_page', 'avatar', 'author_avatar', 'site_logo', 'favicon', 'auto_favicon', 'site_image', 'image', 'canonical_url', 'feed_url', 'detected_links_page'), true)) {
                     $links[$key][$field] = esc_url_raw($value);
                 } elseif ($field === 'email') {
                     $links[$key][$field] = sanitize_email($value);
@@ -6950,8 +7084,25 @@ function argon_handle_link_application_v3($post_data) {
         return array('success' => false, 'message' => sprintf(__('该网站（%s）%s', 'argon'), $duplicate['name'], $status_text));
     }
     
-    // 服务器端获取网站信息
-    $site_info = argon_fetch_site_info($url);
+    // 访客提交只保存最小信息，完整资料与互链状态交给后台任务抓取，避免阻塞前台请求。
+    $site_info = array(
+        'title' => '',
+        'description' => '',
+        'author_name' => '',
+        'author_avatar' => '',
+        'site_logo' => '',
+        'favicon' => '',
+        'site_image' => '',
+        'image' => '',
+        'canonical_url' => '',
+        'feed_url' => '',
+        'language' => '',
+        'keywords' => '',
+        'theme_color' => '',
+        'accessible' => null,
+        'blocked_by_waf' => false,
+        'is_wordpress' => false
+    );
     
     // 获取用户填写的内容
     $user_name = isset($post_data['apply_name']) ? trim($post_data['apply_name']) : '';
@@ -6959,16 +7110,9 @@ function argon_handle_link_application_v3($post_data) {
     $user_desc = isset($post_data['apply_description']) ? trim($post_data['apply_description']) : '';
     
     // 确定最终使用的值
-    $final_name = !empty($user_name) ? $user_name : $site_info['title'];
+    $url_host = wp_parse_url($url, PHP_URL_HOST);
+    $final_name = !empty($user_name) ? $user_name : preg_replace('/^www\./i', '', (string)$url_host);
     $display_name = '';
-    
-    // 如果用户填了名称，且自动获取的标题与用户填的相似度低，则标题作为副标题
-    if (!empty($user_name) && !empty($site_info['title'])) {
-        $similarity = argon_string_similarity($user_name, $site_info['title']);
-        if ($similarity < 0.6) { // 相似度低于60%时显示副标题
-            $display_name = $site_info['title'];
-        }
-    }
     
     $final_avatar = !empty($user_avatar) ? esc_url_raw($user_avatar) : esc_url_raw(argon_select_friend_link_image($site_info));
     
@@ -6988,33 +7132,34 @@ function argon_handle_link_application_v3($post_data) {
     // 获取申请者填写的友链页面
     $links_page = isset($post_data['apply_links_page']) ? esc_url_raw($post_data['apply_links_page']) : '';
     
-    // 如果填写了友链页面，检测是否已添加本站链接
+    // 互链状态由后台任务自动检测。
     $has_backlink = null;
     $auto_approved = false;
     $status = 'pending';
-    
-    if (!empty($links_page)) {
-        $has_backlink = argon_check_backlink($links_page);
-        if ($has_backlink) {
-            $status = 'approved';
-            $auto_approved = true;
-        }
-    }
     
     // 添加友链
     $links = get_option('argon_friend_links', array());
     $new_link = array(
         'id' => uniqid('fl_'),
         'name' => sanitize_text_field($final_name),
+        'auto_name' => empty($user_name),
         'display_name' => sanitize_text_field($display_name),
+        'user_display_name' => false,
         'url' => esc_url_raw($url),
         'links_page' => $links_page,
         'avatar' => $final_avatar,
         'user_avatar' => $user_custom_avatar,
         'author_avatar' => !empty($site_info['author_avatar']) ? esc_url_raw($site_info['author_avatar']) : '',
+        'author_name' => !empty($site_info['author_name']) ? sanitize_text_field($site_info['author_name']) : '',
+        'site_logo' => !empty($site_info['site_logo']) ? esc_url_raw($site_info['site_logo']) : '',
         'favicon' => !empty($site_info['favicon']) ? esc_url_raw($site_info['favicon']) : '',
         'site_image' => !empty($site_info['site_image']) ? esc_url_raw($site_info['site_image']) : '',
         'image' => !empty($site_info['image']) ? esc_url_raw($site_info['image']) : '',
+        'canonical_url' => !empty($site_info['canonical_url']) ? esc_url_raw($site_info['canonical_url']) : '',
+        'feed_url' => !empty($site_info['feed_url']) ? esc_url_raw($site_info['feed_url']) : '',
+        'language' => !empty($site_info['language']) ? sanitize_text_field($site_info['language']) : '',
+        'keywords' => !empty($site_info['keywords']) ? sanitize_text_field($site_info['keywords']) : '',
+        'theme_color' => !empty($site_info['theme_color']) ? sanitize_hex_color($site_info['theme_color']) : '',
         'description' => sanitize_text_field($final_desc),
         'auto_description' => sanitize_text_field($auto_description),
         'category' => '',
@@ -7025,12 +7170,17 @@ function argon_handle_link_application_v3($post_data) {
         'accessible' => $accessible,
         'blocked_by_waf' => $site_info['blocked_by_waf'],
         'is_wordpress' => $site_info['is_wordpress'],
-        'last_check' => time(),
+        'last_check' => 0,
+        'last_info_update' => 0,
+        'next_check_at' => time(),
         'created_at' => time()
     );
     
     $links[] = $new_link;
     update_option('argon_friend_links', $links);
+    if (!wp_next_scheduled('argon_friend_link_application_check', array($new_link['id']))) {
+        wp_schedule_single_event(time() + 30, 'argon_friend_link_application_check', array($new_link['id']));
+    }
     
     // 更新频率限制计数
     if ($apply_count === false) {
@@ -7039,17 +7189,53 @@ function argon_handle_link_application_v3($post_data) {
         set_transient($rate_limit_key, $apply_count + 1, $limit_period);
     }
     
-    if ($auto_approved) {
-        return array('success' => true, 'message' => __('检测到您已添加本站链接，友链已自动通过！', 'argon'));
-    }
-    
-    // 发送通知邮件给管理员
-    if (function_exists('argon_notify_admin_new_link_application')) {
-        argon_notify_admin_new_link_application($new_link['id']);
-    }
-    
-    return array('success' => true, 'message' => __('申请已提交，请等待审核。', 'argon'));
+    return array('success' => true, 'message' => __('申请已提交，系统将在后台自动检测互链。', 'argon'));
 }
+
+/**
+ * 异步补全访客提交的博客资料，并在确认互链后自动通过。
+ */
+function argon_process_friend_link_application_check($link_id) {
+    $link = argon_get_friend_link($link_id);
+    if (!$link || ($link['status'] ?? '') !== 'pending') return;
+
+    $result = argon_sync_friend_link($link, array('force_refresh' => empty($link['last_info_update'])));
+    if (empty($result['success'])) return;
+
+    $site_info = isset($result['site_info']) && is_array($result['site_info']) ? $result['site_info'] : array();
+    $update_data = array('application_check_attempts' => intval($link['application_check_attempts'] ?? 0) + 1);
+    if (!empty($link['auto_name']) && !empty($site_info['title'])) {
+        $update_data['name'] = $site_info['title'];
+    }
+    if ($result['backlink_check_result'] === true) {
+        $update_data['status'] = 'approved';
+        $update_data['auto_approved'] = true;
+    }
+    argon_update_friend_link($link_id, $update_data);
+
+    if ($result['backlink_check_result'] === true) {
+        $fresh_link = argon_get_friend_link($link_id);
+        if ($fresh_link && !empty($fresh_link['email'])) {
+            $subject = sprintf('[%s] 您的友链申请已自动通过', get_bloginfo('name'));
+            $message = sprintf("您好！\n\n系统已检测到您添加的本站链接，友链申请已自动通过。\n\n网站名称：%s\n网站地址：%s", $fresh_link['name'], $fresh_link['url']);
+            wp_mail($fresh_link['email'], $subject, $message);
+        }
+        return;
+    }
+
+    $fresh_link = argon_get_friend_link($link_id);
+    if ($fresh_link && empty($fresh_link['admin_notified']) && function_exists('argon_notify_admin_new_link_application')) {
+        argon_notify_admin_new_link_application($link_id);
+        argon_update_friend_link($link_id, array('admin_notified' => true));
+    }
+
+    $attempts = intval($update_data['application_check_attempts']);
+    if ($attempts < 5 && !wp_next_scheduled('argon_friend_link_application_check', array($link_id))) {
+        $delay = !empty($result['accessible']) ? 5 * MINUTE_IN_SECONDS : min(DAY_IN_SECONDS, argon_friend_link_next_check_delay($attempts));
+        wp_schedule_single_event(time() + $delay, 'argon_friend_link_application_check', array($link_id));
+    }
+}
+add_action('argon_friend_link_application_check', 'argon_process_friend_link_application_check');
 
 /**
  * 计算两个字符串的相似度
@@ -7078,14 +7264,25 @@ function argon_check_site_accessible($url) {
     $response = wp_remote_head($url, array(
         'timeout' => 10,
         'sslverify' => false,
-        'user-agent' => 'Mozilla/5.0 (compatible; Argon Friend Link Checker)'
+        'user-agent' => 'Mozilla/5.0 (compatible; Argon Friend Link Checker)',
+        'redirection' => 4,
+        'reject_unsafe_urls' => true
     ));
-    
-    if (is_wp_error($response)) {
-        return false;
+
+    $code = is_wp_error($response) ? 0 : wp_remote_retrieve_response_code($response);
+    if (is_wp_error($response) || in_array($code, array(403, 405, 501), true)) {
+        $response = wp_remote_get($url, array(
+            'timeout' => 8,
+            'sslverify' => false,
+            'user-agent' => 'Mozilla/5.0 (compatible; Argon Friend Link Checker)',
+            'redirection' => 4,
+            'reject_unsafe_urls' => true,
+            'limit_response_size' => 2048
+        ));
+        if (is_wp_error($response)) return false;
+        $code = wp_remote_retrieve_response_code($response);
     }
-    
-    $code = wp_remote_retrieve_response_code($response);
+
     return ($code >= 200 && $code < 400);
 }
 
@@ -7102,7 +7299,23 @@ function argon_handle_link_application($post_data) {
  * @param string $links_page 对方的友链页面地址
  * @return bool 是否找到本站链接
  */
-function argon_check_backlink($links_page) {
+function argon_check_backlink($links_page, $force_refresh = false) {
+    if (empty($links_page)) return null;
+    $cache_key = 'argon_flink_back_' . md5(strtolower(trim((string)$links_page)) . '|' . strtolower((string)home_url()));
+    if (!$force_refresh) {
+        $cached = get_transient($cache_key);
+        if (is_array($cached) && array_key_exists('result', $cached)) {
+            return $cached['result'] === null ? null : (bool)$cached['result'];
+        }
+    }
+
+    $result = argon_check_backlink_uncached($links_page);
+    $ttl = $result === null ? 15 * MINUTE_IN_SECONDS : ($result ? 12 * HOUR_IN_SECONDS : 3 * HOUR_IN_SECONDS);
+    set_transient($cache_key, array('result' => $result === null ? null : (bool)$result, 'checked_at' => time()), $ttl);
+    return $result;
+}
+
+function argon_check_backlink_uncached($links_page) {
     if (empty($links_page)) {
         return null;
     }
@@ -7112,18 +7325,26 @@ function argon_check_backlink($links_page) {
     $site_host_nowww = preg_replace('/^www\./i', '', $site_host);
     
     $response = wp_remote_get($links_page, array(
-        'timeout' => 15,
+        'timeout' => 8,
         'sslverify' => false,
-        'user-agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        'user-agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'redirection' => 4,
+        'reject_unsafe_urls' => true,
+        'limit_response_size' => 524288
     ));
     
     if (is_wp_error($response)) {
-        return false;
+        return null;
+    }
+
+    $response_code = wp_remote_retrieve_response_code($response);
+    if ($response_code < 200 || $response_code >= 400) {
+        return in_array($response_code, array(404, 410), true) ? false : null;
     }
     
     $body = wp_remote_retrieve_body($response);
     if (empty($body)) {
-        return false;
+        return null;
     }
     
     // 提取所有 <a> 标签的 href，检查是否指向本站
@@ -7138,8 +7359,196 @@ function argon_check_backlink($links_page) {
             }
         }
     }
-    
+
+    $content_length = intval(wp_remote_retrieve_header($response, 'content-length'));
+    $body_length = strlen($body);
+    if (($content_length > 0 && $content_length > $body_length) || $body_length >= 524288) {
+        return null;
+    }
+
     return false;
+}
+
+/**
+ * 生成互链检测候选页。优先使用用户填写或历史识别到的页面，再尝试常见友链路径。
+ */
+function argon_get_friend_link_backlink_targets($link) {
+    if (!is_array($link)) return array();
+    $targets = array();
+    foreach (array('links_page', 'detected_links_page') as $field) {
+        if (!empty($link[$field])) $targets[] = esc_url_raw($link[$field]);
+    }
+
+    $url = !empty($link['url']) ? esc_url_raw($link['url']) : '';
+    $parts = wp_parse_url($url);
+    if (!empty($parts['scheme']) && !empty($parts['host'])) {
+        $base = $parts['scheme'] . '://' . $parts['host'];
+        if (!empty($parts['port'])) $base .= ':' . intval($parts['port']);
+        $targets[] = $url;
+        foreach (array('/friends/', '/links/', '/friend-links/', '/links.html') as $path) {
+            $targets[] = $base . $path;
+        }
+    }
+
+    $unique = array();
+    foreach ($targets as $target) {
+        $target = esc_url_raw($target);
+        if ($target === '') continue;
+        $key = strtolower(rtrim($target, '/'));
+        if (!isset($unique[$key])) $unique[$key] = $target;
+        if (count($unique) >= 6) break;
+    }
+    return array_values($unique);
+}
+
+function argon_check_friend_link_backlink($link, $force_refresh = false) {
+    $targets = argon_get_friend_link_backlink_targets($link);
+    if (empty($targets)) return array('result' => null, 'url' => '', 'checked' => 0, 'successful' => 0, 'next_cursor' => 0, 'scan_successes' => 0, 'targets_hash' => '');
+
+    $target_count = count($targets);
+    $targets_hash = md5(implode('|', $targets));
+    $scan_limit = max(1, min(5, intval(get_option('argon_friend_link_backlink_scan_limit', 3))));
+    $targets_changed = !empty($link['backlink_targets_hash']) && $link['backlink_targets_hash'] !== $targets_hash;
+    $window = argon_friend_link_scan_window($target_count, $targets_changed ? 0 : intval($link['backlink_candidate_cursor'] ?? 0), $scan_limit);
+    $start = $window['start'];
+    $scan_successes = $start === 0 ? 0 : intval($link['backlink_scan_successes'] ?? 0);
+    $checked = 0;
+    $successful = 0;
+    $matched_url = '';
+    $batch_count = $window['count'];
+    for ($offset = 0; $offset < $batch_count; $offset++) {
+        $target = $targets[$start + $offset];
+        $checked++;
+        $result = argon_check_backlink($target, $force_refresh);
+        if ($result === true) {
+            $matched_url = $target;
+            return array('result' => true, 'url' => $matched_url, 'checked' => $checked, 'successful' => $successful + 1, 'next_cursor' => 0, 'scan_successes' => 0, 'targets_hash' => $targets_hash);
+        }
+        if ($result === false) $successful++;
+    }
+
+    $scan_successes += $successful;
+    $next_cursor = $window['next_cursor'];
+    $cycle_complete = $window['complete'];
+    return array(
+        'result' => $cycle_complete && $scan_successes === $target_count ? false : null,
+        'url' => '',
+        'checked' => $checked,
+        'successful' => $successful,
+        'next_cursor' => $cycle_complete ? 0 : $next_cursor,
+        'scan_successes' => $cycle_complete ? 0 : $scan_successes,
+        'targets_hash' => $targets_hash
+    );
+}
+
+function argon_friend_link_next_check_delay($failure_count) {
+    $failure_count = max(0, intval($failure_count));
+    if ($failure_count === 0) return DAY_IN_SECONDS;
+    $exponent = min(5, $failure_count - 1);
+    $delay = 6 * HOUR_IN_SECONDS * pow(2, $exponent);
+    return min(7 * DAY_IN_SECONDS, intval($delay) + wp_rand(0, 30 * MINUTE_IN_SECONDS));
+}
+
+/**
+ * 同步一条友链的互链状态和博客资料，供手动检测与 WP-Cron 共用。
+ */
+function argon_sync_friend_link($link, $args = array()) {
+    if (!is_array($link) || empty($link['id']) || empty($link['url'])) {
+        return array('success' => false, 'error' => 'invalid_link');
+    }
+    $force_refresh = !empty($args['force_refresh']);
+    $now = time();
+    $started_at = microtime(true);
+    $last_info_update = intval($link['last_info_update'] ?? 0);
+    $refresh_site_info = $force_refresh || $last_info_update <= ($now - argon_friend_link_info_refresh_interval());
+    if ($refresh_site_info) {
+        $site_info = argon_fetch_site_info($link['url'], $force_refresh);
+    } else {
+        $site_info = array(
+            'title' => $link['display_name'] ?? '',
+            'description' => $link['auto_description'] ?? ''
+        );
+        foreach (array('author_name', 'author_avatar', 'site_logo', 'favicon', 'site_image', 'image', 'canonical_url', 'feed_url', 'language', 'keywords', 'theme_color', 'blocked_by_waf', 'is_wordpress') as $field) {
+            if (array_key_exists($field, $link)) $site_info[$field] = $link[$field];
+        }
+        $site_info['accessible'] = argon_check_site_accessible($link['url']);
+        $site_info['error_reason'] = $site_info['accessible'] ? '' : __('站点暂时无法访问', 'argon');
+        if ($site_info['accessible']) $site_info['blocked_by_waf'] = false;
+    }
+    $accessible = !empty($site_info['accessible']);
+    if ($accessible) {
+        $backlink = argon_check_friend_link_backlink($link, $force_refresh);
+    } else {
+        $backlink = array(
+            'result' => array_key_exists('has_backlink', $link) ? $link['has_backlink'] : null,
+            'url' => !empty($link['detected_links_page']) ? $link['detected_links_page'] : '',
+            'checked' => 0,
+            'successful' => 0,
+            'next_cursor' => intval($link['backlink_candidate_cursor'] ?? 0),
+            'scan_successes' => intval($link['backlink_scan_successes'] ?? 0),
+            'targets_hash' => $link['backlink_targets_hash'] ?? ''
+        );
+    }
+    $failure_count = $accessible ? 0 : (intval($link['check_failures'] ?? 0) + 1);
+    $resolved_backlink = $backlink['result'] === null
+        ? (array_key_exists('has_backlink', $link) ? $link['has_backlink'] : null)
+        : $backlink['result'];
+    $detected_links_page = $backlink['result'] === true
+        ? $backlink['url']
+        : ($backlink['result'] === false ? '' : ($link['detected_links_page'] ?? ''));
+
+    $update_data = array(
+        'has_backlink' => $resolved_backlink,
+        'verified' => $resolved_backlink,
+        'detected_links_page' => $detected_links_page,
+        'backlink_candidate_cursor' => intval($backlink['next_cursor']),
+        'backlink_scan_successes' => intval($backlink['scan_successes']),
+        'backlink_targets_hash' => sanitize_text_field($backlink['targets_hash']),
+        'accessible' => $accessible,
+        'blocked_by_waf' => !empty($site_info['blocked_by_waf']),
+        'is_wordpress' => !empty($site_info['is_wordpress']),
+        'error_reason' => !empty($site_info['error_reason']) ? $site_info['error_reason'] : '',
+        'last_check' => $now,
+        'check_failures' => $failure_count,
+        'next_check_at' => $now + argon_friend_link_next_check_delay($failure_count),
+        'check_duration_ms' => intval((microtime(true) - $started_at) * 1000)
+    );
+    if ($refresh_site_info && $accessible) $update_data['last_info_update'] = $now;
+    if ($backlink['checked'] > 0) $update_data['last_backlink_check'] = $now;
+
+    foreach (array('author_avatar', 'site_logo', 'favicon', 'site_image', 'image', 'canonical_url', 'feed_url') as $field) {
+        if (!empty($site_info[$field])) $update_data[$field] = $site_info[$field];
+    }
+    foreach (array('author_name', 'language', 'keywords', 'theme_color') as $field) {
+        if (!empty($site_info[$field])) $update_data[$field] = $site_info[$field];
+    }
+    if (!empty($site_info['favicon'])) $update_data['auto_favicon'] = $site_info['favicon'];
+    if (!empty($site_info['description'])) $update_data['auto_description'] = $site_info['description'];
+
+    $best_image = argon_select_friend_link_image($site_info);
+    if ($best_image && empty($link['user_avatar'])) {
+        $update_data['avatar'] = $best_image;
+        $update_data['user_avatar'] = false;
+    }
+    $can_update_display_name = array_key_exists('user_display_name', $link) ? empty($link['user_display_name']) : empty($link['display_name']);
+    if ($can_update_display_name && !empty($site_info['title']) && !empty($link['name']) && argon_string_similarity($link['name'], $site_info['title']) < 0.6) {
+        $update_data['display_name'] = $site_info['title'];
+    }
+    if ($accessible) $update_data['last_successful_check'] = $now;
+
+    $updated = argon_update_friend_link($link['id'], $update_data);
+    return array(
+        'success' => $updated,
+        'id' => $link['id'],
+        'accessible' => $accessible,
+        'has_backlink' => $resolved_backlink,
+        'backlink_check_result' => $backlink['result'],
+        'detected_links_page' => $detected_links_page,
+        'checked_pages' => $backlink['checked'],
+        'info_refreshed' => $refresh_site_info,
+        'next_check_at' => $update_data['next_check_at'],
+        'site_info' => $site_info
+    );
 }
 
 /**
@@ -7425,9 +7834,6 @@ function argon_check_all_links_accessibility() {
             'access_status_code' => isset($check['status_code']) ? $check['status_code'] : 0
         ));
         $results[$link['id']] = $check;
-        
-        // 每次请求后随机延迟 2-5 秒，避免频繁访问
-        sleep(rand(2, 5));
     }
     
     return $results;
@@ -7438,88 +7844,99 @@ function argon_check_all_links_accessibility() {
  * 每次只检查部分友链，分散压力
  */
 function argon_scheduled_link_check() {
-    // 每天只更新约 1/3 的友链，分散到多天完成全部更新
+    // 按到期时间分批处理，避免一次请求占用过多资源。
     argon_check_partial_links();
 }
 
 /**
  * 分批检查友链，每次只检查部分
  */
-function argon_check_partial_links() {
-    $links = get_option('argon_friend_links', array());
-    $approved_links = array_filter($links, function($l) { return $l['status'] === 'approved'; });
-    
-    if (empty($approved_links)) return;
-    
-    // 按上次检查时间排序，优先检查最久未检查的
-    usort($approved_links, function($a, $b) {
-        $a_time = isset($a['last_info_update']) ? $a['last_info_update'] : 0;
-        $b_time = isset($b['last_info_update']) ? $b['last_info_update'] : 0;
-        return $a_time - $b_time;
-    });
-    
-    // 每次最多检查 5 个
-    $to_check = array_slice($approved_links, 0, 5);
-    
-    foreach ($to_check as $link) {
-        // 随机延迟 3-10 秒
-        sleep(rand(3, 10));
-        
-        $site_info = argon_fetch_site_info($link['url']);
-        
-        $update_data = array(
-            'last_info_update' => time(),
-            'accessible' => $site_info['accessible'],
-            'blocked_by_waf' => $site_info['blocked_by_waf'],
-            'error_reason' => $site_info['error_reason']
-        );
-        
-        if ($site_info['accessible']) {
-            // 更新 favicon
-            if (!empty($site_info['favicon'])) {
-                $update_data['auto_favicon'] = $site_info['favicon'];
-            }
-            
-            // 更新作者头像
-            if (!empty($site_info['author_avatar'])) {
-                $update_data['author_avatar'] = $site_info['author_avatar'];
-            }
-            if (!empty($site_info['site_image'])) {
-                $update_data['site_image'] = $site_info['site_image'];
-            }
-            $best_image = argon_select_friend_link_image($site_info);
-            if (!empty($best_image)) {
-                $update_data['image'] = $best_image;
-            }
-            if (!empty($best_image) && empty($link['user_avatar'])) {
-                $update_data['avatar'] = $best_image;
-            }
-            
-            // 更新描述
-            if (!empty($site_info['description'])) {
-                $update_data['auto_description'] = $site_info['description'];
-            }
-            
-            // 更新标题（副标题）
-            if (!empty($site_info['title']) && !empty($link['name'])) {
-                $similarity = argon_string_similarity($link['name'], $site_info['title']);
-                if ($similarity < 0.6) {
-                    $update_data['display_name'] = $site_info['title'];
-                }
-            }
-            
-            // 检查回链
-            $update_data['has_backlink'] = argon_check_backlink($link['url']);
-        }
-        
-        argon_update_friend_link($link['id'], $update_data);
+function argon_process_friend_link_check_batch($limit = 4, $force_refresh = false) {
+    $limit = max(1, min(10, intval($limit)));
+    $lock_key = 'argon_friend_link_check_lock';
+    $lock_option = 'argon_friend_link_check_lock_until';
+    $now = time();
+    $lock_until = intval(get_option($lock_option, 0));
+    if (get_transient($lock_key) || $lock_until > $now) {
+        return array('success' => false, 'locked' => true, 'processed' => 0, 'remaining' => 0, 'results' => array());
     }
+    if ($lock_until > 0) delete_option($lock_option);
+    if (!add_option($lock_option, $now + 10 * MINUTE_IN_SECONDS, '', 'no')) {
+        return array('success' => false, 'locked' => true, 'processed' => 0, 'remaining' => 0, 'results' => array());
+    }
+    set_transient($lock_key, 1, 10 * MINUTE_IN_SECONDS);
+
+    $links = argon_get_friend_links_raw('approved');
+    $links = array_values(array_filter($links, function($link) {
+        return is_array($link) && !empty($link['id']) && !empty($link['url']);
+    }));
+    usort($links, function($a, $b) use ($now) {
+        $a_next = intval($a['next_check_at'] ?? 0);
+        $b_next = intval($b['next_check_at'] ?? 0);
+        $a_due = $a_next <= $now;
+        $b_due = $b_next <= $now;
+        if ($a_due !== $b_due) return $a_due ? -1 : 1;
+        if (!$a_due && $a_next !== $b_next) return $a_next - $b_next;
+        $a_last = intval($a['last_check'] ?? ($a['last_info_update'] ?? 0));
+        $b_last = intval($b['last_check'] ?? ($b['last_info_update'] ?? 0));
+        return $a_last - $b_last;
+    });
+
+    $due_links = array_values(array_filter($links, function($link) use ($now, $force_refresh) {
+        return $force_refresh || intval($link['next_check_at'] ?? 0) <= $now;
+    }));
+    $to_check = array_slice($due_links, 0, $limit);
+    $results = array();
+    $success_count = 0;
+    foreach ($to_check as $link) {
+        $result = argon_sync_friend_link($link, array('force_refresh' => $force_refresh));
+        $results[$link['id']] = $result;
+        if (!empty($result['success'])) $success_count++;
+    }
+
+    delete_transient($lock_key);
+    delete_option($lock_option);
+    $summary = array(
+        'success' => true,
+        'locked' => false,
+        'processed' => count($to_check),
+        'updated' => $success_count,
+        'remaining' => max(0, count($due_links) - count($to_check)),
+        'total' => count($links),
+        'checked_at' => $now,
+        'results' => $results
+    );
+    update_option('argon_friend_link_check_summary', array_diff_key($summary, array('results' => true)));
+    return $summary;
+}
+
+function argon_check_partial_links($limit = 4, $force_refresh = false) {
+    return argon_process_friend_link_check_batch($limit, $force_refresh);
 }
 
 // 注册定时任务
-if (!wp_next_scheduled('argon_daily_link_check')) {
-    wp_schedule_event(time(), 'daily', 'argon_daily_link_check');
+function argon_friend_link_cron_schedules($schedules) {
+    if (!isset($schedules['argon_friend_links_6h'])) {
+        $schedules['argon_friend_links_6h'] = array(
+            'interval' => 6 * HOUR_IN_SECONDS,
+            'display' => __('每 6 小时检查一批友链', 'argon')
+        );
+    }
+    return $schedules;
 }
+add_filter('cron_schedules', 'argon_friend_link_cron_schedules');
+
+function argon_schedule_friend_link_check_event() {
+    if (wp_next_scheduled('argon_daily_link_check')) {
+        wp_clear_scheduled_hook('argon_daily_link_check');
+    }
+    if (!wp_next_scheduled('argon_friend_links_auto_check')) {
+        wp_schedule_event(time() + 5 * MINUTE_IN_SECONDS, 'argon_friend_links_6h', 'argon_friend_links_auto_check');
+    }
+}
+add_action('init', 'argon_schedule_friend_link_check_event', 20);
+add_action('argon_friend_links_auto_check', 'argon_scheduled_link_check');
+// 兼容站点中尚未执行完的旧版每日任务，但不再新增旧任务。
 add_action('argon_daily_link_check', 'argon_scheduled_link_check');
 
 // 添加自定义时间间隔
