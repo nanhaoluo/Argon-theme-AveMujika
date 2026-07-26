@@ -524,7 +524,7 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 		
 		<h4 class="ai-section-subtitle"><?php _e('AI 生成摘要', 'argon'); ?></h4>
 		<div class="ai-content-box">
-			<?php echo nl2br(esc_html($result['summary'])); ?>
+			<?php echo function_exists('argon_render_ai_summary_markdown') ? argon_render_ai_summary_markdown($result['summary']) : nl2br(esc_html($result['summary'])); ?>
 		</div>
 		
 		<h4 class="ai-section-subtitle"><?php _e('生成信息', 'argon'); ?></h4>

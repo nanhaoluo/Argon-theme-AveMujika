@@ -7647,6 +7647,177 @@ function argon_normalize_ai_confidence_value($value, $default = 0.0) {
 	return max(0, min(1, $confidence));
 }
 
+function argon_get_default_ai_summary_prompt() {
+	return "## 角色\n\n你是一位拥有 10 年经验的资深媒体编辑与内容摘要专家。你的核心能力是：将一篇完整文章压缩为一段独立、可流通的内容摘要——读者仅凭这段摘要，无需阅读原文，即可准确理解文章的核心论点、关键证据和最终结论。\n\n---\n\n## 任务\n\n请阅读用户提供的文章，撰写一份完全自洽的内容摘要。\n\n---\n\n## 要求\n\n### 1. 内容独立性（最高优先级）\n\n- 用自己的语言重新组织，禁止大段复制或微调原文语句；\n- 摘要必须脱离原文独立成立：任何不补充上下文就无法理解的指代（如“这一结果”“上述观点”）都不允许出现；\n- 如文章涉及专有名词、缩略语或特定概念，摘要中须在首次出现时给出简短括号释义或自然语境解释，确保非专业读者也能读懂。\n\n### 2. 核心内容提取\n\n- 准确提炼文章的核心观点（What）与核心逻辑/因果链（Why / How）；\n- 不得遗漏关键数据、核心结论或主张、创新亮点或独特贡献；\n- 若文章包含多个并列观点，按重要性排序，优先保留前三项，其余用一句话概括。\n\n### 3. 字数控制\n\n- 正文摘要严格控制在 120–260 字；\n- 如原文信息密度极高，上限可放宽至 320 字，但必须输出完整句子。\n\n### 4. 语言风格\n\n- 使用通俗易懂、简洁干练的现代汉语；\n- 避免晦涩的专业术语；若必须使用术语，紧跟一句白话解释；\n- 每句话只表达一个意思，拒绝嵌套从句和长定语。\n\n### 5. 语气与立场\n\n- 严格客观中立：不加入个人评价、情感倾向或价值判断；\n- 不做过度推演：只陈述文章已明确表达的观点，不引申、不预测、不类比到文章未涉及的领域。\n\n### 6. 输出结构\n\n输出 2–3 个自然段，每段之间空一行：\n\n1. 第一段概括文章核心观点；\n2. 第二段概括主要事实、案例、数据或推理链条；\n3. 如有必要，第三段用完整句子收束文章结论。\n\n---\n\n## 禁止事项（负面清单）\n\n| 禁止行为 | 说明 |\n|---|---|\n| 输出标题 | 不得输出【摘要标题】、Markdown 标题或任何独立标题行 |\n| 半句结尾 | 最后一段必须以完整句子结束，不能以逗号、顿号、分号、冒号或连接词结尾 |\n| 大段照搬原文 | 即使改了几个字，连续 8 字以上与原文相同即视为照搬 |\n| 使用模糊指代 | “这”“该”“上述”等词若脱离原文无法定位所指，则不允许出现 |\n| 添加主观评价 | “意义重大”“令人振奋”“值得关注”等评价性语言一律禁止 |\n| 补充原文未提及的信息 | 摘要中不得出现原文中不存在的事实、数据或观点 |\n| 使用模板化开头 | 禁止以“本文介绍了”“本文主要讲述了”等万能句式开头 |\n\n---\n\n## 输出格式\n\n只输出正文摘要，不要标题、编号、列表、前言、结语、代码块或表格。";
+}
+
+function argon_get_ai_summary_prompt() {
+	$prompt = get_option('argon_ai_summary_prompt', '');
+	$previous_default = '你是一个专业的内容摘要助手。请仔细阅读以下文章内容，用简洁、准确的语言总结文章的核心观点和主要内容。要求：1) 控制在 100-150 字以内；2) 突出文章的关键信息和亮点；3) 使用通俗易懂的语言；4) 保持客观中立的语气。';
+	$strict_default = '你是一个严格的文章摘要助手。请只基于用户提供的文章正文生成摘要，不得引入正文没有出现的信息、推测、评价或建议。输出要求：1) 使用中文；2) 支持 Markdown，但只允许使用普通段落或最多 3 条无序列表；3) 不要输出标题、前言、结语、代码块、引用块、表格；4) 不要使用“以下是”“总结如下”“本文”等套话开头；5) 总长度控制在 120-180 个中文字符以内；6) 如果正文信息不足，只概括已有信息，不要补充外部知识。';
+	if (trim($prompt) === '' || trim($prompt) === $previous_default || trim($prompt) === $strict_default) {
+		return argon_get_default_ai_summary_prompt();
+	}
+	return $prompt;
+}
+
+function argon_clean_ai_summary_output($summary, $max_chars = 620) {
+	$summary = trim((string)$summary);
+	$summary = preg_replace('/<think\b[^>]*>[\s\S]*?<\/think>/iu', '', $summary);
+	$summary = preg_replace('/<thinking\b[^>]*>[\s\S]*?<\/thinking>/iu', '', $summary);
+	$summary = preg_replace('/<reasoning\b[^>]*>[\s\S]*?<\/reasoning>/iu', '', $summary);
+	$summary = preg_replace('/^\s*(?:思考过程|推理过程|思维链|Chain\s*of\s*Thought|Reasoning)[:：][\s\S]*?(?=\n\s*(?:【|#|正文摘要|核心观点)|$)/iu', '', $summary);
+	$summary = preg_replace('/^```(?:markdown|md|text)?\s*/iu', '', $summary);
+	$summary = preg_replace('/\s*```$/u', '', $summary);
+	$summary = preg_replace('/^---[\s\S]*?---\s*/u', '', $summary);
+	$summary = preg_replace('/^\s*(?:#{1,6}\s*)?(?:【[^\n】]{1,30}】|[^\n]{1,30})\s*\n{2,}/u', '', $summary);
+	$summary = preg_replace('/^(?:以下是|下面是|总结如下|摘要如下|文章摘要|AI\s*摘要)[:：\s]*/iu', '', $summary);
+	$summary = preg_replace('/\n*自检清单[\s\S]*$/u', '', $summary);
+	$summary = preg_replace('/\n{3,}/u', "\n\n", $summary);
+	$summary = trim($summary);
+
+	if (function_exists('mb_strlen') && mb_strlen(wp_strip_all_tags($summary), 'UTF-8') > $max_chars) {
+		$plain = wp_strip_all_tags($summary);
+		$truncated = mb_substr($plain, 0, $max_chars, 'UTF-8');
+		$last_sentence_end = max(
+			mb_strrpos($truncated, '。', 0, 'UTF-8') ?: -1,
+			mb_strrpos($truncated, '！', 0, 'UTF-8') ?: -1,
+			mb_strrpos($truncated, '？', 0, 'UTF-8') ?: -1,
+			mb_strrpos($truncated, '.', 0, 'UTF-8') ?: -1
+		);
+		if ($last_sentence_end >= 120) {
+			$summary = mb_substr($truncated, 0, $last_sentence_end + 1, 'UTF-8');
+		} else {
+			$summary = preg_replace('/[，、；：,.\s]+$/u', '', $truncated) . '。';
+		}
+	}
+
+	return trim($summary);
+}
+
+function argon_get_ai_summary_thinking_mode() {
+	$mode = get_option('argon_ai_summary_thinking_mode', 'disabled');
+	return in_array($mode, ['disabled', 'auto', 'enabled'], true) ? $mode : 'disabled';
+}
+
+function argon_apply_ai_summary_thinking_mode($prompt) {
+	$mode = argon_get_ai_summary_thinking_mode();
+	if ($mode === 'enabled') {
+		return trim($prompt) . "\n\n思考模式：允许你在内部进行必要推理，但最终回答只能输出正文摘要，严禁输出标题、思考过程、推理过程、分析步骤、<think> 标签或 reasoning_content。";
+	}
+	if ($mode === 'auto') {
+		return trim($prompt) . "\n\n思考模式：可由模型自行决定是否内部推理，但最终回答不得包含标题、思考过程、推理过程、分析步骤、<think> 标签或 reasoning_content。";
+	}
+	return trim($prompt) . "\n\n思考模式：关闭。请直接输出最终摘要，不要输出任何思考过程、推理过程、分析步骤、<think> 标签或 reasoning_content。";
+}
+
+function argon_extract_ai_message_text($message) {
+	if (is_string($message)) {
+		return argon_clean_ai_summary_output($message);
+	}
+	if (!is_array($message)) {
+		return '';
+	}
+	$text = '';
+	foreach (['text', 'output_text', 'answer'] as $field) {
+		if (isset($message[$field]) && is_string($message[$field])) {
+			$text .= "\n" . $message[$field];
+		}
+	}
+	if (isset($message['content'])) {
+		if (is_string($message['content'])) {
+			$text .= $message['content'];
+		} elseif (is_array($message['content'])) {
+			foreach ($message['content'] as $part) {
+				if (is_string($part)) {
+					$text .= "\n" . $part;
+				} elseif (is_array($part) && isset($part['text']) && is_string($part['text'])) {
+					$text .= "\n" . $part['text'];
+				} elseif (is_array($part) && isset($part['content']) && is_string($part['content'])) {
+					$text .= "\n" . $part['content'];
+				}
+			}
+		}
+	}
+	return argon_clean_ai_summary_output($text);
+}
+
+function argon_extract_ai_response_text($body) {
+	if (!is_array($body)) {
+		return '';
+	}
+	if (isset($body['choices']) && is_array($body['choices'])) {
+		foreach ($body['choices'] as $choice) {
+			if (!is_array($choice)) {
+				continue;
+			}
+			if (isset($choice['message'])) {
+				$text = argon_extract_ai_message_text($choice['message']);
+				if ($text !== '') {
+					return $text;
+				}
+			}
+			if (isset($choice['delta'])) {
+				$text = argon_extract_ai_message_text($choice['delta']);
+				if ($text !== '') {
+					return $text;
+				}
+			}
+			foreach (['text', 'content', 'output_text'] as $field) {
+				if (isset($choice[$field]) && is_string($choice[$field])) {
+					$text = argon_clean_ai_summary_output($choice[$field]);
+					if ($text !== '') {
+						return $text;
+					}
+				}
+			}
+		}
+	}
+	foreach (['output_text', 'text', 'answer', 'result'] as $field) {
+		if (isset($body[$field]) && is_string($body[$field])) {
+			$text = argon_clean_ai_summary_output($body[$field]);
+			if ($text !== '') {
+				return $text;
+			}
+		}
+	}
+	if (isset($body['output']) && is_array($body['output'])) {
+		$text = argon_extract_ai_message_text(['content' => $body['output']]);
+		if ($text !== '') {
+			return $text;
+		}
+	}
+	return '';
+}
+
+function argon_render_ai_summary_markdown($summary) {
+	$summary = argon_clean_ai_summary_output($summary);
+	if ($summary === '') {
+		return '';
+	}
+	if (class_exists('Parsedown')) {
+		$parser = new Parsedown();
+		if (method_exists($parser, 'setSafeMode')) {
+			$parser->setSafeMode(true);
+		}
+		$html = $parser->text($summary);
+	} else {
+		$html = nl2br(esc_html($summary));
+	}
+	$allowed = [
+		'p' => [],
+		'br' => [],
+		'ul' => [],
+		'ol' => [],
+		'li' => [],
+		'strong' => [],
+		'em' => [],
+		'code' => [],
+		'a' => ['href' => [], 'title' => [], 'target' => [], 'rel' => []]
+	];
+	return wp_kses($html, $allowed);
+}
+
 function argon_get_openai_compatible_models($api_key, $custom_endpoint = '') {
 	$endpoint = !empty($custom_endpoint) ? $custom_endpoint : argon_get_default_ai_endpoint('openai_compatible');
 	$endpoint = preg_replace('#/chat/completions$#', '/models', $endpoint);
@@ -7853,6 +8024,12 @@ function argon_ai_query($scenario, $prompt, $content, $context = []) {
 	
 	if (!$config || empty($provider) || empty($config['api_key'])) {
 		error_log("Argon AI Query Error: Provider config not found for {$provider}");
+		if (!empty($context['post_id'])) {
+			argon_log_ai_error('AI', 'API 配置错误', '未找到有效的 API 配置或 API Key 为空', intval($context['post_id']), [
+				'scenario' => $scenario,
+				'provider' => $provider
+			]);
+		}
 		return false;
 	}
 	
@@ -7889,6 +8066,13 @@ function argon_ai_query($scenario, $prompt, $content, $context = []) {
 	} catch (Exception $e) {
 		$error_message = $e->getMessage();
 		error_log("Argon AI Query Exception: {$error_message}");
+		if (!empty($post_id)) {
+			argon_log_ai_error($provider, '查询异常', $error_message, intval($post_id), [
+				'model' => $model,
+				'endpoint' => $endpoint,
+				'scenario' => $scenario
+			]);
+		}
 	}
 	
 	// 计算响应时间（毫秒）
@@ -7898,6 +8082,13 @@ function argon_ai_query($scenario, $prompt, $content, $context = []) {
 	$status = ($result !== false) ? 'success' : 'error';
 	if ($result === false && empty($error_message)) {
 		$error_message = 'API call returned false';
+	}
+	if ($result === false && !empty($post_id) && $scenario === 'summary' && get_post_meta($post_id, '_argon_ai_summary_error', true) === '') {
+		argon_log_ai_error($provider, '查询失败', $error_message, intval($post_id), [
+			'model' => $model,
+			'endpoint' => $endpoint,
+			'scenario' => $scenario
+		]);
 	}
 	
 	argon_log_ai_query(
@@ -8647,6 +8838,17 @@ function argon_get_active_api_config($scenario = 'summary') {
 			];
 		}
 	}
+
+	$apis = argon_get_all_apis();
+	if (!empty($apis) && isset($apis[0])) {
+		$api = $apis[0];
+		return [
+			'api_key' => isset($api['api_key']) ? $api['api_key'] : '',
+			'api_endpoint' => isset($api['api_endpoint']) ? $api['api_endpoint'] : '',
+			'model' => isset($api['model']) ? $api['model'] : '',
+			'provider' => isset($api['provider']) ? $api['provider'] : ''
+		];
+	}
 	
 	// 如果没有任何 API 配置，返回空配置
 	return [
@@ -8666,6 +8868,16 @@ function argon_get_active_api_config($scenario = 'summary') {
  * @param array $extra_data 额外数据
  */
 function argon_log_ai_error($provider, $error_type, $error_message, $post_id = 0, $extra_data = []) {
+	if (is_numeric($error_type) && is_array($error_message)) {
+		$legacy_extra_data = $error_message;
+		$legacy_post_id = intval($error_type);
+		$error_type = $provider;
+		$provider = isset($legacy_extra_data['provider']) ? $legacy_extra_data['provider'] : 'AI';
+		$error_message = argon_format_ai_error_extra_data($legacy_extra_data);
+		$post_id = $legacy_post_id;
+		$extra_data = $legacy_extra_data;
+	}
+
 	$log_message = sprintf(
 		'Argon AI Summary Error (%s): %s - %s',
 		$provider,
@@ -8686,6 +8898,42 @@ function argon_log_ai_error($provider, $error_type, $error_message, $post_id = 0
 	}
 }
 
+function argon_format_ai_error_extra_data($extra_data) {
+	if (!is_array($extra_data)) {
+		return (string)$extra_data;
+	}
+	if (!empty($extra_data['error'])) {
+		return is_array($extra_data['error']) ? wp_json_encode($extra_data['error'], JSON_UNESCAPED_UNICODE) : (string)$extra_data['error'];
+	}
+	if (!empty($extra_data['error_message'])) {
+		return (string)$extra_data['error_message'];
+	}
+	if (!empty($extra_data['error_msg'])) {
+		return (string)$extra_data['error_msg'];
+	}
+	if (!empty($extra_data['response'])) {
+		$response = (string)$extra_data['response'];
+		$decoded = json_decode($response, true);
+		if (is_array($decoded)) {
+			if (isset($decoded['error']['message'])) {
+				return (string)$decoded['error']['message'];
+			}
+			if (isset($decoded['message'])) {
+				return (string)$decoded['message'];
+			}
+			if (isset($decoded['error_msg'])) {
+				return (string)$decoded['error_msg'];
+			}
+			return wp_json_encode($decoded, JSON_UNESCAPED_UNICODE);
+		}
+		return mb_substr($response, 0, 300);
+	}
+	if (!empty($extra_data['status_code'])) {
+		return 'HTTP ' . $extra_data['status_code'];
+	}
+	return wp_json_encode($extra_data, JSON_UNESCAPED_UNICODE);
+}
+
 /**
  * 生成 AI 摘要
  * @param WP_Post $post 文章对象
@@ -8704,22 +8952,30 @@ function argon_generate_ai_summary($post, $ai_context = []) {
 			$post->ID,
 			mb_strlen($content)
 		));
+		argon_log_ai_error('AI', '文章内容过短', sprintf('可用于摘要的正文长度只有 %d 字，至少需要 50 字', mb_strlen($content)), $post->ID);
 		return false;
 	}
 	
 	// 获取提示词
-	$prompt = get_option('argon_ai_summary_prompt', '你是一个专业的内容摘要助手。请仔细阅读以下文章内容，用简洁、准确的语言总结文章的核心观点和主要内容。要求：1) 控制在 100-150 字以内；2) 突出文章的关键信息和亮点；3) 使用通俗易懂的语言；4) 保持客观中立的语气。');
+	$prompt = argon_get_ai_summary_prompt();
+	$prompt = trim($prompt) . "\n\n硬性边界：摘要必须严格来自正文，不得补充正文之外的人物、时间、结论、背景、链接或行动建议；只输出正文摘要，不输出标题、编号、列表、自检清单、解释说明、代码块或表格；正文摘要优先控制在 120–260 字，信息密度极高时允许到 320 字；最后一句必须完整收束，不得以逗号、顿号、分号、冒号或连接词结尾。";
+	$prompt = argon_apply_ai_summary_thinking_mode($prompt);
 	
 	// 使用统一的 AI 查询接口
 	$result = argon_ai_query('summary', $prompt, $content, array_merge([
 		'post_id' => $post->ID,
-		'user_id' => get_current_user_id()
+		'user_id' => get_current_user_id(),
+		'api_config' => argon_get_active_api_config('summary')
 	], is_array($ai_context) ? $ai_context : []));
 	
 	// 检查结果
 	if ($result === false) {
 		error_log('Argon AI Summary: 摘要生成失败 (文章ID: ' . $post->ID . ')');
+		if (get_post_meta($post->ID, '_argon_ai_summary_error', true) === '') {
+			argon_log_ai_error('AI', '摘要生成失败', 'AI 查询没有返回有效摘要，请检查当前 API 的 endpoint、模型名和余额/权限', $post->ID);
+		}
 	} else {
+		$result = argon_clean_ai_summary_output($result);
 		delete_post_meta($post->ID, '_argon_ai_summary_error');
 		delete_post_meta($post->ID, '_argon_ai_summary_error_time');
 	}
@@ -8748,7 +9004,8 @@ function argon_call_openai_api($api_key, $prompt, $content, $post_id = 0, $model
 			['role' => 'user', 'content' => $content]
 		],
 		'temperature' => 0.7,
-		'max_tokens' => 500
+		'max_tokens' => 1000,
+		'stream' => false
 	];
 
 	$response = wp_remote_post($endpoint, [
@@ -8783,20 +9040,31 @@ function argon_call_openai_api($api_key, $prompt, $content, $post_id = 0, $model
 	}
 	
 	// 检查响应格式
-	if (!isset($body['choices'][0]['message']['content'])) {
+	if (!is_array($body)) {
+		argon_log_ai_error('OpenAI', '响应格式错误', '无法解析 JSON 响应', $post_id, [
+			'model' => $model,
+			'endpoint' => $endpoint
+		]);
+		return false;
+	}
+
+	$summary = argon_extract_ai_response_text($body);
+	if ($summary === '' && !isset($body['choices'][0]['message'])) {
 		argon_log_ai_error('OpenAI', '响应格式错误', '未找到预期的响应字段', $post_id, [
 			'response_keys' => array_keys($body),
-			'model' => $model
+			'model' => $model,
+			'endpoint' => $endpoint
 		]);
 		return false;
 	}
 	
-	$summary = trim($body['choices'][0]['message']['content']);
-	
 	// 检查摘要内容
 	if (empty($summary)) {
 		argon_log_ai_error('OpenAI', '内容错误', '返回的摘要为空', $post_id, [
-			'model' => $model
+			'model' => $model,
+			'endpoint' => $endpoint,
+			'finish_reason' => isset($body['choices'][0]['finish_reason']) ? $body['choices'][0]['finish_reason'] : '',
+			'message_keys' => isset($body['choices'][0]['message']) && is_array($body['choices'][0]['message']) ? array_keys($body['choices'][0]['message']) : []
 		]);
 		return false;
 	}
@@ -8837,18 +9105,17 @@ function argon_call_anthropic_api($api_key, $prompt, $content, $post_id = 0, $mo
 	]);
 
 	if (is_wp_error($response)) {
-		argon_log_ai_error('网络请求失败', $post_id, [
+		argon_log_ai_error($provider, '网络请求失败', $response->get_error_message(), $post_id, [
 			'provider' => $provider,
 			'endpoint' => $endpoint,
-			'model' => $model,
-			'error' => $response->get_error_message()
+			'model' => $model
 		]);
 		return false;
 	}
 
 	$status_code = wp_remote_retrieve_response_code($response);
 	if ($status_code !== 200) {
-		argon_log_ai_error('API 返回错误状态码', $post_id, [
+		argon_log_ai_error($provider, 'API 返回错误状态码', 'HTTP ' . $status_code, $post_id, [
 			'provider' => $provider,
 			'endpoint' => $endpoint,
 			'model' => $model,
@@ -8861,7 +9128,7 @@ function argon_call_anthropic_api($api_key, $prompt, $content, $post_id = 0, $mo
 	$body = json_decode(wp_remote_retrieve_body($response), true);
 	
 	if (!is_array($body)) {
-		argon_log_ai_error('API 返回的响应格式无效', $post_id, [
+		argon_log_ai_error($provider, 'API 返回的响应格式无效', '无法解析 JSON 响应', $post_id, [
 			'provider' => $provider,
 			'endpoint' => $endpoint,
 			'model' => $model,
@@ -8871,7 +9138,8 @@ function argon_call_anthropic_api($api_key, $prompt, $content, $post_id = 0, $mo
 	}
 
 	if (isset($body['error'])) {
-		argon_log_ai_error('API 返回错误', $post_id, [
+		$error_message = is_array($body['error']) ? wp_json_encode($body['error'], JSON_UNESCAPED_UNICODE) : (string)$body['error'];
+		argon_log_ai_error($provider, 'API 返回错误', $error_message, $post_id, [
 			'provider' => $provider,
 			'endpoint' => $endpoint,
 			'model' => $model,
@@ -8880,10 +9148,10 @@ function argon_call_anthropic_api($api_key, $prompt, $content, $post_id = 0, $mo
 		return false;
 	}
 	
-	if (isset($body['content'][0]['text'])) {
-		$result = trim($body['content'][0]['text']);
+	if (isset($body['content']) && is_array($body['content'])) {
+		$result = argon_extract_ai_message_text(['content' => $body['content']]);
 		if (empty($result)) {
-			argon_log_ai_error('API 返回空内容', $post_id, [
+			argon_log_ai_error($provider, 'API 返回空内容', '响应内容为空或只有思考过程', $post_id, [
 				'provider' => $provider,
 				'endpoint' => $endpoint,
 				'model' => $model
@@ -8893,7 +9161,7 @@ function argon_call_anthropic_api($api_key, $prompt, $content, $post_id = 0, $mo
 		return $result;
 	}
 
-	argon_log_ai_error('API 响应中缺少预期的内容字段', $post_id, [
+	argon_log_ai_error($provider, 'API 响应中缺少预期的内容字段', '未找到 content.text 字段', $post_id, [
 		'provider' => $provider,
 		'endpoint' => $endpoint,
 		'model' => $model,
@@ -9177,8 +9445,8 @@ function argon_call_kimi_api($api_key, $prompt, $content, $post_id = 0, $model =
 		return false;
 	}
 	
-	if (isset($body['choices'][0]['message']['content'])) {
-		$result = trim($body['choices'][0]['message']['content']);
+	if (isset($body['choices'][0]['message'])) {
+		$result = argon_extract_ai_message_text($body['choices'][0]['message']);
 		if (empty($result)) {
 			argon_log_ai_error('API 返回空内容', $post_id, [
 				'provider' => $provider,
@@ -9358,7 +9626,8 @@ function argon_check_ai_summary() {
 		}
 		
 		wp_send_json_success([
-			'summary' => esc_html($summary),
+			'summary' => $summary,
+			'summary_html' => argon_render_ai_summary_markdown($summary),
 			'model' => esc_html($model),
 			'provider' => esc_html($provider),
 			'code' => esc_html($code),
@@ -9375,14 +9644,17 @@ function argon_check_ai_summary() {
 		// 触发生成
 		$post = get_post($post_id);
 		if ($post) {
+			$api_config = argon_get_active_api_config('summary');
 			$resolved = argon_resolve_ai_provider_model('summary', [
 				'post_id' => $post_id,
-				'user_id' => get_current_user_id()
+				'user_id' => get_current_user_id(),
+				'api_config' => $api_config
 			]);
 			$provider = isset($resolved['provider']) ? $resolved['provider'] : '';
 			$model = isset($resolved['model']) ? $resolved['model'] : '';
 			
 			$summary = argon_generate_ai_summary($post, [
+				'api_config' => $api_config,
 				'provider' => $provider,
 				'model' => $model
 			]);
@@ -9414,7 +9686,8 @@ function argon_check_ai_summary() {
 				delete_transient('argon_ai_summary_generating_' . $post_id);
 				
 				wp_send_json_success([
-					'summary' => esc_html($summary),
+					'summary' => $summary,
+					'summary_html' => argon_render_ai_summary_markdown($summary),
 					'model' => esc_html($model),
 					'provider' => esc_html($provider),
 					'code' => esc_html($summary_code),
@@ -9438,6 +9711,106 @@ function argon_check_ai_summary() {
 }
 add_action('wp_ajax_argon_check_ai_summary', 'argon_check_ai_summary');
 add_action('wp_ajax_nopriv_argon_check_ai_summary', 'argon_check_ai_summary');
+
+function argon_regenerate_ai_summary() {
+	$nonce = isset($_POST['nonce']) ? sanitize_text_field(wp_unslash($_POST['nonce'])) : '';
+	if (!wp_verify_nonce($nonce, 'argon_regenerate_ai_summary_v3') && !wp_verify_nonce($nonce, 'argon_regenerate_ai_summary_v2') && !wp_verify_nonce($nonce, 'argon_regenerate_ai_summary')) {
+		wp_send_json_error(['message' => __('安全验证失败，请刷新页面后重试', 'argon'), 'handler_version' => 'v3']);
+	}
+
+	$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+	if (empty($post_id)) {
+		wp_send_json_error(['message' => __('文章 ID 无效', 'argon')]);
+	}
+
+	if (!current_user_can('manage_options')) {
+		wp_send_json_error(['message' => __('权限不足', 'argon')]);
+	}
+
+	$post = get_post($post_id);
+	if (!$post || $post->post_type !== 'post') {
+		wp_send_json_error(['message' => __('文章不存在', 'argon')]);
+	}
+
+	$api_config = function_exists('argon_get_active_api_config') ? argon_get_active_api_config('summary') : [];
+	if (empty($api_config['api_key'])) {
+		wp_send_json_error(['message' => __('AI 摘要 API 未配置', 'argon')]);
+	}
+
+	if (function_exists('argon_get_ai_summary_excluded_post_ids') && in_array($post_id, argon_get_ai_summary_excluded_post_ids(), true)) {
+		wp_send_json_error(['message' => __('该文章已被排除在 AI 摘要生成范围外', 'argon')]);
+	}
+
+	set_transient('argon_ai_summary_generating_' . $post_id, true, 300);
+	delete_post_meta($post_id, '_argon_ai_summary');
+	delete_post_meta($post_id, '_argon_ai_summary_hash');
+	delete_post_meta($post_id, '_argon_ai_summary_time');
+	delete_post_meta($post_id, '_argon_ai_summary_model');
+	delete_post_meta($post_id, '_argon_ai_summary_provider');
+	delete_post_meta($post_id, '_argon_ai_summary_code');
+	delete_post_meta($post_id, '_argon_ai_summary_error');
+	delete_post_meta($post_id, '_argon_ai_summary_error_time');
+
+	$resolved = argon_resolve_ai_provider_model('summary', [
+		'post_id' => $post_id,
+		'user_id' => get_current_user_id(),
+		'api_config' => $api_config
+	]);
+	$provider = isset($resolved['provider']) ? $resolved['provider'] : '';
+	$model = isset($resolved['model']) ? $resolved['model'] : '';
+	$summary = argon_generate_ai_summary($post, [
+		'api_config' => $api_config,
+		'provider' => $provider,
+		'model' => $model
+	]);
+
+	if ($summary === false) {
+		delete_transient('argon_ai_summary_generating_' . $post_id);
+		$error = get_post_meta($post_id, '_argon_ai_summary_error', true);
+		if (empty($error)) {
+			$error = sprintf(
+				__('AI 摘要重新生成失败：当前 API 未返回有效摘要。provider=%1$s，model=%2$s，endpoint=%3$s', 'argon'),
+				!empty($provider) ? $provider : __('未知', 'argon'),
+				!empty($model) ? $model : __('未知', 'argon'),
+				!empty($api_config['api_endpoint']) ? $api_config['api_endpoint'] : __('默认端点', 'argon')
+			);
+		}
+		wp_send_json_error(['message' => $error, 'handler_version' => 'v3']);
+	}
+
+	$current_hash = md5($post->post_content . $post->post_title);
+	$summary_code = argon_generate_summary_code();
+	$latest = argon_get_latest_ai_query_provider_model('summary', $post_id, get_current_user_id());
+	if ($latest) {
+		if (!empty($latest['provider'])) {
+			$provider = $latest['provider'];
+		}
+		if (isset($latest['model'])) {
+			$model = $latest['model'];
+		}
+	}
+
+	update_post_meta($post_id, '_argon_ai_summary', $summary);
+	update_post_meta($post_id, '_argon_ai_summary_hash', $current_hash);
+	update_post_meta($post_id, '_argon_ai_summary_time', current_time('timestamp'));
+	update_post_meta($post_id, '_argon_ai_summary_model', $model);
+	update_post_meta($post_id, '_argon_ai_summary_provider', $provider);
+	update_post_meta($post_id, '_argon_ai_summary_code', $summary_code);
+	delete_transient('argon_ai_summary_generating_' . $post_id);
+
+	wp_send_json_success([
+		'summary' => $summary,
+		'summary_html' => argon_render_ai_summary_markdown($summary),
+		'model' => esc_html($model),
+		'provider' => esc_html($provider),
+		'code' => esc_html($summary_code),
+		'generated' => true,
+		'handler_version' => 'v3'
+	]);
+}
+add_action('wp_ajax_argon_regenerate_ai_summary', 'argon_regenerate_ai_summary');
+add_action('wp_ajax_argon_regenerate_ai_summary_v2', 'argon_regenerate_ai_summary');
+add_action('wp_ajax_argon_regenerate_ai_summary_v3', 'argon_regenerate_ai_summary');
 
 
 
