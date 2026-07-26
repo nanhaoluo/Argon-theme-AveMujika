@@ -6089,44 +6089,45 @@ function argon_fetch_site_info($url) {
         }
     }
     
-    // ========== 获取作者头像 ==========
-    
+    // ========== 获取站点标识 / 站长头像 ==========
+    // 先取页面显式声明的头像和 Logo，避免把文章 OG 封面误当成友链头像。
+    $identity_candidates = argon_extract_site_identity_candidates($body, $meta, $scheme, $host, $base_path);
+    foreach ($identity_candidates['author'] as $candidate) {
+        if (argon_is_valid_remote_image($candidate)) {
+            $info['author_avatar'] = $candidate;
+            break;
+        }
+    }
+    foreach ($identity_candidates['site'] as $candidate) {
+        if (argon_is_valid_remote_image($candidate)) {
+            $info['site_image'] = $candidate;
+            break;
+        }
+    }
+
     if ($info['is_wordpress']) {
-        // WordPress 站点：通过 REST API 获取作者头像
-        $api_url = $base_url . '/wp-json/wp/v2/users?per_page=1';
-        $api_response = wp_remote_get($api_url, array(
-            'timeout' => 15, 
+        $rest_args = array(
+            'timeout' => 12,
             'sslverify' => false,
             'user-agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'reject_unsafe_urls' => true
-        ));
-        
-        if (!is_wp_error($api_response)) {
-            $api_code = wp_remote_retrieve_response_code($api_response);
-            $api_body = wp_remote_retrieve_body($api_response);
-            
-            if ($api_code == 200) {
-                $users = json_decode($api_body, true);
-                if (is_array($users) && !empty($users[0]['avatar_urls'])) {
-                    $avatar_urls = $users[0]['avatar_urls'];
-                    // 优先取 96px
-                    $avatar_url = $avatar_urls['96'] ?? $avatar_urls['48'] ?? $avatar_urls['24'] ?? '';
-                    
-                    if (!empty($avatar_url)) {
-                        // 检查是否为默认头像（Gravatar/Weavatar/Cravatar 带 d=xxx 参数）
-                        $is_default = preg_match('/[?&](d|default)=(mm|mp|identicon|monsterid|wavatar|retro|robohash|blank)/i', $avatar_url);
-                        
-                        if (!$is_default) {
-                            // 处理协议相对 URL
-                            $avatar_url = argon_normalize_url($avatar_url, $scheme, $host, $base_path);
-                            if (argon_is_valid_remote_image($avatar_url)) {
-                                $info['author_avatar'] = $avatar_url;
-                            }
-                        }
-                    }
+            'reject_unsafe_urls' => true,
+            'limit_response_size' => 262144
+        );
+
+        // REST 根端点的 site_icon_url 比普通 OG 图更适合做站点头像。
+        if (empty($info['site_image'])) {
+            $index_response = wp_remote_get($base_url . '/wp-json/', $rest_args);
+            if (!is_wp_error($index_response) && wp_remote_retrieve_response_code($index_response) === 200) {
+                $index_data = json_decode(wp_remote_retrieve_body($index_response), true);
+                $site_icon_url = is_array($index_data) ? ($index_data['site_icon_url'] ?? '') : '';
+                $site_icon_url = argon_normalize_url($site_icon_url, $scheme, $host, $base_path);
+                if ($site_icon_url && argon_is_valid_remote_image($site_icon_url)) {
+                    $info['site_image'] = $site_icon_url;
                 }
             }
         }
+
+        // REST 文章作者不能可靠代表站长；没有显式站长信息时保留站点图标兜底。
     }
 
     $image_candidates = argon_extract_site_image_candidates($body, $meta, $scheme, $host, $base_path, $base_url);
@@ -6143,7 +6144,7 @@ function argon_fetch_site_info($url) {
         if (empty($info['author_avatar']) && argon_is_avatar_like_url($candidate)) {
             $info['author_avatar'] = $candidate;
         }
-        if (empty($info['site_image'])) {
+        if (empty($info['site_image']) && argon_is_site_identity_image_url($candidate)) {
             $info['site_image'] = $candidate;
         }
         if (!empty($info['author_avatar']) && !empty($info['site_image'])) {
@@ -6305,6 +6306,115 @@ function argon_extract_site_meta($body) {
         }
     }
     return $meta;
+}
+
+/**
+ * Extract site identity images without treating article cover images as avatars.
+ *
+ * @return array{author: array, site: array}
+ */
+function argon_extract_site_identity_candidates($body, $meta, $scheme, $host, $base_path = '') {
+    $identity = array('author' => array(), 'site' => array());
+    $meta_groups = array(
+        'author' => array('author:image', 'author:avatar', 'profile:image', 'profile:avatar', 'article:author:image'),
+        'site' => array('og:logo', 'logo', 'application-logo', 'msapplication-tileimage')
+    );
+
+    foreach ($meta_groups as $group => $keys) {
+        foreach ($keys as $key) {
+            if (empty($meta[$key])) continue;
+            $normalized = argon_normalize_url($meta[$key], $scheme, $host, $base_path);
+            if ($normalized !== '') $identity[$group][] = $normalized;
+        }
+    }
+
+    // 结构化数据通常比页面中任意一个 .avatar 更可信，应先于普通图片候选。
+    if (preg_match_all('/<script\b[^>]+type=["\']application\/ld\+json["\'][^>]*>(.*?)<\/script>/is', $body, $json_matches)) {
+        foreach ($json_matches[1] as $json) {
+            $decoded = json_decode(html_entity_decode($json, ENT_QUOTES, 'UTF-8'), true);
+            argon_collect_jsonld_identity_images($decoded, $identity, $scheme, $host, $base_path);
+        }
+    }
+
+    if (preg_match_all('/<img\b[^>]*>/i', $body, $matches, PREG_OFFSET_CAPTURE)) {
+        foreach ($matches[0] as $match) {
+            $tag = $match[0];
+            $attrs = argon_extract_html_attrs($tag);
+            $src = $attrs['data-src'] ?? ($attrs['data-original'] ?? ($attrs['data-lazy-src'] ?? ($attrs['src'] ?? '')));
+            if (empty($src) && !empty($attrs['srcset'])) {
+                $src = argon_extract_srcset_first_url($attrs['srcset']);
+            }
+            if (empty($src)) continue;
+
+            $haystack = strtolower(implode(' ', array(
+                $attrs['class'] ?? '', $attrs['id'] ?? '', $attrs['alt'] ?? '',
+                $attrs['title'] ?? '', $attrs['itemprop'] ?? '', $src
+            )));
+            $group = '';
+            if (preg_match('/avatar|author|profile|headimg|portrait|userpic|user-pic/', $haystack)) {
+                $group = 'author';
+            } elseif (preg_match('/site[-_ ]?logo|site[-_ ]?icon|brand[-_ ]?logo|blog[-_ ]?logo|header[-_ ]?logo/', $haystack)) {
+                $group = 'site';
+            }
+            if ($group === '') continue;
+
+            if ($group === 'author') {
+                $context_start = max(0, $match[1] - 320);
+                $nearby_context = substr($body, $context_start, $match[1] - $context_start);
+                $context_boundary = -1;
+                foreach (array('</div', '</article', '</li', '</section', '</aside') as $closing_tag) {
+                    $boundary = strripos($nearby_context, $closing_tag);
+                    if ($boundary !== false) $context_boundary = max($context_boundary, $boundary);
+                }
+                if ($context_boundary >= 0) {
+                    $boundary_end = strpos($nearby_context, '>', $context_boundary);
+                    if ($boundary_end !== false) $nearby_context = substr($nearby_context, $boundary_end + 1);
+                }
+                $nearby_context = strtolower($nearby_context);
+                $is_comment_avatar = preg_match('/comment[-_ ]?(author|avatar|body|meta|item)|reply[-_ ]?(author|avatar)|review[-_ ]?(author|avatar)|testimonial[-_ ]?(author|avatar)/', $haystack . ' ' . $nearby_context);
+                if ($is_comment_avatar) continue;
+            }
+
+            $normalized = argon_normalize_url($src, $scheme, $host, $base_path);
+            if ($normalized !== '') $identity[$group][] = $normalized;
+        }
+    }
+
+    $identity['author'] = array_values(array_unique(array_filter($identity['author'])));
+    $identity['site'] = array_values(array_unique(array_filter($identity['site'])));
+    return $identity;
+}
+
+function argon_collect_jsonld_identity_images($data, &$identity, $scheme, $host, $base_path, $context = '') {
+    if (!is_array($data)) return;
+
+    $type = isset($data['@type']) ? strtolower(is_array($data['@type']) ? implode(' ', $data['@type']) : (string)$data['@type']) : '';
+    $group = $context;
+    if (strpos($type, 'person') !== false) {
+        $group = 'author';
+    } elseif (preg_match('/organization|website|blog|publisher/', $type)) {
+        $group = 'site';
+    }
+
+    if ($group !== '') {
+        foreach (array('image', 'logo', 'thumbnailUrl') as $key) {
+            if (empty($data[$key])) continue;
+            $values = array();
+            argon_collect_jsonld_image_value($data[$key], $values, $scheme, $host, $base_path);
+            foreach ($values as $value) $identity[$group][] = $value;
+        }
+    }
+
+    foreach ($data as $key => $value) {
+        if (!is_array($value)) continue;
+        $child_context = $group;
+        if (in_array(strtolower((string)$key), array('author', 'creator'), true)) {
+            $child_context = 'author';
+        } elseif (in_array(strtolower((string)$key), array('publisher', 'provider', 'organization'), true)) {
+            $child_context = 'site';
+        }
+        argon_collect_jsonld_identity_images($value, $identity, $scheme, $host, $base_path, $child_context);
+    }
 }
 
 function argon_extract_favicon_candidates($body, $scheme, $host, $base_path = '') {
@@ -6501,8 +6611,7 @@ function argon_is_valid_remote_image($url) {
         'sslverify' => false,
         'user-agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'headers' => array(
-            'Accept' => 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-            'Referer' => $url
+            'Accept' => 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
         ),
         'reject_unsafe_urls' => true
     );
@@ -6533,14 +6642,18 @@ function argon_is_valid_remote_image($url) {
 }
 
 function argon_is_avatar_like_url($url) {
-    return preg_match('/avatar|author|profile|logo|brand|site-logo|site_icon|site-icon|headimg|portrait/i', (string)$url);
+    return preg_match('/avatar|author|profile|headimg|portrait|userpic|user-pic/i', (string)$url);
+}
+
+function argon_is_site_identity_image_url($url) {
+    return preg_match('/logo|brand|site[-_]?icon|blog[-_]?icon|apple-touch/i', (string)$url);
 }
 
 function argon_select_friend_link_image($site_info) {
     if (!is_array($site_info)) {
         return '';
     }
-    foreach (array('author_avatar', 'site_image', 'image', 'favicon') as $key) {
+    foreach (array('site_image', 'author_avatar', 'favicon') as $key) {
         if (!empty($site_info[$key])) {
             return trim((string)$site_info[$key]);
         }
@@ -6604,6 +6717,7 @@ function argon_add_friend_link($data) {
     if (empty($data['avatar']) || empty($data['description'])) {
         $site_info = argon_fetch_site_info($url);
     }
+    $user_avatar = array_key_exists('user_avatar', $data) ? !empty($data['user_avatar']) : !empty($data['avatar']);
     
     $new_link = array(
         'id' => uniqid('fl_'),
@@ -6611,6 +6725,7 @@ function argon_add_friend_link($data) {
         'display_name' => isset($data['display_name']) ? sanitize_text_field($data['display_name']) : '',
         'url' => $url,
         'avatar' => !empty($data['avatar']) ? esc_url_raw($data['avatar']) : argon_select_friend_link_image($site_info),
+        'user_avatar' => $user_avatar,
         'author_avatar' => !empty($site_info['author_avatar']) ? esc_url_raw($site_info['author_avatar']) : '',
         'favicon' => !empty($site_info['favicon']) ? esc_url_raw($site_info['favicon']) : '',
         'site_image' => !empty($site_info['site_image']) ? esc_url_raw($site_info['site_image']) : '',
@@ -7041,11 +7156,18 @@ function argon_ajax_manage_friend_link() {
             
         case 'update':
             if (empty($id)) wp_send_json_error('ID 不能为空');
+            $existing_link = argon_get_friend_link($id);
+            if (!$existing_link) wp_send_json_error('友链不存在');
             $update_data = array();
             foreach (array('name', 'url', 'avatar', 'description', 'category', 'status') as $field) {
                 if (isset($_POST[$field])) {
                     $update_data[$field] = $_POST[$field];
                 }
+            }
+            if (array_key_exists('avatar', $update_data)) {
+                $avatar = trim((string)$update_data['avatar']);
+                $existing_avatar = isset($existing_link['avatar']) ? trim((string)$existing_link['avatar']) : '';
+                $update_data['user_avatar'] = $avatar !== '' && ($avatar !== $existing_avatar || !empty($existing_link['user_avatar']));
             }
             argon_update_friend_link($id, $update_data);
             wp_send_json_success();

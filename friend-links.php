@@ -65,6 +65,7 @@ if (isset($_POST['flink_action'])) {
                 'display_name' => isset($_POST['display_name']) ? $_POST['display_name'] : '',
                 'url' => isset($_POST['url']) ? $_POST['url'] : '',
                 'avatar' => isset($_POST['avatar']) ? $_POST['avatar'] : '',
+                'user_avatar' => isset($_POST['user_avatar']) && $_POST['user_avatar'] === '1',
                 'description' => isset($_POST['description']) ? $_POST['description'] : '',
                 'auto_description' => isset($_POST['auto_description']) ? $_POST['auto_description'] : '',
                 'category' => isset($_POST['category']) ? $_POST['category'] : '',
@@ -83,7 +84,8 @@ if (isset($_POST['flink_action'])) {
                 $response = array('success' => false, 'message' => __('友链 ID 不能为空', 'argon'));
                 break;
             }
-            if (!argon_get_friend_link($id)) {
+            $existing_link = argon_get_friend_link($id);
+            if (!$existing_link) {
                 $response = array('success' => false, 'message' => __('友链不存在或已被删除，请刷新页面后重试', 'argon'));
                 break;
             }
@@ -123,6 +125,13 @@ if (isset($_POST['flink_action'])) {
             $data = array();
             foreach (array('name', 'display_name', 'url', 'links_page', 'avatar', 'description', 'auto_description', 'category', 'hide_no_backlink', 'auto_approved') as $f) {
                 if (isset($_POST[$f])) $data[$f] = $_POST[$f];
+            }
+            if (isset($_POST['user_avatar'])) {
+                $data['user_avatar'] = $_POST['user_avatar'] === '1';
+            } elseif (array_key_exists('avatar', $data)) {
+                $avatar = trim((string)$data['avatar']);
+                $existing_avatar = isset($existing_link['avatar']) ? trim((string)$existing_link['avatar']) : '';
+                $data['user_avatar'] = $avatar !== '' && ($avatar !== $existing_avatar || !empty($existing_link['user_avatar']));
             }
             if (empty($data)) {
                 $response = array('success' => true, 'message' => __('没有需要保存的变化', 'argon'));
@@ -171,9 +180,27 @@ if (isset($_POST['flink_action'])) {
             foreach ($links as $link) {
                 $links_page = !empty($link['links_page']) ? $link['links_page'] : '';
                 $has_backlink = $links_page ? argon_check_backlink($links_page) : null;
-                $accessible = argon_check_site_accessible($link['url']);
-                argon_update_friend_link($link['id'], array('has_backlink' => $has_backlink, 'accessible' => $accessible, 'last_check' => time()));
-                $results[$link['id']] = array('has_backlink' => $has_backlink, 'accessible' => $accessible);
+                $site_info = argon_fetch_site_info($link['url']);
+                $best_image = argon_select_friend_link_image($site_info);
+                $update_data = array(
+                    'has_backlink' => $has_backlink,
+                    'accessible' => !empty($site_info['accessible']),
+                    'blocked_by_waf' => !empty($site_info['blocked_by_waf']),
+                    'error_reason' => !empty($site_info['error_reason']) ? $site_info['error_reason'] : '',
+                    'last_check' => time(),
+                    'last_info_update' => time()
+                );
+                foreach (array('author_avatar', 'favicon', 'site_image', 'image') as $field) {
+                    if (!empty($site_info[$field])) $update_data[$field] = $site_info[$field];
+                }
+                if ($best_image && empty($link['user_avatar'])) $update_data['avatar'] = $best_image;
+                if (!empty($site_info['description'])) $update_data['auto_description'] = $site_info['description'];
+                argon_update_friend_link($link['id'], $update_data);
+                $results[$link['id']] = array(
+                    'has_backlink' => $has_backlink,
+                    'accessible' => !empty($site_info['accessible']),
+                    'avatar' => $best_image
+                );
             }
             $response = array('success' => true, 'results' => $results);
             break;
@@ -236,15 +263,17 @@ if (isset($_POST['flink_action'])) {
             if (!empty($info['favicon'])) {
                 $update_data['auto_favicon'] = $info['favicon'];
             }
-            if (!empty($best_image)) {
+            if (!empty($best_image) && empty($link['user_avatar'])) {
                 $update_data['avatar'] = $best_image;
                 $update_data['image'] = $best_image;
+                $update_data['user_avatar'] = false;
             }
 
             $updated = argon_update_friend_link($id, $update_data);
             if ($updated) {
                 $info['url'] = $url;
                 $info['avatar'] = !empty($update_data['avatar']) ? $update_data['avatar'] : (isset($link['avatar']) ? $link['avatar'] : '');
+                $info['user_avatar'] = !empty($link['user_avatar']);
                 $info['last_info_update'] = $update_data['last_info_update'];
                 $info['last_check'] = $update_data['last_check'];
                 $response = array('success' => true, 'message' => __('已更新并保存', 'argon'), 'data' => $info);
@@ -467,7 +496,8 @@ html.darkmode body.flinks-page {
 .flink-avatar { width: 52px; height: 52px; flex-shrink: 0; border-radius: var(--card-radius); background: var(--themecolor-gradient); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 600; color: #fff; position: relative; overflow: hidden; box-shadow: 0 2px 8px rgba(var(--themecolor-rgbstr), 0.2); transition: transform var(--animation-fast) var(--ease-standard); }
 .flink-card:hover .flink-avatar { transform: scale(1.05); }
 .flink-avatar::before { content: attr(data-letter); }
-.flink-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: var(--card-radius); }
+.flink-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; padding: 4px; box-sizing: border-box; object-fit: contain; object-position: center; border-radius: var(--card-radius); opacity: 0; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .2)) drop-shadow(0 0 1px rgba(255, 255, 255, .22)); transition: opacity var(--animation-normal) var(--ease-standard); }
+.flink-avatar img.is-loaded { opacity: 1; }
 
 .flink-info { flex: 1; min-width: 0; padding-top: 2px; }
 .flink-name { font-size: 15px; font-weight: 600; color: var(--color-text-deeper); margin-bottom: 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; line-height: 1.4; }
@@ -543,7 +573,8 @@ html.darkmode body.flinks-page {
 
 .flinks-pending-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: var(--flinks-warning-bg); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: var(--card-radius); margin-bottom: 8px; }
 .flinks-pending-avatar { width: 40px; height: 40px; border-radius: 8px; background: var(--color-border); flex-shrink: 0; overflow: hidden; }
-.flinks-pending-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.flinks-pending-avatar img { width: 100%; height: 100%; padding: 3px; box-sizing: border-box; object-fit: contain; object-position: center; opacity: 0; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .18)) drop-shadow(0 0 1px rgba(255, 255, 255, .2)); transition: opacity var(--animation-normal) var(--ease-standard); }
+.flinks-pending-avatar img.is-loaded { opacity: 1; }
 .flinks-pending-info { flex: 1; min-width: 0; }
 .flinks-pending-name { font-weight: 600; font-size: 14px; margin-bottom: 2px; color: var(--flinks-text-main); }
 .flinks-pending-name .sub-name { font-weight: 400; font-size: 12px; color: var(--flinks-text-soft); margin-left: 6px; }
@@ -625,13 +656,29 @@ html.darkmode .flinks-add-form input { background: var(--color-background); }
 
 <script data-pjax>
 (function() {
-    // 清理函数
-    function cleanupFlinksPage() {
-        document.body.classList.remove('flinks-page');
-        var s = document.getElementById('flinks-page-style');
-        if (s) s.remove();
-    }
-    
+	window.argonInitFriendLinkAvatars = function(root) {
+		var scope = root && root.querySelectorAll ? root : document;
+		var images = scope.querySelectorAll('.flink-avatar img[data-avatar-src], .flinks-pending-avatar img[data-avatar-src]');
+		images.forEach(function(img) {
+			if (img.dataset.avatarLoading === 'true' || img.classList.contains('is-loaded')) return;
+			var source = img.getAttribute('data-avatar-src');
+			if (!source) return;
+			img.dataset.avatarLoading = 'true';
+			img.referrerPolicy = 'no-referrer';
+			img.onload = function() {
+				img.dataset.avatarLoading = 'false';
+				img.classList.add('is-loaded');
+			};
+			img.onerror = function() {
+				img.dataset.avatarLoading = 'false';
+				img.classList.remove('is-loaded');
+				img.removeAttribute('src');
+			};
+			img.src = source;
+			if (img.complete && img.naturalWidth > 0) img.onload();
+		});
+	};
+
     // 先清理可能残留的状态（处理后退情况）
     // 如果当前不是友链页面但有残留 class，清理它
     if (!document.getElementById('flinks-page-style')) {
@@ -644,12 +691,17 @@ html.darkmode .flinks-add-form input { background: var(--color-background); }
     // PJAX 离开时清理
     if (typeof jQuery !== 'undefined') {
         var $ = jQuery;
-        $(document).off('pjax:start.flinks pjax:popstate.flinks');
+        $(document).off('pjax:complete.flinks pjax:end.flinks pjax:popstate.flinks');
         
-        // 正常跳转离开
-        $(document).on('pjax:start.flinks', function() {
-            cleanupFlinksPage();
-            $(document).off('pjax:start.flinks pjax:popstate.flinks');
+        // PJAX 完成后再判断是否仍在友链页，避免切换前提前移除当前页样式
+        $(document).on('pjax:complete.flinks pjax:end.flinks', function() {
+            if (document.getElementById('flinks-page-style')) {
+                document.body.classList.add('flinks-page');
+				window.argonInitFriendLinkAvatars(document);
+            } else {
+                document.body.classList.remove('flinks-page');
+                $(document).off('pjax:complete.flinks pjax:end.flinks pjax:popstate.flinks');
+            }
         });
         
         // 浏览器后退/前进
@@ -662,6 +714,10 @@ html.darkmode .flinks-add-form input { background: var(--color-background); }
             }, 50);
         });
     }
+
+	requestAnimationFrame(function() {
+		window.argonInitFriendLinkAvatars(document);
+	});
 })();
 </script>
 
@@ -700,7 +756,7 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
         ?>
         <div class="flinks-pending-item" data-id="<?php echo esc_attr($link['id']); ?>">
             <div class="flinks-pending-avatar">
-                <?php if (!empty($link['avatar'])) : ?><img src="<?php echo esc_url($link['avatar']); ?>" alt=""><?php endif; ?>
+                <?php if (!empty($link['avatar'])) : ?><img data-avatar-src="<?php echo esc_url($link['avatar']); ?>" alt="<?php echo esc_attr($link['name']); ?>" decoding="async"><?php endif; ?>
             </div>
             <div class="flinks-pending-info">
                 <div class="flinks-pending-name"><?php echo $main_name; ?><?php if ($sub_name) : ?><span class="sub-name"><?php echo $sub_name; ?></span><?php endif; ?></div>
@@ -790,7 +846,7 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
                 <?php echo $status_badge; ?>
                 <?php if ($is_admin) : ?><button type="button" class="flink-edit-btn" onclick="event.preventDefault();event.stopPropagation();openEditModal('<?php echo esc_attr($link['id']); ?>')"><i class="fa fa-pencil"></i></button><?php endif; ?>
                 <div class="flink-avatar" data-letter="<?php echo esc_attr($first_letter); ?>" data-color="<?php echo $color_index; ?>">
-                    <?php if (!empty($link['avatar'])) : ?><img src="<?php echo esc_url($link['avatar']); ?>" alt="" loading="lazy" onerror="this.style.display='none'"><?php endif; ?>
+                    <?php if (!empty($link['avatar'])) : ?><img data-avatar-src="<?php echo esc_url($link['avatar']); ?>" alt="<?php echo esc_attr($main_name); ?>" decoding="async"><?php endif; ?>
                 </div>
                 <div class="flink-info">
                     <div class="flink-name">
@@ -1062,6 +1118,8 @@ if (typeof initGeetest4 === 'function') {
 (function() {
     var nonce = '<?php echo wp_create_nonce('argon_flink_manage'); ?>';
     var ajaxUrl = <?php echo wp_json_encode(esc_url_raw(wp_unslash($_SERVER['REQUEST_URI']))); ?>;
+    var addAvatarIsManual = false;
+    var editAvatarIsManual = false;
 
     function setMessage(type, message) {
         var box = document.getElementById('edit-action-message');
@@ -1081,6 +1139,19 @@ if (typeof initGeetest4 === 'function') {
         value = (value || '').trim();
         if (value && !/^https?:\/\//i.test(value)) value = 'https://' + value;
         return value;
+    }
+
+    var addAvatarInput = document.getElementById('add-avatar');
+    var editAvatarInput = document.getElementById('edit-avatar');
+    if (addAvatarInput) {
+        addAvatarInput.addEventListener('input', function() {
+            addAvatarIsManual = this.value.trim() !== '';
+        });
+    }
+    if (editAvatarInput) {
+        editAvatarInput.addEventListener('input', function() {
+            editAvatarIsManual = this.value.trim() !== '';
+        });
     }
     
     function flinkAction(action, data, callback) {
@@ -1125,8 +1196,9 @@ if (typeof initGeetest4 === 'function') {
                 if (res.success && res.data) {
                     if (res.data.title) document.getElementById('add-display-name').value = res.data.title;
                     if (res.data.description) document.getElementById('add-desc').value = res.data.description;
-                    var avatar = res.data.image || res.data.author_avatar || res.data.site_image || res.data.favicon || '';
+                    var avatar = res.data.site_image || res.data.author_avatar || res.data.favicon || '';
                     if (avatar) document.getElementById('add-avatar').value = avatar;
+                    addAvatarIsManual = false;
                 } else {
                     alert(res.message || '<?php _e('获取失败', 'argon'); ?>');
                 }
@@ -1153,6 +1225,7 @@ if (typeof initGeetest4 === 'function') {
                 url: url,
                 display_name: document.getElementById('add-display-name').value.trim(),
                 avatar: document.getElementById('add-avatar').value.trim(),
+                user_avatar: addAvatarIsManual ? '1' : '0',
                 description: document.getElementById('add-desc').value.trim(),
                 category: document.getElementById('add-category').value.trim()
             }, function(res) {
@@ -1212,6 +1285,7 @@ if (typeof initGeetest4 === 'function') {
                 document.getElementById('edit-url').value = link.url || '';
                 document.getElementById('edit-links-page').value = link.links_page || '';
                 document.getElementById('edit-avatar').value = link.avatar || '';
+                editAvatarIsManual = !!link.user_avatar;
                 document.getElementById('edit-desc').value = link.description || '';
                 document.getElementById('edit-category').value = link.category || '';
                 document.getElementById('edit-hide-no-backlink').value = link.hide_no_backlink || '';
@@ -1280,8 +1354,9 @@ if (typeof initGeetest4 === 'function') {
 
                     if (res.data.url) editUrl.value = res.data.url;
                     if (res.data.title) displayName.value = res.data.title;
-                    var newAvatar = res.data.avatar || res.data.image || res.data.author_avatar || res.data.site_image || res.data.favicon || '';
+                    var newAvatar = res.data.avatar || '';
                     if (newAvatar) avatar.value = newAvatar;
+                    editAvatarIsManual = !!res.data.user_avatar;
                     if (res.data.description) desc.value = res.data.description;
 
                     var infoHtml = '<strong><?php _e('已更新并保存', 'argon'); ?></strong>';
@@ -1354,6 +1429,7 @@ if (typeof initGeetest4 === 'function') {
                 url: url,
                 links_page: document.getElementById('edit-links-page').value.trim(),
                 avatar: document.getElementById('edit-avatar').value.trim(),
+                user_avatar: editAvatarIsManual ? '1' : '0',
                 description: document.getElementById('edit-desc').value.trim(),
                 category: document.getElementById('edit-category').value.trim(),
                 hide_no_backlink: document.getElementById('edit-hide-no-backlink').value
