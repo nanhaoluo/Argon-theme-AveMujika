@@ -751,7 +751,7 @@ html.darkmode .feedback-admin-stat .stat-label { color: #aaa; }
 .feedback-list-title { font-size: 17px; font-weight: 600; margin: 0 0 20px; color: var(--color-text-deeper); display: flex; align-items: center; gap: 10px; }
 .feedback-list-title i { color: var(--themecolor); font-size: 18px; }
 .feedback-list-title .count { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--themecolor); background: rgba(var(--themecolor-rgbstr), 0.1); padding: 4px 14px; border-radius: 14px; border: 1px solid rgba(var(--themecolor-rgbstr), 0.2); }
-.feedback-list-tools { display: grid; grid-template-columns: minmax(240px, 1fr) minmax(145px, .42fr) minmax(145px, .42fr) auto; gap: 8px; margin-bottom: 12px; padding: 8px; align-items: center; background: var(--color-background); border: 1px solid var(--color-border-on-foreground); border-radius: var(--card-radius); }
+.feedback-list-tools { display: grid; grid-template-columns: minmax(240px, 1fr) minmax(145px, .42fr) minmax(145px, .42fr) auto; gap: 8px; margin-bottom: 12px; padding: 8px; align-items: center; background: transparent; border: 1px solid var(--color-border-on-foreground); border-radius: var(--card-radius); }
 .feedback-search-box,
 .feedback-filter-control { position: relative; display: flex; align-items: center; min-width: 0; }
 .feedback-search-box > i,
@@ -960,7 +960,7 @@ html.darkmode .feedback-modal-close { color: #aaa; }
 html.darkmode .feedback-image-item { border-color: #555; }
 html.darkmode .feedback-image-add-btn { border-color: #555; color: #aaa; }
 html.darkmode .feedback-images-display img { border-color: #555; }
-html.darkmode .feedback-list-tools { background: rgba(255, 255, 255, .035); border-color: rgba(255, 255, 255, .08); }
+html.darkmode .feedback-list-tools { background: transparent; border-color: rgba(255, 255, 255, .08); }
 html.darkmode .feedback-image-viewer { --feedback-viewer-glass: rgba(16, 19, 29, .58); --feedback-viewer-glass-hover: rgba(40, 46, 63, .72); }
 
 @media (prefers-reduced-motion: reduce) {
