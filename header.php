@@ -108,7 +108,7 @@
 		$htmlclasses .= 'toolbar-center ';
 	}
 
-	$htmlclasses .= get_option('argon_article_header_style', 'article-header-style-default') . ' ';
+	$htmlclasses .= esc_attr(get_option('argon_article_header_style', 'article-header-style-default')) . ' ';
 
 	if(strpos($_SERVER['HTTP_USER_AGENT'], 'Safari') !== false && strpos($_SERVER['HTTP_USER_AGENT'], 'Chrome') === false){
 
@@ -118,7 +118,7 @@
 
 ?>
 
-<html <?php language_attributes(); ?> class="no-js <?php echo $htmlclasses;?>">
+<html <?php language_attributes(); ?> class="no-js <?php echo esc_attr($htmlclasses);?>">
 
 <?php
 
@@ -156,7 +156,7 @@
 
 	$cardradius_origin = $cardradius;
 
-	if (isset($_COOKIE["argon_card_radius"]) && $_COOKIE["argon_card_radius"] != ""){
+	if (isset($_COOKIE["argon_card_radius"]) && $_COOKIE["argon_card_radius"] != "" && preg_match('/^\d+(\.\d+)?[a-z%]*$/i', $_COOKIE["argon_card_radius"])){
 
 		$cardradius = $_COOKIE["argon_card_radius"];
 
@@ -178,11 +178,11 @@
 
 	<?php } ?>
 
-	<meta property="og:title" content="<?php echo wp_get_document_title();?>">
+	<meta property="og:title" content="<?php echo esc_attr(wp_get_document_title());?>">
 
 	<meta property="og:type" content="article">
 
-	<meta property="og:url" content="<?php echo home_url(add_query_arg(array(),$wp->request));?>">
+	<meta property="og:url" content="<?php echo esc_url(home_url(add_query_arg(array(),$wp->request)));?>">
 
 	<?php
 
@@ -190,9 +190,9 @@
 
 		if ($seo_description != ''){ ?>
 
-			<meta name="description" content="<?php echo $seo_description?>">
+			<meta name="description" content="<?php echo esc_attr($seo_description);?>">
 
-			<meta property="og:description" content="<?php echo $seo_description?>">
+			<meta property="og:description" content="<?php echo esc_attr($seo_description);?>">
 
 	<?php } ?>
 
@@ -204,7 +204,7 @@
 
 		if ($seo_keywords != ''){ ?>
 
-			<meta name="keywords" content="<?php echo get_seo_keywords();?>">
+			<meta name="keywords" content="<?php echo esc_attr(get_seo_keywords());?>">
 
 	<?php } ?>
 
@@ -218,41 +218,41 @@
 
 			if ($og_image != ''){ ?>
 
-				<meta property="og:image" content="<?php echo $og_image?>" />
+				<meta property="og:image" content="<?php echo esc_url($og_image);?>" />
 
 	<?php 	} else { ?>
 
-				<meta property="og:image" content="https://blog.cartol.top/favicon.ico" />
+				<meta property="og:image" content="<?php echo esc_url(get_site_icon_url()); ?>" />
 
 	<?php 	}
 
 		} else { ?>
 
-			<meta property="og:image" content="https://blog.cartol.top/favicon.ico" />
+			<meta property="og:image" content="<?php echo esc_url(get_site_icon_url()); ?>" />
 
 	<?php } ?>
 
 
 
-	<meta name="theme-color" content="<?php echo $themecolor; ?>">
+	<meta name="theme-color" content="<?php echo esc_attr($themecolor); ?>">
 
-	<meta name="theme-color-rgb" content="<?php echo hex2str($themecolor); ?>">
+	<meta name="theme-color-rgb" content="<?php echo esc_attr(hex2str($themecolor)); ?>">
 
-	<meta name="theme-color-origin" content="<?php echo $themecolor_origin; ?>">
+	<meta name="theme-color-origin" content="<?php echo esc_attr($themecolor_origin); ?>">
 
-	<meta name="argon-enable-custom-theme-color" content="<?php echo (get_option('argon_show_customize_theme_color_picker') != 'false' ? 'true' : 'false'); ?>">
-
-
+	<meta name="argon-enable-custom-theme-color" content="<?php echo esc_attr(get_option('argon_show_customize_theme_color_picker') != 'false' ? 'true' : 'false'); ?>">
 
 
 
-	<meta name="theme-card-radius" content="<?php echo $cardradius; ?>">
-
-	<meta name="theme-card-radius-origin" content="<?php echo $cardradius_origin; ?>">
 
 
+	<meta name="theme-card-radius" content="<?php echo esc_attr($cardradius); ?>">
 
-	<meta name="theme-version" content="<?php echo $GLOBALS['theme_version']; ?>">
+	<meta name="theme-card-radius-origin" content="<?php echo esc_attr($cardradius_origin); ?>">
+
+
+
+	<meta name="theme-version" content="<?php echo esc_attr($GLOBALS['theme_version']); ?>">
 
 	<!-- 预加载用户样式设置 - 避免样式跳变 -->
 	<script>
@@ -323,10 +323,10 @@
 
 	// 加载 Prism.js 代码高亮库
 	if (get_option('argon_enable_code_highlight') == 'true') {
+		wp_enqueue_style("prism_theme", $GLOBALS['assets_path'] . "/assets/vendor/prism/themes/prism-okaidia.min.css", array(), $assets_version);
+		wp_enqueue_style("prism_line_numbers_css", $GLOBALS['assets_path'] . "/assets/vendor/prism/plugins/line-numbers/prism-line-numbers.min.css", array('prism_theme'), $assets_version);
 		wp_enqueue_script("prism_core", $GLOBALS['assets_path'] . "/assets/vendor/prism/prism.min.js", array(), $assets_version, true);
 		wp_enqueue_script("prism_line_numbers", $GLOBALS['assets_path'] . "/assets/vendor/prism/plugins/line-numbers/prism-line-numbers.min.js", array('prism_core'), $assets_version, true);
-		wp_enqueue_script("prism_toolbar", $GLOBALS['assets_path'] . "/assets/vendor/prism/plugins/toolbar/prism-toolbar.min.js", array('prism_core'), $assets_version, true);
-		wp_enqueue_script("prism_copy", $GLOBALS['assets_path'] . "/assets/vendor/prism/plugins/copy-to-clipboard/prism-copy-to-clipboard.min.js", array('prism_core', 'prism_toolbar'), $assets_version, true);
 		wp_enqueue_script("prism_autoloader", $GLOBALS['assets_path'] . "/assets/vendor/prism/plugins/autoloader/prism-autoloader.min.js", array('prism_core'), $assets_version, true);
 	}
 	
@@ -344,7 +344,7 @@
 	(function() {
 		var forceRefreshKey = 'argon_force_refresh_version';
 		var pendingKey = 'argon_force_refresh_pending';
-		var currentVersion = '<?php echo get_option('argon_force_refresh_enabled_time', 0); ?>';
+		var currentVersion = '<?php echo esc_js(get_option('argon_force_refresh_enabled_time', 0)); ?>';
 		var lastVersion = localStorage.getItem(forceRefreshKey);
 		
 		if (lastVersion !== currentVersion) {
@@ -420,11 +420,11 @@
 		})();
 		
 		// 用户角色检测 - 传递给前端JavaScript
-		window.argonUserRole = '<?php echo current_user_can('administrator') ? 'administrator' : (is_user_logged_in() ? 'user' : 'guest'); ?>';
+		window.argonUserRole = '<?php echo esc_js(current_user_can('administrator') ? 'administrator' : (is_user_logged_in() ? 'user' : 'guest')); ?>';
 	</script>
 	
 	<!-- Argon 修复补丁 - 必须在 wp_head() 之后立即执行 -->
-	<script src="<?php echo get_template_directory_uri(); ?>/assets/js/argon.min.js?ver=<?php echo $assets_version; ?>"></script>
+	<script src="<?php echo esc_url(get_template_directory_uri()); ?>/assets/js/argon.min.js?ver=<?php echo esc_attr($assets_version); ?>"></script>
 
 	<?php $GLOBALS['wp_path'] = get_option('argon_wp_path') == '' ? '/' : get_option('argon_wp_path'); ?>
 
@@ -434,21 +434,21 @@
 
 		var argonConfig = {
 
-			wp_path: "<?php echo $GLOBALS['wp_path']; ?>",
+			wp_path: "<?php echo esc_js($GLOBALS['wp_path']); ?>",
 
-			language: "<?php echo argon_get_locate(); ?>",
+			language: "<?php echo esc_js(argon_get_locate()); ?>",
 
-			dateFormat: "<?php echo get_option('argon_dateformat', 'YMD'); ?>",
+			dateFormat: "<?php echo esc_js(get_option('argon_dateformat', 'YMD')); ?>",
 
 			<?php if (get_option('argon_enable_zoomify') == 'true'){ ?>
 
 				zoomify: {
 
-					duration: <?php echo get_option('argon_zoomify_duration', 200); ?>,
+					duration: <?php echo intval(get_option('argon_zoomify_duration', 200)); ?>,
 
-					easing: "<?php echo get_option('argon_zoomify_easing', 'cubic-bezier(0.4,0,0,1)'); ?>",
+					easing: "<?php echo esc_js(get_option('argon_zoomify_easing', 'cubic-bezier(0.4,0,0,1)')); ?>",
 
-					scale: <?php echo get_option('argon_zoomify_scale', 0.9); ?>
+					scale: <?php echo floatval(get_option('argon_zoomify_scale', 0.9)); ?>
 
 				},
 
@@ -458,36 +458,36 @@
 
 			<?php } ?>
 
-			pangu: "<?php echo get_option('argon_enable_pangu', 'false'); ?>",
+			pangu: "<?php echo esc_js(get_option('argon_enable_pangu', 'false')); ?>",
 
 			// 懒加载配置
 			lazyload: <?php echo (get_option('argon_enable_lazyload', 'true') == 'false' ? 'false' : 'true'); ?>,
-			lazyload_effect: "<?php echo get_option('argon_lazyload_effect', 'fadeIn'); ?>",
-			lazyload_threshold: <?php echo (get_option('argon_lazyload_threshold') == '' ? '800' : get_option('argon_lazyload_threshold')); ?>,
+			lazyload_effect: "<?php echo esc_js(get_option('argon_lazyload_effect', 'fadeIn')); ?>",
+			lazyload_threshold: <?php echo (get_option('argon_lazyload_threshold') == '' ? '800' : intval(get_option('argon_lazyload_threshold'))); ?>,
 
-			fold_long_comments: <?php echo get_option('argon_fold_long_comments', 'false'); ?>,
+			fold_long_comments: <?php echo (get_option('argon_fold_long_comments', 'false') == 'true' ? 'true' : 'false'); ?>,
 
-			fold_long_shuoshuo: <?php echo get_option('argon_fold_long_shuoshuo', 'false'); ?>,
+			fold_long_shuoshuo: <?php echo (get_option('argon_fold_long_shuoshuo', 'false') == 'true' ? 'true' : 'false'); ?>,
 
-			disable_pjax: <?php echo get_option('argon_pjax_disabled', 'false'); ?>,
+			disable_pjax: <?php echo (get_option('argon_pjax_disabled', 'false') == 'true' ? 'true' : 'false'); ?>,
 
 			pjax_animation_durtion: <?php echo (get_option("argon_disable_pjax_animation") == 'true' ? '0' : '600'); ?>,
 
-			headroom: "<?php echo get_option('argon_enable_headroom', 'false'); ?>",
+			headroom: "<?php echo esc_js(get_option('argon_enable_headroom', 'false')); ?>",
 
-			waterflow_columns: "<?php echo get_option('argon_article_list_waterflow', '1'); ?>",
+			waterflow_columns: "<?php echo esc_js(get_option('argon_article_list_waterflow', '1')); ?>",
 
-			article_list_layout_mobile: "<?php echo get_option('argon_article_list_layout_mobile', '1'); ?>",
+			article_list_layout_mobile: "<?php echo esc_js(get_option('argon_article_list_layout_mobile', '1')); ?>",
 
 			code_highlight: {
 
-				enable: <?php echo get_option('argon_enable_code_highlight', 'false'); ?>,
+				enable: <?php echo (get_option('argon_enable_code_highlight', 'false') == 'true' ? 'true' : 'false'); ?>,
 
-				hide_linenumber: <?php echo get_option('argon_code_highlight_hide_linenumber', 'false'); ?>,
+				hide_linenumber: <?php echo (get_option('argon_code_highlight_hide_linenumber', 'false') == 'true' ? 'true' : 'false'); ?>,
 
-				transparent_linenumber: <?php echo get_option('argon_code_highlight_transparent_linenumber', 'false'); ?>,
+				transparent_linenumber: <?php echo (get_option('argon_code_highlight_transparent_linenumber', 'false') == 'true' ? 'true' : 'false'); ?>,
 
-				break_line: <?php echo get_option('argon_code_highlight_break_line', 'false'); ?>
+				break_line: <?php echo (get_option('argon_code_highlight_break_line', 'false') == 'true' ? 'true' : 'false'); ?>
 
 			}
 
@@ -497,7 +497,7 @@
 
 	<script>
 
-		var darkmodeAutoSwitch = "<?php echo (get_option("argon_darkmode_autoswitch") == '' ? 'false' : get_option("argon_darkmode_autoswitch"));?>";
+		var darkmodeAutoSwitch = "<?php echo esc_js(get_option("argon_darkmode_autoswitch") == '' ? 'false' : get_option("argon_darkmode_autoswitch"));?>";
 
 		function setDarkmode(enable){
 
@@ -669,19 +669,19 @@
 
 	<?php if (get_option('argon_enable_smoothscroll_type') == '2') { /*平滑滚动*/?>
 
-		<script src="<?php echo $GLOBALS['assets_path']; ?>/assets/vendor/smoothscroll/smoothscroll2.js"></script>
+		<script src="<?php echo esc_url($GLOBALS['assets_path'] . '/assets/vendor/smoothscroll/smoothscroll2.js'); ?>"></script>
 
 	<?php }else if (get_option('argon_enable_smoothscroll_type') == '3'){?>
 
-		<script src="<?php echo $GLOBALS['assets_path']; ?>/assets/vendor/smoothscroll/smoothscroll3.min.js"></script>
+		<script src="<?php echo esc_url($GLOBALS['assets_path'] . '/assets/vendor/smoothscroll/smoothscroll3.min.js'); ?>"></script>
 
 	<?php }else if (get_option('argon_enable_smoothscroll_type') == '1_pulse'){?>
 
-		<script src="<?php echo $GLOBALS['assets_path']; ?>/assets/vendor/smoothscroll/smoothscroll1_pulse.js"></script>
+		<script src="<?php echo esc_url($GLOBALS['assets_path'] . '/assets/vendor/smoothscroll/smoothscroll1_pulse.js'); ?>"></script>
 
 	<?php }else if (get_option('argon_enable_smoothscroll_type') != 'disabled'){?>
 
-		<script src="<?php echo $GLOBALS['assets_path']; ?>/assets/vendor/smoothscroll/smoothscroll1.js"></script>
+		<script src="<?php echo esc_url($GLOBALS['assets_path'] . '/assets/vendor/smoothscroll/smoothscroll1.js'); ?>"></script>
 
 	<?php }?>
 
@@ -707,19 +707,19 @@
 
 	:root{
 
-		--themecolor: <?php echo $themecolor; ?>;
+		--themecolor: <?php echo esc_attr($themecolor); ?>;
 
-		--themecolor-R: <?php echo $RGB['R']; ?>;
+		--themecolor-R: <?php echo intval($RGB['R']); ?>;
 
-		--themecolor-G: <?php echo $RGB['G']; ?>;
+		--themecolor-G: <?php echo intval($RGB['G']); ?>;
 
-		--themecolor-B: <?php echo $RGB['B']; ?>;
+		--themecolor-B: <?php echo intval($RGB['B']); ?>;
 
-		--themecolor-H: <?php echo $HSL['H']; ?>;
+		--themecolor-H: <?php echo intval($HSL['H']); ?>;
 
-		--themecolor-S: <?php echo $HSL['S']; ?>;
+		--themecolor-S: <?php echo intval($HSL['S']); ?>;
 
-		--themecolor-L: <?php echo $HSL['L']; ?>;
+		--themecolor-L: <?php echo intval($HSL['L']); ?>;
 
 	}
 
@@ -729,7 +729,7 @@
 
 	:root{
 
-		--card-radius: <?php echo $cardradius; ?>px;
+		--card-radius: <?php echo esc_attr($cardradius); ?>px;
 
 	}
 
@@ -758,12 +758,12 @@ if ($bg_opacity == '') {
 
 <style id="theme_card_effect_css">
 	:root {
-		--bg-opacity: <?php echo $bg_opacity; ?>;
-		--card-opacity: <?php echo $card_opacity; ?>;
-		--card-blur: <?php echo $card_blur; ?>px;
-		--card-saturate: <?php echo $card_saturate; ?>%;
-		--toolbar-blur: <?php echo $toolbar_blur; ?>px;
-		--page-background-opacity: <?php echo $bg_opacity; ?>;
+		--bg-opacity: <?php echo esc_attr($bg_opacity); ?>;
+		--card-opacity: <?php echo esc_attr($card_opacity); ?>;
+		--card-blur: <?php echo intval($card_blur); ?>px;
+		--card-saturate: <?php echo intval($card_saturate); ?>%;
+		--toolbar-blur: <?php echo intval($toolbar_blur); ?>px;
+		--page-background-opacity: <?php echo esc_attr($bg_opacity); ?>;
 		--banner-mask-height: 120px;
 		--banner-mask-opacity-top: 0.25;
 		--banner-mask-opacity-mid: 0.15;
@@ -796,7 +796,7 @@ if ($bg_opacity == '') {
 
 <body <?php body_class(); ?>>
 
-<?php /*wp_body_open();*/ ?>
+<?php wp_body_open(); ?>
 
 <div id="page-loader" class="page-loader is-visible" data-page-bg="<?php echo esc_url($argon_loader_page_bg); ?>" data-page-bg-dark="<?php echo esc_url($argon_loader_page_bg_dark); ?>" aria-hidden="true">
 	<div class="loader-progress" aria-hidden="true">
@@ -822,9 +822,9 @@ if ($bg_opacity == '') {
 
 					<?php if (get_option('argon_toolbar_icon') != '') { /*顶栏ICON(如果选项中开启)*/?>
 
-						<a class="navbar-brand navbar-icon mr-lg-5" href="<?php echo get_option('argon_toolbar_icon_link'); ?>">
+						<a class="navbar-brand navbar-icon mr-lg-5" href="<?php echo esc_url(get_option('argon_toolbar_icon_link')); ?>">
 
-							<img src="<?php echo get_option('argon_toolbar_icon'); ?>">
+							<img src="<?php echo esc_url(get_option('argon_toolbar_icon')); ?>">
 
 						</a>
 
@@ -844,7 +844,7 @@ if ($bg_opacity == '') {
 
 					?>
 
-					<a class="navbar-brand navbar-title" href="<?php bloginfo('url'); ?>"><?php echo $toolbar_title;?></a>
+					<a class="navbar-brand navbar-title" href="<?php echo esc_url(home_url()); ?>"><?php echo esc_html($toolbar_title);?></a>
 
 				</div>
 
@@ -1096,7 +1096,7 @@ if ($bg_opacity == '') {
 
 <section id="banner" class="banner section section-lg section-shaped">
 
-	<div class="shape <?php echo get_option('argon_banner_background_hide_shapes') == 'true' ? '' : 'shape-style-1' ?> <?php echo get_option('argon_banner_background_color_type') == '' ? 'shape-primary' : get_option('argon_banner_background_color_type'); ?>">
+	<div class="shape <?php echo esc_attr(get_option('argon_banner_background_hide_shapes') == 'true' ? '' : 'shape-style-1') ?> <?php echo esc_attr(get_option('argon_banner_background_color_type') == '' ? 'shape-primary' : get_option('argon_banner_background_color_type')); ?>">
 
 		<span></span>
 
@@ -1132,15 +1132,15 @@ if ($bg_opacity == '') {
 
 		<?php if ($enable_banner_title_typing_effect != "true"){?>
 
-			<div class="banner-title text-white"><span class="banner-title-inner"><?php echo apply_filters('argon_banner_title_html', $banner_title); ?></span>
+			<div class="banner-title text-white"><span class="banner-title-inner"><?php echo wp_kses_post(apply_filters('argon_banner_title_html', $banner_title)); ?></span>
 
-			<?php echo get_option('argon_banner_subtitle') == '' ? '' : '<span class="banner-subtitle d-block">' . get_option('argon_banner_subtitle') . '</span>'; ?></div>
+			<?php echo get_option('argon_banner_subtitle') == '' ? '' : '<span class="banner-subtitle d-block">' . esc_html(get_option('argon_banner_subtitle')) . '</span>'; ?></div>
 
 		<?php } else {?>
 
-			<div class="banner-title text-white" data-interval="<?php echo get_option('argon_banner_typing_effect_interval', 100); ?>"><span data-text="<?php echo $banner_title; ?>" class="banner-title-inner">&nbsp;</span>
+			<div class="banner-title text-white" data-interval="<?php echo intval(get_option('argon_banner_typing_effect_interval', 100)); ?>"><span data-text="<?php echo esc_attr($banner_title); ?>" class="banner-title-inner">&nbsp;</span>
 
-			<?php echo get_option('argon_banner_subtitle') == '' ? '' : '<span data-text="' . get_option('argon_banner_subtitle') . '" class="banner-subtitle d-block">&nbsp;</span>'; ?></div>
+			<?php echo get_option('argon_banner_subtitle') == '' ? '' : '<span data-text="' . esc_attr(get_option('argon_banner_subtitle')) . '" class="banner-subtitle d-block">&nbsp;</span>'; ?></div>
 
 		<?php }?>
 
@@ -1152,7 +1152,7 @@ if ($bg_opacity == '') {
 
 			section.banner{
 
-				background-image: url(<?php echo get_banner_background_url(); ?>) !important;
+				background-image: url(<?php echo esc_url(get_banner_background_url()); ?>) !important;
 
 			}
 
@@ -1206,7 +1206,7 @@ if ($bg_opacity == '') {
 
 			z-index: -2;
 
-			background: url(<?php echo apply_filters('argon_page_background_url', get_option('argon_page_background_url'));?>);
+			background: url(<?php echo esc_url(apply_filters('argon_page_background_url', get_option('argon_page_background_url')));?>);
 
 			background-position: center;
 
@@ -1242,7 +1242,7 @@ if ($bg_opacity == '') {
 
 				z-index: -2;
 
-				background: url(<?php echo apply_filters('argon_page_background_dark_url', get_option('argon_page_background_dark_url'));?>);
+				background: url(<?php echo esc_url(apply_filters('argon_page_background_dark_url', get_option('argon_page_background_dark_url')));?>);
 
 				background-position: center;
 

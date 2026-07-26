@@ -77,8 +77,8 @@
 	// 分享功能
 	<?php if ($argon_show_sharebtn != 'false') { ?>
 	socialShare("#share", {
-		title: '<?php echo addslashes(html_entity_decode(get_the_title())); ?>',
-		description: '<?php echo addslashes(html_entity_decode(wp_trim_words(html_entity_decode(get_the_content()), 50)));?>',
+		title: '<?php echo esc_js(html_entity_decode(get_the_title())); ?>',
+		description: '<?php echo esc_js(html_entity_decode(wp_trim_words(html_entity_decode(get_the_content()), 50)));?>',
 		wechatQrcodeTitle: "<?php _e('分享到微信', 'argon');?>",
 		wechatQrcodeHelper: '<?php _e('微信扫描二维码', 'argon');?>',
 		source: '<?php global $post; echo get_permalink($post -> ID); ?>'

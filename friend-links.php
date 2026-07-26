@@ -476,7 +476,7 @@ html.darkmode body.flinks-page {
 	background: var(--flinks-surface-hover);
 	border-color: rgba(var(--themecolor-rgbstr), 0.16);
 }
-.flink-card.editable { cursor: default; }
+.flink-card.editable { cursor: default; border-radius: var(--card-radius); overflow: hidden; }
 .flink-card .flink-edit-btn { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: var(--card-radius-sm); background: rgba(var(--themecolor-rgbstr), 0.1); color: var(--themecolor); border: none; cursor: pointer; display: none; align-items: center; justify-content: center; font-size: 12px; transition: all var(--animation-fast) var(--ease-standard); }
 .flink-card:hover .flink-edit-btn { display: flex; }
 .flink-card .flink-edit-btn:hover { background: rgba(var(--themecolor-rgbstr), 0.2); }
@@ -492,6 +492,7 @@ html.darkmode body.flinks-page {
 .flink-status-badge.waf-blocked { background: #fce7f3; color: #db2777; }
 .flink-status-badge.auto-approved { background: #d1fae5; color: #059669; cursor: pointer; }
 .flink-card.editable .flink-status-badge { right: 40px; }
+.flink-card.editable .flink-status-badge.no-backlink { top: auto; right: auto; bottom: 6px; left: 6px; display: inline-flex; align-items: center; line-height: 1; padding: 4px 8px; border-radius: var(--card-radius) !important; overflow: hidden; }
 
 .flink-avatar { width: 52px; height: 52px; flex-shrink: 0; border-radius: var(--card-radius); background: var(--themecolor-gradient); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 600; color: #fff; position: relative; overflow: hidden; box-shadow: 0 2px 8px rgba(var(--themecolor-rgbstr), 0.2); transition: transform var(--animation-fast) var(--ease-standard); }
 .flink-card:hover .flink-avatar { transform: scale(1.05); }
@@ -1098,10 +1099,13 @@ if (typeof initGeetest4 === 'function') {
         product: 'bind'
     }, function(captcha) {
         captcha.appendTo('#flink-geetest-captcha');
-        document.getElementById('apply-submit-btn').addEventListener('click', function(e) {
-            e.preventDefault();
-            captcha.showCaptcha();
-        });
+        var applySubmitBtn = document.getElementById('apply-submit-btn');
+        if (applySubmitBtn) {
+            applySubmitBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                captcha.showCaptcha();
+            });
+        }
         captcha.onSuccess(function() {
             var result = captcha.getValidate();
             document.getElementById('flink-lot-number').value = result.lot_number;

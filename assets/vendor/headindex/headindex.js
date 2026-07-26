@@ -8,11 +8,11 @@
 ;(function($, window) {
     var headIndex = (function() {
         function headIndex(element, options) {
-            this.settings = $.extend(true, $.fn.headIndex.default, options || {});
+            this.settings = $.extend(true, {}, $.fn.headIndex.default, options || {});
             this.element = element;
             this.init();
         }
-        
+
         headIndex.prototype = {
             init: function() {
                 this.articleWrap = $(this.settings.articleWrapSelector);
@@ -23,11 +23,12 @@
                 this.scrollWrap = $(this.settings.scrollWrap);
                 this.manual = false;
                 this.mouseHovered = false;
-                
+                this.currentId = null;
+
                 if (this.indexBox.length === 0 || this.headerList.length === 0) {
                     return null;
                 }
-                
+
                 this.initHeader();
                 this.event();
             },
@@ -53,6 +54,7 @@
                     var target = $(event.target);
                     if (target.hasClass(that.settings.linkClass)) {
                         event.preventDefault();
+                        event.stopPropagation();
                         var indexItem = target.parent('.' + that.settings.itemClass);
                         that.manual = true;
                         if (manualValTimer) {
@@ -67,17 +69,28 @@
                     }
                 });
                 
-                this.indexScrollBox.on('mouseover', function(event) {
+                this.indexScrollBox.on('mouseover.headindex', function(event) {
                     that.mouseHovered = true;
                 });
                 
-                this.indexScrollBox.on('mouseleave', function(event) {
+                this.indexScrollBox.on('mouseleave.headindex', function(event) {
                     that.mouseHovered = false;
                 });
                 
-                $(this.scrollWrap).scroll(function() {
+                var rafTick = (window.requestAnimationFrame && window.requestAnimationFrame.bind(window)) || function(cb) {
+                    return window.setTimeout(cb, 16);
+                };
+
+                this.scrollTicking = false;
+                $(this.scrollWrap).off('scroll.headindex').on('scroll.headindex', function() {
                     if (that.manual) return;
-                    that.updateCurrent();
+                    if (that.scrollTicking) return;
+                    that.scrollTicking = true;
+                    rafTick(function() {
+                        that.scrollTicking = false;
+                        if (that.manual) return;
+                        that.updateCurrent();
+                    });
                 });
                 
                 that.updateCurrent();
@@ -113,8 +126,14 @@
                     return;
                 }
 
+                var link = indexItem.children('.' + this.settings.linkClass).eq(0);
+                var nextId = link.attr('href') || '';
+                var sameCurrent = nextId && nextId === this.currentId;
+                this.centerCurrent = !sameCurrent;
+
                 if (indexItem.hasClass(currentClass)) {
-                    this.scrollCurrentIntoView(indexItem);
+                    this.scrollCurrentIntoView(indexItem, this.centerCurrent);
+                    this.centerCurrent = false;
                     return;
                 }
                 
@@ -147,10 +166,12 @@
                 }
                 
                 indexItem.addClass(currentClass);
-                this.scrollCurrentIntoView(indexItem);
+                this.currentId = nextId;
+                this.scrollCurrentIntoView(indexItem, this.centerCurrent);
+                this.centerCurrent = false;
             },
 
-            scrollCurrentIntoView: function(indexItem) {
+            scrollCurrentIntoView: function(indexItem, centerWhenNeeded) {
                 if (this.mouseHovered) {
                     return;
                 }
@@ -176,15 +197,28 @@
                 }
 
                 var scrollTop = scrollBox.scrollTop();
-                var target = scrollTop + itemTop - (boxHeight / 2) + (itemHeight / 2);
-                var maxScroll = scrollNode.scrollHeight - boxHeight;
+                var maxScroll = Math.max(0, scrollNode.scrollHeight - boxHeight);
+                var visibleTop = Math.max(0, boxHeight * 0.18);
+                var visibleBottom = Math.max(visibleTop + itemHeight, boxHeight * 0.82);
+                var itemBottom = itemTop + itemHeight;
+                if (itemTop >= visibleTop && itemBottom <= visibleBottom) {
+                    return;
+                }
+                var target;
+                if (centerWhenNeeded) {
+                    target = scrollTop + itemTop - (boxHeight / 2) + (itemHeight / 2);
+                } else if (itemTop < visibleTop) {
+                    target = scrollTop + itemTop - visibleTop;
+                } else {
+                    target = scrollTop + itemBottom - visibleBottom;
+                }
                 target = Math.max(0, Math.min(target, maxScroll));
 
-                if (Math.abs(target - scrollTop) < 6) {
+                if (Math.abs(target - scrollTop) < 4) {
                     return;
                 }
 
-                scrollBox.stop(true).animate({scrollTop: target}, 220, 'easeOutExpo');
+                scrollBox.stop(true, false).animate({scrollTop: target}, 180, 'linear');
             },
             
             buildHtml: function(tree) {
@@ -260,7 +294,7 @@
                 if (this.headerList.length === 0) return null;
                 
                 if (end - start <= 1) {
-                    if (this.headerList[end].topHeight < findValue) {
+                    if (this.headerList[end].topHeight <= findValue) {
                         return this.headerList[end];
                     }
                     return this.headerList[start];
@@ -293,8 +327,9 @@
             
             updateCurrent: function() {
                 var scrollTop = this.scrollBody.scrollTop();
+                var activeOffset = this.activeOffset();
                 this.updateTopHeight();
-                var find = this.search(0, this.headerList.length - 1, scrollTop);
+                var find = this.search(0, this.headerList.length - 1, scrollTop + activeOffset);
                 if (!find) {
                     return;
                 }
@@ -303,6 +338,16 @@
             },
             
             clean: function() {
+                if (this.scrollWrap) {
+                    $(this.scrollWrap).off('scroll.headindex');
+                }
+                if (this.indexBox) {
+                    this.indexBox.off('.headindex');
+                }
+                if (this.indexScrollBox) {
+                    this.indexScrollBox.off('.headindex');
+                }
+                this.scrollTicking = false;
                 if (this.element) {
                     this.element.data("headIndex", null);
                 }
@@ -315,6 +360,15 @@
                     this.manual = false;
                     this.updateCurrent();
                 }
+            },
+
+            activeOffset: function() {
+                var ratio = Number(this.settings.activeViewportRatio);
+                if (!ratio || ratio <= 0) {
+                    return 0;
+                }
+                var viewportHeight = $(window).height() || 0;
+                return Math.min(Math.max(viewportHeight * ratio, 120), 320);
             }
         };
         
@@ -327,6 +381,17 @@
         return this.each(function() {
             var $this = $(this),
                 instance = $this.data("headIndex");
+            // 销毁上一个实例，避免重复初始化时残留滚动监听
+            if (instance) {
+                if (typeof instance.clean === "function") {
+                    try {
+                        instance.clean();
+                    } catch (e) {}
+                }
+                if (instance.scrollWrap) {
+                    $(instance.scrollWrap).off('scroll.headindex');
+                }
+            }
             instance = new headIndex($this, options);
             $this.data("headIndex", instance);
             if ($.type(options) === "string") return instance[options]();
@@ -343,6 +408,7 @@
         itemClass: "index-item",
         linkClass: "index-link",
         offset: 0,
+        activeViewportRatio: 0.32,
         defaultExpanded: false
     };
     

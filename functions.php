@@ -1963,7 +1963,7 @@ function check_email_address($email){
 }
 //检验评论 Token 和用户 Token 是否一致
 function check_comment_token($id){
-	if (strlen($_COOKIE['argon_user_token']) != 32){
+	if (strlen($_COOKIE['argon_user_token']) != 32 || !ctype_xdigit($_COOKIE['argon_user_token'])){
 		return false;
 	}
 	if ($_COOKIE['argon_user_token'] != get_comment_meta($id, "user_token", true)){
@@ -2065,12 +2065,16 @@ function can_visit_comment_edit_history($id){
 }
 //获取评论编辑记录
 function get_comment_edit_history(){
-	$id = $_POST['id'];
+	check_ajax_referer('argon_comment_nonce', 'nonce');
+	$id = absint($_POST['id']);
+	if ($id === 0) {
+		wp_send_json_error(array('msg' => __('无效的评论 ID', 'argon')));
+	}
 	if (!can_visit_comment_edit_history($id)){
-		exit(json_encode(array(
-			'id' => $_POST['id'],
+		wp_send_json_error(array(
+			'id' => $id,
 			'history' => ""
-		)));
+		));
 	}
 	$editHistory = json_decode(get_comment_meta($id, "comment_edit_history", true));
 	$editHistory = array_reverse($editHistory);
@@ -2082,18 +2086,18 @@ function get_comment_edit_history(){
 		$res .= "<div class='comment-edit-history-item'>
 					<div class='comment-edit-history-title'>
 						<div class='comment-edit-history-id'>
-							#" . $position . "
+							#" . intval($position) . "
 						</div>
 						" . ($edition -> isfirst ? "<span class='badge badge-primary badge-admin'>" . __("最初版本", 'argon') . "</span>" : "") . "
 					</div>
-					<div class='comment-edit-history-time'>" . date('Y-m-d H:i:s', $edition -> time) . "</div>
-					<div class='comment-edit-history-content'>" . str_replace("\n", "</br>", $edition -> content) . "</div>
+					<div class='comment-edit-history-time'>" . esc_html(date('Y-m-d H:i:s', $edition -> time)) . "</div>
+					<div class='comment-edit-history-content'>" . wp_kses_post(str_replace("\n", "<br>", $edition -> content)) . "</div>
 				</div>";
 	}
-	exit(json_encode(array(
-		'id' => $_POST['id'],
+	wp_send_json_success(array(
+		'id' => $id,
 		'history' => $res
-	)));
+	));
 }
 add_action('wp_ajax_get_comment_edit_history', 'get_comment_edit_history');
 add_action('wp_ajax_nopriv_get_comment_edit_history', 'get_comment_edit_history');
@@ -2552,7 +2556,7 @@ function wrong_captcha($msg = null){
 	exit(json_encode(array(
 		'status' => 'failed',
 		'msg' => $message,
-		'isAdmin' => current_user_can('level_7')
+		'isAdmin' => current_user_can('moderate_comments')
 	)));
 	//wp_die('验证码错误，评论失败');
 }
@@ -2793,7 +2797,7 @@ function argon_verify_captcha($context = 'comment') {
     }
     
     // 管理员跳过验证码
-    if (current_user_can('level_7')) {
+    if (current_user_can('moderate_comments')) {
         return array('success' => true, 'error' => null);
     }
     
@@ -2934,7 +2938,7 @@ function ajax_post_comment(){
 		exit(json_encode(array(
 			'status' => 'failed',
 			'msg' => __('您的 IP 已被限制访问', 'argon'),
-			'isAdmin' => current_user_can('level_7')
+			'isAdmin' => current_user_can('moderate_comments')
 		)));
 	}
 	
@@ -2945,7 +2949,7 @@ function ajax_post_comment(){
 			exit(json_encode(array(
 				'status' => 'failed',
 				'msg' =>  __('不能回复其他人的悄悄话评论', 'argon'),
-				'isAdmin' => current_user_can('level_7')
+				'isAdmin' => current_user_can('moderate_comments')
 			)));
 		}
 	}
@@ -2962,7 +2966,7 @@ function ajax_post_comment(){
 		exit(json_encode(array(
 			'status' => 'failed',
 			'msg' => __('请求已失效，请刷新页面后重试', 'argon'),
-			'isAdmin' => current_user_can('level_7')
+			'isAdmin' => current_user_can('moderate_comments')
 		)));
 	}
 	// Honeypot check
@@ -2970,7 +2974,7 @@ function ajax_post_comment(){
 		exit(json_encode(array(
 			'status' => 'failed',
 			'msg' => __('Spam detected', 'argon'),
-			'isAdmin' => current_user_can('level_7')
+			'isAdmin' => current_user_can('moderate_comments')
 		)));
 	}
 	// 简单速率限制（按 IP 计数，可配置）
@@ -2998,14 +3002,14 @@ function ajax_post_comment(){
 			exit(json_encode(array(
 				'status' => 'failed',
 				'msg' => __('您评论过快，请稍后再试', 'argon'),
-				'isAdmin' => current_user_can('level_7')
+				'isAdmin' => current_user_can('moderate_comments')
 			)));
 		}
 		if (($now - intval($state['start'])) < $window && intval($state['count']) >= $max_count) {
 			exit(json_encode(array(
 				'status' => 'failed',
 				'msg' => __('操作过于频繁，请稍后再试', 'argon'),
-				'isAdmin' => current_user_can('level_7')
+				'isAdmin' => current_user_can('moderate_comments')
 			)));
 		}
 		// 更新速率状态并设置有效期
@@ -3027,7 +3031,7 @@ function ajax_post_comment(){
 		exit(json_encode(array(
 			'status' => 'failed',
 			'msg' => $msg,
-			'isAdmin' => current_user_can('level_7')
+			'isAdmin' => current_user_can('moderate_comments')
 		)));
 	}
 	if ($rate_state_to_save !== null) {
@@ -3052,7 +3056,7 @@ function ajax_post_comment(){
 	);
 	$newCaptchaSeed = get_comment_captcha_seed(true);
 	$newCaptcha = get_comment_captcha($newCaptchaSeed);
-	if (current_user_can('level_7')){
+	if (current_user_can('moderate_comments')){
 		$newCaptchaAnswer = get_comment_captcha_answer($newCaptchaSeed);
 	}else{
 		$newCaptchaAnswer = "";
@@ -3066,7 +3070,7 @@ function ajax_post_comment(){
 		'newCaptchaSeed' => $newCaptchaSeed,
 		'newCaptcha' => $newCaptcha,
 		'newCaptchaAnswer' => $newCaptchaAnswer,
-		'isAdmin' => current_user_can('level_7'),
+		'isAdmin' => current_user_can('moderate_comments'),
 		'isLogin' => is_user_logged_in()
 	)));
 }
@@ -3411,7 +3415,7 @@ function post_comment_updatemetas($id){
 		'time' => time(),
 		'isfirst' => true
 	));
-	update_comment_meta($id, "comment_edit_history", addslashes(json_encode($editHistory, JSON_UNESCAPED_UNICODE)));
+	update_comment_meta($id, "comment_edit_history", wp_json_encode($editHistory, JSON_UNESCAPED_UNICODE));
 	//是否启用 Markdown
 	if (isset($_POST['use_markdown']) && $_POST['use_markdown'] == 'true' && get_option("argon_comment_allow_markdown") != "false"){
 		update_comment_meta($id, "use_markdown", "true");
@@ -3567,7 +3571,7 @@ function user_edit_comment(){
 			'time' => time(),
 			'isfirst' => false
 		));
-		update_comment_meta($id, "comment_edit_history", addslashes(json_encode($editHistory, JSON_UNESCAPED_UNICODE)));
+		update_comment_meta($id, "comment_edit_history", wp_json_encode($editHistory, JSON_UNESCAPED_UNICODE));
 		exit(json_encode(array(
 			'status' => 'success',
 			'msg' => __('编辑评论成功', 'argon'),
@@ -5366,21 +5370,30 @@ add_action('wp_enqueue_scripts', 'argon_enqueue_qrcode_script');
 
 // 停用 wp-editormd 插件的 Prism.js，避免与主题的 Prism.js 冲突
 function argon_dequeue_editormd_prism() {
-	if (class_exists('EditormdApp\\PrismJSAuto') || class_exists('EditormdApp\\PrismJSCustomize')) {
-		wp_dequeue_script('prism-core-js');
-		wp_dequeue_script('Prism');
-		wp_dequeue_style('Prism');
-		wp_dequeue_style('prism-theme-default');
-		wp_dequeue_style('prism-theme-style');
-		// 停用所有 prism 插件脚本和样式
-		foreach (array('autoloader', 'toolbar', 'line-numbers', 'show-language', 'copy-to-clipboard') as $plugin) {
-			wp_dequeue_script("prism-plugin-{$plugin}");
-			wp_dequeue_style("prism-plugin-{$plugin}");
-		}
-		wp_dequeue_script('copy-clipboard');
+	$editormd_handles = array(
+		'prism-core-js',
+		'prism-core-css',
+		'Prism',
+		'prism',
+		'prism-theme-default',
+		'prism-theme-style',
+		'prism-plugin-toolbar',
+		'prism-plugin-line-numbers',
+		'prism-plugin-autoloader',
+		'prism-plugin-copy-to-clipboard',
+		'prism-plugin-show-language',
+		'copy-clipboard',
+	);
+	foreach ($editormd_handles as $handle) {
+		wp_dequeue_script($handle);
+		wp_deregister_script($handle);
+		wp_dequeue_style($handle);
+		wp_deregister_style($handle);
 	}
 }
-add_action('wp_enqueue_scripts', 'argon_dequeue_editormd_prism', 999);
+add_action('wp_enqueue_scripts', 'argon_dequeue_editormd_prism', 9999);
+add_action('wp_print_styles', 'argon_dequeue_editormd_prism', 1);
+add_action('wp_print_scripts', 'argon_dequeue_editormd_prism', 1);
 
 
 // 获取 Git 版本信息

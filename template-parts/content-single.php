@@ -146,15 +146,31 @@
 			isActive ? exitImmersive() : enterImmersive();
 		});
 
-		// Esc 快捷键支持
-		document.addEventListener('keydown', function(e) {
-			if (e.key === 'Escape' && isActive) exitImmersive();
-		});
+		// 本脚本位于 #primary 内，每次 PJAX 导航都会重新执行。
+		// 全局监听只注册一次，并通过下面的槽位始终指向最新一次执行的闭包。
+		window.__argonImmersiveHandlers = {
+			exit: exitImmersive,
+			isActive: function() { return isActive; }
+		};
 
-		document.addEventListener('pjax:send', exitImmersive);
-		window.addEventListener('beforeunload', function() {
-			root.classList.remove('immersive-read', 'immersive-read-entering', 'immersive-read-leaving');
-		});
+		if (!window.__argonImmersiveBound) {
+			window.__argonImmersiveBound = true;
+
+			// Esc 快捷键支持
+			document.addEventListener('keydown', function(e) {
+				var handlers = window.__argonImmersiveHandlers;
+				if (e.key === 'Escape' && handlers && handlers.isActive()) handlers.exit();
+			});
+
+			document.addEventListener('pjax:send', function() {
+				var handlers = window.__argonImmersiveHandlers;
+				if (handlers) handlers.exit();
+			});
+
+			window.addEventListener('beforeunload', function() {
+				document.documentElement.classList.remove('immersive-read', 'immersive-read-entering', 'immersive-read-leaving');
+			});
+		}
 
 		updateToggle(isActive);
 	})();

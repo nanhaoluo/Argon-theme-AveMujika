@@ -976,12 +976,14 @@ html.darkmode .feedback-image-viewer { --feedback-viewer-glass: rgba(16, 19, 29,
 	document.body.classList.add('feedback-page');
 	if (typeof jQuery !== 'undefined') {
 		let $ = jQuery;
-		$(document).off('pjax:start.feedback');
-		$(document).on('pjax:start.feedback', function() {
-			document.body.classList.remove('feedback-page');
-			let s = document.getElementById('feedback-page-style');
-			if (s) s.remove();
-			$(document).off('pjax:start.feedback');
+		$(document).off('pjax:complete.feedback pjax:end.feedback');
+		$(document).on('pjax:complete.feedback pjax:end.feedback', function() {
+			if (document.getElementById('feedback-page-style')) {
+				document.body.classList.add('feedback-page');
+			} else {
+				document.body.classList.remove('feedback-page');
+				$(document).off('pjax:complete.feedback pjax:end.feedback');
+			}
 		});
 	}
 })();
@@ -1788,8 +1790,9 @@ function refreshFeedbackCaptcha() {
 	fetch(getFeedbackActionUrl('refresh_captcha'))
 		.then(function(r) { return r.json(); })
 		.then(function(res) {
-			if (res.captcha) {
-				document.getElementById('feedback-captcha-text').textContent = res.captcha;
+			let captchaText = document.getElementById('feedback-captcha-text');
+			if (res.captcha && captchaText) {
+				captchaText.textContent = res.captcha;
 			}
 		});
 }

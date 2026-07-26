@@ -47,7 +47,7 @@
 
 		<!-- 加载主题核心 JS -->
 		<?php $assets_version = function_exists('argon_get_assets_version') ? argon_get_assets_version() : $GLOBALS['theme_version']; ?>
-		<script src="<?php echo $GLOBALS['assets_path']; ?>/argontheme.js?v=<?php echo $assets_version; ?>"></script>
+		<script src="<?php echo esc_url($GLOBALS['assets_path'] . '/argontheme.js?v=' . $assets_version); ?>"></script>
 
 		<?php if (get_option('argon_math_render') == 'mathjax3') { /*Mathjax V3*/?>
 
@@ -87,7 +87,7 @@
 
 			</script>
 
-			<script src="<?php echo get_option('argon_mathjax_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js' : get_option('argon_mathjax_cdn_url'); ?>" id="MathJax-script" async></script>
+			<script src="<?php echo esc_url(get_option('argon_mathjax_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js' : get_option('argon_mathjax_cdn_url')); ?>" id="MathJax-script" async></script>
 
 		<?php }?>
 
@@ -129,20 +129,22 @@
 
 			</script>
 
-			<script src="<?php echo get_option('argon_mathjax_v2_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/mathjax@2.7.5/MathJax.js?config=TeX-AMS_HTML' : get_option('argon_mathjax_v2_cdn_url'); ?>"></script>
+			<script src="<?php echo esc_url(get_option('argon_mathjax_v2_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/mathjax@2.7.5/MathJax.js?config=TeX-AMS_HTML' : get_option('argon_mathjax_v2_cdn_url')); ?>"></script>
 
 		<?php }?>
 
 		<?php if (get_option('argon_math_render') == 'katex') { /*Katex*/?>
 
-			<link rel="stylesheet" href="<?php echo get_option('argon_katex_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/katex@0.11.1/dist/' : get_option('argon_katex_cdn_url'); ?>katex.min.css">
+			<link rel="stylesheet" href="<?php echo esc_url(get_option('argon_katex_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/katex@0.11.1/dist/' : get_option('argon_katex_cdn_url')); ?>katex.min.css">
 
-			<script src="<?php echo get_option('argon_katex_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/katex@0.11.1/dist/' : get_option('argon_katex_cdn_url'); ?>katex.min.js"></script>
+		<script src="<?php echo esc_url(get_option('argon_katex_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/katex@0.11.1/dist/' : get_option('argon_katex_cdn_url')); ?>katex.min.js"></script>
 
-			<script src="<?php echo get_option('argon_katex_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/katex@0.11.1/dist/' : get_option('argon_katex_cdn_url'); ?>contrib/auto-render.min.js" onload="window.katexAutoRenderLoaded=true"></script>
+		<script src="<?php echo esc_url(get_option('argon_katex_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/katex@0.11.1/dist/' : get_option('argon_katex_cdn_url')); ?>contrib/auto-render.min.js" onload="window.katexAutoRenderLoaded=true"></script>
 
 			<script>
 				document.addEventListener("DOMContentLoaded", function() {
+					var katexWaitStart = Date.now();
+					var katexWaitTimeout = 10000;
 					function tryRenderMath() {
 						if (typeof renderMathInElement === 'function') {
 							renderMathInElement(document.body, {
@@ -153,7 +155,7 @@
 									{left: "\\[", right: "\\]", display: true}
 								]
 							});
-						} else {
+						} else if (Date.now() - katexWaitStart <= katexWaitTimeout) {
 							setTimeout(tryRenderMath, 100);
 						}
 					}
@@ -162,13 +164,6 @@
 			</script>
 
 		<?php }?>
-
-		<?php if (get_option('argon_enable_code_highlight') == 'true') { /*Prism.js*/?>
-		<link rel="stylesheet" href="<?php echo $GLOBALS['assets_path']; ?>/assets/vendor/prism/themes/prism-okaidia.min.css">
-		<link rel="stylesheet" href="<?php echo $GLOBALS['assets_path']; ?>/assets/vendor/prism/plugins/line-numbers/prism-line-numbers.min.css">
-		<link rel="stylesheet" href="<?php echo $GLOBALS['assets_path']; ?>/assets/vendor/prism/plugins/toolbar/prism-toolbar.min.css">
-	<?php }?>
-
 
 
 	</div>
