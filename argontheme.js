@@ -2,17 +2,14 @@
  * Argon 主题核心 JavaScript
  */
 
- // ========== 兼容性修复 ==========
-// 确保 Prism 和 autoloader 存在，设置 manual: true 阻止自动高亮
+// ========== 兼容性修复 ==========
+// 确保 Prism 和 autoloader 存在
 if (typeof window.Prism === 'undefined') {
 	window.Prism = {
-		manual: true,
 		highlightAll: function () { },
 		highlightElement: function () { },
 		plugins: {}
 	};
-} else {
-	window.Prism.manual = true;
 }
 if (typeof window.Prism.plugins === 'undefined') {
 	window.Prism.plugins = {};
@@ -151,6 +148,17 @@ var argonResourceLoader = null;     // 资源加载实例
 var argonRenderOptimizer = null;    // 渲染优化实例
 var argonMemoryManager = null;      // 内存管理实例
 var argonPerformanceMonitor = null; // 性能监控实例
+
+// 事件管理实例需要在解析阶段就可用：本文件顶层的多个 IIFE 会在 document ready 之前
+// 注册 scroll 监听器，若此时 argonEventManager 仍为 null，节流包装会被静默跳过。
+// argon-performance.js 先于本文件加载，因此这里可以立即构造（并做好保护避免抛错）。
+try {
+	if (typeof ArgonEventManager !== 'undefined') {
+		argonEventManager = new ArgonEventManager();
+	}
+} catch (e) {
+	argonEventManager = null;
+}
 
 // ==========================================================================
 // 调试控制台（由 argon-performance.js 引入）
@@ -411,41 +419,54 @@ function __(text) {
 	startTransitionHeight = $bannerContainer.offset().top - 75;
 	endTransitionHeight = $content.offset().top - 75;
 
-	$(window).resize(function () {
+	function refreshToolbarTransitionHeights() {
 		startTransitionHeight = $bannerContainer.offset().top - 75;
 		endTransitionHeight = $content.offset().top - 75;
-	});
+	}
+	$(window).resize(refreshToolbarTransitionHeights);
+	// 供 PJAX 定向调用，替代原来的 $("html").trigger("resize") 全量扇出
+	window.argonRefreshToolbarTransitionHeights = refreshToolbarTransitionHeights;
+
+	// 缓存上一次写入顶栏的内联样式值：滚动时绝大多数帧的取值与上一帧相同，
+	// 重复调用 setProperty 只会白白触发样式重算。模糊值的取值范围完全不变。
+	let lastToolbarBackground = null;
+	let lastToolbarBoxShadow = null;
+	let lastToolbarBlur = null;
+
+	function applyToolbarStyle(background, boxShadow, blur) {
+		if (background !== lastToolbarBackground) {
+			toolbar.style.setProperty('background-color', background, 'important');
+			lastToolbarBackground = background;
+		}
+		if (boxShadow !== lastToolbarBoxShadow) {
+			toolbar.style.setProperty('box-shadow', boxShadow);
+			lastToolbarBoxShadow = boxShadow;
+		}
+		if (argonConfig.toolbar_blur && blur !== lastToolbarBlur) {
+			toolbar.style.setProperty('backdrop-filter', blur);
+			lastToolbarBlur = blur;
+		}
+	}
 
 	function changeToolbarTransparency() {
 		let scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
 		if (scrollTop < startTransitionHeight) {
-			toolbar.style.setProperty('background-color', 'rgba(var(--toolbar-color), 0)', 'important');
-			toolbar.style.setProperty('box-shadow', 'none');
-			if (argonConfig.toolbar_blur) {
-				toolbar.style.setProperty('backdrop-filter', 'blur(0px)');
-			}
+			applyToolbarStyle('rgba(var(--toolbar-color), 0)', 'none', 'blur(0px)');
 			toolbar.classList.add("navbar-ontop");
 			return;
 		}
 		if (scrollTop > endTransitionHeight) {
-			toolbar.style.setProperty('background-color', 'rgba(var(--toolbar-color), ' + maxOpacity + ')', 'important');
-			toolbar.style.setProperty('box-shadow', '');
-			if (argonConfig.toolbar_blur) {
-				toolbar.style.setProperty('backdrop-filter', 'blur(16px)');
-			}
+			applyToolbarStyle('rgba(var(--toolbar-color), ' + maxOpacity + ')', '', 'blur(16px)');
 			toolbar.classList.remove("navbar-ontop");
 			return;
 		}
-		let transparency = (scrollTop - startTransitionHeight) / (endTransitionHeight - startTransitionHeight) * maxOpacity;
-		toolbar.style.setProperty('background-color', 'rgba(var(--toolbar-color), ' + transparency, 'important');
-		toolbar.style.setProperty('box-shadow', '');
-		if (argonConfig.toolbar_blur) {
-			if ((scrollTop - startTransitionHeight) / (endTransitionHeight - startTransitionHeight) > 0.3) {
-				toolbar.style.setProperty('backdrop-filter', 'blur(16px)');
-			} else {
-				toolbar.style.setProperty('backdrop-filter', 'blur(0px)');
-			}
-		}
+		let progress = (scrollTop - startTransitionHeight) / (endTransitionHeight - startTransitionHeight);
+		let transparency = Math.round(progress * maxOpacity * 1000) / 1000;
+		applyToolbarStyle(
+			'rgba(var(--toolbar-color), ' + transparency + ')',
+			'',
+			progress > 0.3 ? 'blur(16px)' : 'blur(0px)'
+		);
 		toolbar.classList.remove("navbar-ontop");
 	}
 	function changeToolbarOnTopClass() {
@@ -610,11 +631,20 @@ $(document).on("change", ".search-filter", function (e) {
 			argonEventManager.throttle(changeLeftbarStickyStatusWithoutSidebar, 16) :
 			changeLeftbarStickyStatusWithoutSidebar;
 		document.addEventListener("scroll", throttledChangeLeftbarStickyStatusWithoutSidebar, { passive: true });
-		$(window).resize(function () {
+		function refreshLeftbarStickyWithoutSidebar() {
 			contentOffsetTop = $('#content').offset().top;
 			changeLeftbarStickyStatusWithoutSidebar();
-		});
+		}
+		$(window).resize(refreshLeftbarStickyWithoutSidebar);
+		// 供 PJAX 定向调用，替代原来的 $("html").trigger("resize") 全量扇出
+		window.argonRefreshLeftbarStickyWithoutSidebar = refreshLeftbarStickyWithoutSidebar;
 		return;
+	}
+	// ≤900px 时侧栏是抽屉（.leftbar-desktop-content 整体隐藏），桌面 sticky
+	// 计算与高度测量全部空转，还会在滚动/观察者回调里强制同步布局，统一在入口短路。
+	let leftbarDesktopQuery = window.matchMedia ? window.matchMedia("(min-width: 901px)") : null;
+	function isLeftbarDesktopLayout() {
+		return !leftbarDesktopQuery || leftbarDesktopQuery.matches;
 	}
 	let $leftbarPart1 = $('#leftbar_part1');
 	let $leftbarPart2 = $('#leftbar_part2');
@@ -628,11 +658,18 @@ $(document).on("change", ".search-filter", function (e) {
 	let leftbarHeightObserver = null;
 	let leftbarHeightObservedNodes = [];
 	let leftbarHeightSignature = '';
+	let leftbarPart1MetricsDirty = false;
 
 	function setLeftbarRootProperty(name, value) {
 		if (document.documentElement.style.getPropertyValue(name) !== value) {
 			document.documentElement.style.setProperty(name, value);
 		}
+	}
+
+	function updateLeftbarTabsHeight() {
+		let navWrapper = leftbarPart2 ? leftbarPart2.querySelector('#leftbar_part2_inner > .nav-wrapper') : null;
+		let height = navWrapper ? Math.ceil(navWrapper.getBoundingClientRect().height) : 0;
+		setLeftbarRootProperty('--leftbar-tabs-height', height + 'px');
 	}
 
 	function isLeftbarCatalogActive() {
@@ -647,6 +684,52 @@ $(document).on("change", ".search-filter", function (e) {
 		let height = element.scrollHeight;
 		element.style.maxHeight = previousMaxHeight;
 		return height;
+	}
+
+	// 解除脚本钳制后，part2（文章目录卡片）的真实内容高度。
+	// 目录短时必须拿到这个值，否则卡片会被拉伸到占满整屏。
+	function measureLeftbarPart2NaturalHeight() {
+		let inner = leftbarPart2 ? leftbarPart2.querySelector('#leftbar_part2_inner') : null;
+		if (!inner) return 0;
+		let catalogPane = document.getElementById('leftbar_tab_catalog');
+		let previousPaneHeight = '';
+		let previousPaneMaxHeight = '';
+		if (catalogPane) {
+			previousPaneHeight = catalogPane.style.height;
+			previousPaneMaxHeight = catalogPane.style.maxHeight;
+			catalogPane.style.height = 'auto';
+			catalogPane.style.maxHeight = 'none';
+		}
+		let previousInnerMaxHeight = inner.style.maxHeight;
+		inner.style.maxHeight = 'none';
+		let height = Math.ceil(inner.scrollHeight);
+		inner.style.maxHeight = previousInnerMaxHeight;
+		if (catalogPane) {
+			catalogPane.style.height = previousPaneHeight;
+			catalogPane.style.maxHeight = previousPaneMaxHeight;
+		}
+		return height;
+	}
+
+	// 自然高度测量会强制同步布局，滚动时不能每帧都做；
+	// 仅在内容 / 视口 / 标签页 / sticky 状态变化后重新测量。
+	let leftbarNaturalHeightCache = { key: null, part2: 0, part3: 0 };
+
+	function invalidateLeftbarNaturalHeights() {
+		leftbarNaturalHeightCache.key = null;
+	}
+
+	function getLeftbarNaturalHeights(catalogActive) {
+		let key = (catalogActive ? 'catalog' : 'other') + '@' +
+			(leftbarPart2 && leftbarPart2.classList.contains('sticky') ? 'sticky' : 'static');
+		if (leftbarNaturalHeightCache.key === key) {
+			return leftbarNaturalHeightCache;
+		}
+		let part3Body = leftbarPart3 ? (leftbarPart3.querySelector('.card-body') || leftbarPart3) : null;
+		leftbarNaturalHeightCache.part2 = measureLeftbarPart2NaturalHeight();
+		leftbarNaturalHeightCache.part3 = part3Body ? getNaturalScrollHeight(part3Body) : 0;
+		leftbarNaturalHeightCache.key = key;
+		return leftbarNaturalHeightCache;
 	}
 
 	function addLeftbarHeightTarget(targets, element) {
@@ -685,24 +768,39 @@ $(document).on("change", ".search-filter", function (e) {
 		return signature.join('|');
 	}
 
+	function refreshLeftbarPart1Metrics() {
+		part1OffsetTop = $leftbarPart1.offset().top;
+		part1OuterHeight = $leftbarPart1.outerHeight();
+	}
+
 	function requestLeftbarStickyStatusUpdate() {
+		if (!isLeftbarDesktopLayout()) return;
 		if (leftbarStickyUpdateFrame) return;
 		let scheduleFrame = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function (callback) {
 			return window.setTimeout(callback, 16);
 		};
 		leftbarStickyUpdateFrame = scheduleFrame(function () {
 			leftbarStickyUpdateFrame = 0;
+			if (leftbarPart1MetricsDirty) {
+				leftbarPart1MetricsDirty = false;
+				refreshLeftbarPart1Metrics();
+			}
 			changeLeftbarStickyStatus();
+			// 只在这条（被 rAF 合并的）路径上刷新高度签名：滚动时每帧重算签名
+			// 会强制同步布局，而签名本身只是给 Resize/Mutation 观察者做变更检测、防止互相触发。
+			leftbarHeightSignature = getLeftbarHeightSignature();
 		});
 	}
 
 	function requestLeftbarStickyStatusUpdateOnHeightChange() {
+		if (!isLeftbarDesktopLayout()) return;
 		refreshLeftbarHeightObservers();
 		let currentSignature = getLeftbarHeightSignature();
 		if (currentSignature === leftbarHeightSignature) {
 			return;
 		}
 		leftbarHeightSignature = currentSignature;
+		invalidateLeftbarNaturalHeights();
 		requestLeftbarStickyStatusUpdate();
 	}
 
@@ -728,64 +826,76 @@ $(document).on("change", ".search-filter", function (e) {
 	}
 
 	function changeLeftbarStickyStatus() {
+		if (!isLeftbarDesktopLayout()) return;
+		updateLeftbarTabsHeight();
 		let scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
 		if (part1OffsetTop + part1OuterHeight + 10 - scrollTop <= (argonConfig.headroom != "absolute" ? 90 : 18)) {
 			//滚动条在页面中间浮动状态
+			let wasSticky = leftbarPart2.classList.contains('sticky');
 			leftbarPart2.classList.add('sticky');
 			if (leftbarPart3) {
 				leftbarPart3.classList.add('sticky');
-				// 计算可用空间并分配给 part2 和 part3
-				let viewportHeight = window.innerHeight;
-				let topOffset = argonConfig.headroom !== 'absolute' ? 90 : 20;
-				let availableHeight = viewportHeight - topOffset - 20; // 20px 底部边距
-
-				// 获取 part3 的自然高度（不受限制时的高度）
-				leftbarPart3.style.maxHeight = 'none';
-				let part3NaturalHeight = leftbarPart3.scrollHeight;
-				leftbarPart3.style.maxHeight = '';
-
-				// 最小高度限制
-				let minPart2Height = 150;
-				let minPart3Height = 100;
-
-				// 计算分配
-				let part2Height, part3MaxHeight;
-				if (part3NaturalHeight + minPart2Height <= availableHeight) {
-					// part3 可以完全显示
-					part3MaxHeight = part3NaturalHeight;
-					part2Height = availableHeight - part3NaturalHeight - 10;
-				} else {
-					// 需要按比例分配，part2 占 60%，part3 占 40%
-					part2Height = Math.max(minPart2Height, availableHeight * 0.6);
-					part3MaxHeight = Math.max(minPart3Height, availableHeight - part2Height - 10);
-				}
-
-				let gapBetweenParts = 10;
-				let catalogActive = isLeftbarCatalogActive();
-				let part3Body = leftbarPart3.querySelector('.card-body') || leftbarPart3;
-				part3NaturalHeight = getNaturalScrollHeight(part3Body);
-				leftbarPart2.classList.toggle('leftbar-tab-catalog-active', catalogActive);
-				if (catalogActive) {
-					let sharedHeight = availableHeight - gapBetweenParts;
-					if (part3NaturalHeight + minPart2Height <= sharedHeight) {
-						part3MaxHeight = part3NaturalHeight;
-						part2Height = sharedHeight - part3NaturalHeight;
-					} else {
-						part2Height = Math.max(minPart2Height, sharedHeight * 0.6);
-						part3MaxHeight = Math.max(minPart3Height, sharedHeight - part2Height);
-					}
-				} else {
-					part2Height = leftbarPart2.offsetHeight;
-					part3MaxHeight = Math.min(part3NaturalHeight, Math.max(minPart3Height, availableHeight - part2Height - gapBetweenParts));
-				}
-
-				setLeftbarRootProperty('--leftbar-part2-inner-height', catalogActive ? Math.round(part2Height) + 'px' : 'auto');
-				setLeftbarRootProperty('--leftbar-part2-height', Math.round(part2Height + gapBetweenParts) + 'px');
-				setLeftbarRootProperty('--leftbar-part3-height', Math.round(part3MaxHeight) + 'px');
-				setLeftbarRootProperty('--leftbar-part3-max-height', Math.round(part3MaxHeight) + 'px');
 			}
+			// sticky 前后卡片宽度不同，自然高度需要重新测量
+			if (!wasSticky) {
+				invalidateLeftbarNaturalHeights();
+			}
+
+			// 计算可用空间并分配给 part2 和 part3
+			let viewportHeight = window.innerHeight;
+			let topOffset = argonConfig.headroom !== 'absolute' ? 90 : 20;
+			let availableHeight = viewportHeight - topOffset - 20; // 20px 底部边距
+			let gapBetweenParts = leftbarPart3 ? 10 : 0;
+
+			// 最小高度限制
+			let minPart2Height = 150;
+			let minPart3Height = 100;
+
+			let catalogActive = isLeftbarCatalogActive();
+			leftbarPart2.classList.toggle('leftbar-tab-catalog-active', catalogActive);
+
+			// 两侧的自然内容高度（带缓存，避免滚动时反复强制同步布局）
+			let naturalHeights = getLeftbarNaturalHeights(catalogActive);
+			let part2NaturalHeight = naturalHeights.part2;
+			let part3NaturalHeight = naturalHeights.part3;
+
+			let sharedHeight = Math.max(minPart2Height, availableHeight - gapBetweenParts);
+			let part2Height, part3MaxHeight;
+
+			if (!catalogActive) {
+				// 其余标签页不需要滚动，直接按内容高度显示
+				part2Height = part2NaturalHeight || leftbarPart2.offsetHeight;
+				part3MaxHeight = Math.min(part3NaturalHeight, Math.max(minPart3Height, availableHeight - part2Height - gapBetweenParts));
+			} else if (part2NaturalHeight + part3NaturalHeight <= sharedHeight) {
+				// 空间足够：两者都按自然高度显示。
+				// 关键修复：目录高度以内容为准，不再把剩余空间全部吃掉导致占满整屏。
+				part2Height = part2NaturalHeight;
+				part3MaxHeight = part3NaturalHeight;
+			} else {
+				// 空间不足：先按 part2 60% / part3 40% 预分配，再把任一侧的富余让给另一侧
+				let part2Share = Math.max(minPart2Height, sharedHeight * 0.6);
+				let part3Share = Math.max(minPart3Height, sharedHeight - part2Share);
+				if (part2NaturalHeight <= part2Share) {
+					part2Height = part2NaturalHeight;
+					part3MaxHeight = Math.min(part3NaturalHeight, Math.max(minPart3Height, sharedHeight - part2Height));
+				} else if (part3NaturalHeight <= part3Share) {
+					part3MaxHeight = part3NaturalHeight;
+					part2Height = Math.min(part2NaturalHeight, Math.max(minPart2Height, sharedHeight - part3MaxHeight));
+				} else {
+					part2Height = part2Share;
+					part3MaxHeight = part3Share;
+				}
+			}
+
+			setLeftbarRootProperty('--leftbar-part2-inner-height', catalogActive ? Math.round(part2Height) + 'px' : 'auto');
+			setLeftbarRootProperty('--leftbar-part2-height', Math.round(part2Height + gapBetweenParts) + 'px');
+			setLeftbarRootProperty('--leftbar-part3-height', Math.round(part3MaxHeight) + 'px');
+			setLeftbarRootProperty('--leftbar-part3-max-height', Math.round(part3MaxHeight) + 'px');
 		} else {
 			//滚动条在顶部 不浮动状态
+			if (leftbarPart2.classList.contains('sticky')) {
+				invalidateLeftbarNaturalHeights();
+			}
 			leftbarPart2.classList.remove('sticky');
 			leftbarPart2.classList.remove('leftbar-tab-catalog-active');
 			if (leftbarPart3) leftbarPart3.classList.remove('sticky');
@@ -795,24 +905,37 @@ $(document).on("change", ".search-filter", function (e) {
 		} else {
 			document.body.classList.remove('leftbar-can-headroom');
 		}
-		leftbarHeightSignature = getLeftbarHeightSignature();
 	}
 	changeLeftbarStickyStatus();
+	leftbarHeightSignature = getLeftbarHeightSignature();
 	// 使用节流优化滚动事件性能
 	const throttledChangeLeftbarStickyStatus = argonEventManager ?
 		argonEventManager.throttle(changeLeftbarStickyStatus, 16) :
 		changeLeftbarStickyStatus;
 	document.addEventListener("scroll", throttledChangeLeftbarStickyStatus, { passive: true });
-	$(window).resize(function () {
-		part1OffsetTop = $leftbarPart1.offset().top;
-		part1OuterHeight = $leftbarPart1.outerHeight();
+	function refreshLeftbarStickyLayout() {
+		if (!isLeftbarDesktopLayout()) return;
+		refreshLeftbarPart1Metrics();
+		invalidateLeftbarNaturalHeights();
 		changeLeftbarStickyStatus();
-	});
+		leftbarHeightSignature = getLeftbarHeightSignature();
+	}
+	$(window).resize(refreshLeftbarStickyLayout);
+	// 从移动断点切回桌面时，短路期间的度量都已过期，整体重算一次
+	if (leftbarDesktopQuery) {
+		if (leftbarDesktopQuery.addEventListener) {
+			leftbarDesktopQuery.addEventListener("change", refreshLeftbarStickyLayout);
+		} else if (leftbarDesktopQuery.addListener) {
+			leftbarDesktopQuery.addListener(refreshLeftbarStickyLayout);
+		}
+	}
+	// 只关心影响布局的属性，并且走 rAF 合并：原先 attributes: true + subtree 意味着
+	// 侧栏内任意后代的任意属性变化都会同步跑一次强制布局的 changeLeftbarStickyStatus()。
 	new MutationObserver(function () {
-		part1OffsetTop = $leftbarPart1.offset().top;
-		part1OuterHeight = $leftbarPart1.outerHeight();
-		changeLeftbarStickyStatus();
-	}).observe(leftbarPart1, { attributes: true, childList: true, subtree: true });
+		leftbarPart1MetricsDirty = true;
+		invalidateLeftbarNaturalHeights();
+		requestLeftbarStickyStatusUpdate();
+	}).observe(leftbarPart1, { attributes: true, attributeFilter: ['class', 'style', 'hidden', 'src'], childList: true, subtree: true });
 	// 监听 part2/part3 的自然内容高度，外层 sticky 高度被脚本钳住时也能立即重算。
 	refreshLeftbarHeightObservers();
 	if (typeof MutationObserver !== 'undefined') {
@@ -820,16 +943,46 @@ $(document).on("change", ".search-filter", function (e) {
 		if (leftbarPart2) leftbarHeightMutationObserver.observe(leftbarPart2, { childList: true, characterData: true, subtree: true });
 		if (leftbarPart3) leftbarHeightMutationObserver.observe(leftbarPart3, { childList: true, characterData: true, subtree: true });
 	}
+	let leftbarTabSwitchScrollTop = null;
+	function getLeftbarPageScrollTop() {
+		let scroller = document.scrollingElement || document.documentElement || document.body;
+		return scroller ? scroller.scrollTop : (window.pageYOffset || 0);
+	}
+	function restoreLeftbarPageScrollTop(scrollTop) {
+		if (scrollTop === null || scrollTop === undefined) {
+			return;
+		}
+		let scroller = document.scrollingElement || document.documentElement || document.body;
+		if (scroller) {
+			scroller.scrollTop = scrollTop;
+		}
+		if (window.pageYOffset !== scrollTop) {
+			window.scrollTo(window.pageXOffset || 0, scrollTop);
+		}
+	}
+	$(document).on('show.bs.tab', '#leftbar_part2 [data-toggle="tab"]', function () {
+		leftbarTabSwitchScrollTop = getLeftbarPageScrollTop();
+	});
 	$(document).on('shown.bs.tab click', '#leftbar_part2 [data-toggle="tab"]', function () {
+		let scrollTop = leftbarTabSwitchScrollTop;
+		restoreLeftbarPageScrollTop(scrollTop);
 		refreshLeftbarHeightObservers();
+		invalidateLeftbarNaturalHeights();
 		requestLeftbarStickyStatusUpdate();
 		window.setTimeout(function () {
+			restoreLeftbarPageScrollTop(scrollTop);
 			refreshLeftbarHeightObservers();
+			invalidateLeftbarNaturalHeights();
 			requestLeftbarStickyStatusUpdate();
+			leftbarTabSwitchScrollTop = null;
 		}, 180);
 	});
 	window.argonRequestLeftbarStickyStatusUpdate = function () {
 		refreshLeftbarHeightObservers();
+		invalidateLeftbarNaturalHeights();
+		// PJAX 换页后 part1 的位置/高度也可能变了，标记为待刷新，
+		// 由 rAF 回调统一测量（原先靠 $("html").trigger("resize") 顺带完成）
+		leftbarPart1MetricsDirty = true;
 		requestLeftbarStickyStatusUpdate();
 	};
 }();
@@ -921,8 +1074,7 @@ $(document).on("change", ".search-filter", function (e) {
 		}
 		let focusedScroller = leftbarPart2 ? getPart2ScrollTarget() : getPart3ScrollTarget();
 		let pageScroller = getPageScroller();
-		let scrollTarget = canScrollBy(focusedScroller, deltaY) ? focusedScroller : pageScroller;
-		if (!canScrollBy(scrollTarget, deltaY)) {
+		if (!canScrollBy(focusedScroller, deltaY)) {
 			return;
 		}
 		event.preventDefault();
@@ -930,11 +1082,42 @@ $(document).on("change", ".search-filter", function (e) {
 		if (typeof event.stopImmediatePropagation === 'function') {
 			event.stopImmediatePropagation();
 		}
-		scrollElementBy(scrollTarget, deltaY);
+		scrollElementBy(focusedScroller, deltaY);
 	}
 
-	document.addEventListener('wheel', handleLeftbarWheel, { passive: false, capture: true });
-	document.addEventListener('mousewheel', handleLeftbarWheel, { passive: false, capture: true });
+	// 只有 #leftbar_part2 / #leftbar_part3 里的滚轮事件才可能被 preventDefault，
+	// 把非 passive 监听挂在 document 上会让整页都退出合成器滚动。
+	// 同时移除 'mousewheel'：它只是 'wheel' 的旧别名，两者都监听会重复处理同一次滚动。
+	let leftbarWheelBoundNodes = [];
+
+	function bindLeftbarWheelListeners() {
+		let nextNodes = [];
+		let part2 = document.getElementById('leftbar_part2');
+		let part3 = document.getElementById('leftbar_part3');
+		if (part2) nextNodes.push(part2);
+		if (part3) nextNodes.push(part3);
+		for (let i = 0; i < leftbarWheelBoundNodes.length; i++) {
+			if (nextNodes.indexOf(leftbarWheelBoundNodes[i]) === -1) {
+				leftbarWheelBoundNodes[i].removeEventListener('wheel', handleLeftbarWheel, { capture: true });
+			}
+		}
+		for (let i = 0; i < nextNodes.length; i++) {
+			if (leftbarWheelBoundNodes.indexOf(nextNodes[i]) === -1) {
+				nextNodes[i].addEventListener('wheel', handleLeftbarWheel, { passive: false, capture: true });
+			}
+		}
+		leftbarWheelBoundNodes = nextNodes;
+	}
+
+	bindLeftbarWheelListeners();
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', bindLeftbarWheelListeners);
+	}
+	// PJAX 替换的是 #leftbar_part2_inner / #leftbar_part3 的内容，容器元素本身会保留；
+	// 这里仍做一次幂等重绑，万一将来容器整体被替换也不会丢监听。
+	if (window.jQuery) {
+		jQuery(document).on('pjax:complete pjax:end', bindLeftbarWheelListeners);
+	}
 }();
 
 /*Headroom*/
@@ -959,18 +1142,29 @@ if (argonConfig.headroom == "true") {
 }
 
 /*瀑布流布局*/
+// 图片 onload 会一次性触发很多次重排，这里统一合并到一帧里只跑一次。
+let waterflowInitFrame = 0;
+function requestWaterflowInit() {
+	if (waterflowInitFrame) return;
+	let scheduleFrame = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function (callback) {
+		return window.setTimeout(callback, 16);
+	};
+	waterflowInitFrame = scheduleFrame(function () {
+		waterflowInitFrame = 0;
+		waterflowInit();
+	});
+}
 function waterflowInit() {
 	if (argonConfig.waterflow_columns == "1") {
 		return;
 	}
 	$("#main.article-list img").each(function (index, ele) {
-		ele.onload = function () {
-			waterflowInit();
-		}
+		ele.onload = requestWaterflowInit;
 	});
+	let mainWidth = $("#main").outerWidth();
 	let columns;
 	if (argonConfig.waterflow_columns == "2and3") {
-		if ($("#main").outerWidth() > 1000) {
+		if (mainWidth > 1000) {
 			columns = 3;
 		} else {
 			columns = 2;
@@ -978,9 +1172,9 @@ function waterflowInit() {
 	} else {
 		columns = parseInt(argonConfig.waterflow_columns);
 	}
-	if ($("#main").outerWidth() < 650 && columns == 2) {
+	if (mainWidth < 650 && columns == 2) {
 		columns = 1;
-	} else if ($("#main").outerWidth() < 800 && columns == 3) {
+	} else if (mainWidth < 800 && columns == 3) {
 		columns = 1;
 	}
 
@@ -1016,17 +1210,29 @@ function waterflowInit() {
 		$(".waterflow-placeholder").remove();
 	} else {
 		$container.addClass("waterflow");
+		// 写 → 读 → 写 → 读 逐项交替会造成 ~2N 次强制同步布局。
+		// 改成：先统一写宽度/定位方式，再统一读取尺寸，最后统一写 top/left。
+		let $itemList = [];
+		let itemWidth = "calc(" + (100 / columns) + "% - " + (10 * (columns - 1) / columns) + "px)";
 		$items.each(function (index, item) {
 			let $item = $(item);
+			$itemList.push($item);
 			$item.css("transition", "none")
 				.css("position", "absolute")
-				.css("width", "calc(" + (100 / columns) + "% - " + (10 * (columns - 1) / columns) + "px)").css("margin", 0);
-			let itemHeight = $item.outerHeight() + 10;
-			let pos = getMinHeightPosition();
-			$item.css("top", heights[getMinHeightPosition()] + "px")
-				.css("left", (pos * $item.outerWidth() + 10 * pos) + "px");
-			heights[pos] += itemHeight;
+				.css("width", itemWidth).css("margin", 0);
 		});
+		let itemHeights = [];
+		let itemWidths = [];
+		for (let i = 0; i < $itemList.length; i++) {
+			itemHeights.push($itemList[i].outerHeight() + 10);
+			itemWidths.push($itemList[i].outerWidth());
+		}
+		for (let i = 0; i < $itemList.length; i++) {
+			let pos = getMinHeightPosition();
+			$itemList[i].css("top", heights[pos] + "px")
+				.css("left", (pos * itemWidths[i] + 10 * pos) + "px");
+			heights[pos] += itemHeights[i];
+		}
 	}
 	if ($(".waterflow-placeholder").length) {
 		$(".waterflow-placeholder").css("height", getMaxHeight() + "px");
@@ -1036,8 +1242,16 @@ function waterflowInit() {
 }
 waterflowInit();
 if (argonConfig.waterflow_columns != "1") {
+	// resize 期间会连续触发几十次，每次都是一轮全量重排，必须防抖。
+	let waterflowResizeTimer = 0;
 	$(window).resize(function () {
-		waterflowInit();
+		if (waterflowResizeTimer) {
+			clearTimeout(waterflowResizeTimer);
+		}
+		waterflowResizeTimer = setTimeout(function () {
+			waterflowResizeTimer = 0;
+			waterflowInit();
+		}, 150);
 	});
 	new MutationObserver(function (mutations, observer) {
 		waterflowInit();
@@ -1049,8 +1263,6 @@ if (argonConfig.waterflow_columns != "1") {
 /*移动端文章列表布局切换*/
 !function () {
 	var mobileLayout = argonConfig.article_list_layout_mobile || "1";
-	var isMobile = window.innerWidth <= 900;
-
 	function applyMobileLayout() {
 		var nowMobile = window.innerWidth <= 900;
 		if (nowMobile) {
@@ -1064,6 +1276,8 @@ if (argonConfig.waterflow_columns != "1") {
 	$(window).resize(function () {
 		applyMobileLayout();
 	});
+	// 供 PJAX 定向调用，替代原来的 $("html").trigger("resize") 全量扇出
+	window.argonApplyMobileLayout = applyMobileLayout;
 }();
 
 function expandPostComments() {
@@ -1422,15 +1636,26 @@ bindArgonPostActionEvents();
 bindArgonTodoCollapseHandler();
 
 /*浮动按钮栏相关(回顶部)*/
+// 重试次数封顶：容器始终不存在时，原实现会永久以 20Hz 轮询 querySelectorAll
+let argonFabtnInitAttempts = 0;
+const ARGON_FABTN_INIT_MAX_ATTEMPTS = 40;
 !function () {
 	// 确保 DOM 和 jQuery 已加载
 	if (typeof jQuery === 'undefined') {
+		if (++argonFabtnInitAttempts > ARGON_FABTN_INIT_MAX_ATTEMPTS) {
+			ArgonDebug.warn('浮动按钮栏初始化中止：等待 jQuery 超时');
+			return;
+		}
 		setTimeout(arguments.callee, 50);
 		return;
 	}
 
 	let $fabtns = $('#float_action_buttons');
 	if ($fabtns.length === 0) {
+		if (++argonFabtnInitAttempts > ARGON_FABTN_INIT_MAX_ATTEMPTS) {
+			ArgonDebug.warn('浮动按钮栏初始化中止：未找到 #float_action_buttons');
+			return;
+		}
 		setTimeout(arguments.callee, 50);
 		return;
 	}
@@ -1466,6 +1691,8 @@ bindArgonTodoCollapseHandler();
 		} else {
 			$goToComment.addClass("fabtn-hidden");
 		}
+		// PJAX 换页后文章元素和它的位置/高度都变了，重新测量一次
+		refreshReadingProgressMetrics();
 		changefabtnDisplayStatus();
 	}
 	$goToComment.on("click", function () {
@@ -1589,6 +1816,35 @@ bindArgonTodoCollapseHandler();
 
 	let $window = $(window);
 
+	// 文章位置/高度和视口高度只有在 resize 或 PJAX 换页时才会变，
+	// 原实现每次 scroll 都重新查询 DOM 并读 offset()/outerHeight()，每帧一次强制布局。
+	let $readingProgressTarget = null;
+	let readingProgressTargetTop = 0;
+	let readingProgressTargetHeight = 0;
+	let readingProgressViewportHeight = 0;
+	let lastReadingProgressText = null;
+	let fabtnDisplayStatusFrame = 0;
+	let readingProgressDocHeight = 0;
+
+	function getReadingProgressDocHeight() {
+		let scroller = document.scrollingElement || document.documentElement || document.body;
+		return scroller ? scroller.scrollHeight : 0;
+	}
+
+	function refreshReadingProgressMetrics() {
+		$readingProgressTarget = $("article.post.post-full");
+		readingProgressViewportHeight = $window.height();
+		lastReadingProgressText = null;
+		if ($readingProgressTarget.length) {
+			readingProgressTargetTop = $readingProgressTarget.offset().top;
+			readingProgressTargetHeight = $readingProgressTarget.outerHeight();
+		} else {
+			readingProgressTargetTop = 0;
+			readingProgressTargetHeight = 0;
+		}
+		readingProgressDocHeight = getReadingProgressDocHeight();
+	}
+
 	function changefabtnDisplayStatus() {
 		//阅读进度
 		function hideReadingProgress() {
@@ -1596,18 +1852,27 @@ bindArgonTodoCollapseHandler();
 		}
 		function setReadingProgress(percent) {
 			$readingProgressBtn.removeClass("fabtn-hidden");
-			$readingProgressDetails.html((percent * 100).toFixed(0) + "%");
-			$readingProgressBar.css("width", (percent * 100).toFixed(0) + "%");
+			let text = (percent * 100).toFixed(0) + "%";
+			// 百分比取整后往往连续多帧都相同，重复写 html/width 只会白白触发重排。
+			if (text !== lastReadingProgressText) {
+				lastReadingProgressText = text;
+				$readingProgressDetails.html(text);
+				$readingProgressBar.css("width", text);
+			}
 		}
-		if ($("article.post.post-full").length == 0) {
+		if (!$readingProgressTarget) {
+			refreshReadingProgressMetrics();
+		}
+		let scrollTop = $window.scrollTop();
+		if ($readingProgressTarget.length == 0) {
 			hideReadingProgress();
 		} else {
-			let a = $window.scrollTop() - ($("article.post.post-full").offset().top - 80);
-			let b = $("article.post.post-full").outerHeight() + 50 - $window.height();
+			let a = scrollTop - (readingProgressTargetTop - 80);
+			let b = readingProgressTargetHeight + 50 - readingProgressViewportHeight;
 			if (b <= 0) {
 				hideReadingProgress();
 			} else {
-				readingProgress = a / b;
+				let readingProgress = a / b;
 				if (isNaN(readingProgress) || readingProgress < 0 || readingProgress > 1) {
 					hideReadingProgress();
 				} else {
@@ -1616,19 +1881,37 @@ bindArgonTodoCollapseHandler();
 			}
 		}
 		//是否显示回顶
-		if ($(window).scrollTop() >= 400) {
+		if (scrollTop >= 400) {
 			$backToTopBtn.removeClass("fabtn-hidden");
 		} else {
 			$backToTopBtn.addClass("fabtn-hidden");
 		}
 	}
+	function requestFabtnDisplayStatusUpdate() {
+		if (fabtnDisplayStatusFrame) return;
+		let scheduleFrame = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function (callback) {
+			return window.setTimeout(callback, 16);
+		};
+		fabtnDisplayStatusFrame = scheduleFrame(function () {
+			fabtnDisplayStatusFrame = 0;
+			// 长文虚拟化会在滚动过程中挂载/卸载章节，文章高度可能变化几千像素。
+			// 每帧读一次 scrollHeight 远比原来每个滚动事件都重查 3 次选择器 + offset + outerHeight 便宜，
+			// 但足以在高度真的变了的时候让缓存失效，避免进度条读数错乱。
+			if (getReadingProgressDocHeight() !== readingProgressDocHeight) {
+				refreshReadingProgressMetrics();
+			}
+			changefabtnDisplayStatus();
+		});
+	}
+	refreshReadingProgressMetrics();
 	refreshFabtnPageState();
 	window.argonRefreshFloatActionButtons = refreshFabtnPageState;
 	$(window).scroll(function () {
-		changefabtnDisplayStatus();
+		requestFabtnDisplayStatusUpdate();
 	});
 	$(window).resize(function () {
-		changefabtnDisplayStatus();
+		refreshReadingProgressMetrics();
+		requestFabtnDisplayStatusUpdate();
 	});
 	$fabtns.removeClass("fabtns-unloaded");
 }();
@@ -1971,10 +2254,39 @@ bindArgonTodoCollapseHandler();
 	});
 
 	//输入框细节
-	$(document).on("change input keydown keyup propertychange", "#post_comment_content", function () {
-		$("#post_comment_content_hidden")[0].innerText = $("#post_comment_content").val() + "\n";
-		$("#post_comment_content").css("height", $("#post_comment_content_hidden").outerHeight());
-	});
+	// 原实现同时绑了 change/input/keydown/keyup/propertychange，一次按键要跑 3 遍，
+	// 而每一遍都是「写 innerText 之后立刻读 outerHeight」——一次强制同步布局。
+	// 这里只保留 input/change，元素句柄缓存复用，测量与写入合并进同一帧。
+	let commentContentResizeFrame = 0;
+	let $commentContentInput = null;
+	let $commentContentHidden = null;
+	function isDetachedNode(node) {
+		return !node || !document.body || !document.body.contains(node);
+	}
+	function refreshCommentContentNodes() {
+		if (!$commentContentInput || !$commentContentInput.length || isDetachedNode($commentContentInput[0])) {
+			$commentContentInput = $("#post_comment_content");
+		}
+		if (!$commentContentHidden || !$commentContentHidden.length || isDetachedNode($commentContentHidden[0])) {
+			$commentContentHidden = $("#post_comment_content_hidden");
+		}
+	}
+	function requestCommentContentResize() {
+		if (commentContentResizeFrame) return;
+		let scheduleFrame = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function (callback) {
+			return window.setTimeout(callback, 16);
+		};
+		commentContentResizeFrame = scheduleFrame(function () {
+			commentContentResizeFrame = 0;
+			refreshCommentContentNodes();
+			if (!$commentContentInput.length || !$commentContentHidden.length) {
+				return;
+			}
+			$commentContentHidden[0].innerText = $commentContentInput.val() + "\n";
+			$commentContentInput.css("height", $commentContentHidden.outerHeight());
+		});
+	}
+	$(document).on("change input", "#post_comment_content", requestCommentContentResize);
 	$(document).on("focus", "#post_comment_link", function () {
 		$(".post-comment-link-container").addClass("active");
 	});
@@ -2875,15 +3187,22 @@ function foldLongComments() {
 	if (argonConfig.fold_long_comments == false) {
 		return;
 	}
+	// 先把所有高度读完再统一改 DOM：在读循环里加 class / append 会让下一次
+	// clientHeight 触发一次强制同步布局，长评论多时开销随数量线性上升。
+	let foldTargets = [];
 	$(".comment-item-inner").each(function () {
 		if ($(this).hasClass("comment-unfolded")) {
 			return;
 		}
 		if (this.clientHeight > 800) {
-			$(this).addClass("comment-folded");
-			$(this).append("<div class='show-full-comment'><button><i class='fa fa-angle-down' aria-hidden='true'></i> " + __("展开") + "</button></div>");
+			foldTargets.push(this);
 		}
 	});
+	for (let i = 0; i < foldTargets.length; i++) {
+		let $target = $(foldTargets[i]);
+		$target.addClass("comment-folded");
+		$target.append("<div class='show-full-comment'><button><i class='fa fa-angle-down' aria-hidden='true'></i> " + __("展开") + "</button></div>");
+	}
 }
 foldLongComments();
 $(document).on("click", ".show-full-comment", function () {
@@ -3540,6 +3859,8 @@ if ($("html").hasClass("banner-as-cover")) {
 	$(window).resize(function () {
 		changeWidgetsDisplayStatus();
 	});
+	// 供 PJAX 定向调用，替代原来的 $("html").trigger("resize") 全量扇出
+	window.argonChangeWidgetsDisplayStatus = changeWidgetsDisplayStatus;
 }
 
 /*Pjax*/
@@ -3713,8 +4034,7 @@ function cleanupPjaxResources() {
 		window.ArgonLongContentVirtualizer = null;
 	}
 	cleanupZoomifyInstances();
-	cleanupTippyInstances();
-	cleanupDynamicStyles();
+	cleanupTippyInstances(); cleanupDynamicStyles();
 	cleanupDynamicScripts();
 	cleanupEventListeners();
 	// 清理页面特定状态（body class、页面样式等）
@@ -3940,6 +4260,9 @@ function handleHashNavigation() {
 // ==========================================================================
 // Long article virtual rendering
 // ==========================================================================
+if (typeof highlightObserver === "undefined") {
+	var highlightObserver = null;
+}
 if (typeof argonVirtualHeadIndexPatched === "undefined") {
 	var argonVirtualHeadIndexPatched = false;
 }
@@ -4714,12 +5037,12 @@ function throttleVirtualUpdate(callback, wait) {
 		var codeBlocks = root.querySelectorAll("pre > code");
 		for (var i = 0; i < codeBlocks.length; i++) {
 			try {
-				highlightObserver.unobserve(codeBlocks[i].parentNode);
+				highlightObserver.unobserve(codeBlocks[i]);
 			} catch (e) { }
 		}
 	}
 	if (typeof ClipboardJS !== "undefined") {
-		var copyButtons = root.querySelectorAll(".argon-code-copy");
+		var copyButtons = root.querySelectorAll(".hljs-control-copy");
 		for (var c = 0; c < copyButtons.length; c++) {
 			if (copyButtons[c]._clipboard && typeof copyButtons[c]._clipboard.destroy === "function") {
 				copyButtons[c]._clipboard.destroy();
@@ -4727,9 +5050,9 @@ function throttleVirtualUpdate(callback, wait) {
 			}
 		}
 	}
-	var renderedCodeBlocks = root.querySelectorAll("pre.argon-codeblock[data-prism-processed]");
+	var renderedCodeBlocks = root.querySelectorAll("pre.hljs-codeblock > code[hljs-codeblock-inner]");
 	for (var r = 0; r < renderedCodeBlocks.length; r++) {
-		renderedCodeBlocks[r].removeAttribute("data-prism-processed");
+		renderedCodeBlocks[r].removeAttribute("hljs-codeblock-inner");
 	}
 	var tips = root.querySelectorAll("[data-tippy-root], .tippy-initialized");
 	for (var t = 0; t < tips.length; t++) {
@@ -4796,14 +5119,29 @@ function decorateHeadIndexFollowScroll(instance) {
 	}
 	instance._argonFollowScrollPatched = true;
 	instance.mouseHovered = false;
+	instance._argonCurrentId = null;
 	if (typeof instance.scrollCurrentIntoView === "function") {
 		instance.scrollCurrentIntoView = function (indexItem) {
-			scrollCatalogItemIntoView(this.indexScrollBox || jQuery(this.settings && this.settings.indexScrollBoxSelector), indexItem);
+			scrollCatalogItemIntoView(this.indexScrollBox || jQuery(this.settings && this.settings.indexScrollBoxSelector), indexItem, !!this._argonCenterCurrent);
+		};
+	}
+	if (typeof instance.current === "function") {
+		var originalCurrent = instance.current;
+		instance.current = function (indexItem) {
+			var item = jQuery(indexItem).eq(0);
+			var link = item.children("." + (this.settings && this.settings.linkClass || "index-link")).eq(0);
+			var currentId = link.attr("href") || "";
+			var sameCurrent = currentId && currentId === this._argonCurrentId;
+			this._argonCenterCurrent = !sameCurrent;
+			var result = originalCurrent.apply(this, arguments);
+			this._argonCenterCurrent = false;
+			this._argonCurrentId = currentId;
+			return result;
 		};
 	}
 }
 
-function scrollCatalogItemIntoView(indexScrollBox, indexItem) {
+function scrollCatalogItemIntoView(indexScrollBox, indexItem, centerWhenNeeded) {
 	var scrollBox = jQuery(indexScrollBox).eq(0);
 	var item = jQuery(indexItem).eq(0);
 	var scrollNode = scrollBox[0];
@@ -4824,12 +5162,25 @@ function scrollCatalogItemIntoView(indexScrollBox, indexItem) {
 	}
 	var scrollTop = scrollBox.scrollTop();
 	var maxScroll = Math.max(0, scrollNode.scrollHeight - boxHeight);
-	var target = scrollTop + itemTop - (boxHeight / 2) + (itemHeight / 2);
+	var visibleTop = Math.max(0, boxHeight * 0.18);
+	var visibleBottom = Math.max(visibleTop + itemHeight, boxHeight * 0.82);
+	var itemBottom = itemTop + itemHeight;
+	if (itemTop >= visibleTop && itemBottom <= visibleBottom) {
+		return;
+	}
+	var target;
+	if (centerWhenNeeded) {
+		target = scrollTop + itemTop - (boxHeight / 2) + (itemHeight / 2);
+	} else if (itemTop < visibleTop) {
+		target = scrollTop + itemTop - visibleTop;
+	} else {
+		target = scrollTop + itemBottom - visibleBottom;
+	}
 	target = Math.max(0, Math.min(target, maxScroll));
 	if (Math.abs(target - scrollTop) < 4) {
 		return;
 	}
-	scrollBox.stop(true).animate({ scrollTop: target }, 220, "easeOutExpo");
+	scrollBox.stop(true, false).animate({ scrollTop: target }, 180, "linear");
 }
 
 function createVirtualHeadIndexInstance(options, virtualizer) {
@@ -4848,7 +5199,41 @@ function createVirtualHeadIndexInstance(options, virtualizer) {
 	var indexScrollBox = jQuery(settings.indexScrollBoxSelector);
 	var scrollBody = jQuery(settings.scrollSelector);
 	var manual = false;
+	var currentId = null;
 	var tree = buildVirtualHeaderTree(headers);
+	// 标题偏移量表（按 top 排序，供二分查找）。virtualizer.getHeaderOffset 内部是
+	// O(分段数) 的线性查找，原来每 80ms 就要对前缀里的每个标题各调一次。
+	var headerOffsets = null;
+	var headerOffsetsDocHeight = -1;
+	// 目录条目查找结果缓存，避免每次都在全部链接上跑一遍 filter
+	var indexItemCache = {};
+
+	function getHeaderOffsets() {
+		// 文档高度变化 = 内容有增删（图片加载完、虚拟分段挂载/卸载），偏移量需重算
+		var docHeight = document.documentElement ? document.documentElement.scrollHeight : 0;
+		if (headerOffsets && docHeight === headerOffsetsDocHeight) {
+			return headerOffsets;
+		}
+		var offsets = [];
+		for (var i = 0; i < headers.length; i++) {
+			offsets.push({ header: headers[i], top: virtualizer.getHeaderOffset(headers[i], settings.offset) });
+		}
+		offsets.sort(function (a, b) { return a.top - b.top; });
+		headerOffsets = offsets;
+		headerOffsetsDocHeight = docHeight;
+		return headerOffsets;
+	}
+
+	function getIndexItemById(id) {
+		if (Object.prototype.hasOwnProperty.call(indexItemCache, id)) {
+			return indexItemCache[id];
+		}
+		var link = indexBox.find("a." + settings.linkClass).filter(function () {
+			return (this.getAttribute("href") || "") === "#" + id;
+		});
+		indexItemCache[id] = link.parent("li." + settings.itemClass);
+		return indexItemCache[id];
+	}
 
 	function buildCatalogHtml(items) {
 		var html = [];
@@ -4869,6 +5254,9 @@ function createVirtualHeadIndexInstance(options, virtualizer) {
 			return;
 		}
 		indexBox.html("<ul>" + buildCatalogHtml(tree) + "</ul>");
+		indexItemCache = {};
+		headerOffsets = null;
+		headerOffsetsDocHeight = -1;
 		if (settings.defaultExpanded) {
 			indexBox.find("ul." + settings.subItemBoxClass).show().addClass("open");
 		}
@@ -4895,13 +5283,18 @@ function createVirtualHeadIndexInstance(options, virtualizer) {
 	}
 
 	function current(indexItem) {
+		var link = indexItem.children("." + settings.linkClass).eq(0);
+		var nextId = link.attr("href") || "";
+		var sameCurrent = nextId && nextId === currentId;
 		if (!indexItem.length || indexItem.hasClass("current")) {
-			scrollCatalogItemIntoView(indexScrollBox, indexItem);
+			scrollCatalogItemIntoView(indexScrollBox, indexItem, false);
 			return;
 		}
 		indexBox.find("li.current").removeClass("current");
+		var previouslyOpen = null;
 		if (!settings.defaultExpanded) {
-			indexBox.find("ul.open").removeClass("open");
+			previouslyOpen = indexBox.find("ul.open");
+			previouslyOpen.removeClass("open");
 		}
 		var subBox = indexItem.children("." + settings.subItemBoxClass);
 		if (subBox.length) {
@@ -4912,10 +5305,14 @@ function createVirtualHeadIndexInstance(options, virtualizer) {
 			parentsBox.addClass("open").slideDown();
 		}
 		if (!settings.defaultExpanded) {
-			indexBox.find("ul." + settings.subItemBoxClass).not(".open").slideUp();
+			// 原来是对目录中所有未展开的子菜单一律 slideUp()，jQuery 会为每个元素
+			// 读一次当前高度（一次强制布局），而其中绝大多数本来就是收起状态。
+			// 只收起「上一次确实展开、这次不再展开」的那些，视觉结果完全一致。
+			previouslyOpen.not(".open").slideUp();
 		}
 		indexItem.addClass("current");
-		scrollCatalogItemIntoView(indexScrollBox, indexItem);
+		currentId = nextId;
+		scrollCatalogItemIntoView(indexScrollBox, indexItem, !sameCurrent);
 	}
 
 	function scrollTo(href) {
@@ -4935,19 +5332,20 @@ function createVirtualHeadIndexInstance(options, virtualizer) {
 			return;
 		}
 		var scrollTop = scrollBody.scrollTop();
+		var offsets = getHeaderOffsets();
+		// 二分找最后一个 top <= scrollTop + 8 的标题（与 headindex.js 的做法一致）
 		var currentHeader = headers[0];
-		for (var i = 0; i < headers.length; i++) {
-			var top = virtualizer.getHeaderOffset(headers[i], settings.offset);
-			if (top <= scrollTop + 8) {
-				currentHeader = headers[i];
+		var lo = 0, hi = offsets.length - 1;
+		while (lo <= hi) {
+			var mid = (lo + hi) >> 1;
+			if (offsets[mid].top <= scrollTop + 8) {
+				currentHeader = offsets[mid].header;
+				lo = mid + 1;
 			} else {
-				break;
+				hi = mid - 1;
 			}
 		}
-		var currentLink = indexBox.find("a." + settings.linkClass).filter(function () {
-			return (this.getAttribute("href") || "") === "#" + currentHeader.id;
-		});
-		current(currentLink.parent("li." + settings.itemClass));
+		current(getIndexItemById(currentHeader.id));
 	}
 
 	function clean() {
@@ -5630,14 +6028,52 @@ var ArgonPjaxPrefetch = (function () {
 		return true;
 	}
 
+	// 悬停意图延迟：光标只是扫过链接时不应该立刻发起整页 GET。
+	// 在 20 条的归档页上横向划过会瞬间打满只有 8 条的 LRU 缓存，绝大多数预取都被挤掉了。
+	var HOVER_INTENT_DELAY = 65;
+
 	function bind() {
 		if (typeof jQuery === 'undefined') {
 			return;
 		}
 		installTransport();
-		jQuery(document).on('mouseenter focusin touchstart', argonPjaxLinkSelector, function () {
+		var hoverIntentTimer = null;
+		var hoverIntentTarget = null;
+		function clearHoverIntent() {
+			if (hoverIntentTimer) {
+				clearTimeout(hoverIntentTimer);
+				hoverIntentTimer = null;
+			}
+			hoverIntentTarget = null;
+		}
+		jQuery(document).on('mouseenter', argonPjaxLinkSelector, function () {
+			var link = this;
+			clearHoverIntent();
+			hoverIntentTarget = link;
+			hoverIntentTimer = setTimeout(function () {
+				hoverIntentTimer = null;
+				if (hoverIntentTarget === link) {
+					prefetch(link);
+				}
+			}, HOVER_INTENT_DELAY);
+		});
+		jQuery(document).on('mouseleave', argonPjaxLinkSelector, clearHoverIntent);
+		// 键盘 / 辅助技术把焦点移上来是明确意图，不需要延迟
+		jQuery(document).on('focusin', argonPjaxLinkSelector, function () {
 			prefetch(this);
 		});
+		// jQuery 无法注册 passive 监听器，委托在 document 上的 touchstart 会给
+		// 每一次移动端滑动的起点都加上阻塞开销。这里改用原生 passive 监听。
+		document.addEventListener('touchstart', function (event) {
+			var target = event.target;
+			if (!target || typeof target.closest !== 'function') {
+				return;
+			}
+			var link = target.closest(argonPjaxLinkSelector);
+			if (link) {
+				prefetch(link);
+			}
+		}, { passive: true });
 	}
 
 	return {
@@ -5956,7 +6392,8 @@ function startPageEnterTransition() {
 	document.documentElement.classList.remove('page-transition-leave', 'page-transition-active');
 	document.documentElement.classList.add('page-transition-enter');
 	markPageTransitionContent();
-	void document.documentElement.offsetWidth;
+	// 不再读取 offsetWidth 强制同步布局：.page-transition-content 已是 transition: none，
+	// 无需"重启过渡"，而这次全文档 reflow 恰好发生在新内容刚插入时，是明显的掉帧源。
 	requestAnimationFrame(function () {
 		document.documentElement.classList.add('page-transition-active');
 	});
@@ -5971,25 +6408,116 @@ function endPageTransition() {
 	document.documentElement.classList.remove('page-transition-active');
 	document.documentElement.classList.remove('page-transition-enter');
 	document.documentElement.classList.remove('page-transition-leave');
-
-	// 在移除 pjax-navigating 之前，将视口内已可见的元素标记为 .animate-in
-	// 避免移除 pjax-navigating 后 CSS transition 从 opacity:0 重新开始导致闪烁
-	var animatedSelectors = '#leftbar .card, #rightbar .card, .comment-item, .timeline-item';
-	var els = document.querySelectorAll(animatedSelectors);
-	var viewH = window.innerHeight || document.documentElement.clientHeight;
-	for (var i = 0; i < els.length; i++) {
-		var rect = els[i].getBoundingClientRect();
-		if (rect.top < viewH + 50 && rect.bottom > -50) {
-			els[i].classList.add('animate-in');
-		}
-	}
-
 	// 移除 PJAX 导航标记，恢复卡片入场动画
 	document.documentElement.classList.remove('pjax-navigating');
 	pjaxContainers.forEach(function (selector) {
 		var c = document.querySelector(selector);
 		if (c) c.classList.remove('page-transition-content');
 	});
+}
+
+/**
+ * 分帧执行 PJAX 初始化任务。
+ *
+ * 原实现把二十多个重量级初始化（$clamp、pangu、KaTeX、foldLongComments 等）
+ * 塞进同一个 requestAnimationFrame 回调里同步跑完，形成一个几百毫秒的长任务，
+ * 主线程被占满，新页面刚出现就"卡一下"。
+ * 这里按时间预算切片：每帧最多执行 FRAME_BUDGET 毫秒，超时就让出主线程，
+ * 下一帧继续。任务顺序保持不变，因此依赖关系不受影响。
+ *
+ * @param {Array<Function>} tasks 按依赖顺序排列的任务
+ * @param {Function} [onFinish] 全部完成后的回调
+ */
+function runArgonPjaxInitTasks(tasks, onFinish) {
+	var index = 0;
+	var FRAME_BUDGET = 8;
+	var readClock = (window.performance && typeof window.performance.now === 'function')
+		? function () { return window.performance.now(); }
+		: function () { return Date.now(); };
+	var schedule = window.requestAnimationFrame
+		? function (callback) { window.requestAnimationFrame(callback); }
+		: function (callback) { window.setTimeout(callback, 16); };
+
+	function runChunk() {
+		var startedAt = readClock();
+		while (index < tasks.length) {
+			var task = tasks[index++];
+			try {
+				if (typeof task === 'function') {
+					task();
+				}
+			} catch (err) {
+				ArgonDebug.error('PJAX init task failed:', err);
+			}
+			if (readClock() - startedAt >= FRAME_BUDGET) {
+				break;
+			}
+		}
+		if (index < tasks.length) {
+			schedule(runChunk);
+			return;
+		}
+		if (typeof onFinish === 'function') {
+			try {
+				onFinish();
+			} catch (err) {
+				ArgonDebug.error('PJAX init finish failed:', err);
+			}
+		}
+	}
+
+	schedule(runChunk);
+}
+
+/**
+ * 渲染数学公式。
+ * 只扫描本次 PJAX 替换过的容器，而不是整个 document.body ——
+ * 全文档扫描在长文章 / 评论多的页面上是重复且昂贵的。
+ */
+function renderPjaxMath() {
+	// #argon_pjax_state 是承载 JSON 的隐藏 div，#wpadminbar 是后台工具条，
+	// 两者都不可能有公式，且对前者做文本替换有破坏 JSON 的风险。
+	var skipSelectors = ['#argon_pjax_state', '#wpadminbar'];
+	var roots = pjaxContainers.filter(function (selector) {
+		return skipSelectors.indexOf(selector) === -1;
+	}).map(function (selector) {
+		return document.querySelector(selector);
+	}).filter(function (node) {
+		return !!node && !node.hidden;
+	});
+	if (!roots.length) {
+		roots = [document.body];
+	}
+
+	try {
+		if (typeof MathJax !== 'undefined' && MathJax) {
+			if (MathJax.Hub && typeof MathJax.Hub.Queue === 'function') {
+				roots.forEach(function (root) {
+					MathJax.Hub.Queue(['Typeset', MathJax.Hub, root]);
+				});
+			} else if (typeof MathJax.typeset === 'function') {
+				MathJax.typeset(roots);
+			}
+		}
+	} catch (err) {
+		ArgonDebug.warn('MathJax typeset failed:', err);
+	}
+
+	try {
+		if (typeof renderMathInElement === 'function') {
+			roots.forEach(function (root) {
+				renderMathInElement(root, {
+					delimiters: [
+						{ left: "$$", right: "$$", display: true },
+						{ left: "$", right: "$", display: false },
+						{ left: "\\(", right: "\\)", display: false }
+					]
+				});
+			});
+		}
+	} catch (err) {
+		ArgonDebug.warn('KaTeX render failed:', err);
+	}
 }
 
 $.pjax.defaults.timeout = 10000;
@@ -6056,7 +6584,9 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 			syncArgonPjaxPageClasses();
 			syncPjaxPageInfoClasses();
 			syncPjaxPrimaryClasses();
-			PageLoader.trackResources(document);
+			// 只追踪主内容区的图片，而不是整个 document：
+			// 全文档扫描 + 逐个绑定 load/error/超时定时器在图片多的页面上开销很大。
+			PageLoader.trackResources(document.getElementById('primary') || document);
 			ArgonPjaxPrefetch.setTopProgress(82);
 
 			// 在页面切换期间，跳过卡片入场动画，避免卡片因动画初始状态（opacity: 0）而"卡死"
@@ -6064,90 +6594,85 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 
 			startPageEnterTransition();
 
-			// 使用 requestAnimationFrame 延迟执行重量级初始化操作
-			// 让浏览器有机会先处理页面过渡动画（CSS transition），避免主线程阻塞导致卡片卡死
-			requestAnimationFrame(function () {
+			// 重量级初始化按帧切片执行，避免单个长任务阻塞主线程导致"卡一下"。
+			// 顺序与原实现一致；仅把滚动位置恢复提前到内联脚本之后，
+			// 防止切片跨帧后出现肉眼可见的滚动跳动。
+			runArgonPjaxInitTasks([
 				// ========== 同步执行新页面中的内联脚本（必须在模块初始化之前）==========
-				try {
-					executePjaxScriptsSync(pjaxContainers);
-				} catch (err) {
-					ArgonDebug.error('executePjaxScriptsSync failed:', err);
-				}
-
-				// MathJax 数学公式渲染
-				try {
-					if (MathJax != undefined) {
-						if (MathJax.Hub != undefined) {
-							MathJax.Hub.Typeset();
-						} else {
-							MathJax.typeset();
-						}
+				function () { executePjaxScriptsSync(pjaxContainers); },
+				function () {
+					if (pjaxScrollTop > 0) {
+						$("body,html").scrollTop(pjaxScrollTop);
+						pjaxScrollTop = 0;
 					}
-				} catch (err) { }
-
-				// KaTeX 数学公式渲染
-				try {
-					if (renderMathInElement != undefined) {
-						renderMathInElement(document.body, {
-							delimiters: [
-								{ left: "$$", right: "$$", display: true },
-								{ left: "$", right: "$", display: false },
-								{ left: "\\(", right: "\\)", display: false }
-							]
-						});
+				},
+				// 入场动画要尽早就绪：endPageTransition 会在约 340ms 后摘掉
+				// pjax-navigating，届时没拿到 .animate-in 的新卡片会掉回 opacity: 0 闪一下。
+				// 放在切片队列前部，确保先于该定时器完成。
+				function () {
+					if (typeof window.argonInitScrollAnimations === 'function') {
+						window.argonInitScrollAnimations();
 					}
-				} catch (err) { }
-
-				// 初始化各个功能模块（添加错误处理确保单个模块失败不影响其他模块）
-				try { initArgonLongContentVirtualizer(); } catch (err) { ArgonDebug.error('initArgonLongContentVirtualizer failed:', err); }
-				try { waterflowInit(); } catch (err) { ArgonDebug.error('waterflowInit failed:', err); }
-				try { syncPjaxPrimaryClasses(); } catch (err) { ArgonDebug.error('syncPjaxPrimaryClasses failed:', err); }
-				try { lazyloadInit(); } catch (err) { ArgonDebug.error('lazyloadInit failed:', err); }
-				try { zoomifyInit(); } catch (err) { ArgonDebug.error('zoomifyInit failed:', err); }
-				try { highlightJsRender(); } catch (err) { ArgonDebug.error('highlightJsRender failed:', err); }
-				try { panguInit(); } catch (err) { ArgonDebug.error('panguInit failed:', err); }
-				try { clampInit(); } catch (err) { ArgonDebug.error('clampInit failed:', err); }
-				try { tippyInit(); } catch (err) { ArgonDebug.error('tippyInit failed:', err); }
-				try { getGithubInfoCardContent(); } catch (err) { ArgonDebug.error('getGithubInfoCardContent failed:', err); }
-				try { showPostOutdateToast(); } catch (err) { ArgonDebug.error('showPostOutdateToast failed:', err); }
-				try { calcHumanTimesOnPage(); } catch (err) { ArgonDebug.error('calcHumanTimesOnPage failed:', err); }
-				try { foldLongComments(); } catch (err) { ArgonDebug.error('foldLongComments failed:', err); }
-				try { foldLongShuoshuo(); } catch (err) { ArgonDebug.error('foldLongShuoshuo failed:', err); }
-				try { handleHashNavigation(); } catch (err) { ArgonDebug.error('handleHashNavigation failed:', err); }
-				try { initArticleSkeletons(); } catch (err) { ArgonDebug.error('initArticleSkeletons failed:', err); }
-				try { initPostFullBlur(); } catch (err) { ArgonDebug.error('initPostFullBlur failed:', err); }
-				try {
+				},
+				// MathJax / KaTeX 数学公式渲染（限定在 PJAX 容器内）
+				renderPjaxMath,
+				// 初始化各个功能模块（单个模块失败由 runArgonPjaxInitTasks 兜底，不影响其他模块）
+				function () { initArgonLongContentVirtualizer(); },
+				// 瀑布流保持在靠前的位置（与原实现一致）：放到队列末尾会让文章列表
+				// 先以默认流式布局渲染若干帧再突然吸附成瀑布流，出现肉眼可见的跳动。
+				function () { waterflowInit(); },
+				function () { syncPjaxPrimaryClasses(); },
+				function () { lazyloadInit(); },
+				function () { zoomifyInit(); },
+				function () { highlightJsRender(); },
+				function () { panguInit(); },
+				function () { clampInit(); },
+				function () { tippyInit(); },
+				function () { getGithubInfoCardContent(); },
+				function () { showPostOutdateToast(); },
+				function () { calcHumanTimesOnPage(); },
+				function () { foldLongComments(); },
+				function () { foldLongShuoshuo(); },
+				function () { handleHashNavigation(); },
+				function () { initArticleSkeletons(); },
+				function () { initPostFullBlur(); },
+				function () {
 					if (typeof window.argonRequestLeftbarStickyStatusUpdate === 'function') {
 						window.argonRequestLeftbarStickyStatusUpdate();
 					}
-				} catch (err) { ArgonDebug.error('argonRequestLeftbarStickyStatusUpdate failed:', err); }
-
-				$("html").trigger("resize");
-
-				// 恢复滚动位置
-				if (pjaxScrollTop > 0) {
-					$("body,html").scrollTop(pjaxScrollTop);
-					pjaxScrollTop = 0;
-				}
-
-				// 后续初始化（原 pjaxScriptExecution.then 中的逻辑，现同步执行）
-				try { initPostFullBlur(); } catch (err) { ArgonDebug.error('initPostFullBlur after scripts failed:', err); }
-				try { initArgonPostActions(); } catch (err) { ArgonDebug.error('initArgonPostActions failed:', err); }
-				try { initArgonTodoFallbacks(); } catch (err) { ArgonDebug.error('initArgonTodoFallbacks failed:', err); }
-				try {
+				},
+				// 原来这里是 $("html").trigger("resize")：一次同步扇出到所有 jQuery resize
+				// 处理器（瀑布流 ~2N 次强制布局、FAB、侧栏 sticky、封面小组件、移动端布局、
+				// 顶栏过渡高度）。改成只调用换页后确实需要刷新的那几个。
+				function () {
+					if (typeof window.argonRefreshToolbarTransitionHeights === 'function') {
+						window.argonRefreshToolbarTransitionHeights();
+					}
+					if (typeof window.argonRefreshLeftbarStickyWithoutSidebar === 'function') {
+						window.argonRefreshLeftbarStickyWithoutSidebar();
+					}
+					if (typeof window.argonApplyMobileLayout === 'function') {
+						window.argonApplyMobileLayout();
+					}
+					if (typeof window.argonChangeWidgetsDisplayStatus === 'function') {
+						window.argonChangeWidgetsDisplayStatus();
+					}
+				},
+				// 后续初始化（原 pjaxScriptExecution.then 中的逻辑）
+				function () { initArgonPostActions(); },
+				function () { initArgonTodoFallbacks(); },
+				function () {
 					if (typeof window.argonRefreshFloatActionButtons === 'function') {
 						window.argonRefreshFloatActionButtons();
 					}
-				} catch (err) { ArgonDebug.error('argonRefreshFloatActionButtons failed:', err); }
+				},
 				// 调用用户自定义的 PJAX 加载完成回调
-				if (typeof (window.pjaxLoaded) == "function") {
-					try {
+				function () {
+					if (typeof (window.pjaxLoaded) == "function") {
 						window.pjaxLoaded();
-					} catch (err) {
-						ArgonDebug.error(err);
 					}
 				}
-
+			], function () {
 				ArgonPjaxPrefetch.setTopProgress(96);
 				PageLoader.hide();
 				NProgress.done();
@@ -6155,15 +6680,6 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 		}).on('pjax:error', function () {
 			ArgonPjaxPrefetch.stopNavigationProgress();
 			// 导航失败时也要移除 pjax-navigating 标记，恢复卡片动画
-			// 先将视口内元素标记为 .animate-in，避免移除后闪烁
-			var errEls = document.querySelectorAll('#leftbar .card, #rightbar .card, .comment-item, .timeline-item');
-			var errViewH = window.innerHeight || document.documentElement.clientHeight;
-			for (var j = 0; j < errEls.length; j++) {
-				var r = errEls[j].getBoundingClientRect();
-				if (r.top < errViewH + 50 && r.bottom > -50) {
-					errEls[j].classList.add('animate-in');
-				}
-			}
 			document.documentElement.classList.remove('pjax-navigating');
 		}).on('pjax:end', function () {
 			// ========== 需求 1.7: 执行特定任务 ==========
@@ -6181,6 +6697,8 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 				// 重新激活页面脚本
 				reActivatePageScripts();
 			}
+			// 供后注册的 pjax:end 处理器判断本次导航 pjax:complete 是否真的跑过
+			window.argonLastPjaxCompleteRan = pjaxCompleteRan;
 			pjaxCompleteRan = false;
 
 			// 重置移动端目录状态
@@ -6332,6 +6850,8 @@ $(document).on("keydown", function (e) {
 	].join(", ");
 	var eventName = window.PointerEvent ? "pointerdown.argonRipple" : "touchstart.argonRipple mousedown.argonRipple";
 	var lastTouchTime = 0;
+	// MediaQueryList 只需构造一次，原实现每次 pointerdown 都新建一个
+	var rippleMobileQuery = window.matchMedia ? window.matchMedia("(max-width: 900px)") : null;
 
 	function getRipplePoint(event) {
 		var originalEvent = event.originalEvent || event;
@@ -6366,7 +6886,7 @@ $(document).on("keydown", function (e) {
 			return;
 		}
 		var alwaysRipple = target.classList.contains("btn-ripple") || target.closest("#leftbar_part3");
-		if (!alwaysRipple && window.matchMedia && !window.matchMedia("(max-width: 900px)").matches) {
+		if (!alwaysRipple && rippleMobileQuery && !rippleMobileQuery.matches) {
 			return;
 		}
 		var point = getRipplePoint(event);
@@ -6376,6 +6896,14 @@ $(document).on("keydown", function (e) {
 		var rect = target.getBoundingClientRect();
 		if (rect.width <= 0 || rect.height <= 0) {
 			return;
+		}
+		// 必须在 classList.add 之前读 computed style：加完 class 再读会强制一次
+		// 样式重算 + 布局，直接延迟点击反馈。结果缓存在元素上，同一元素只测一次。
+		// （.argon-ripple-target 不涉及 position，加 class 前后取值一致）
+		var needsRelativePosition = target.argonRippleNeedsRelative;
+		if (needsRelativePosition === undefined) {
+			needsRelativePosition = !!(window.getComputedStyle && window.getComputedStyle(target).position === "static");
+			target.argonRippleNeedsRelative = needsRelativePosition;
 		}
 		var x = point.x - rect.left;
 		var y = point.y - rect.top;
@@ -6389,7 +6917,7 @@ $(document).on("keydown", function (e) {
 		ripple.style.left = x + "px";
 		ripple.style.top = y + "px";
 		target.classList.add("argon-ripple-target");
-		if (window.getComputedStyle && window.getComputedStyle(target).position === "static") {
+		if (needsRelativePosition) {
 			target.style.position = "relative";
 		}
 		target.appendChild(ripple);
@@ -6530,7 +7058,7 @@ $(document).on("keydown", function (e) {
 			for (var i = 0; i < items.length; i++) {
 				var item = items[i];
 				html += '<li class="index-item">';
-				html += '<a href="#' + item.id + '" class="index-link" data-target="' + item.id + '">' + item.text + '</a>';
+				html += '<a href="#' + item.id + '" class="index-link" data-target="' + item.id + '">' + escapeCatalogText(item.text) + '</a>';
 				if (item.children.length > 0) {
 					html += buildHtml(item.children, false);
 				}
@@ -6542,6 +7070,7 @@ $(document).on("keydown", function (e) {
 
 		$mobileContainer.html(buildHtml(toc, true));
 		window.mobileCatalogInitialized = true;
+		invalidateMobileCatalogOffsets();
 
 		// 绑定点击事件
 		$mobileContainer.off('click.mobileCatalog').on('click.mobileCatalog', '.index-link', function (e) {
@@ -6560,6 +7089,8 @@ $(document).on("keydown", function (e) {
 				if ($target.length) {
 					$mobileContainer.find('.index-item').removeClass('current');
 					$(this).closest('.index-item').addClass('current');
+					// 手动高亮后同步内部状态，否则滚动回调的早退判断会与 DOM 不一致
+					mobileCatalogCurrentId = $(this).attr('data-target') || targetId.slice(1);
 					$('html, body').animate({
 						scrollTop: $target.offset().top - 80
 					}, 500, 'easeOutExpo');
@@ -6579,45 +7110,100 @@ $(document).on("keydown", function (e) {
 	}
 
 	// 更新移动端目录高亮
-	function updateMobileCatalogHighlight() {
-		var $mobileContainer = $("#leftbar_mobile_catalog");
-		var $postContent = $("#post_content");
-		if ($mobileContainer.length === 0 || $postContent.length === 0) return;
+	// 原实现每帧都要：重新查询容器、对每个标题取一次 offset()（虚拟化模式下
+	// getHeaderOffset 内部还是 O(sections) 线性查找，整体 O(标题 × 分段)），
+	// 而且不管结果有没有变都要把所有条目 removeClass 一遍。
+	// 这里改成：偏移量表算一次并排序，二分查找；激活项没变就直接返回。
+	var mobileCatalogOffsets = null;
+	var mobileCatalogOffsetsDocHeight = -1;
+	var mobileCatalogCurrentId = null;
+	var $mobileCatalogContainer = null;
 
-		var scrollTop = $(window).scrollTop();
+	function invalidateMobileCatalogOffsets() {
+		mobileCatalogOffsets = null;
+		mobileCatalogOffsetsDocHeight = -1;
+		mobileCatalogCurrentId = null;
+	}
+
+	function getMobileCatalogContainer() {
+		if (!$mobileCatalogContainer || $mobileCatalogContainer.length === 0 ||
+			!document.body || !document.body.contains($mobileCatalogContainer[0])) {
+			$mobileCatalogContainer = $("#leftbar_mobile_catalog");
+		}
+		return $mobileCatalogContainer;
+	}
+
+	function buildMobileCatalogOffsets($postContent) {
+		var offsets = [];
 		var virtualizer = window.ArgonLongContentVirtualizer;
-		var headers = [];
-		var currentId = null;
-
 		if (virtualizer && virtualizer.isReady && virtualizer.isReady()) {
-			headers = virtualizer.getHeaders();
+			var headers = virtualizer.getHeaders();
 			for (var i = 0; i < headers.length; i++) {
-				var top = virtualizer.getHeaderOffset(headers[i], 100);
-				if (scrollTop >= top) {
-					currentId = headers[i].id;
-				}
+				offsets.push({ id: headers[i].id, top: virtualizer.getHeaderOffset(headers[i], 100) });
 			}
 		} else {
 			$postContent.find('h1, h2, h3, h4, h5, h6').each(function () {
 				var $h = $(this);
-				var top = $h.offset().top - 100;
-			if (scrollTop >= top) {
-				currentId = $h.attr('id');
-			}
+				offsets.push({ id: $h.attr('id'), top: $h.offset().top - 100 });
 			});
 		}
+		// 文档顺序下 top 本来就是非递减的，排序只是为二分兜底（sort 是稳定的，
+		// top 相同的标题仍保持文档顺序，命中结果与原来的线性扫描一致）
+		offsets.sort(function (a, b) { return a.top - b.top; });
+		return offsets;
+	}
+
+	function updateMobileCatalogHighlight() {
+		var $mobileContainer = getMobileCatalogContainer();
+		var $postContent = $("#post_content");
+		if ($mobileContainer.length === 0 || $postContent.length === 0) return false;
+
+		// 文档高度变了说明内容有增删（图片加载完、虚拟化分段挂载/卸载），偏移量需重算
+		var docHeight = document.documentElement ? document.documentElement.scrollHeight : 0;
+		if (!mobileCatalogOffsets || docHeight !== mobileCatalogOffsetsDocHeight) {
+			mobileCatalogOffsets = buildMobileCatalogOffsets($postContent);
+			mobileCatalogOffsetsDocHeight = docHeight;
+		}
+
+		var scrollTop = $(window).scrollTop();
+		var offsets = mobileCatalogOffsets;
+		// 二分：最后一个 top <= scrollTop 的标题
+		var lo = 0, hi = offsets.length - 1, found = -1;
+		while (lo <= hi) {
+			var mid = (lo + hi) >> 1;
+			if (offsets[mid].top <= scrollTop) {
+				found = mid;
+				lo = mid + 1;
+			} else {
+				hi = mid - 1;
+			}
+		}
+		var currentId = found >= 0 ? offsets[found].id : null;
+
+		if (currentId === mobileCatalogCurrentId) {
+			return false;
+		}
+		mobileCatalogCurrentId = currentId;
 
 		if (currentId) {
 			$mobileContainer.find('.index-item').removeClass('current');
 			$mobileContainer.find('.index-link[href="#' + currentId + '"]').closest('.index-item').addClass('current');
+			return true;
 		}
+		return false;
 	}
 
 	// 重置移动端目录状态（由PJAX 调用）
 	window.resetMobileCatalog = function () {
 		window.mobileCatalogInitialized = false;
+		invalidateMobileCatalogOffsets();
+		$mobileCatalogContainer = null;
 		$("#leftbar_mobile_catalog").empty();
 	};
+
+	$(window).on("resize.mobileCatalog", function () {
+		invalidateMobileCatalogOffsets();
+	});
 
 	// 滚动目录到当前激活项
 	function scrollMobileCatalogToActive() {
@@ -6644,8 +7230,11 @@ $(document).on("keydown", function (e) {
 		mobileCatalogScrollTicking = true;
 		requestAnimationFrame(function () {
 			mobileCatalogScrollTicking = false;
-			// 更新高亮状态
-			updateMobileCatalogHighlight();
+			// 更新高亮状态；激活项没变就什么都不做——原来即使没变也会每帧
+			// 重启一次 jQuery .animate()，导致目录自动滚动永远无法结束
+			if (!updateMobileCatalogHighlight()) {
+				return;
+			}
 			// 只在侧边栏打开且目录展开时滚动
 			if ($("html").hasClass("leftbar-opened") &&
 				$("#mobile_catalog_toggle").closest(".leftbar-mobile-collapse-section").hasClass("expanded")) {
@@ -6654,29 +7243,7 @@ $(document).on("keydown", function (e) {
 		});
 	});
 
-	// 点击目录项后关闭侧边栏（已在 initMobileCatalog 中处理）
-
 	// ========== 移动端TODO交互 ==========
-	function updateMobileTodoCount() {
-		var count = $("#mobile-todo-list .mobile-todo-item:not(.todo-completed)").length;
-		var completedCount = $("#mobile-todo-list .mobile-todo-item.todo-completed").length;
-		$("#mobile_todo_count").text(count);
-		// 同步更新桌面端计数
-		$(".todo-count").text(count);
-
-		// 更新分隔栏的已完成数量
-		var divider = $("#mobile-todo-collapse-btn");
-		if (divider.length) {
-			divider.find(".mobile-todo-completed-count").text(completedCount);
-			if (completedCount > 0) {
-				divider.show();
-			} else {
-				divider.hide();
-			}
-		}
-	}
-
-	// 移动端折叠/展开已完成任务
 	var mobileTodoListNode = null;
 	var mobileTodoFrame = 0;
 	var mobileTodoEmptyText = "暂无待办事项";
@@ -6739,7 +7306,7 @@ $(document).on("keydown", function (e) {
 		}
 	}
 
-	updateMobileTodoCount = function (delta) {
+	var updateMobileTodoCount = function (delta) {
 		if (delta) {
 			mobileTodoState.active = Math.max(0, mobileTodoState.active + (delta.active || 0));
 			mobileTodoState.completed = Math.max(0, mobileTodoState.completed + (delta.completed || 0));
@@ -7087,6 +7654,35 @@ $(document).on("click", ".collapse-block .collapse-block-title", function () {
 });
 
 /*获得 Github Repo Shortcode 信息卡内容*/
+// 未认证的 api.github.com 每小时只有 60 次配额，而原实现每次 PJAX 导航都会把
+// 页面上所有卡片重新请求一遍。这里加一层会话级缓存 + 同 repo 的并发请求合并。
+var argonGithubInfoCardCache = {};   // "author/project" -> 已解析的数据
+var argonGithubInfoCardPending = {}; // "author/project" -> 等待同一请求结果的卡片
+
+function renderGithubInfoCard($card, data) {
+	if (data.error) {
+		$(".github-info-card-description", $card).html(data.error);
+		return;
+	}
+	$(".github-info-card-description", $card).html(data.description);
+	$(".github-info-card-stars", $card).html(data.stars);
+	$(".github-info-card-forks", $card).html(data.forks);
+}
+
+function finishGithubInfoCard(cacheKey, data, cacheable) {
+	if (cacheable) {
+		argonGithubInfoCardCache[cacheKey] = data;
+	}
+	var waiting = argonGithubInfoCardPending[cacheKey] || [];
+	delete argonGithubInfoCardPending[cacheKey];
+	for (var i = 0; i < waiting.length; i++) {
+		if (cacheable) {
+			waiting[i].attr("data-argon-github-loaded", cacheKey);
+		}
+		renderGithubInfoCard(waiting[i], data);
+	}
+}
+
 function getGithubInfoCardContent() {
 	$(".github-info-card").each(function () {
 		(function ($this) {
@@ -7096,30 +7692,47 @@ function getGithubInfoCardContent() {
 				$(".github-info-card-forks", $this).html($this.attr("data-forks"));
 				return;
 			}
+			var author = $this.attr("data-author");
+			var project = $this.attr("data-project");
+			var cacheKey = author + "/" + project;
+			// 这张卡片已经渲染过同一个 repo 的结果，不用再动它
+			if ($this.attr("data-argon-github-loaded") === cacheKey) {
+				return;
+			}
+			if (Object.prototype.hasOwnProperty.call(argonGithubInfoCardCache, cacheKey)) {
+				$this.attr("data-argon-github-loaded", cacheKey);
+				renderGithubInfoCard($this, argonGithubInfoCardCache[cacheKey]);
+				return;
+			}
 			$(".github-info-card-description", $this).html("Loading...");
 			$(".github-info-card-stars", $this).html("-");
 			$(".github-info-card-forks", $this).html("-");
-			author = $this.attr("data-author");
-			project = $this.attr("data-project");
+			// 同一个 repo 已有请求在飞，挂到它后面等结果，不再发第二次
+			if (argonGithubInfoCardPending[cacheKey]) {
+				argonGithubInfoCardPending[cacheKey].push($this);
+				return;
+			}
+			argonGithubInfoCardPending[cacheKey] = [$this];
 			$.ajax({
 				url: "https://api.github.com/repos/" + author + "/" + project,
 				type: "GET",
 				dataType: "json",
 				success: function (result) {
-					description = result.description;
+					var description = result.description;
 					if (result.homepage != "" && result.homepage != null) {
 						description += " <a href='" + result.homepage + "' target='_blank' no-pjax>" + result.homepage + "</a>"
 					}
-					$(".github-info-card-description", $this).html(description);
-					$(".github-info-card-stars", $this).html(result.stargazers_count);
-					$(".github-info-card-forks", $this).html(result.forks_count);
+					finishGithubInfoCard(cacheKey, {
+						description: description,
+						stars: result.stargazers_count,
+						forks: result.forks_count
+					}, true);
 				},
 				error: function (xhr) {
-					if (xhr.status == 404) {
-						$(".github-info-card-description", $this).html(__("找不到该 Repo"));
-					} else {
-						$(".github-info-card-description", $this).html(__("获取 Repo 信息失败"));
-					}
+					// 404 是确定性结果，可以缓存；其余（限流 / 网络问题）留待下次重试
+					finishGithubInfoCard(cacheKey, {
+						error: xhr.status == 404 ? __("找不到该 Repo") : __("获取 Repo 信息失败")
+					}, xhr.status == 404);
 				}
 			});
 		})($(this));
@@ -7197,15 +7810,21 @@ function foldLongShuoshuo() {
 	if (argonConfig.fold_long_shuoshuo == false) {
 		return;
 	}
+	// 同 foldLongComments：读循环里不做写入，避免每条长说说各触发一次强制同步布局。
+	let foldTargets = [];
 	$("#main .shuoshuo-foldable > .shuoshuo-content").each(function () {
 		if ($(this).hasClass("shuoshuo-unfolded")) {
 			return;
 		}
 		if (this.clientHeight > 400) {
-			$(this).addClass("shuoshuo-folded");
-			$(this).append("<div class='show-full-shuoshuo'><button class='btn btn-outline-primary'><i class='fa fa-angle-down' aria-hidden='true'></i> " + __("展开") + "</button></div>");
+			foldTargets.push(this);
 		}
 	});
+	for (let i = 0; i < foldTargets.length; i++) {
+		let $target = $(foldTargets[i]);
+		$target.addClass("shuoshuo-folded");
+		$target.append("<div class='show-full-shuoshuo'><button class='btn btn-outline-primary'><i class='fa fa-angle-down' aria-hidden='true'></i> " + __("展开") + "</button></div>");
+	}
 }
 foldLongShuoshuo();
 $(document).on("click", ".show-full-shuoshuo", function () {
@@ -7477,7 +8096,7 @@ if ($(".hitokoto").length > 0) {
 	});
 }
 
-/*Code Highlight - Prism.js*/
+/*Highlight.js*/
 function randomString(len) {
 	len = len || 32;
 	let chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -7488,99 +8107,98 @@ function randomString(len) {
 	res[0] = chars.charAt(Math.floor(Math.random() * (chars.length - 10)));
 	return res;
 }
+var codeOfBlocks = {};
+function getCodeFromBlock(block) {
+	if (codeOfBlocks[block.id] != undefined) {
+		return codeOfBlocks[block.id];
+	}
+	let lines = $(".hljs-ln-code", block);
+	let res = "";
+	if (lines.length == 0) {
+		let code = $("code", block).first();
+		res = code.length ? code.text() : $(block).text();
+		codeOfBlocks[block.id] = res;
+		return res;
+	}
+	for (let i = 0; i < lines.length - 1; i++) {
+		res += lines[i].innerText;
+		res += "\n";
+	}
+	res += lines[lines.length - 1].innerText;
+	codeOfBlocks[block.id] = res;
+	return res;
+}
 
-function renderArgonCodeBlock(pre) {
-	if ($(pre).hasClass("no-hljs") || $(pre).attr("data-prism-processed")) {
+function shouldSkipHighlightJsBlock(block) {
+	let $block = $(block);
+	let $pre = $block.is("pre") ? $block : $block.parent("pre");
+	if ($pre.length == 0) {
+		return false;
+	}
+	return $block.is("[hljs-codeblock-inner]") ||
+		$pre.hasClass("hljs-codeblock") ||
+		$pre.hasClass("argon-codeblock") ||
+		$block.find("table.hljs-ln").length > 0 ||
+		$pre.children(".hljs-control").length > 0 ||
+		$pre.children(".argon-code-control").length > 0 ||
+		$pre.closest(".code-toolbar").length > 0 ||
+		$pre.siblings(".toolbar").length > 0 ||
+		$pre.find(".line-numbers-rows").length > 0;
+}
+
+
+function renderArgonCodeBlock(block) {
+	if ($(block).hasClass("no-hljs")) {
 		return;
 	}
-	var $pre = $(pre);
-	var $code = $pre.children("code");
-	if ($code.length === 0) return;
-
-	// 检测是否为 Mermaid 图表代码块
-	var codeClass = $code.attr("class") || "";
-	var preClass = $pre.attr("class") || "";
-	var isMermaid = codeClass.indexOf("language-mermaid") !== -1 || 
-					preClass.indexOf("language-mermaid") !== -1 ||
-					codeClass.indexOf("mermaid") !== -1 ||
-					preClass.indexOf("mermaid") !== -1;
-	
-	if (isMermaid && typeof mermaid !== 'undefined') {
-		// 标记为已处理，防止重复渲染
-		$pre.attr("data-prism-processed", "1");
-		// 渲染 Mermaid 图表
-		$pre.addClass("argon-mermaid-block");
-		var mermaidContent = $code.text();
-		var mermaidId = "mermaid_" + randomString();
-		$pre.replaceWith('<div class="argon-mermaid" id="' + mermaidId + '">' + mermaidContent + '</div>');
-		try {
-			mermaid.init(undefined, "#" + mermaidId);
-		} catch (e) {
-			console.error("Mermaid rendering error:", e);
-		}
+	if ($(block).attr("hljs-codeblock-inner") !== undefined || $(block).parent().hasClass("hljs-codeblock") || $(block).parent().hasClass("argon-codeblock")) {
 		return;
 	}
-	
-	// 如果是 mermaid 类但库未加载，跳过处理
-	if (isMermaid) {
+	if (shouldSkipHighlightJsBlock(block)) {
 		return;
 	}
-
-	// 标记为已处理，防止重复渲染
-	$pre.attr("data-prism-processed", "1");
-
-	// 获取代码语言
-	var language = "text";
-	var langMatch = codeClass.match(/language-(\w+)/) || preClass.match(/language-(\w+)/);
-	if (langMatch) {
-		language = langMatch[1];
-	} else {
-		// 尝试自动检测语言（简单启发式）
-		language = detectCodeLanguage($code.text());
-		if (language !== "text") {
-			$code.addClass("language-" + language);
-			$pre.addClass("language-" + language);
-		}
+	let $pre = $(block).parent();
+	let $code = $(block);
+	if (typeof (Prism) != "undefined" && Prism.plugins && Prism.plugins.autoloader) {
+		$pre.attr("data-manual", "");
 	}
-
-	// 添加 Prism.js line-numbers 类
-	if (!argonConfig.code_highlight.hide_linenumber) {
-		$pre.addClass("line-numbers");
+	$pre.attr("id", randomString());
+	$pre.addClass("argon-codeblock hljs-codeblock line-numbers");
+	let languageClass = ($code.attr("class") || "").match(/\blang(?:uage)?-([\w-]+)/);
+	if (languageClass && !$code.hasClass("language-" + languageClass[1])) {
+		$code.addClass("language-" + languageClass[1]);
+	}
+	if (typeof (Prism) != "undefined" && Prism.highlightElement) {
+		Prism.highlightElement(block);
+	}
+	if (argonConfig.code_highlight.hide_linenumber) {
+		$pre.addClass("argon-hide-linenumber hljs-hide-linenumber");
 	}
 	if (argonConfig.code_highlight.break_line) {
-		$pre.addClass("argon-break-line");
+		$pre.addClass("argon-break-line hljs-break-line");
 	}
 	if (argonConfig.code_highlight.transparent_linenumber) {
-		$pre.addClass("argon-transparent-linenumber");
+		$pre.addClass("argon-transparent-linenumber hljs-transparent-linenumber");
 	}
-
-	// 使用 Prism.js 高亮
-	if (typeof Prism !== 'undefined' && Prism.highlightElement) {
-		Prism.highlightElement($code[0]);
-	}
-
-	// 注入自定义控制栏
-	$pre.addClass("argon-codeblock");
-	var copyBtnID = "copy_btn_" + randomString();
-	$pre.append(`<div class="argon-code-control">
-		<div class="argon-code-language">` + language + `</div>
-		<div class="argon-code-control-btn argon-code-toggle-linenumber" tooltip-hide-linenumber="` + __("隐藏行号") + `" tooltip-show-linenumber="` + __("显示行号") + `">
-			<i class="fa fa-list"></i>
-		</div>
-		<div class="argon-code-control-btn argon-code-toggle-break-line" tooltip-enable-breakline="` + __("开启折行") + `" tooltip-disable-breakline="` + __("关闭折行") + `">
-			<i class="fa fa-align-left"></i>
-		</div>
-		<div class="argon-code-control-btn argon-code-copy" id=` + copyBtnID + ` tooltip="` + __("复制") + `">
-			<i class="fa fa-clipboard"></i>
-		</div>
-		<div class="argon-code-control-btn argon-code-fullscreen" tooltip-fullscreen="` + __("全屏") + `" tooltip-exit-fullscreen="` + __("退出全屏") + `">
-			<i class="fa fa-arrows-alt"></i>
-		</div>
-	</div>`);
-
-	var clipboard = new ClipboardJS("#" + copyBtnID, {
+	$code.attr("hljs-codeblock-inner", "");
+	let copyBtnID = "copy_btn_" + randomString();
+	let language = (($code.attr("class") || "").match(/\blanguage-([\w-]+)/) || [])[1] || "code";
+	language = $('<div>').text(language).html();
+	$pre.append(`<div class="argon-code-control hljs-control hljs hljs-title">
+			<span class="argon-code-language">` + language + `</span>
+			<div class="argon-code-control-btn argon-code-toggle-linenumber hljs-control-btn hljs-control-toggle-linenumber" tooltip-hide-linenumber="` + __("隐藏行号") + `" tooltip-show-linenumber="` + __("显示行号") + `">
+				<i class="fa fa-list"></i>
+			</div>
+			<div class="argon-code-control-btn argon-code-toggle-break-line hljs-control-btn hljs-control-toggle-break-line" tooltip-enable-breakline="` + __("开启折行") + `" tooltip-disable-breakline="` + __("关闭折行") + `">
+				<i class="fa fa-align-left"></i>
+			</div>
+			<div class="argon-code-control-btn argon-code-copy hljs-control-btn hljs-control-copy" id=` + copyBtnID + ` tooltip="` + __("复制") + `">
+				<i class="fa fa-clipboard"></i>
+			</div>
+		</div>`);
+	let clipboard = new ClipboardJS("#" + copyBtnID, {
 		text: function (trigger) {
-			return $pre.find("code").text();
+			return getCodeFromBlock($(block).parent()[0]);
 		}
 	});
 	var copyButton = document.getElementById(copyBtnID);
@@ -7619,45 +8237,7 @@ function renderArgonCodeBlock(pre) {
 	});
 }
 
-// 简单的语言自动检测函数
-function detectCodeLanguage(code) {
-	var patterns = {
-		'javascript': [/\bfunction\b/, /\bconst\b/, /\blet\b/, /\bvar\b/, /=>/, /\.then\(/, /async\s+function/],
-		'python': [/\bdef\s+\w+\s*\(/, /\bimport\s+\w+/, /\bfrom\s+\w+\s+import/, /\bprint\s*\(/, /if\s+__name__\s*==\s*['"]__main__['"]/],
-		'java': [/\bpublic\s+class\b/, /\bprivate\s+\w+/, /\bprotected\s+\w+/, /\bSystem\.out\.print/],
-		'cpp': [/\b#include\s*</, /\bstd::/, /\bcout\s*<</, /\bcin\s*>>/, /\busing\s+namespace\s+std/],
-		'c': [/\b#include\s*<\w+\.h>/, /\bprintf\s*\(/, /\bscanf\s*\(/, /\bmalloc\s*\(/],
-		'php': [/<\?php/, /\becho\s+/, /\$[a-zA-Z_]\w*/, /\bfunction\s+\w+\s*\(/],
-		'ruby': [/\bdef\s+\w+/, /\bend\b/, /\bputs\s+/, /\bclass\s+\w+/],
-		'go': [/\bfunc\s+\w+\s*\(/, /\bpackage\s+\w+/, /\bimport\s+\(/, /\bfmt\.Print/],
-		'rust': [/\bfn\s+\w+\s*\(/, /\blet\s+mut\b/, /\buse\s+\w+/, /\bimpl\s+\w+/],
-		'sql': [/\bSELECT\b/i, /\bFROM\b/i, /\bWHERE\b/i, /\bINSERT\b/i, /\bUPDATE\b/i],
-		'html': [/<\/?[a-z][\s\S]*>/i, /<!DOCTYPE\s+html>/i],
-		'css': [/\{[\s\S]*?\}/, /\bcolor\s*:/, /\bbackground\s*:/, /\bmargin\s*:/],
-		'json': [/^\s*\{[\s\S]*\}\s*$/, /^\s*\[[\s\S]*\]\s*$/],
-		'bash': [/\b#!/, /\becho\s+/, /\bif\s+\[/, /\bfi\b/, /\bdone\b/],
-		'yaml': [/^\s*\w+:\s/m, /^\s*-\s+\w+/m],
-		'markdown': [/^#{1,6}\s+/m, /\*\*[^*]+\*\*/, /\[.+\]\(.+\)/, /^>\s+/m]
-	};
-	
-	for (var lang in patterns) {
-		var matches = 0;
-		for (var i = 0; i < patterns[lang].length; i++) {
-			if (patterns[lang][i].test(code)) {
-				matches++;
-			}
-		}
-		if (matches >= 2) {
-			return lang;
-		}
-	}
-	return "text";
-}
-
 function highlightJsRender(scope) {
-	if (typeof (Prism) == "undefined") {
-		return;
-	}
 	if (typeof (argonConfig.code_highlight.enable) == "undefined") {
 		return;
 	}
@@ -7665,34 +8245,18 @@ function highlightJsRender(scope) {
 		return;
 	}
 	var $scope = scope ? $(scope) : $("article");
-
-	// 剥离外部插件注入的 code-toolbar 包裹结构
-	$scope.find(".code-toolbar").each(function () {
-		var $toolbar = $(this);
-		var $pre = $toolbar.children("pre");
-		if ($pre.length === 0) return;
-		$pre.find(".line-numbers-rows").remove();
-		$pre.removeClass("line-numbers");
-		$pre.find("code").removeClass("line-numbers");
-		$toolbar.replaceWith($pre);
-	});
-	$scope.find("pre .toolbar").remove();
-
-	// 处理 pre.code 元素（TinyMCE 产生的格式）
 	$scope.find("pre.code").addBack("pre.code").each(function (index, block) {
-		if ($(block).hasClass("no-hljs") || $(block).attr("data-prism-processed")) {
+		if ($(block).hasClass("no-hljs")) {
 			return;
 		}
-		if ($(block).children("code").length > 0) {
+		if (shouldSkipHighlightJsBlock(block) || $(block).children("code").length > 0) {
 			return;
 		}
 		$(block).html("<code>" + $(block).html() + "</code>");
 	});
-
 	var blocks = $scope.find("pre > code").addBack("pre > code").filter(function () {
-		return !$(this).hasClass("no-hljs") && !$(this).parent().attr("data-prism-processed");
+		return !$(this).hasClass("no-hljs");
 	});
-
 	if (!scope && window.ArgonLongContentVirtualizer && window.ArgonLongContentVirtualizer.isReady && window.ArgonLongContentVirtualizer.isReady() && "IntersectionObserver" in window) {
 		if (!highlightObserver) {
 			highlightObserver = new IntersectionObserver(function (entries) {
@@ -7705,12 +8269,12 @@ function highlightJsRender(scope) {
 			}, { rootMargin: "800px 0px 800px 0px", threshold: 0 });
 		}
 		blocks.each(function (index, block) {
-			highlightObserver.observe(block.parentNode);
+			highlightObserver.observe(block);
 		});
 		return;
 	}
 	blocks.each(function (index, block) {
-		renderArgonCodeBlock(block.parentNode);
+		renderArgonCodeBlock(block);
 	});
 }
 $(document).ready(function () {
@@ -7741,9 +8305,11 @@ $(document).ready(function () {
 				ArgonDebug.info('✓ DOM 缓存模块已初始化');
 			}
 
-			// 3. 事件管理模块
+			// 3. 事件管理模块（可能已在文件顶部提前构造，此处不要覆盖已有实例）
 			if (typeof ArgonEventManager !== 'undefined') {
-				argonEventManager = new ArgonEventManager();
+				if (!argonEventManager) {
+					argonEventManager = new ArgonEventManager();
+				}
 				ArgonDebug.info('✓ 事件管理模块已初始化');
 			}
 
@@ -7780,38 +8346,27 @@ $(document).ready(function () {
 	initPostFullBlur();
 	initArgonPostActions();
 	initArgonTodoFallbacks();
-	
-	// 初始化 Mermaid 图表
-	if (typeof mermaid !== 'undefined') {
-		mermaid.initialize({
-			startOnLoad: false,
-			theme: document.documentElement.classList.contains('darkmode') ? 'dark' : 'default',
-			securityLevel: 'loose',
-			flowchart: { useMaxWidth: true, htmlLabels: true },
-			sequence: { useMaxWidth: true },
-			gantt: { useMaxWidth: true }
-		});
-	}
-	
 	highlightJsRender();
 	waterflowInit();
 });
-$(document).on("click", ".argon-code-fullscreen", function () {
+$(document).on("click", ".hljs-control-toggle-break-line", function () {
 	let block = $(this).parent().parent();
-	block.toggleClass("argon-codeblock-fullscreen");
-	if (block.hasClass("argon-codeblock-fullscreen")) {
-		$("html").addClass("noscroll");
-	} else {
-		$("html").removeClass("noscroll");
+	block.toggleClass("argon-break-line hljs-break-line");
+});
+$(document).on("click", ".hljs-control-toggle-linenumber", function () {
+	let block = $(this).parent().parent();
+	block.toggleClass("argon-hide-linenumber hljs-hide-linenumber");
+});
+
+// 首页文章卡片整体可点击
+$(document).on("click", ".post-preview-layout-2", function (e) {
+	// 如果点击的是链接或链接内的元素，不做处理
+	if (!$(e.target).is("a") && !$(e.target).closest("a").length) {
+		const href = $(this).find(".post-title").attr("href");
+		if (href) {
+			window.location.href = href;
+		}
 	}
-});
-$(document).on("click", ".argon-code-toggle-break-line", function () {
-	let block = $(this).parent().parent();
-	block.toggleClass("argon-break-line");
-});
-$(document).on("click", ".argon-code-toggle-linenumber", function () {
-	let block = $(this).parent().parent();
-	block.toggleClass("argon-hide-linenumber");
 });
 
 /*时间差计算/
@@ -7881,14 +8436,27 @@ function humanTimeDiff(time){
 	}
 }
 function calcHumanTimesOnPage(){
-	$(".human-time").each(function(){
+	let $humanTimes = $(".human-time");
+	if ($humanTimes.length == 0){
+		return;
+	}
+	$humanTimes.each(function(){
 		$(this).text(humanTimeDiff(parseInt($(this).data("time")) * 1000));
 	});
 }
 calcHumanTimesOnPage();
 setInterval(function(){
+	// 标签页不可见时没人看得到，跳过这一轮全文档扫描和文本写入
+	if (document.hidden){
+		return;
+	}
 	calcHumanTimesOnPage()
 }, 15000);
+document.addEventListener("visibilitychange", function(){
+	if (!document.hidden){
+		calcHumanTimesOnPage();
+	}
+});
 
 
 /*Console*/
@@ -7929,6 +8497,8 @@ setInterval(function(){
 		_scrollAnimObserver = observer;
 		animatedElements.forEach(function (el) { if (!el.classList.contains('animate-in')) observer.observe(el); });
 	}
+	// 暴露给 pjax:complete，使入场动画在 pjax-navigating 被摘掉之前就绪
+	window.argonInitScrollAnimations = initScrollAnimations;
 
 	// 4. 平滑滚动
 	function initSmoothScroll() {
@@ -7947,7 +8517,18 @@ setInterval(function(){
 	function initPjaxAnimations() {
 		if (typeof jQuery === 'undefined') return;
 		jQuery(document).on('pjax:end', function () {
-			setTimeout(function () { initArticleSkeletons(); initImageLoadAnimation(); initScrollAnimations(); initSmoothScroll(); }, 100);
+			// initArticleSkeletons / initScrollAnimations 已经在 pjax:complete 的任务队列里跑过，
+			// 这里重复执行只会白白重建一次 IntersectionObserver。只有 popstate（后退/前进，
+			// pjax:complete 不触发）时才需要在这里补齐。
+			var completeRan = window.argonLastPjaxCompleteRan;
+			setTimeout(function () {
+				if (!completeRan) {
+					initArticleSkeletons();
+					initScrollAnimations();
+				}
+				initImageLoadAnimation();
+				initSmoothScroll();
+			}, 100);
 		});
 	}
 
