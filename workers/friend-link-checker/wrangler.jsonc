@@ -1,0 +1,42 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "neutral-link-checker",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-27",
+  "workers_dev": true,
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "ALLOWED_ORIGIN": "https://blog.example.com",
+    "SITE_URL": "https://blog.example.com",
+    "CALLBACK_URL": "https://blog.example.com/wp-json/argon/v1/friend-link-result"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "friend-links",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "CHECK_QUEUE",
+        "queue": "friend-link-checks"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "friend-link-checks",
+        "max_batch_size": 1,
+        "max_batch_timeout": 5,
+        "max_retries": 3
+      }
+    ]
+  },
+  "triggers": {
+    "crons": ["17 * * * *"]
+  }
+}
