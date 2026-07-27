@@ -283,8 +283,10 @@ if (isset($_GET['apply_success'])) {
 // 获取友链数据
 $all_approved_links = argon_get_friend_links_raw('approved');
 $pending_links = $is_admin ? argon_get_friend_links_raw('pending') : array();
+$friend_link_worker_ready = function_exists('argon_friend_link_worker_is_configured')
+    && argon_friend_link_worker_is_configured();
 $browser_check_links = array();
-if ($is_admin) {
+if ($is_admin && $friend_link_worker_ready) {
     $browser_check_candidates = array_merge($pending_links, $all_approved_links);
     usort($browser_check_candidates, function($a, $b) {
         return intval($a['next_browser_check_at'] ?? 0) - intval($b['next_browser_check_at'] ?? 0);
@@ -749,7 +751,7 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
 <!-- 管理面板（仅管理员可见） -->
 <?php if ($is_admin) : ?>
 <article class="post card shadow-sm bg-white border-0 flinks-admin-card" style="margin-bottom: 16px;" id="admin-panel">
-    <div class="flinks-admin-title"><i class="fa fa-cog"></i><?php _e('友链管理', 'argon'); ?> <button class="btn btn-sm btn-secondary" style="margin-left:auto;font-size:11px;" id="check-all-btn" title="<?php esc_attr_e('由 Cloudflare Worker 异步检测最多 3 条友链', 'argon'); ?>"><?php _e('立即检测一批', 'argon'); ?></button></div>
+    <div class="flinks-admin-title"><i class="fa fa-cog"></i><?php _e('友链管理', 'argon'); ?> <button class="btn btn-sm btn-secondary" style="margin-left:auto;font-size:11px;" id="check-all-btn" title="<?php echo esc_attr($friend_link_worker_ready ? __('由 Cloudflare Worker 异步检测最多 3 条友链', 'argon') : __('请先在 Argon 主题设置的友情链接区域配置 Worker', 'argon')); ?>" <?php if (!$friend_link_worker_ready) echo 'disabled'; ?>><?php echo $friend_link_worker_ready ? __('立即检测一批', 'argon') : __('Worker 未配置', 'argon'); ?></button></div>
     
     <?php if (!empty($pending_links)) : ?>
     <div class="flinks-admin-section">
@@ -1105,6 +1107,7 @@ function refreshCaptcha() {
 
 var argonFriendLinkWorkerTicketUrl = <?php echo wp_json_encode(rest_url('argon/v1/friend-link-ticket')); ?>;
 var argonFriendLinkRestNonce = <?php echo wp_json_encode($is_admin ? wp_create_nonce('wp_rest') : ''); ?>;
+var argonFriendLinkWorkerReady = <?php echo $friend_link_worker_ready ? 'true' : 'false'; ?>;
 
 function submitFriendLinkWorkerTicket(ticket, retriesLeft) {
     return fetch(ticket.url, {
@@ -1134,6 +1137,10 @@ function submitFriendLinkWorkerTicket(ticket, retriesLeft) {
 }
 
 function dispatchFriendLinkWorkerJob(jobId, dispatchToken, adminNonce) {
+    if (!argonFriendLinkWorkerReady) {
+        return Promise.reject(new Error('<?php _e('友链检测 Worker 尚未配置', 'argon'); ?>'));
+    }
+
     var request = {};
     if (jobId) request.job_id = jobId;
     if (dispatchToken) request.dispatch_token = dispatchToken;
@@ -1499,6 +1506,10 @@ if (typeof initGeetest4 === 'function') {
                 category: document.getElementById('add-category').value.trim()
             }, function(res) {
                 if (res.success && res.id) {
+                    if (!argonFriendLinkWorkerReady) {
+                        location.reload();
+                        return;
+                    }
                     dispatchFriendLinkWorkerJob(res.id, '', workerTicketNonce).catch(function() {
                         alert('<?php _e('友链已添加，但 Worker 任务暂未送达；系统会稍后重试', 'argon'); ?>');
                     }).then(function() {
@@ -1541,6 +1552,10 @@ if (typeof initGeetest4 === 'function') {
 
     function runBrowserBatch(interactive) {
         if (browserBatchRunning) return;
+        if (!argonFriendLinkWorkerReady) {
+            if (interactive) alert('<?php _e('请先在 Argon 主题设置的友情链接区域配置 Worker', 'argon'); ?>');
+            return;
+        }
         var batch = interactive ? browserBatchLinks.slice(0, 3) : browserBatchLinks.filter(function(link) { return link.due; }).slice(0, 3);
         if (!batch.length) {
             if (interactive) alert('<?php _e('当前没有需要首次提交或重试的友链', 'argon'); ?>');
@@ -1586,7 +1601,7 @@ if (typeof initGeetest4 === 'function') {
             runBrowserBatch(true);
         });
     }
-    setTimeout(function() { runBrowserBatch(false); }, 700);
+    if (argonFriendLinkWorkerReady) setTimeout(function() { runBrowserBatch(false); }, 700);
 
     // 编辑弹窗
     window.openEditModal = function(id) {
@@ -1795,7 +1810,7 @@ if (typeof initGeetest4 === 'function') {
             }, function(res) {
                 btn.disabled = false; btn.textContent = '<?php _e('保存', 'argon'); ?>';
                 if (res.success) {
-                    if (res.worker_refresh_required) {
+                    if (res.worker_refresh_required && argonFriendLinkWorkerReady) {
                         setMessage('info', '<?php _e('地址已保存，正在提交新的 Worker 检测任务', 'argon'); ?>');
                         dispatchFriendLinkWorkerJob(id, '', workerTicketNonce).then(function() {
                             location.reload();
@@ -1804,6 +1819,9 @@ if (typeof initGeetest4 === 'function') {
                             setTimeout(function() { location.reload(); }, 1200);
                         });
                     } else {
+                        if (res.worker_refresh_required && !argonFriendLinkWorkerReady) {
+                            res.message = '<?php _e('地址已保存；配置 Worker 后可重新检测', 'argon'); ?>';
+                        }
                         setMessage('success', res.message || '<?php _e('已保存友链信息', 'argon'); ?>');
                         setTimeout(function() { location.reload(); }, 450);
                     }

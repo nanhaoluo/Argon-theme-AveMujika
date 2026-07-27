@@ -10,10 +10,11 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "types": "wrangler types --include-runtime false --env-interface WorkerBindings",
+    "types": "wrangler types --config wrangler.example.jsonc --include-runtime false --env-interface WorkerBindings",
+    "types:local": "wrangler types --include-runtime false --env-interface WorkerBindings",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "wrangler types --include-runtime false --env-interface WorkerBindings --check && tsc --noEmit",
+    "typecheck": "wrangler types --config wrangler.example.jsonc --include-runtime false --env-interface WorkerBindings --check && tsc --noEmit",
     "check": "npm run typecheck && npm test",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote"

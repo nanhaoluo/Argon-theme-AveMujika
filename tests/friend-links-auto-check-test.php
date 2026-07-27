@@ -50,6 +50,14 @@ argon_flink_test_assert(
     'Worker 桥接没有使用独立 HMAC 密钥和恒定时间比较。'
 );
 argon_flink_test_assert(
+    strpos($worker_bridge, 'function argon_friend_link_worker_is_configured()') !== false
+    && strpos($worker_bridge, 'if (!argon_friend_link_worker_is_configured())') !== false
+    && strpos($page, 'if ($is_admin && $friend_link_worker_ready)') !== false
+    && strpos($page, 'var argonFriendLinkWorkerReady =') !== false
+    && strpos($page, 'if (!argonFriendLinkWorkerReady)') !== false,
+    'Worker 未配置时仍可能创建令牌、自动批量派发或从管理操作派发。'
+);
+argon_flink_test_assert(
     strpos($functions, '$worker_target_changed = false;') !== false
     && strpos($functions, "['worker_generation'] = '';") !== false
     && strpos($page, "'worker_refresh_required' => \$updated && \$worker_refresh_required") !== false,

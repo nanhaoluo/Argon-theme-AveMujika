@@ -3,24 +3,63 @@
 /**
  * Cloudflare Worker 友链检测桥接。
  *
- * 密钥必须通过 wp-config.php 常量或同名环境变量提供，绝不进入主题设置或前端脚本。
+ * 配置优先级：wp-config.php 常量 > 同名环境变量 > WordPress 后台选项。
+ * 后台保存的密钥不自动加载，也绝不进入前端脚本。
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-function argon_friend_link_worker_config_value($name, $default = '') {
+function argon_friend_link_worker_option_name($name) {
+    $options = array(
+        'ARGON_FRIEND_LINK_WORKER_ENABLED' => 'argon_friend_link_worker_enabled',
+        'ARGON_FRIEND_LINK_WORKER_URL' => 'argon_friend_link_worker_url',
+        'ARGON_FRIEND_LINK_SUBMIT_HMAC_SECRET' => 'argon_friend_link_submit_hmac_secret',
+        'ARGON_FRIEND_LINK_CALLBACK_HMAC_SECRET' => 'argon_friend_link_callback_hmac_secret',
+    );
+    return isset($options[$name]) ? $options[$name] : '';
+}
+
+function argon_friend_link_worker_external_config($name) {
     if (defined($name)) {
-        return trim((string)constant($name));
+        return array('source' => 'constant', 'value' => trim((string)constant($name)));
     }
 
     $value = getenv($name);
-    return is_string($value) && trim($value) !== '' ? trim($value) : $default;
+    if (is_string($value) && trim($value) !== '') {
+        return array('source' => 'environment', 'value' => trim($value));
+    }
+    return null;
+}
+
+function argon_friend_link_worker_config_source($name) {
+    $external = argon_friend_link_worker_external_config($name);
+    if ($external !== null) return $external['source'];
+
+    $option_name = argon_friend_link_worker_option_name($name);
+    if ($option_name !== '' && get_option($option_name, null) !== null) return 'option';
+    return 'default';
+}
+
+function argon_friend_link_worker_config_value($name, $default = '') {
+    $external = argon_friend_link_worker_external_config($name);
+    if ($external !== null) return $external['value'];
+
+    $option_name = argon_friend_link_worker_option_name($name);
+    if ($option_name !== '') {
+        $value = get_option($option_name, null);
+        if ($value !== null) return trim((string)$value);
+    }
+    return $default;
+}
+
+function argon_friend_link_worker_boolean_value($value) {
+    return in_array(strtolower(trim((string)$value)), array('1', 'true', 'yes', 'on'), true);
 }
 
 function argon_friend_link_worker_url() {
-    $url = argon_friend_link_worker_config_value('ARGON_FRIEND_LINK_WORKER_URL', 'https://worker.cartol.top');
+    $url = argon_friend_link_worker_config_value('ARGON_FRIEND_LINK_WORKER_URL');
     return rtrim(esc_url_raw($url), '/');
 }
 
@@ -30,6 +69,39 @@ function argon_friend_link_worker_submit_secret() {
 
 function argon_friend_link_worker_callback_secret() {
     return argon_friend_link_worker_config_value('ARGON_FRIEND_LINK_CALLBACK_HMAC_SECRET');
+}
+
+function argon_friend_link_worker_enabled() {
+    $enabled_external = argon_friend_link_worker_external_config('ARGON_FRIEND_LINK_WORKER_ENABLED');
+    if ($enabled_external !== null) {
+        return argon_friend_link_worker_boolean_value($enabled_external['value']);
+    }
+
+    $enabled_option = get_option('argon_friend_link_worker_enabled', null);
+    if ($enabled_option !== null) {
+        return argon_friend_link_worker_boolean_value($enabled_option);
+    }
+
+    // 兼容已使用旧版文档、仅在 wp-config.php 或环境变量中配置三项连接信息的站点。
+    foreach (array(
+        'ARGON_FRIEND_LINK_WORKER_URL',
+        'ARGON_FRIEND_LINK_SUBMIT_HMAC_SECRET',
+        'ARGON_FRIEND_LINK_CALLBACK_HMAC_SECRET',
+    ) as $legacy_name) {
+        $source = argon_friend_link_worker_config_source($legacy_name);
+        if (!in_array($source, array('constant', 'environment'), true)
+            || argon_friend_link_worker_config_value($legacy_name) === '') {
+            return false;
+        }
+    }
+    return true;
+}
+
+function argon_friend_link_worker_is_configured() {
+    return argon_friend_link_worker_enabled()
+        && argon_friend_link_worker_url() !== ''
+        && argon_friend_link_worker_submit_secret() !== ''
+        && argon_friend_link_worker_callback_secret() !== '';
 }
 
 function argon_friend_link_worker_rest_error($code, $message, $status) {
@@ -45,6 +117,10 @@ function argon_friend_link_worker_nonce() {
 }
 
 function argon_friend_link_worker_create_dispatch_token($link_id) {
+    if (!argon_friend_link_worker_is_configured()) {
+        return '';
+    }
+
     $link_id = sanitize_text_field($link_id);
     if ($link_id === '' || !argon_get_friend_link($link_id)) {
         return '';
@@ -58,8 +134,8 @@ function argon_friend_link_worker_create_dispatch_token($link_id) {
 function argon_friend_link_worker_create_ticket($link) {
     $worker_url = argon_friend_link_worker_url();
     $secret = argon_friend_link_worker_submit_secret();
-    if ($worker_url === '' || $secret === '') {
-        return new WP_Error('worker_not_configured', '友链检测 Worker 尚未完成服务端密钥配置', array('status' => 503));
+    if (!argon_friend_link_worker_is_configured()) {
+        return new WP_Error('worker_not_configured', '友链检测 Worker 未启用或配置不完整', array('status' => 503));
     }
     if (!is_array($link) || empty($link['id']) || empty($link['url'])) {
         return new WP_Error('invalid_friend_link', '友链记录不完整', array('status' => 400));

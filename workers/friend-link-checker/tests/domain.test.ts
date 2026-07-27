@@ -9,44 +9,44 @@ import {
 
 describe('friend-link target normalization', () => {
   it('expands a bare domain to root, www and blog with HTTP fallback', () => {
-    expect(buildCandidates('cartol.top')).toEqual([
-      'https://cartol.top/',
-      'https://www.cartol.top/',
-      'https://blog.cartol.top/',
-      'http://cartol.top/',
-      'http://www.cartol.top/',
-      'http://blog.cartol.top/'
+    expect(buildCandidates('sample-blog.dev')).toEqual([
+      'https://sample-blog.dev/',
+      'https://www.sample-blog.dev/',
+      'https://blog.sample-blog.dev/',
+      'http://sample-blog.dev/',
+      'http://www.sample-blog.dev/',
+      'http://blog.sample-blog.dev/'
     ]);
   });
 
   it('keeps an entered blog host first before the root and www variants', () => {
-    expect(buildCandidates('http://blog.cartol.top/posts')).toEqual([
-      'http://blog.cartol.top/',
-      'http://cartol.top/',
-      'http://www.cartol.top/',
-      'https://blog.cartol.top/',
-      'https://cartol.top/',
-      'https://www.cartol.top/'
+    expect(buildCandidates('http://blog.sample-blog.dev/posts')).toEqual([
+      'http://blog.sample-blog.dev/',
+      'http://sample-blog.dev/',
+      'http://www.sample-blog.dev/',
+      'https://blog.sample-blog.dev/',
+      'https://sample-blog.dev/',
+      'https://www.sample-blog.dev/'
     ]);
   });
 
   it('treats root, www and blog as the same permitted site family', () => {
-    expect(isSameCandidateSite('https://cartol.top', 'https://www.cartol.top/about')).toBe(true);
-    expect(isSameCandidateSite('https://blog.cartol.top', 'https://attacker.example')).toBe(false);
+    expect(isSameCandidateSite('https://sample-blog.dev', 'https://www.sample-blog.dev/about')).toBe(true);
+    expect(isSameCandidateSite('https://blog.sample-blog.dev', 'https://attacker.example')).toBe(false);
   });
 
   it('does not cross a private Public Suffix boundary or expand arbitrary subdomains', () => {
     expect(buildCandidates('blog.github.io')).not.toContain('https://github.io/');
     expect(isSameCandidateSite('https://blog.github.io', 'https://github.io')).toBe(false);
-    expect(buildCandidates('notes.cartol.top')).toEqual([
-      'https://notes.cartol.top/',
-      'http://notes.cartol.top/'
+    expect(buildCandidates('notes.sample-blog.dev')).toEqual([
+      'https://notes.sample-blog.dev/',
+      'http://notes.sample-blog.dev/'
     ]);
   });
 
   it('normalizes www only when comparing backlink hosts', () => {
-    expect(normalizeComparableHostname('https://www.cartol.top/path')).toBe('cartol.top');
-    expect(normalizeComparableHostname('https://blog.cartol.top')).toBe('blog.cartol.top');
+    expect(normalizeComparableHostname('https://www.sample-blog.dev/path')).toBe('sample-blog.dev');
+    expect(normalizeComparableHostname('https://blog.sample-blog.dev')).toBe('blog.sample-blog.dev');
   });
 
   it('rejects local, private and non-HTTP targets', () => {
@@ -57,7 +57,7 @@ describe('friend-link target normalization', () => {
       'http://[::1]/',
       'http://router.local',
       'https://blog.example.com',
-      'ftp://cartol.top'
+      'ftp://sample-blog.dev'
     ]) {
       expect(() => assertSafePublicUrl(value), value).toThrow();
     }

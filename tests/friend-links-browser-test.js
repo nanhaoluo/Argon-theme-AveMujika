@@ -6,18 +6,18 @@ const path = require('path');
 const browser = require('../assets/js/friend-links-browser.js');
 
 async function run() {
-    assert.deepStrictEqual(browser.buildCandidates('cartol.top'), [
-        'https://cartol.top/',
-        'https://www.cartol.top/',
-        'https://blog.cartol.top/'
+    assert.deepStrictEqual(browser.buildCandidates('sample-blog.dev'), [
+        'https://sample-blog.dev/',
+        'https://www.sample-blog.dev/',
+        'https://blog.sample-blog.dev/'
     ]);
-    assert.deepStrictEqual(browser.buildCandidates('blog.cartol.top'), [
-        'https://blog.cartol.top/',
-        'https://cartol.top/',
-        'https://www.cartol.top/'
+    assert.deepStrictEqual(browser.buildCandidates('blog.sample-blog.dev'), [
+        'https://blog.sample-blog.dev/',
+        'https://sample-blog.dev/',
+        'https://www.sample-blog.dev/'
     ]);
     assert.strictEqual(browser.getRootDomain('blog.example.com.cn'), 'example.com.cn');
-    assert.strictEqual(browser.isSameCandidateSiteUrl('https://cartol.top/', 'https://blog.cartol.top/'), true);
+    assert.strictEqual(browser.isSameCandidateSiteUrl('https://sample-blog.dev/', 'https://blog.sample-blog.dev/'), true);
     assert.strictEqual(browser.isSameCandidateSiteUrl('https://foo.co.uk/', 'https://evil.co.uk/'), false);
     assert.strictEqual(browser.isSameCandidateSiteUrl('https://foo.github.io/', 'https://evil.github.io/'), false);
     assert.deepStrictEqual(
@@ -29,18 +29,18 @@ async function run() {
         { primary: '编程小记', subtitle: '其实我也不知道建这个站拿来干嘛=-=' }
     );
 
-    const detected = await browser.detectSite('cartol.top', {
+    const detected = await browser.detectSite('sample-blog.dev', {
         timeout: 1000,
         fetch: function(url) {
-            if (url === 'https://blog.cartol.top/wp-json/') {
+            if (url === 'https://blog.sample-blog.dev/wp-json/') {
                 return Promise.resolve({
                     ok: true,
                     json: function() {
                         return Promise.resolve({
                             name: '编程小记 – 其实我也不知道建这个站拿来干嘛=-=',
                             description: '一份编程与生活记录',
-                            home: 'https://blog.cartol.top/',
-                            site_icon_url: 'https://blog.cartol.top/icon.png'
+                            home: 'https://blog.sample-blog.dev/',
+                            site_icon_url: 'https://blog.sample-blog.dev/icon.png'
                         });
                     }
                 });
@@ -49,14 +49,14 @@ async function run() {
         }
     });
     assert.strictEqual(detected.success, true);
-    assert.strictEqual(detected.url, 'https://blog.cartol.top/');
+    assert.strictEqual(detected.url, 'https://blog.sample-blog.dev/');
     assert.strictEqual(detected.info.primary, '编程小记');
     assert.strictEqual(detected.info.subtitle, '其实我也不知道建这个站拿来干嘛=-=');
 
-    const constrained = await browser.detectSite('cartol.top', {
+    const constrained = await browser.detectSite('sample-blog.dev', {
         timeout: 1000,
         fetch: function(url) {
-            if (url === 'https://cartol.top/wp-json/') {
+            if (url === 'https://sample-blog.dev/wp-json/') {
                 return Promise.resolve({
                     ok: true,
                     json: function() {
@@ -67,7 +67,7 @@ async function run() {
             return Promise.reject(new Error('unreachable'));
         }
     });
-    assert.strictEqual(constrained.url, 'https://cartol.top/');
+    assert.strictEqual(constrained.url, 'https://sample-blog.dev/');
 
     const opaque = await browser.detectSite('opaque.example', {
         timeout: 1000,
@@ -79,33 +79,33 @@ async function run() {
     assert.strictEqual(opaque.success, true);
     assert.strictEqual(opaque.readable, false);
 
-    const backlink = await browser.checkBacklink('https://friend.example/links/', 'https://www.cartol.top/', {
+    const backlink = await browser.checkBacklink('https://friend.example/links/', 'https://www.sample-blog.dev/', {
         timeout: 1000,
         fetch: function() {
             return Promise.resolve({
                 ok: true,
                 url: 'https://friend.example/links/',
                 text: function() {
-                    return Promise.resolve('<a href="https://cartol.top/about">编程小记</a>');
+                    return Promise.resolve('<a href="https://sample-blog.dev/about">编程小记</a>');
                 }
             });
         }
     });
     assert.strictEqual(backlink, true);
 
-    const noBacklink = await browser.checkBacklink('https://friend.example/links/', 'https://cartol.top/', {
+    const noBacklink = await browser.checkBacklink('https://friend.example/links/', 'https://sample-blog.dev/', {
         timeout: 1000,
         fetch: function() {
             return Promise.resolve({
                 ok: true,
                 url: 'https://friend.example/links/',
-                text: function() { return Promise.resolve('<a href="https://not-cartol.top/">另一个网站</a>'); }
+                text: function() { return Promise.resolve('<a href="https://another-blog.dev/">另一个网站</a>'); }
             });
         }
     });
     assert.strictEqual(noBacklink, false);
 
-    const unknown = await browser.checkBacklink('https://friend.example/links/', 'https://cartol.top/', {
+    const unknown = await browser.checkBacklink('https://friend.example/links/', 'https://sample-blog.dev/', {
         timeout: 1000,
         fetch: function() { return Promise.reject(new TypeError('CORS blocked')); }
     });

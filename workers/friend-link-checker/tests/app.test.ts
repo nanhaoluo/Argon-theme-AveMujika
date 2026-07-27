@@ -50,9 +50,9 @@ function makeServices(): RuntimeServices & { store: MemoryStore; sent: QueueMess
   const sent: QueueMessage[] = [];
   return {
     config: {
-      allowedOrigin: 'https://blog.cartol.top',
-      siteUrl: 'https://blog.cartol.top',
-      callbackUrl: 'https://blog.cartol.top/wp-json/argon/v1/friend-link-result',
+      allowedOrigin: 'https://blog.sample-blog.dev',
+      siteUrl: 'https://blog.sample-blog.dev',
+      callbackUrl: 'https://blog.sample-blog.dev/wp-json/argon/v1/friend-link-result',
       submitSecret: SUBMIT_SECRET,
       callbackSecret: 'test-callback-secret-that-is-long-enough',
       adminReadToken: 'read-token'
@@ -86,7 +86,7 @@ async function signedSubmission(
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      origin: overrides.origin ?? 'https://blog.cartol.top',
+      origin: overrides.origin ?? 'https://blog.sample-blog.dev',
       'x-argon-timestamp': String(timestamp),
       'x-argon-nonce': nonce,
       'x-argon-signature': `sha256=${signature}`
@@ -105,8 +105,8 @@ describe('Worker HTTP API', () => {
   it('accepts a valid signed task and only queues its job ID', async () => {
     const request = await signedSubmission({
       job_id: 'link_123',
-      url: 'cartol.top',
-      links_page: 'https://blog.cartol.top/friends'
+      url: 'sample-blog.dev',
+      links_page: 'https://blog.sample-blog.dev/friends'
     });
 
     const response = await handleFetch(request, services);
@@ -116,8 +116,8 @@ describe('Worker HTTP API', () => {
     expect(services.sent).toEqual([{ jobId: 'link_123', generation: 'nonce-1234567890' }]);
     expect(services.store.jobs.get('link_123')).toMatchObject({
       generation: 'nonce-1234567890',
-      url: 'https://cartol.top/',
-      linksPage: 'https://blog.cartol.top/friends',
+      url: 'https://sample-blog.dev/',
+      linksPage: 'https://blog.sample-blog.dev/friends',
       status: 'queued'
     });
   });
@@ -127,12 +127,12 @@ describe('Worker HTTP API', () => {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        origin: 'https://blog.cartol.top',
+        origin: 'https://blog.sample-blog.dev',
         'x-argon-timestamp': String(NOW),
         'x-argon-nonce': 'nonce-1234567890',
         'x-argon-signature': 'sha256=deadbeef'
       },
-      body: JSON.stringify({ job_id: 'link_123', url: 'cartol.top' })
+      body: JSON.stringify({ job_id: 'link_123', url: 'sample-blog.dev' })
     });
 
     const response = await handleFetch(request, services);
@@ -143,14 +143,14 @@ describe('Worker HTTP API', () => {
   });
 
   it('rejects replayed nonces and backlink pages outside the target family', async () => {
-    const first = await signedSubmission({ job_id: 'link_123', url: 'cartol.top' });
+    const first = await signedSubmission({ job_id: 'link_123', url: 'sample-blog.dev' });
     expect((await handleFetch(first, services)).status).toBe(202);
 
     const replay = await signedSubmission({ job_id: 'link_456', url: 'other.top' });
     expect((await handleFetch(replay, services)).status).toBe(409);
 
     const foreignPage = await signedSubmission(
-      { job_id: 'link_789', url: 'cartol.top', links_page: 'https://attacker.top/friends' },
+      { job_id: 'link_789', url: 'sample-blog.dev', links_page: 'https://attacker.top/friends' },
       { nonce: 'nonce-abcdefghijkl' }
     );
     expect((await handleFetch(foreignPage, services)).status).toBe(400);
@@ -158,7 +158,7 @@ describe('Worker HTTP API', () => {
 
   it('blocks browser submissions from an unconfigured origin', async () => {
     const request = await signedSubmission(
-      { job_id: 'link_123', url: 'cartol.top' },
+      { job_id: 'link_123', url: 'sample-blog.dev' },
       { origin: 'https://attacker.top' }
     );
     const response = await handleFetch(request, services);
@@ -167,7 +167,7 @@ describe('Worker HTTP API', () => {
 
   it('refuses submissions while deployment placeholders remain configured', async () => {
     services.config.callbackUrl = 'https://blog.example.com/wp-json/argon/v1/friend-link-result';
-    const request = await signedSubmission({ job_id: 'link_123', url: 'cartol.top' });
+    const request = await signedSubmission({ job_id: 'link_123', url: 'sample-blog.dev' });
 
     const response = await handleFetch(request, services);
 
@@ -176,7 +176,7 @@ describe('Worker HTTP API', () => {
   });
 
   it('requires the admin token before returning a job result', async () => {
-    const submit = await signedSubmission({ job_id: 'link_123', url: 'cartol.top' });
+    const submit = await signedSubmission({ job_id: 'link_123', url: 'sample-blog.dev' });
     await handleFetch(submit, services);
 
     const unauthorized = await handleFetch(

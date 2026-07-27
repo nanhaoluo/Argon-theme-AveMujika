@@ -131,7 +131,7 @@ function makeServices(store: ProcessingStore): RuntimeServices & { sent: QueueMe
   const sent: QueueMessage[] = [];
   const callbacks: Request[] = [];
   const fetcher = vi.fn(async (input: string, init?: RequestInit) => {
-    if (input === 'https://blog.cartol.top/wp-json/argon/v1/friend-link-result') {
+    if (input === 'https://blog.sample-blog.dev/wp-json/argon/v1/friend-link-result') {
       callbacks.push(new Request(input, init));
       return new Response(null, { status: 204 });
     }
@@ -146,16 +146,16 @@ function makeServices(store: ProcessingStore): RuntimeServices & { sent: QueueMe
       return new Response('missing', { status: 404 });
     }
     if (input === 'https://friend-site.top/friends') {
-      return new Response('<a href="https://blog.cartol.top/">本站</a>', { status: 200 });
+      return new Response('<a href="https://blog.sample-blog.dev/">本站</a>', { status: 200 });
     }
     return new Response('missing', { status: 404 });
   });
 
   return {
     config: {
-      allowedOrigin: 'https://blog.cartol.top',
-      siteUrl: 'https://blog.cartol.top',
-      callbackUrl: 'https://blog.cartol.top/wp-json/argon/v1/friend-link-result',
+      allowedOrigin: 'https://blog.sample-blog.dev',
+      siteUrl: 'https://blog.sample-blog.dev',
+      callbackUrl: 'https://blog.sample-blog.dev/wp-json/argon/v1/friend-link-result',
       submitSecret: 'test-submit-secret-that-is-long-enough',
       callbackSecret: CALLBACK_SECRET,
       adminReadToken: 'read-token'

@@ -1,72 +1,100 @@
 # Argon 友链检测 Worker
 
-这个 Worker 把友链抓取从 WordPress 源站移到 Cloudflare 的异步消费者：
+这个 Worker 将友链抓取从 WordPress 源站移到 Cloudflare Queue 消费者，自动识别网站主标题、副标题、头像、可访问性和反链状态，同时避免由博客服务器直接访问目标网站。
 
 ```text
-浏览器携带 WordPress 签名 -> POST /v1/jobs -> D1 + Queue
-                                               |
-                                      Queue 消费者访问目标站
-                                               |
-                                  D1 <- 签名回写 WordPress
-                                               ^
-                                      Cron 投递到期任务
+浏览器向 WordPress 申请签名 -> POST /v1/jobs -> D1 + Queue
+                                                  |
+                                         Queue 消费者访问目标站
+                                                  |
+                                      WordPress <- 签名回调
 ```
 
-接单请求本身绝不抓取目标网站。任务会随机延迟 30～180 秒，再由 Queue 消费者发起请求，避免把提交者 IP 带进目标请求并降低时间关联。
+接单请求只校验签名并入队，不抓取目标站。Queue 会在 30～180 秒随机延迟后处理任务，降低提交动作与探测请求之间的时间关联。
 
-> 当前目录已经完成 Worker、Queue、D1、Cron、WordPress 签名签发器和回调接收端。主题接入不修改 `settings.php`，密钥只从 `wp-config.php` 常量或同名环境变量读取。
+## 准备工作
 
-## 1. 准备中性 Worker
+- 一个 Cloudflare 账号；个人博客流量通常可以从 Free 套餐开始。
+- Node.js 22 LTS 或更新的受支持版本，以及 npm。
+- 已安装并启用本仓库的 Argon 主题。
+- WordPress 的固定公开地址，例如 `https://blog.example.com`。
 
-最强关联隔离应使用独立 Cloudflare 账号和中性的 `workers.dev` 子域名。当前部署选择 `worker.cartol.top` Custom Domain：它不会暴露 WordPress 源站 IP，但目标站可能通过 Cloudflare 的 `CF-Worker` 标识判断请求来自 `cartol.top` 所在 zone。
-
-进入本目录安装依赖：
+下面命令都在本目录执行：
 
 ```powershell
-cd E:\project\Argon-theme-AveMujika\workers\friend-link-checker
+cd path\to\Argon-theme-AveMujika\workers\friend-link-checker
 npm install
 npx wrangler login
 ```
 
-## 2. 创建 Queue 和 D1
+## 一、创建自己的配置
+
+生产配置包含账号资源 ID 和站点地址，因此仓库只跟踪通用模板。本地复制一份：
+
+```powershell
+Copy-Item wrangler.example.jsonc wrangler.jsonc
+```
+
+macOS/Linux 使用：
+
+```bash
+cp wrangler.example.jsonc wrangler.jsonc
+```
+
+`wrangler.jsonc` 已加入 `.gitignore`，不会随手提交到公开仓库。随后编辑其中四处配置：
+
+```jsonc
+{
+  "name": "friend-link-checker",
+  "vars": {
+    "ALLOWED_ORIGIN": "https://blog.example.com",
+    "SITE_URL": "https://blog.example.com",
+    "CALLBACK_URL": "https://blog.example.com/wp-json/argon/v1/friend-link-result"
+  },
+  "d1_databases": [
+    {
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID"
+    }
+  ]
+}
+```
+
+- `name`：Worker 名称，可换成自己账号内未占用的中性名称。
+- `ALLOWED_ORIGIN`：允许浏览器转发任务的 WordPress Origin，必须是“协议 + 域名”，末尾不要加 `/`。
+- `SITE_URL`：对方友链页中应出现的本站规范地址。
+- `CALLBACK_URL`：主题接收检测结果的固定 REST 地址，不能由浏览器指定。
+- `database_id`：下一步创建 D1 后由 Wrangler 返回的 ID。
+
+如果修改了示例中的 Queue、D1 名称，也要同步修改后续命令和 `wrangler.jsonc`。
+
+## 二、创建 Queue 和 D1
 
 ```powershell
 npx wrangler queues create friend-link-checks
 npx wrangler d1 create friend-links
 ```
 
-第二条命令会返回 D1 `database_id`。把它填入 [wrangler.jsonc](./wrangler.jsonc)，并把三个示例地址替换成真实博客地址：
-
-```jsonc
-"vars": {
-  "ALLOWED_ORIGIN": "https://blog.cartol.top",
-  "SITE_URL": "https://blog.cartol.top",
-  "CALLBACK_URL": "https://blog.cartol.top/wp-json/argon/v1/friend-link-result"
-}
-```
-
-- `ALLOWED_ORIGIN`：允许浏览器提交任务的唯一 Origin。
-- `SITE_URL`：反链页面中需要寻找的本站地址。
-- `CALLBACK_URL`：WordPress 接收签名结果的固定接口，不能由任务提交者指定。
-
-应用数据库迁移：
+第二条命令会输出 D1 的 `database_id`。将它替换进本地 `wrangler.jsonc`，然后创建数据表：
 
 ```powershell
 npm run db:migrate:remote
 ```
 
-## 3. 配置密钥
+默认 Cron 是 `17 * * * *`，即每个 UTC 小时的第 17 分钟投递到期复检任务。
 
-生成三个不同的随机值。PowerShell 示例：
+## 三、创建三个不同的 Secret
+
+每个 Secret 都应使用独立随机值，不要为了省事设成相同内容。Windows PowerShell 可用下面三行生成一次随机值：
 
 ```powershell
-$secretBytes = [byte[]]::new(32)
-$rng = [Security.Cryptography.RandomNumberGenerator]::Create()
-$rng.GetBytes($secretBytes)
-[Convert]::ToBase64String($secretBytes)
+$secretBytes = New-Object byte[] 32
+$randomSource = [Security.Cryptography.RandomNumberGenerator]::Create()
+$randomSource.GetBytes($secretBytes); [Convert]::ToBase64String($secretBytes)
 ```
 
-每生成一次就执行对应命令并粘贴值：
+macOS/Linux 可运行 `openssl rand -base64 32`。无论使用哪种方式，都要分别生成三次。
+
+每生成一个新值，就执行对应命令并在安全提示中粘贴：
 
 ```powershell
 npx wrangler secret put SUBMIT_HMAC_SECRET
@@ -74,33 +102,29 @@ npx wrangler secret put CALLBACK_HMAC_SECRET
 npx wrangler secret put ADMIN_READ_TOKEN
 ```
 
-- `SUBMIT_HMAC_SECRET` 和 `CALLBACK_HMAC_SECRET` 还需要分别写入 WordPress 服务端配置。
-- `ADMIN_READ_TOKEN` 只用于管理员读取 Worker 中的任务状态。
-- 密钥不能进入前端 JavaScript、Git、`wrangler.jsonc` 或聊天记录。
+- `SUBMIT_HMAC_SECRET`：WordPress 签发任务时使用。
+- `CALLBACK_HMAC_SECRET`：Worker 回写结果时使用。
+- `ADMIN_READ_TOKEN`：仅供管理员调用 Worker 查询接口，不需要写入 WordPress。
 
-## 4. 配置 WordPress 服务端
+密钥不能写入 JavaScript、`wrangler.jsonc`、Git、截图或聊天记录。`wrangler secret list` 只能确认名称，无法读回 Secret 原文；遗失后直接重新设置，并同步更新 WordPress。
 
-在服务器的 `wp-config.php` 中、`/* That's all, stop editing! */` 之前加入：
-
-```php
-define('ARGON_FRIEND_LINK_WORKER_URL', 'https://worker.cartol.top');
-define('ARGON_FRIEND_LINK_SUBMIT_HMAC_SECRET', '粘贴 Worker 中 SUBMIT_HMAC_SECRET 的值');
-define('ARGON_FRIEND_LINK_CALLBACK_HMAC_SECRET', '粘贴 Worker 中 CALLBACK_HMAC_SECRET 的值');
-```
-
-两个 HMAC 值必须与 Cloudflare Worker 中对应的 Secret 完全一致，且彼此不同。`ADMIN_READ_TOKEN` 不需要写入 WordPress。主题只把服务器签好的固定 JSON 交给浏览器转发，浏览器永远拿不到 HMAC 密钥。
-
-## 5. 部署
+## 四、检查并部署
 
 ```powershell
 npm run check
 npm run deploy
 ```
 
-部署后检查：
+Wrangler 会在成功信息中给出 `https://<worker-name>.<account-subdomain>.workers.dev`。这就是默认 Worker 基础 URL。检查健康状态：
 
 ```powershell
-Invoke-RestMethod "https://worker.cartol.top/health"
+Invoke-RestMethod "https://<worker-name>.<account-subdomain>.workers.dev/health"
+```
+
+macOS/Linux 可运行：
+
+```bash
+curl "https://<worker-name>.<account-subdomain>.workers.dev/health"
 ```
 
 预期返回：
@@ -109,77 +133,89 @@ Invoke-RestMethod "https://worker.cartol.top/health"
 {"ok":true,"service":"friend-link-checker"}
 ```
 
-Cron 在每个 UTC 小时的第 17 分钟运行，每次最多投递 25 个任务，并为正常复检保留容量，避免故障回调挤占全部队列。Queue 消费者每批只处理 1 条消息，单个请求最多跟随 2 次重定向，确保主域、`www`、`blog`、双协议、DNS 与回调合计不突破 Workers Free 的 50 个外部子请求限制。成功任务 24 小时后复检；失败任务从 6 小时开始指数退避，最多 7 天；回调失败同样独立退避。
+## 五、在 Argon 主题中连接 Worker
 
-## API 契约
+进入 WordPress 后台的“Argon 主题设置 → 友情链接”，填写：
 
-### 提交任务
+1. `Worker 基础 URL`：上一步得到的 `workers.dev` 或自定义域名，不含 `/v1/jobs`。
+2. `提交 HMAC 密钥`：与 Cloudflare 的 `SUBMIT_HMAC_SECRET` 完全一致。
+3. `回调 HMAC 密钥`：与 Cloudflare 的 `CALLBACK_HMAC_SECRET` 完全一致。
+4. 将“自动友链检测 Worker”设为“启用”，保存设置。
 
-```http
-POST /v1/jobs
-Content-Type: application/json
-Origin: https://blog.cartol.top
-X-Argon-Timestamp: 1800000000
-X-Argon-Nonce: 至少16位随机字符串
-X-Argon-Signature: sha256=<64位十六进制HMAC>
+密码框不会回显已有值，留空保存表示保持原值；主题设置的 JSON 导入、导出也会排除这些字段。只有勾选“清除后台密钥”并保存时，数据库中的两个 HMAC 值才会被删除。
+
+如果不希望密钥进入 WordPress 数据库，可以改在 `wp-config.php` 的 `/* That's all, stop editing! */` 之前配置：
+
+```php
+define('ARGON_FRIEND_LINK_WORKER_URL', 'https://friend-link-checker.example-account.workers.dev');
+define('ARGON_FRIEND_LINK_SUBMIT_HMAC_SECRET', '与 Worker 中 SUBMIT_HMAC_SECRET 相同的值');
+define('ARGON_FRIEND_LINK_CALLBACK_HMAC_SECRET', '与 Worker 中 CALLBACK_HMAC_SECRET 相同的值');
 ```
 
-请求体：
-
-```json
-{
-  "job_id": "WordPress中的友链ID",
-  "url": "friend-site.top",
-  "links_page": "https://blog.friend-site.top/friends"
-}
-```
-
-签名原文必须是未经改写的原始 JSON：
+也可以设置同名服务器环境变量。生效优先级为：
 
 ```text
-<timestamp>.<nonce>.<raw JSON body>
+wp-config.php 常量 > 环境变量 > WordPress 后台选项
 ```
 
-使用 `SUBMIT_HMAC_SECRET` 计算 HMAC-SHA256。正确流程是 WordPress 生成原始 JSON、时间戳、随机数和签名，再让浏览器原样转发；浏览器永远拿不到密钥。签名有效期 5 分钟，D1 会拒绝随机数重放。
+旧版本已经配置上述三个常量的站点，无需额外保存启用开关。若想强制停用，可在后台选择“停用”，或设置 `ARGON_FRIEND_LINK_WORKER_ENABLED=false`；外部常量/环境变量仍优先于后台值。
 
-Worker 会把本次随机数作为不可变 `generation` 写入 Queue、D1 和回调。相同友链 ID 被重新提交后，旧消费者无法认领或覆盖新任务；WordPress 回调端也必须只接受当前 `generation`。
+## 可选：使用自定义域名
 
-### 查询任务
+直接使用中性 `workers.dev` 地址最简单。如果需要 `worker.example.com`：
 
-```http
-GET /v1/jobs/<job_id>
-Authorization: Bearer <ADMIN_READ_TOKEN>
+1. 域名必须位于当前 Cloudflare 账号中，并已激活该 Zone。
+2. 打开 Cloudflare Dashboard → Workers & Pages → 对应 Worker → Settings → Domains & Routes。
+3. 选择 Add → Custom Domain，输入完整子域名。
+
+Cloudflare 会为 Worker Custom Domain 自动创建所需 DNS 记录，不要再手工添加指向源服务器的 A/AAAA 记录。也可以在本地 `wrangler.jsonc` 中加入：
+
+```jsonc
+"routes": [
+  {
+    "pattern": "worker.example.com",
+    "custom_domain": true
+  }
+]
 ```
 
-该接口用于部署调试，不应把管理令牌放进公开页面。
-
-### Worker 回调
-
-Worker 固定向 `CALLBACK_URL` 发送 JSON，并使用下面三个请求头和 `CALLBACK_HMAC_SECRET` 按同样规则签名：
-
-```text
-X-Argon-Timestamp
-X-Argon-Nonce
-X-Argon-Signature
-```
-
-WordPress 必须校验时间差、随机数重放和原始请求体 HMAC。回调结果的 `backlink_state` 只有三种值：
-
-- `found`：成功读取反链页并找到本站 hostname。
-- `missing`：成功读取反链页但没有找到本站 hostname。
-- `unknown`：未提供反链页、超时、403、验证码或内容无法读取。
-
-`unknown` 不能作为拒绝友链或隐藏友链的依据。
-
-所有初始目标和重定向都会先通过 Cloudflare DNS-over-HTTPS 解析，并拒绝任何私网、回环、保留或无法解析的地址。域名候选使用 Public Suffix List（包含 `github.io` 等私有后缀）限定站点边界，避免把共享后缀误当成目标一级域。
+重新 `npm run deploy` 后，将 WordPress 中的 Worker 基础 URL 改为新地址。Custom Domain 本身不会暴露 WordPress 源站 IP，但域名可能让目标站推断 Worker 与博客的关系；更重视关联隔离时，应选择中性名称，必要时使用独立 Cloudflare 账号。
 
 ## 本地开发
+
+本地命令使用被忽略的 `wrangler.jsonc`：
 
 ```powershell
 npm run db:migrate:local
 npm run dev
+```
+
+公开仓库的类型生成和检查固定读取 `wrangler.example.jsonc`，因此克隆者尚未建立个人配置时也能运行：
+
+```powershell
+npm run types
 npm run typecheck
 npm test
 ```
 
-当前测试覆盖域名候选、Public Suffix 边界、DNS 私网地址拒绝、标题识别、WordPress/HTML 探测、验证码未知态、反链三态、签名接单、防重放、任务代际隔离、回调退避、Cron 公平调度和真实 D1 迁移。
+如果需要按自己的本地生产配置重新生成绑定类型，可运行 `npm run types:local`，但提交前应再运行 `npm run types`，避免把个人域名写进 `worker-configuration.d.ts`。
+
+## API 与安全边界
+
+- `POST /v1/jobs`：校验 WordPress 的 HMAC、5 分钟时间窗和随机数防重放，只写 D1/Queue，返回 `202`。
+- `GET /v1/jobs/<job_id>`：需要 `Authorization: Bearer <ADMIN_READ_TOKEN>`，不要从公开页面调用。
+- `POST CALLBACK_URL`：Worker 使用独立回调 HMAC；WordPress 校验签名、时间窗、随机数和任务代际。
+- Queue 消费者会检查目标及每次重定向的 DNS 结果，拒绝私网、回环、保留和不可解析地址，避免 SSRF。
+- `backlink_state=unknown` 表示超时、地区限制、验证码或内容不可读，不会被当成“确认未上链”。
+- 相同友链重新提交时会生成新 `generation`，旧 Queue 消息和旧回调不能覆盖新结果。
+
+这套方案隔离的是“友链探测请求的出口”，不会自动消除历史 DNS、直连子域名、邮件头或静态资源中的源站泄露。博客本身仍应开启 Cloudflare 代理，并限制源站只接受 Cloudflare IP，或使用 Cloudflare Tunnel。
+
+## 常见问题
+
+- WordPress 显示“已启用但配置不完整”：检查 Worker URL 和两把 HMAC；`ADMIN_READ_TOKEN` 不算 WordPress 配置项。
+- Worker 返回 `403 origin_not_allowed`：`ALLOWED_ORIGIN` 必须与浏览器地址栏的协议、域名和端口完全一致。
+- Worker 返回签名错误：确认两端使用对应的同一把密钥，并检查 WordPress 与 Cloudflare 的时间差。
+- Queue 或 D1 binding 不存在：确认创建的资源名称与 `wrangler.jsonc` 一致，并已填写正确 `database_id`。
+- 自定义域名打不开：检查它是否作为 Worker Custom Domain 添加；不要只创建普通 DNS 记录或只创建一条没有绑定脚本的 Route。
+- 国外访问目标站缓慢或被屏蔽：结果会保持 `unknown` 并退避重试，不会误判为缺失反链。若站点长期限制 Cloudflare 出口，只能人工确认或增加部署在目标地区的独立探测节点。

@@ -9,7 +9,7 @@
 define('ABSPATH', __DIR__ . '/');
 define('MINUTE_IN_SECONDS', 60);
 define('DAY_IN_SECONDS', 86400);
-define('ARGON_FRIEND_LINK_WORKER_URL', 'https://worker.cartol.top');
+define('ARGON_FRIEND_LINK_WORKER_URL', 'https://worker.sample-blog.dev');
 define('ARGON_FRIEND_LINK_SUBMIT_HMAC_SECRET', 'submit-secret-for-contract-tests');
 define('ARGON_FRIEND_LINK_CALLBACK_HMAC_SECRET', 'callback-secret-for-contract-tests');
 
@@ -20,8 +20,8 @@ $GLOBALS['argon_worker_test_links'] = array(
         'auto_name' => true,
         'display_name' => '',
         'user_display_name' => false,
-        'url' => 'https://cartol.top/',
-        'links_page' => 'https://cartol.top/friends/',
+        'url' => 'https://sample-blog.dev/',
+        'links_page' => 'https://sample-blog.dev/friends/',
         'avatar' => '',
         'user_avatar' => false,
         'has_backlink' => null,
@@ -71,12 +71,13 @@ class WP_REST_Request {
 }
 
 function add_action($hook, $callback) {}
+function get_option($name, $default = false) { return $default; }
 function __return_true() { return true; }
 function register_rest_route($namespace, $route, $args) {
     $GLOBALS['argon_worker_test_routes'][$namespace . $route] = $args;
 }
 function is_wp_error($value) { return $value instanceof WP_Error; }
-function rest_url($path = '') { return 'https://blog.cartol.top/wp-json/' . ltrim($path, '/'); }
+function rest_url($path = '') { return 'https://blog.sample-blog.dev/wp-json/' . ltrim($path, '/'); }
 function current_user_can($capability) { return !empty($GLOBALS['argon_worker_test_is_admin']); }
 function wp_verify_nonce($nonce, $action) { return $nonce === 'valid-admin-nonce' && $action === 'argon_friend_link_worker_ticket'; }
 function wp_parse_url($url, $component = -1) { return parse_url($url, $component); }
@@ -143,7 +144,7 @@ $expected_signature = 'sha256=' . hash_hmac(
     $timestamp . '.' . $nonce . '.' . (isset($ticket['body']) ? $ticket['body'] : ''),
     ARGON_FRIEND_LINK_SUBMIT_HMAC_SECRET
 );
-argon_worker_assert(isset($ticket['url']) && $ticket['url'] === 'https://worker.cartol.top/v1/jobs', '签发目标不是固定 Worker 地址。');
+argon_worker_assert(isset($ticket['url']) && $ticket['url'] === 'https://worker.sample-blog.dev/v1/jobs', '签发目标不是固定 Worker 地址。');
 argon_worker_assert($signature !== '' && hash_equals($expected_signature, $signature), '提交签名没有覆盖时间戳、随机数和原始 JSON。');
 argon_worker_assert(
     isset($GLOBALS['argon_worker_test_links']['fl_contract']['worker_generation'])
@@ -169,11 +170,11 @@ $callback_payload = array(
         'state' => 'complete',
         'accessible' => true,
         'readable' => true,
-        'detected_url' => 'https://blog.cartol.top/',
+        'detected_url' => 'https://blog.sample-blog.dev/',
         'primary' => '编程小记',
         'subtitle' => '其实我也不知道建这个站拿来干嘛=-=',
         'description' => '自动识别描述',
-        'avatar' => 'https://blog.cartol.top/favicon.ico',
+        'avatar' => 'https://blog.sample-blog.dev/favicon.ico',
         'backlink_state' => 'found',
         'source' => 'cloudflare_worker',
         'attempts' => 1,

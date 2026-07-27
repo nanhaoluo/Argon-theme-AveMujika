@@ -11,9 +11,9 @@ function queuedJob(overrides: Partial<FriendLinkJob> = {}): FriendLinkJob {
   return {
     id: 'link_123',
     generation: 'generation-123456',
-    url: 'https://cartol.top/',
-    hostname: 'cartol.top',
-    linksPage: 'https://cartol.top/friends',
+    url: 'https://sample-blog.dev/',
+    hostname: 'sample-blog.dev',
+    linksPage: 'https://sample-blog.dev/friends',
     status: 'queued',
     accessible: false,
     readable: false,
@@ -72,11 +72,11 @@ describe('D1 job store', () => {
         state: 'ok',
         accessible: true,
         readable: true,
-        detectedUrl: 'https://blog.cartol.top/',
+        detectedUrl: 'https://blog.sample-blog.dev/',
         primary: '编程小记',
         subtitle: '小记副标题',
         description: '站点介绍',
-        avatar: 'https://blog.cartol.top/favicon.ico',
+        avatar: 'https://blog.sample-blog.dev/favicon.ico',
         source: 'wordpress',
         attempts: []
       },
@@ -110,8 +110,8 @@ describe('D1 job store', () => {
     await store.claimQueuedJob('future', 'generation-123456', NOW);
     await store.saveDetection('future', 'generation-123456', {
       site: {
-        state: 'ok', accessible: true, readable: true, detectedUrl: 'https://cartol.top/',
-        primary: 'Cartol', subtitle: '', description: '', avatar: '', source: 'html', attempts: []
+        state: 'ok', accessible: true, readable: true, detectedUrl: 'https://sample-blog.dev/',
+        primary: '示例博客', subtitle: '', description: '', avatar: '', source: 'html', attempts: []
       },
       backlinkState: 'unknown',
       checkedAt: NOW,
@@ -155,8 +155,8 @@ describe('D1 job store', () => {
       await store.claimQueuedJob(id, generation, NOW);
       await store.saveDetection(id, generation, {
         site: {
-          state: 'ok', accessible: true, readable: true, detectedUrl: 'https://cartol.top/',
-          primary: 'Cartol', subtitle: '', description: '', avatar: '', source: 'html', attempts: []
+          state: 'ok', accessible: true, readable: true, detectedUrl: 'https://sample-blog.dev/',
+          primary: '示例博客', subtitle: '', description: '', avatar: '', source: 'html', attempts: []
         },
         backlinkState: 'unknown',
         checkedAt: NOW,

@@ -1,5 +1,7 @@
 node_modules/
 .wrangler/
 dist/
+*.cpuprofile
+wrangler.jsonc
 .dev.vars
 .dev.vars.*

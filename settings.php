@@ -5992,6 +5992,89 @@ function themeoptions_page(){
 						</td>
 					</tr>
 
+					<?php
+					$friend_link_worker_enabled = function_exists('argon_friend_link_worker_enabled')
+						? argon_friend_link_worker_enabled()
+						: false;
+					$friend_link_worker_configured = function_exists('argon_friend_link_worker_is_configured')
+						? argon_friend_link_worker_is_configured()
+						: false;
+					$friend_link_worker_url = function_exists('argon_friend_link_worker_url')
+						? argon_friend_link_worker_url()
+						: get_option('argon_friend_link_worker_url', '');
+					$friend_link_worker_sources = array(
+						'submit' => function_exists('argon_friend_link_worker_config_source')
+							? argon_friend_link_worker_config_source('ARGON_FRIEND_LINK_SUBMIT_HMAC_SECRET')
+							: 'default',
+						'callback' => function_exists('argon_friend_link_worker_config_source')
+							? argon_friend_link_worker_config_source('ARGON_FRIEND_LINK_CALLBACK_HMAC_SECRET')
+							: 'default',
+					);
+					$friend_link_worker_source_labels = array(
+						'constant' => __('wp-config.php 常量', 'argon'),
+						'environment' => __('环境变量', 'argon'),
+						'option' => __('后台数据库', 'argon'),
+						'default' => __('未配置', 'argon'),
+					);
+					?>
+
+					<tr>
+						<th><label><?php _e('自动友链检测 Worker', 'argon');?></label></th>
+						<td>
+							<select name="argon_friend_link_worker_enabled">
+								<option value="true" <?php selected($friend_link_worker_enabled, true); ?>><?php _e('启用', 'argon');?></option>
+								<option value="false" <?php selected($friend_link_worker_enabled, false); ?>><?php _e('停用', 'argon');?></option>
+							</select>
+							<p class="description">
+								<?php
+								if ($friend_link_worker_configured) {
+									_e('配置完整，友链申请和管理员批量复检会通过 Worker 异步处理。', 'argon');
+								} elseif ($friend_link_worker_enabled) {
+									_e('已启用但配置不完整，不会自动派发检测任务。', 'argon');
+								} else {
+									_e('当前停用，不会自动派发检测任务。', 'argon');
+								}
+								?>
+							</p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('Worker 基础 URL', 'argon');?></label></th>
+						<td>
+							<input type="url" name="argon_friend_link_worker_url" class="regular-text" value="<?php echo esc_attr($friend_link_worker_url); ?>" placeholder="https://your-worker.example.workers.dev">
+							<p class="description"><?php _e('填写 Worker 的 HTTPS 地址，不含 /v1/jobs。wp-config.php 常量和环境变量优先于后台值。', 'argon');?></p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('提交 HMAC 密钥', 'argon');?></label></th>
+						<td>
+							<input type="password" name="argon_friend_link_submit_hmac_secret" class="regular-text" autocomplete="new-password" data-argon-sensitive placeholder="<?php esc_attr_e('留空保持现有值', 'argon'); ?>">
+							<p class="description">
+								<?php printf(__('当前来源：%s。必须与 Worker 的 SUBMIT_HMAC_SECRET 完全一致。', 'argon'), esc_html($friend_link_worker_source_labels[$friend_link_worker_sources['submit']])); ?>
+							</p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('回调 HMAC 密钥', 'argon');?></label></th>
+						<td>
+							<input type="password" name="argon_friend_link_callback_hmac_secret" class="regular-text" autocomplete="new-password" data-argon-sensitive placeholder="<?php esc_attr_e('留空保持现有值', 'argon'); ?>">
+							<p class="description">
+								<?php printf(__('当前来源：%s。必须与 Worker 的 CALLBACK_HMAC_SECRET 完全一致。', 'argon'), esc_html($friend_link_worker_source_labels[$friend_link_worker_sources['callback']])); ?>
+							</p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('清除后台密钥', 'argon');?></label></th>
+						<td>
+							<label><input type="checkbox" name="argon_friend_link_worker_clear_secrets" value="true" data-argon-sensitive> <?php _e('保存时删除数据库中的两个 HMAC 密钥', 'argon');?></label>
+							<p class="description"><?php _e('不会删除 wp-config.php 常量、环境变量或 Cloudflare Worker Secret。ADMIN_READ_TOKEN 只在 Cloudflare 中配置。', 'argon');?></p>
+						</td>
+					</tr>
+
 					<tr>
 						<th><label><?php _e('友链管理', 'argon');?></label></th>
 						<td>
@@ -7329,7 +7412,7 @@ window.pjaxLoaded = function(){
 
 			};
 
-			$("#main_form > .form-table input:not([name='submit']) , #main_form > .form-table select , #main_form > .form-table textarea").each(function(){
+			$("#main_form > .form-table input:not([name='submit']):not([data-argon-sensitive]) , #main_form > .form-table select:not([data-argon-sensitive]) , #main_form > .form-table textarea:not([data-argon-sensitive])").each(function(){
 
 				name = $(this).attr("name");
 
@@ -7357,9 +7440,17 @@ window.pjaxLoaded = function(){
 
 				try{
 
-					if ($("*[name='" + name + "']").length == 0){
+					let input = $("*[name='" + name + "']");
+
+					if (input.length == 0){
 
 						throw "Input Not Found";
+
+					}
+
+					if (input.is("[data-argon-sensitive]")){
+
+						throw "Sensitive Input";
 
 					}
 
@@ -7431,6 +7522,38 @@ function argon_update_option_checkbox($name){
 
 		update_option($name, 'false');
 
+	}
+
+}
+
+function argon_update_friend_link_worker_settings(){
+
+	$enabled = isset($_POST['argon_friend_link_worker_enabled'])
+		&& wp_unslash($_POST['argon_friend_link_worker_enabled']) === 'true'
+		? 'true'
+		: 'false';
+	update_option('argon_friend_link_worker_enabled', $enabled);
+
+	$worker_url = isset($_POST['argon_friend_link_worker_url'])
+		? esc_url_raw(trim(wp_unslash($_POST['argon_friend_link_worker_url'])))
+		: '';
+	update_option('argon_friend_link_worker_url', rtrim($worker_url, '/'));
+
+	$clear_secrets = isset($_POST['argon_friend_link_worker_clear_secrets'])
+		&& wp_unslash($_POST['argon_friend_link_worker_clear_secrets']) === 'true';
+	$secret_options = array(
+		'argon_friend_link_submit_hmac_secret',
+		'argon_friend_link_callback_hmac_secret',
+	);
+	if ($clear_secrets) {
+		foreach ($secret_options as $option_name) delete_option($option_name);
+		return;
+	}
+
+	foreach ($secret_options as $option_name) {
+		if (!isset($_POST[$option_name])) continue;
+		$value = sanitize_text_field(wp_unslash($_POST[$option_name]));
+		if ($value !== '') update_option($option_name, $value, false);
 	}
 
 }
@@ -7615,6 +7738,7 @@ function argon_update_themeoptions(){
 		argon_update_option('argon_feedback_image_source_max_mb');
 		argon_update_option('argon_friend_link_hide_no_backlink');
 		argon_update_option_allow_tags('argon_friend_link_requirements');
+		argon_update_friend_link_worker_settings();
 
 		// 邮件模板相关配置
 		argon_update_option('argon_email_theme_color');
