@@ -8,15 +8,15 @@
     "enabled": true
   },
   "vars": {
-    "ALLOWED_ORIGIN": "https://blog.example.com",
-    "SITE_URL": "https://blog.example.com",
-    "CALLBACK_URL": "https://blog.example.com/wp-json/argon/v1/friend-link-result"
+    "ALLOWED_ORIGIN": "https://blog.cartol.top",
+    "SITE_URL": "https://blog.cartol.top",
+    "CALLBACK_URL": "https://blog.cartol.top/wp-json/argon/v1/friend-link-result"
   },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "friend-links",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "database_id": "14452365-ea72-435f-8475-dc207f575142",
       "migrations_dir": "migrations"
     }
   ],
