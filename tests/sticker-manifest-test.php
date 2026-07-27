@@ -80,6 +80,7 @@ $animated_total = 0;
 $codes = array();
 $legacy_codes = array('dinosaur-shy' => false, 'flower-tile' => false);
 $defaulted_title_category_found = false;
+$orders = array();
 
 foreach ($manifest_categories as $index => $category) {
 	$group = isset($sticker_groups[$index]) ? $sticker_groups[$index] : array();
@@ -92,6 +93,10 @@ foreach ($manifest_categories as $index => $category) {
 	}
 	argon_sticker_assert(isset($group['groupname']) && $group['groupname'] === $category['name'], '分类显示名称没有按清单顺序加载：' . $category['name']);
 	argon_sticker_assert(isset($group['directory']) && $group['directory'] === $category['directory'], '分类与文件夹映射错误：' . $category['directory']);
+	argon_sticker_assert(isset($raw_category['order']) && is_int($raw_category['order']), 'manifest 分类缺少整数 order：' . $category['directory']);
+	argon_sticker_assert(isset($group['order']) && $group['order'] === $category['order'], 'order 没有传入表情组：' . $category['directory']);
+	argon_sticker_assert(!isset($orders[$category['order']]), 'manifest 出现重复 order：' . $category['order']);
+	$orders[$category['order']] = true;
 	argon_sticker_assert(isset($group['use_filename_as_title']) && $group['use_filename_as_title'] === $expected_filename_as_title, 'use_filename_as_title 没有按分类覆盖或继承默认值：' . $category['directory']);
 
 	$directory_files = @scandir($root . '/stickers/' . $category['directory']);
@@ -138,6 +143,10 @@ argon_sticker_assert($actual_total === $expected_total, '自动发现的图片�
 argon_sticker_assert($animated_total === $expected_animated_total, '动态图片识别数量与目录不一致。');
 argon_sticker_assert(!in_array(false, $legacy_codes, true), '小恐龙或花表情的旧代码没有保留。');
 argon_sticker_assert($defaulted_title_category_found, '清单中至少应有一个分类验证默认 use_filename_as_title=false。');
+$sorted_orders = array_keys($orders);
+$expected_sorted_orders = $sorted_orders;
+sort($expected_sorted_orders, SORT_NUMERIC);
+argon_sticker_assert($sorted_orders === $expected_sorted_orders, '表情分类没有按 manifest order 升序加载。');
 
 $flower_group = null;
 foreach ($sticker_groups as $group) {
@@ -148,9 +157,9 @@ foreach ($sticker_groups as $group) {
 }
 argon_sticker_assert(
 	is_array($flower_group)
-	&& isset($flower_group['description'])
-	&& $flower_group['description'] === 'Source: github.com/k4yt3x/flowerhd',
-	'Flower 来源说明没有由 manifest description 字段提供。'
+	&& isset($flower_group['source'])
+	&& $flower_group['source'] === 'Source: github.com/k4yt3x/flowerhd',
+	'Flower 来源说明没有由 manifest source 字段提供。'
 );
 
 ob_start();
@@ -158,7 +167,13 @@ include $root . '/template-parts/emotion-keyboard.php';
 $keyboard_html = ob_get_clean();
 argon_sticker_assert(substr_count($keyboard_html, 'data-sticker-src=') === $expected_total, '表情面板没有为全部贴图输出延迟加载地址。');
 argon_sticker_assert(substr_count($keyboard_html, 'emotion-item-animated') === $expected_animated_total, '动态贴图标记数量不正确。');
-argon_sticker_assert(strpos($keyboard_html, 'Source: github.com/k4yt3x/flowerhd') !== false, '清单 description 没有渲染到 emotion-group-description。');
+argon_sticker_assert(strpos($keyboard_html, 'Source: github.com/k4yt3x/flowerhd') !== false, '清单 source 没有渲染到 emotion-group-description。');
+argon_sticker_assert(
+	strpos($keyboard_html, 'emotion-keyboard-descriptions') !== false
+	&& strpos($keyboard_html, 'emotion-item-title') !== false
+	&& strpos($keyboard_html, "emotion-item-sticker' code=") !== false,
+	'表情来源没有固定在底部区域，或图片标题没有改为图片下方文字。'
+);
 
 $animated_code = '';
 foreach ($sticker_groups as $group) {
@@ -190,9 +205,9 @@ $server_extension_pattern = '(?:' . implode('|', $allowed_extensions) . ')';
 
 argon_sticker_assert(
 	strpos($template, 'esc_url($emotion[\'src\'])') !== false
-	&& strpos($template, 'esc_html($group[\'description\'])') !== false
+	&& strpos($template, "esc_html(implode(' · ', \$footerParts))") !== false
 	&& strpos($template, "data-sticker-src") !== false,
-	'表情面板没有安全输出 URL/description，或没有按分类延迟加载。'
+	'表情面板没有安全输出 URL/来源说明，或没有按分类延迟加载。'
 );
 argon_sticker_assert(
 	strpos($comment_renderer, 'argon_replace_comment_stickers') !== false
@@ -209,12 +224,15 @@ argon_sticker_assert(
 	strpos($template, 'emotion-keyboard-scroll') !== false
 	&& strpos($javascript, 'scrollEmotionKeyboardBar') !== false
 	&& strpos($javascript, 'keyboard.offsetWidth') !== false
-	&& strpos($javascript, 'keyboard.offsetHeight') !== false,
+	&& strpos($javascript, 'keyboard.offsetHeight') !== false
+	&& strpos($javascript, 'buttonCenter - keyboardWidth / 2') !== false,
 	'放大的表情面板没有可操作的分类滚动菜单，或定位仍使用旧的固定尺寸。'
 );
 argon_sticker_assert(
 	preg_match('/\.emotion-keyboard\s*\{[^}]*width:\s*min\(720px,/s', $stylesheet) === 1
-	&& preg_match('/#todo-input\s*,\s*#post_comment_content\s*,\s*#emotion_keyboard\s*\{[^}]*background:\s*transparent\s*!important;[^}]*box-shadow:\s*none\s*!important;/s', $stylesheet) === 1,
+	&& preg_match('/\.emotion-keyboard\s*\{[^}]*height:\s*auto;[^}]*max-height:\s*min\(440px,/s', $stylesheet) === 1
+	&& strpos($stylesheet, 'grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));') !== false
+	&& preg_match('/#todo-input\s*,\s*#post_comment_content\s*,\s*#emotion_keyboard\s*,\s*\.todo-completed-divider\.collapsed\s*\{[^}]*background:\s*transparent\s*!important;[^}]*box-shadow:\s*none\s*!important;[^}]*border:\s*none\s*!important;/s', $stylesheet) === 1,
 	'表情面板没有扩大，或 TODO、评论输入框和表情面板没有复用透明表面样式。'
 );
 argon_sticker_assert(

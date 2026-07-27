@@ -2,19 +2,19 @@
   "version": 1,
   "use_filename_as_title": false,
   "categories": [
-    { "name": "2233娘", "directory": "2233", "use_filename_as_title": true, "description": "来源：Bilibili" },
-    { "name": "字母表情", "directory": "abc", "use_filename_as_title": true, "description": "来源：Bilibili" },
-    { "name": "小豆泥", "directory": "azuki", "use_filename_as_title": true, "description": "来源：Bilibili,作者：Nobeko" },
-    { "name": "哔哩哔哩", "directory": "bilibili", "use_filename_as_title": true, "description": "来源：Bilibili" },
-    { "name": "小电视", "directory": "bilibili-tv", "use_filename_as_title": true, "description": "来源：Bilibili" },
-    { "name": "仓鼠松鼠", "directory": "bison", "use_filename_as_title": true, "description": "来源：Bilibili，作者：仓鼠Bison" },
-    { "name": "保卫萝卜", "directory": "carrot", "use_filename_as_title": true, "description": "来源：Bilibili" },
-    { "name": "小恐龙", "directory": "dinosaur" },
-    { "name": "花!", "directory": "flower", "description": "Source: github.com/k4yt3x/flowerhd" },
-    { "name": "别当欧尼酱", "directory": "onimai", "use_filename_as_title": true, "description": "来源：Bilibili,作者：猫豆腐" },
-    { "name": "别当欧尼酱动态", "directory": "onimai-gif", "use_filename_as_title": true, "description": "来源：Bilibili,作者：猫豆腐" },
-    { "name": "蛆音娘", "directory": "qu-niang", "use_filename_as_title": true, "description": "来源：Bilibili" },
-    { "name": "贴吧表情", "directory": "tieba-emotion" },
-    { "name": "贴吧脸谱", "directory": "tieba-face" }
+    { "name": "2233娘", "directory": "2233", "order": 10, "use_filename_as_title": true, "description": "来源：Bilibili" },
+    { "name": "字母表情", "directory": "abc", "order": 20, "use_filename_as_title": true, "description": "来源：Bilibili" },
+    { "name": "小豆泥", "directory": "azuki", "order": 30, "use_filename_as_title": true, "description": "来源：Bilibili,作者：Nobeko" },
+    { "name": "哔哩哔哩", "directory": "bilibili", "order": 40, "use_filename_as_title": true, "description": "来源：Bilibili" },
+    { "name": "小电视", "directory": "bilibili-tv", "order": 50, "use_filename_as_title": true, "description": "来源：Bilibili" },
+    { "name": "仓鼠松鼠", "directory": "bison", "order": 60, "use_filename_as_title": true, "description": "来源：Bilibili，作者：仓鼠Bison" },
+    { "name": "保卫萝卜", "directory": "carrot", "order": 70, "use_filename_as_title": true, "description": "来源：Bilibili" },
+    { "name": "小恐龙", "directory": "dinosaur", "order": 80 },
+    { "name": "花!", "directory": "flower", "order": 90, "source": "Source: github.com/k4yt3x/flowerhd" },
+    { "name": "别当欧尼酱", "directory": "onimai", "order": 100, "use_filename_as_title": true, "description": "来源：Bilibili,作者：猫豆腐" },
+    { "name": "别当欧尼酱动态", "directory": "onimai-gif", "order": 110, "use_filename_as_title": true, "description": "来源：Bilibili,作者：猫豆腐" },
+    { "name": "蛆音娘", "directory": "qu-niang", "order": 120, "use_filename_as_title": true, "description": "来源：Bilibili" },
+    { "name": "贴吧表情", "directory": "tieba-emotion", "order": 130 },
+    { "name": "贴吧脸谱", "directory": "tieba-face", "order": 140 }
   ]
 }

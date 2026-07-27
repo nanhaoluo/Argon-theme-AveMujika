@@ -29,6 +29,14 @@ foreach (array(
     );
 }
 
+argon_worker_settings_assert(
+    strpos($settings_source, 'id="argon-test-friend-link-worker"') !== false
+    && strpos($settings_source, "add_action('wp_ajax_argon_test_friend_link_worker'") !== false
+    && strpos($settings_source, "wp_safe_remote_get(\$health_url") !== false
+    && strpos($settings_source, "\$payload['service'] !== 'friend-link-checker'") !== false,
+    '后台缺少 Worker /health 安全连通性测试。'
+);
+
 foreach (array(
     'argon_friend_link_submit_hmac_secret',
     'argon_friend_link_callback_hmac_secret',
@@ -58,8 +66,22 @@ define('DAY_IN_SECONDS', 86400);
 $GLOBALS['argon_worker_settings_options'] = array();
 $GLOBALS['argon_worker_settings_updates'] = array();
 $GLOBALS['argon_worker_settings_transients'] = array();
+$GLOBALS['argon_worker_health_response'] = array(
+    'response' => array('code' => 200),
+    'body' => '{"ok":true,"service":"friend-link-checker"}',
+);
+$GLOBALS['argon_worker_health_requested_url'] = '';
+
+class WP_Error {
+    private $code;
+    private $message;
+    public function __construct($code, $message) { $this->code = $code; $this->message = $message; }
+    public function get_error_code() { return $this->code; }
+    public function get_error_message() { return $this->message; }
+}
 
 function add_action($hook, $callback, $priority = 10, $accepted_args = 1) {}
+function __($text, $domain = null) { return $text; }
 function get_option($name, $default = false) {
     return array_key_exists($name, $GLOBALS['argon_worker_settings_options'])
         ? $GLOBALS['argon_worker_settings_options'][$name]
@@ -86,9 +108,40 @@ function set_transient($key, $value, $expiration) {
     $GLOBALS['argon_worker_settings_transients'][$key] = $value;
     return true;
 }
+function wp_http_validate_url($url) {
+    if (strpos($url, 'https://') !== 0) return false;
+    $host = strtolower((string)parse_url($url, PHP_URL_HOST));
+    if ($host === 'localhost' || $host === '127.0.0.1' || $host === '::1') return false;
+    return $url;
+}
+function wp_safe_remote_get($url, $args = array()) {
+    $GLOBALS['argon_worker_health_requested_url'] = $url;
+    return $GLOBALS['argon_worker_health_response'];
+}
+function wp_remote_retrieve_response_code($response) { return $response['response']['code']; }
+function wp_remote_retrieve_body($response) { return $response['body']; }
+function is_wp_error($value) { return $value instanceof WP_Error; }
 
 require $root . '/settings.php';
 require $root . '/inc/friend-link-worker.php';
+
+$health = argon_test_friend_link_worker_health('https://worker.example.net/');
+argon_worker_settings_assert(
+    is_array($health)
+    && $health['service'] === 'friend-link-checker'
+    && $GLOBALS['argon_worker_health_requested_url'] === 'https://worker.example.net/health',
+    'Worker 健康检查没有验证预期的 HTTPS /health 响应。'
+);
+argon_worker_settings_assert(
+    is_wp_error(argon_test_friend_link_worker_health('http://worker.example.net')),
+    'Worker 健康检查允许了非 HTTPS 地址。'
+);
+$GLOBALS['argon_worker_health_requested_url'] = '';
+argon_worker_settings_assert(
+    is_wp_error(argon_test_friend_link_worker_health('https://127.0.0.1'))
+    && $GLOBALS['argon_worker_health_requested_url'] === '',
+    'Worker 健康检查没有在发起请求前拒绝回环地址。'
+);
 
 $GLOBALS['argon_worker_settings_options'] = array(
     'argon_friend_link_submit_hmac_secret' => 'stored-submit-secret',

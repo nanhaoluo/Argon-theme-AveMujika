@@ -52,7 +52,7 @@ function argon_read_sticker_manifest($manifest_path) {
 		&& $manifest['use_filename_as_title'] === true;
 	$categories = array();
 	$seen_directories = array();
-	foreach ($manifest['categories'] as $category) {
+	foreach ($manifest['categories'] as $manifest_index => $category) {
 		if (!is_array($category) || empty($category['name']) || empty($category['directory'])) {
 			continue;
 		}
@@ -66,6 +66,10 @@ function argon_read_sticker_manifest($manifest_path) {
 		$normalized = array(
 			'name' => $name,
 			'directory' => $directory,
+			'order' => isset($category['order']) && is_numeric($category['order'])
+				? intval($category['order'])
+				: intval($manifest_index),
+			'_manifest_index' => intval($manifest_index),
 			'use_filename_as_title' => array_key_exists('use_filename_as_title', $category)
 				? $category['use_filename_as_title'] === true
 				: $default_filename_as_title,
@@ -73,10 +77,22 @@ function argon_read_sticker_manifest($manifest_path) {
 		if (!empty($category['description'])) {
 			$normalized['description'] = trim((string) $category['description']);
 		}
+		if (!empty($category['source'])) {
+			$normalized['source'] = trim((string) $category['source']);
+		}
 
 		$categories[] = $normalized;
 		$seen_directories[$directory] = true;
 	}
+
+	usort($categories, function($left, $right) {
+		if ($left['order'] === $right['order']) {
+			return $left['_manifest_index'] <=> $right['_manifest_index'];
+		}
+		return $left['order'] <=> $right['order'];
+	});
+	foreach ($categories as &$category) unset($category['_manifest_index']);
+	unset($category);
 
 	return $categories;
 }
@@ -241,11 +257,15 @@ function argon_load_sticker_groups() {
 		$group = array(
 			'groupname' => $category['name'],
 			'directory' => $category['directory'],
+			'order' => $category['order'],
 			'use_filename_as_title' => $category['use_filename_as_title'],
 			'list' => $list,
 		);
 		if (isset($category['description'])) {
 			$group['description'] = $category['description'];
+		}
+		if (isset($category['source'])) {
+			$group['source'] = $category['source'];
 		}
 		$groups[] = $group;
 	}

@@ -48,6 +48,14 @@ function themeoptions_page(){
 
 			}
 
+			th.subtitle > h4 {
+				font-size: 15px;
+				margin: 1.2em 0 .6em;
+				padding-left: 12px;
+				border-left: 3px solid #dcdcde;
+				color: #50575e;
+			}
+
 			th.subtitle {
 
 				padding: 0;
@@ -194,6 +202,12 @@ function themeoptions_page(){
 		<h1 style="color: #5e72e4; margin-top: 30px; font-size: 32px;"><?php _e("Argon 主题设置", 'argon'); ?></h1>
 
 		<p><?php _e("按下", 'argon'); ?> <kbd style="font-family: sans-serif;">Ctrl + F</kbd> <?php _e("或在右侧目录中来查找设置", 'argon'); ?></p>
+
+		<div class="argon-settings-tools">
+			<button type="button" class="button" onclick="exportSettings();"><?php _e('导出设置', 'argon'); ?></button>
+			<button type="button" class="button" onclick="importSettings();"><?php _e('导入设置', 'argon'); ?></button>
+			<span class="description"><?php _e('修改设置后，请使用该项右侧出现的“保存”或“撤销”按钮。', 'argon'); ?></span>
+		</div>
 
 		<form method="POST" action="" id="main_form">
 
@@ -648,7 +662,7 @@ function themeoptions_page(){
 					<!-- ========== 3. 整体布局 ========== -->
 					<tr><th class="subtitle"><h3 id="section-toolbar"><?php _e('顶栏设置', 'argon');?></h3></th></tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-toolbar-basic"><?php _e('基本设置', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-toolbar-basic"><?php _e('基本设置', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -674,7 +688,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-toolbar-title"><?php _e('顶栏标题', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-toolbar-title"><?php _e('顶栏标题', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -690,7 +704,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-toolbar-icon"><?php _e('顶栏图标', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-toolbar-icon"><?php _e('顶栏图标', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -720,7 +734,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-toolbar-appearance"><?php _e('顶栏外观', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-toolbar-appearance"><?php _e('顶栏外观', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -856,7 +870,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-toolbar-links"><?php _e('自定义链接', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-toolbar-links"><?php _e('自定义链接', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -889,7 +903,7 @@ function themeoptions_page(){
 					<!-- ========== 5. Banner 设置 ========== -->
 					<tr><th class="subtitle"><h3 id="section-banner"><?php _e('Banner 设置', 'argon');?></h3></th></tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-banner-content"><?php _e('Banner 内容', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-banner-content"><?php _e('Banner 内容', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -919,7 +933,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-banner-appearance"><?php _e('Banner 外观', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-banner-appearance"><?php _e('Banner 外观', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -1065,7 +1079,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-banner-animation"><?php _e('Banner 动画', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-banner-animation"><?php _e('Banner 动画', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -1106,7 +1120,7 @@ function themeoptions_page(){
 					<!-- ========== 6. 页面背景 ========== -->
 					<tr><th class="subtitle"><h3 id="section-background"><?php _e('页面背景', 'argon');?></h3></th></tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-background-image"><?php _e('背景图片', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-background-image"><?php _e('背景图片', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -1136,7 +1150,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-transparency"><?php _e('透明度与毛玻璃', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-transparency"><?php _e('透明度与毛玻璃', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -1818,7 +1832,7 @@ function themeoptions_page(){
 				<!-- ========== 12. AI 功能 ========== -->
 <tr><th class="subtitle"><h3 id="section-post-features"><?php _e('文章功能', 'argon');?></h3></th></tr>
 
-<tr><th class="subtitle"><h3 id="subsection-footnote"><?php _e('脚注引用', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-footnote"><?php _e('脚注引用', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -1834,7 +1848,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-share"><?php _e('分享', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-share"><?php _e('分享', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -1862,7 +1876,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-toc"><?php _e('文章目录', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-toc"><?php _e('文章目录', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -1886,7 +1900,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-donate"><?php _e('赞赏', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-donate"><?php _e('赞赏', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -1902,7 +1916,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-post-footer"><?php _e('文末内容', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-post-footer"><?php _e('文末内容', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -1918,7 +1932,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-related-posts"><?php _e('相似文章推荐', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-related-posts"><?php _e('相似文章推荐', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -2008,7 +2022,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-title-style"><?php _e('标题样式', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-title-style"><?php _e('标题样式', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -2106,7 +2120,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-post-other"><?php _e('过时提示', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-post-other"><?php _e('过时提示', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -2161,7 +2175,7 @@ function themeoptions_page(){
 
 					<tr><th class="subtitle"><h3 id="section-comment"><?php _e('评论设置', 'argon');?></h3></th></tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-comment-pagination"><?php _e('评论分页', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-comment-pagination"><?php _e('评论分页', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -2239,7 +2253,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-comment-submit"><?php _e('发送评论', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-comment-submit"><?php _e('发送评论', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -2288,7 +2302,7 @@ function themeoptions_page(){
 					<!-- ========== 18. 验证码设置 ========== -->
 					<tr><th class="subtitle"><h3 id="section-captcha"><?php _e('验证码设置', 'argon');?></h3></th></tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-captcha"><?php _e('验证码配置', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-captcha"><?php _e('验证码配置', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -2480,7 +2494,7 @@ function themeoptions_page(){
 
 				</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-captcha-scenes"><?php _e('场景验证码', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-captcha-scenes"><?php _e('场景验证码', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -2746,7 +2760,7 @@ function themeoptions_page(){
 					<!-- ========== 8. 浮动按钮 ========== -->
 					<tr><th class="subtitle"><h3 id="section-fab"><?php _e('浮动按钮', 'argon');?></h3></th></tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-fab"><?php _e('浮动操作按钮', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-fab"><?php _e('浮动操作按钮', 'argon');?></h4></th></tr>
 
 					<tr><th class="subtitle"><p class="description"><?php _e('浮动操作按钮位于页面右下角（或左下角）', 'argon');?></p></th></tr>
 
@@ -2820,7 +2834,7 @@ function themeoptions_page(){
 					<!-- ========== 9. 页脚设置 ========== -->
 					<tr><th class="subtitle"><h3 id="section-special-pages"><?php _e('特殊页面', 'argon');?></h3></th></tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-archive"><?php _e('归档页面', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-archive"><?php _e('归档页面', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -2859,7 +2873,7 @@ function themeoptions_page(){
 					<!-- ========== 14. 功能增强 ========== -->
 					<tr><th class="subtitle"><h3 id="section-enhancements"><?php _e('功能增强', 'argon');?></h3></th></tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-code-highlight"><?php _e('代码高亮', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-code-highlight"><?php _e('代码高亮', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -2999,7 +3013,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-math"><?php _e('数学公式', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-math"><?php _e('数学公式', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -3132,7 +3146,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-lazyload">Lazyload</h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-lazyload">Lazyload</h4></th></tr>
 
 					<tr>
 
@@ -3236,7 +3250,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-lightbox"><?php _e('图片放大浏览', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-lightbox"><?php _e('图片放大浏览', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -3354,7 +3368,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-pangu">Pangu.js</h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-pangu">Pangu.js</h4></th></tr>
 
 					<tr>
 
@@ -4806,7 +4820,8 @@ function themeoptions_page(){
 				<tr class="panic-mode-settings" style="<?php echo ($argon_panic_mode_enable !== 'true') ? 'display:none;' : ''; ?>">
 					<th><label><?php _e('敏感日期范围', 'argon');?></label></th>
 					<td>
-						<div id="panic-mode-date-ranges">
+						<input type="hidden" name="argon_panic_mode_date_ranges_present" value="true" data-argon-internal>
+						<div id="panic-mode-date-ranges" data-argon-dynamic-container>
 							<?php 
 							$date_ranges = get_option('argon_panic_mode_date_ranges', '[]');
 							$date_ranges = json_decode($date_ranges, true);
@@ -4901,6 +4916,7 @@ function themeoptions_page(){
 							'<button type="button" class="button remove-panic-date-range" style="color: #d63638;">×</button>' +
 							'</div>';
 						$('#panic-mode-date-ranges').append(html);
+						$(this).closest('tr').find('input[name="argon_panic_mode_date_ranges_present"]').trigger('change');
 					});
 	
 					// 预置日期选择
@@ -4928,6 +4944,7 @@ function themeoptions_page(){
 								'<button type="button" class="button remove-panic-date-range" style="color: #d63638;">×</button>' +
 								'</div>';
 							$('#panic-mode-date-ranges').append(html);
+							$(this).closest('tr').find('input[name="argon_panic_mode_date_ranges_present"]').trigger('change');
 						}
 						
 						$(this).val('');
@@ -4935,7 +4952,9 @@ function themeoptions_page(){
 	
 					// 删除日期范围
 					$(document).on('click', '.remove-panic-date-range', function() {
+						var $row = $(this).closest('tr');
 						$(this).closest('.panic-date-range-item').remove();
+						$row.find('input[name="argon_panic_mode_date_ranges_present"]').trigger('change');
 					});
 				});
 				</script>
@@ -4949,7 +4968,7 @@ function themeoptions_page(){
 
 					<tr><th class="subtitle"><h3 id="section-feedback-security"><?php _e('反馈与安全', 'argon');?></h3></th></tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-feedback"><?php _e('反馈设置', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-feedback"><?php _e('反馈设置', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -4995,7 +5014,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-rate-limit"><?php _e('速率限制', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-rate-limit"><?php _e('速率限制', 'argon');?></h4></th></tr>
 
 				<tr>
 
@@ -5143,7 +5162,7 @@ function themeoptions_page(){
 				</tr>
 
 					<!-- ========== 返回评论系统 ========== -->
-					<tr><th class="subtitle"><h3 id="subsection-comment-features"><?php _e('评论功能', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-comment-features"><?php _e('评论功能', 'argon');?></h4></th></tr>
 
 				<tr>
 
@@ -5267,7 +5286,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-comment-appearance"><?php _e('评论区外观', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-comment-appearance"><?php _e('评论区外观', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -5469,7 +5488,7 @@ function themeoptions_page(){
 
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-search"><?php _e('搜索', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-search"><?php _e('搜索', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -5712,7 +5731,7 @@ function themeoptions_page(){
 					</tr>
 
 					<!-- ========== 邮件模板设置 ========== -->
-					<tr><th class="subtitle"><h3 id="subsection-email-template"><?php _e('邮件模板', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-email-template"><?php _e('邮件模板', 'argon');?></h4></th></tr>
 
 					<tr>
 						<th><label><?php _e('邮件主题色', 'argon');?></label></th>
@@ -5786,7 +5805,7 @@ function themeoptions_page(){
 						</td>
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-email-templates-custom"><?php _e('邮件内容模板', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-email-templates-custom"><?php _e('邮件内容模板', 'argon');?></h4></th></tr>
 
 					<tr>
 						<th><label><?php _e('模板编辑', 'argon');?></label></th>
@@ -5942,7 +5961,7 @@ function themeoptions_page(){
 						</td>
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-friend-links"><?php _e('友情链接', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-friend-links"><?php _e('友情链接', 'argon');?></h4></th></tr>
 
 					<tr>
 						<th><label><?php _e('页面标语', 'argon');?></label></th>
@@ -6043,6 +6062,8 @@ function themeoptions_page(){
 						<th><label><?php _e('Worker 基础 URL', 'argon');?></label></th>
 						<td>
 							<input type="url" name="argon_friend_link_worker_url" class="regular-text" value="<?php echo esc_attr($friend_link_worker_url); ?>" placeholder="https://your-worker.example.workers.dev">
+							<button type="button" class="button" id="argon-test-friend-link-worker"><?php _e('测试连通性', 'argon');?></button>
+							<span id="argon-friend-link-worker-test-status" class="argon-inline-test-status" role="status" aria-live="polite"></span>
 							<p class="description"><?php _e('填写 Worker 的 HTTPS 地址，不含 /v1/jobs。wp-config.php 常量和环境变量优先于后台值。', 'argon');?></p>
 						</td>
 					</tr>
@@ -6083,7 +6104,7 @@ function themeoptions_page(){
 						</td>
 					</tr>
 
-					<tr><th class="subtitle"><h3 id="subsection-misc"><?php _e('杂项', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-misc"><?php _e('杂项', 'argon');?></h4></th></tr>
 
 					<tr>						<th><label><?php _e('是否启用 Pjax', 'argon');?></label></th>
 
@@ -6885,10 +6906,8 @@ function themeoptions_page(){
 					<tr><th class="subtitle"><h2 id="category-8">8. 高级设置</h2></th></tr>
 
 				<tr><th class="subtitle"><h3 id="section-advanced"><?php _e('高级设置', 'argon');?></h3></th></tr>
-					<!-- ========== 16. 高级设置 ========== -->
-				<tr><th class="subtitle"><h3 id="section-advanced"><?php _e('高级设置', 'argon');?></h3></th></tr>
 
-				<tr><th class="subtitle"><h3 id="subsection-scripts"><?php _e('自定义脚本', 'argon');?></h3></th></tr>
+					<tr><th class="subtitle"><h4 id="subsection-scripts"><?php _e('自定义脚本', 'argon');?></h4></th></tr>
 
 					<tr>
 
@@ -6950,16 +6969,6 @@ window.pjaxLoaded = function(){
 				</tbody>
 
 			</table>
-
-			<p class="submit argon-settings-submit">
-
-				<input type="submit" name="submit" id="submit" class="button button-primary" value="<?php esc_attr_e('保存更改', 'argon'); ?>" />
-
-				<button type="button" class="button" onclick="exportSettings();"><?php _e('导出设置', 'argon'); ?></button>
-
-				<button type="button" class="button" onclick="importSettings();"><?php _e('导入设置', 'argon'); ?></button>
-
-			</p>
 
 		</form>
 
@@ -7261,13 +7270,66 @@ window.pjaxLoaded = function(){
 
 		}
 
-		#main_form > .argon-settings-submit{
-
-			margin-right: 210px;
-
-			max-width: calc(100% - 210px);
-
+		.argon-settings-tools {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			margin: 12px 210px 12px 0;
 		}
+
+		#main_form > .form-table > tbody > tr > th:not(.subtitle) {
+			width: 230px;
+			min-width: 230px;
+		}
+
+		#main_form > .form-table > tbody > tr > th:not(.subtitle) > label,
+		#main_form > .form-table .subtitle h2,
+		#main_form > .form-table .subtitle h3,
+		#main_form > .form-table .subtitle h4 {
+			word-break: keep-all;
+			overflow-wrap: normal;
+		}
+
+		#main_form > .form-table > tbody > tr > th:not(.subtitle) > label {
+			white-space: nowrap;
+		}
+
+		#main_form > .form-table > tbody > tr.argon-setting-row > td {
+			position: relative;
+			padding-right: 166px;
+		}
+
+		.argon-row-actions {
+			position: absolute;
+			right: 16px;
+			top: 15px;
+			display: none;
+			align-items: center;
+			gap: 6px;
+			padding-left: 10px;
+		}
+
+		.argon-setting-row.is-dirty > td > .argon-row-actions {
+			display: inline-flex;
+		}
+
+		.argon-row-actions .argon-row-status {
+			max-width: 88px;
+			font-size: 12px;
+			color: #646970;
+			white-space: normal;
+		}
+
+		.argon-inline-test-status {
+			display: inline-block;
+			margin-left: 8px;
+			font-size: 12px;
+		}
+
+		.argon-inline-test-status.is-success,
+		.argon-row-status.is-success { color: #008a20; }
+		.argon-inline-test-status.is-error,
+		.argon-row-status.is-error { color: #d63638; }
 
 		@media screen and (max-width:960px){
 
@@ -7279,12 +7341,24 @@ window.pjaxLoaded = function(){
 
 			}
 
-			#main_form > .argon-settings-submit{
-
+			.argon-settings-tools {
 				margin-right: 0;
+				flex-wrap: wrap;
+			}
 
-				max-width: 100%;
+			#main_form > .form-table > tbody > tr > th:not(.subtitle) {
+				width: auto;
+				min-width: 0;
+			}
 
+			#main_form > .form-table > tbody > tr.argon-setting-row > td {
+				padding-right: 10px;
+			}
+
+			.argon-row-actions {
+				position: static;
+				margin-top: 10px;
+				padding-left: 0;
 			}
 
 		}
@@ -7304,7 +7378,190 @@ window.pjaxLoaded = function(){
 			e.stopPropagation();
 		});
 
+		function argonSettingRowControls(row) {
+			return $(row).find("input[name], select[name], textarea[name]").filter(function () {
+				let type = String(this.type || "").toLowerCase();
+				let name = String(this.name || "");
+				return type !== "button" && type !== "submit" && type !== "reset" && type !== "file"
+					&& name !== "update_themeoptions" && name !== "argon_update_themeoptions_nonce";
+			});
+		}
+
+		function argonCaptureSettingRow(row) {
+			let occurrences = {};
+			let state = [];
+			argonSettingRowControls(row).each(function () {
+				let name = String(this.name || "");
+				let occurrence = occurrences[name] || 0;
+				occurrences[name] = occurrence + 1;
+				let item = {
+					name: name,
+					occurrence: occurrence,
+					type: String(this.type || this.tagName || "").toLowerCase(),
+					value: $(this).val()
+				};
+				if (this.type === "checkbox" || this.type === "radio") item.checked = this.checked;
+				state.push(item);
+			});
+			return JSON.stringify(state);
+		}
+
+		function argonRestoreSettingRow(row) {
+			let initial = $(row).data("argonInitialState");
+			if (!initial) return;
+			let state = JSON.parse(initial);
+			$(row).data("argonRestoring", true);
+			$(row).find("[data-argon-dynamic-container]").each(function () {
+				let initialHtml = $(this).data("argonInitialHtml");
+				if (typeof initialHtml === "string") this.innerHTML = initialHtml;
+			});
+			let controlsByName = {};
+			argonSettingRowControls(row).each(function () {
+				if (!controlsByName[this.name]) controlsByName[this.name] = [];
+				controlsByName[this.name].push(this);
+			});
+			state.forEach(function (item) {
+				let control = controlsByName[item.name] && controlsByName[item.name][item.occurrence];
+				if (!control) return;
+				if (item.type === "checkbox" || item.type === "radio") control.checked = !!item.checked;
+				else $(control).val(item.value);
+			});
+			argonSettingRowControls(row).trigger("change");
+			$(row).data("argonRestoring", false).removeClass("is-dirty");
+			$(row).find("> td > .argon-row-actions .argon-row-status").text("").removeClass("is-success is-error");
+		}
+
+		function argonUpdateSettingRowDirtyState(row) {
+			let $row = $(row);
+			if ($row.data("argonRestoring")) return;
+			$row.toggleClass("is-dirty", argonCaptureSettingRow(row) !== $row.data("argonInitialState"));
+			$row.find("> td > .argon-row-actions .argon-row-status").text("").removeClass("is-success is-error");
+		}
+
+		function argonBuildSettingRowFormData(row) {
+			let data = new FormData();
+			let arrayNames = {};
+			argonSettingRowControls(row).each(function () {
+				if (this.disabled) return;
+				let name = String(this.name || "");
+				let type = String(this.type || "").toLowerCase();
+				if (/\[\]$/.test(name)) arrayNames[name.replace(/\[\]$/, "")] = true;
+				if (type === "radio") {
+					if (this.checked) data.append(name, this.value);
+					return;
+				}
+				if (type === "checkbox") {
+					if (this.checked) data.append(name, this.value || "true");
+					else if (!/\[\]$/.test(name)) data.append(name, "false");
+					return;
+				}
+				let value = $(this).val();
+				if (Array.isArray(value)) value.forEach(function (entry) { data.append(name, entry); });
+				else data.append(name, value == null ? "" : value);
+			});
+			Object.keys(arrayNames).forEach(function (name) {
+				if (!data.has(name + "[]") && !data.has(name)) data.append(name, "");
+			});
+			data.append("action", "argon_save_themeoption_row");
+			data.append("nonce", $("#main_form [name='argon_update_themeoptions_nonce']").val());
+			return data;
+		}
+
+		function argonSaveSettingRow(row) {
+			let $row = $(row);
+			let $actions = $row.find("> td > .argon-row-actions");
+			let $buttons = $actions.find("button");
+			let $status = $actions.find(".argon-row-status");
+			$buttons.prop("disabled", true);
+			$status.text("<?php echo esc_js(__('保存中…', 'argon')); ?>").removeClass("is-success is-error");
+			$.ajax({
+				url: ajaxurl,
+				type: "POST",
+				data: argonBuildSettingRowFormData(row),
+				processData: false,
+				contentType: false,
+				dataType: "json"
+			}).done(function (response) {
+				if (!response || !response.success) {
+					let message = response && response.data && response.data.message ? response.data.message : "<?php echo esc_js(__('保存失败', 'argon')); ?>";
+					$status.text(message).addClass("is-error");
+					return;
+				}
+				let $sensitiveControls = argonSettingRowControls(row).filter("[data-argon-sensitive]");
+				$sensitiveControls.filter(":checkbox, :radio").prop("checked", false);
+				$sensitiveControls.not(":checkbox, :radio").val("");
+				$row.find("[data-argon-dynamic-container]").each(function () {
+					$(this).data("argonInitialHtml", this.innerHTML);
+				});
+				$row.data("argonInitialState", argonCaptureSettingRow(row)).removeClass("is-dirty");
+				$status.text("<?php echo esc_js(__('已保存', 'argon')); ?>").addClass("is-success");
+				setTimeout(function () { $status.text("").removeClass("is-success"); }, 1600);
+			}).fail(function () {
+				$status.text("<?php echo esc_js(__('网络请求失败', 'argon')); ?>").addClass("is-error");
+			}).always(function () {
+				$buttons.prop("disabled", false);
+			});
+		}
+
+		function argonInitSettingRowActions() {
+			$("#main_form > .form-table > tbody > tr").each(function () {
+				let $row = $(this);
+				let $cell = $row.children("td").last();
+				if (!$cell.length || $row.hasClass("subtitle") || $row.find("th.subtitle").length || $row.is("[data-argon-no-row-save]")) return;
+				if (!argonSettingRowControls(this).length) return;
+				$row.addClass("argon-setting-row");
+				$cell.append(
+					'<span class="argon-row-actions">' +
+					'<span class="argon-row-status" role="status" aria-live="polite"></span>' +
+					'<button type="button" class="button button-primary argon-row-save"><?php echo esc_js(__('保存', 'argon')); ?></button>' +
+					'<button type="button" class="button argon-row-undo"><?php echo esc_js(__('撤销', 'argon')); ?></button>' +
+					'</span>'
+				);
+				$row.find("[data-argon-dynamic-container]").each(function () {
+					$(this).data("argonInitialHtml", this.innerHTML);
+				});
+				$row.data("argonInitialState", argonCaptureSettingRow(this));
+			});
+		}
+
+		$(document).on("input change", "#main_form > .form-table > tbody > tr.argon-setting-row input, #main_form > .form-table > tbody > tr.argon-setting-row select, #main_form > .form-table > tbody > tr.argon-setting-row textarea", function () {
+			argonUpdateSettingRowDirtyState($(this).closest("tr.argon-setting-row")[0]);
+		});
+
+		$(document).on("click", ".argon-row-save", function () {
+			argonSaveSettingRow($(this).closest("tr.argon-setting-row")[0]);
+		});
+
+		$(document).on("click", ".argon-row-undo", function () {
+			argonRestoreSettingRow($(this).closest("tr.argon-setting-row")[0]);
+		});
+
+		$(document).on("click", "#argon-test-friend-link-worker", function () {
+			let $button = $(this);
+			let $status = $("#argon-friend-link-worker-test-status");
+			$button.prop("disabled", true);
+			$status.text("<?php echo esc_js(__('测试中…', 'argon')); ?>").removeClass("is-success is-error");
+			$.post(ajaxurl, {
+				action: "argon_test_friend_link_worker",
+				nonce: $("#main_form [name='argon_update_themeoptions_nonce']").val(),
+				worker_url: $("[name='argon_friend_link_worker_url']").val()
+			}).done(function (response) {
+				let message = response && response.data && response.data.message ? response.data.message : "<?php echo esc_js(__('Worker 返回了无效响应', 'argon')); ?>";
+				$status.text(message).toggleClass("is-success", !!(response && response.success)).toggleClass("is-error", !(response && response.success));
+			}).fail(function () {
+				$status.text("<?php echo esc_js(__('连通性测试请求失败', 'argon')); ?>").addClass("is-error");
+			}).always(function () {
+				$button.prop("disabled", false);
+			});
+		});
+
 		$(function () {
+
+			argonInitSettingRowActions();
+
+			$("#main_form").on("submit", function (event) {
+				event.preventDefault();
+			});
 
 			$(document).headIndex({
 
@@ -7412,7 +7669,7 @@ window.pjaxLoaded = function(){
 
 			};
 
-			$("#main_form > .form-table input:not([name='submit']):not([data-argon-sensitive]) , #main_form > .form-table select:not([data-argon-sensitive]) , #main_form > .form-table textarea:not([data-argon-sensitive])").each(function(){
+			$("#main_form > .form-table input:not([name='submit']):not([data-argon-sensitive]):not([data-argon-internal]) , #main_form > .form-table select:not([data-argon-sensitive]):not([data-argon-internal]) , #main_form > .form-table textarea:not([data-argon-sensitive]):not([data-argon-internal])").each(function(){
 
 				name = $(this).attr("name");
 
@@ -7464,6 +7721,8 @@ window.pjaxLoaded = function(){
 
 			}
 
+			$("#main_form > .form-table input[name], #main_form > .form-table select[name], #main_form > .form-table textarea[name]").trigger("change");
+
 			return info;
 
 		}
@@ -7500,19 +7759,36 @@ window.pjaxLoaded = function(){
 
 add_action('admin_menu', 'themeoptions_admin_menu');
 
-function argon_update_option($name){
+function argon_is_partial_themeoptions_update() {
+	return isset($_POST['argon_partial_themeoptions'])
+		&& wp_unslash($_POST['argon_partial_themeoptions']) === 'true';
+}
 
-	update_option($name, htmlspecialchars(stripslashes($_POST[$name])));
+function argon_themeoptions_request_has_any($names) {
+	foreach ((array)$names as $name) {
+		if (array_key_exists($name, $_POST)) return true;
+	}
+	return false;
+}
+
+function argon_update_option($name){
+	if (argon_is_partial_themeoptions_update() && !array_key_exists($name, $_POST)) return false;
+
+	update_option($name, htmlspecialchars(stripslashes(isset($_POST[$name]) ? $_POST[$name] : '')));
+	return true;
 
 }
 
 function argon_update_option_allow_tags($name){
+	if (argon_is_partial_themeoptions_update() && !array_key_exists($name, $_POST)) return false;
 
-	update_option($name, stripslashes($_POST[$name]));
+	update_option($name, stripslashes(isset($_POST[$name]) ? $_POST[$name] : ''));
+	return true;
 
 }
 
 function argon_update_option_checkbox($name){
+	if (argon_is_partial_themeoptions_update() && !array_key_exists($name, $_POST)) return false;
 
 	if (isset($_POST[$name]) && $_POST[$name] == 'true'){
 
@@ -7523,21 +7799,27 @@ function argon_update_option_checkbox($name){
 		update_option($name, 'false');
 
 	}
+	return true;
 
 }
 
 function argon_update_friend_link_worker_settings(){
+	$partial = argon_is_partial_themeoptions_update();
 
-	$enabled = isset($_POST['argon_friend_link_worker_enabled'])
-		&& wp_unslash($_POST['argon_friend_link_worker_enabled']) === 'true'
-		? 'true'
-		: 'false';
-	update_option('argon_friend_link_worker_enabled', $enabled);
+	if (!$partial || array_key_exists('argon_friend_link_worker_enabled', $_POST)) {
+		$enabled = isset($_POST['argon_friend_link_worker_enabled'])
+			&& wp_unslash($_POST['argon_friend_link_worker_enabled']) === 'true'
+			? 'true'
+			: 'false';
+		update_option('argon_friend_link_worker_enabled', $enabled);
+	}
 
-	$worker_url = isset($_POST['argon_friend_link_worker_url'])
-		? esc_url_raw(trim(wp_unslash($_POST['argon_friend_link_worker_url'])))
-		: '';
-	update_option('argon_friend_link_worker_url', rtrim($worker_url, '/'));
+	if (!$partial || array_key_exists('argon_friend_link_worker_url', $_POST)) {
+		$worker_url = isset($_POST['argon_friend_link_worker_url'])
+			? esc_url_raw(trim(wp_unslash($_POST['argon_friend_link_worker_url'])))
+			: '';
+		update_option('argon_friend_link_worker_url', rtrim($worker_url, '/'));
+	}
 
 	$clear_secrets = isset($_POST['argon_friend_link_worker_clear_secrets'])
 		&& wp_unslash($_POST['argon_friend_link_worker_clear_secrets']) === 'true';
@@ -7606,8 +7888,10 @@ function argon_update_themeoptions(){
 		argon_update_option('argon_duolingo_username');
 		argon_update_option('argon_show_rss_link');
 
-		delete_option('argon_duolingo_email');
-		delete_transient('argon_duo_login_error');
+		if (!argon_is_partial_themeoptions_update() || argon_themeoptions_request_has_any(array('argon_show_duolingo_streak', 'argon_duolingo_username'))) {
+			delete_option('argon_duolingo_email');
+			delete_transient('argon_duo_login_error');
+		}
 
 		argon_update_option('argon_banner_title');
 
@@ -7746,14 +8030,23 @@ function argon_update_themeoptions(){
 		argon_update_option('argon_email_blog_name');
 		argon_update_option('argon_email_footer_text');
 		
-		// 保存社交链接为数组（自动补全完整 URL）
-		$social_links = array(
-			'twitter' => argon_normalize_social_url('twitter', isset($_POST['argon_email_social_twitter']) ? sanitize_text_field($_POST['argon_email_social_twitter']) : ''),
-			'github' => argon_normalize_social_url('github', isset($_POST['argon_email_social_github']) ? sanitize_text_field($_POST['argon_email_social_github']) : ''),
-			'weibo' => argon_normalize_social_url('weibo', isset($_POST['argon_email_social_weibo']) ? sanitize_text_field($_POST['argon_email_social_weibo']) : ''),
-			'bilibili' => argon_normalize_social_url('bilibili', isset($_POST['argon_email_social_bilibili']) ? sanitize_text_field($_POST['argon_email_social_bilibili']) : '')
+		// 保存社交链接为数组（自动补全完整 URL）；逐项保存时保留本行未提交的平台。
+		$email_social_fields = array(
+			'twitter' => 'argon_email_social_twitter',
+			'github' => 'argon_email_social_github',
+			'weibo' => 'argon_email_social_weibo',
+			'bilibili' => 'argon_email_social_bilibili',
 		);
-		update_option('argon_email_social_links', $social_links);
+		if (!argon_is_partial_themeoptions_update() || argon_themeoptions_request_has_any(array_values($email_social_fields))) {
+			$social_links = argon_is_partial_themeoptions_update() ? get_option('argon_email_social_links', array()) : array();
+			if (!is_array($social_links)) $social_links = array();
+			foreach ($email_social_fields as $network => $field_name) {
+				if (!argon_is_partial_themeoptions_update() || array_key_exists($field_name, $_POST)) {
+					$social_links[$network] = argon_normalize_social_url($network, isset($_POST[$field_name]) ? sanitize_text_field($_POST[$field_name]) : '');
+				}
+			}
+			update_option('argon_email_social_links', $social_links);
+		}
 
 		// 保存邮件模板配置
 		$email_types = array('comment_notify', 'spam_notify', 'reply_notify', 'todo_urge');
@@ -7998,55 +8291,144 @@ function argon_update_themeoptions(){
 	argon_update_option('argon_panic_mode_intensity');
 	
 	// 处理日期范围
-	if (isset($_POST['panic_date_name']) && is_array($_POST['panic_date_name'])) {
-		$date_ranges = array();
-		$names = $_POST['panic_date_name'];
-		$starts = isset($_POST['panic_date_start']) ? $_POST['panic_date_start'] : array();
-		$ends = isset($_POST['panic_date_end']) ? $_POST['panic_date_end'] : array();
-		
-		foreach ($names as $index => $name) {
-			if (!empty($name) && isset($starts[$index]) && isset($ends[$index])) {
-				$date_ranges[] = array(
-					'name' => sanitize_text_field($name),
-					'start' => sanitize_text_field($starts[$index]),
-					'end' => sanitize_text_field($ends[$index])
-				);
+	if (!argon_is_partial_themeoptions_update() || argon_themeoptions_request_has_any(array('argon_panic_mode_date_ranges_present', 'panic_date_name', 'panic_date_start', 'panic_date_end'))) {
+		if (isset($_POST['panic_date_name']) && is_array($_POST['panic_date_name'])) {
+			$date_ranges = array();
+			$names = $_POST['panic_date_name'];
+			$starts = isset($_POST['panic_date_start']) ? $_POST['panic_date_start'] : array();
+			$ends = isset($_POST['panic_date_end']) ? $_POST['panic_date_end'] : array();
+
+			foreach ($names as $index => $name) {
+				if (!empty($name) && isset($starts[$index]) && isset($ends[$index])) {
+					$date_ranges[] = array(
+						'name' => sanitize_text_field($name),
+						'start' => sanitize_text_field($starts[$index]),
+						'end' => sanitize_text_field($ends[$index])
+					);
+				}
 			}
+			update_option('argon_panic_mode_date_ranges', json_encode($date_ranges));
+		} else {
+			update_option('argon_panic_mode_date_ranges', '[]');
 		}
-		update_option('argon_panic_mode_date_ranges', json_encode($date_ranges));
-	} else {
-		update_option('argon_panic_mode_date_ranges', '[]');
 	}
 	
 	// 处理专项审查方向（多选）
-	if (isset($_POST['argon_panic_mode_focus']) && is_array($_POST['argon_panic_mode_focus'])) {
-		update_option('argon_panic_mode_focus', array_map('sanitize_text_field', $_POST['argon_panic_mode_focus']));
-	} else {
-		update_option('argon_panic_mode_focus', array());
+	if (!argon_is_partial_themeoptions_update() || array_key_exists('argon_panic_mode_focus', $_POST)) {
+		if (isset($_POST['argon_panic_mode_focus']) && is_array($_POST['argon_panic_mode_focus'])) {
+			update_option('argon_panic_mode_focus', array_map('sanitize_text_field', $_POST['argon_panic_mode_focus']));
+		} else {
+			update_option('argon_panic_mode_focus', array());
+		}
 	}
 	
 	// 彩蛋系统配置保存
-	$available_eggs = argon_get_available_easter_eggs();
-	$configs = array();
-	foreach ($available_eggs as $egg_id => $egg_data) {
-		$enabled = isset($_POST['argon_easter_egg_' . $egg_id . '_enabled']) ? true : false;
-		$date = isset($_POST['argon_easter_egg_' . $egg_id . '_date']) ? sanitize_text_field($_POST['argon_easter_egg_' . $egg_id . '_date']) : $egg_data['default_date'];
-		$type = isset($_POST['argon_easter_egg_' . $egg_id . '_type']) ? sanitize_text_field($_POST['argon_easter_egg_' . $egg_id . '_type']) : $egg_data['default_type'];
-		$duration = isset($_POST['argon_easter_egg_' . $egg_id . '_duration']) ? intval($_POST['argon_easter_egg_' . $egg_id . '_duration']) : 1;
-		
-		$configs[$egg_id] = array(
-			'enabled' => $enabled,
-			'date' => $date,
-			'type' => $type,
-			'duration' => $duration
-		);
+	$has_easter_egg_fields = !argon_is_partial_themeoptions_update();
+	if (!$has_easter_egg_fields) {
+		foreach (array_keys($_POST) as $post_key) {
+			if (strpos($post_key, 'argon_easter_egg_') === 0) {
+				$has_easter_egg_fields = true;
+				break;
+			}
+		}
 	}
-	update_option('argon_easter_egg_configs', $configs);
-	argon_clear_easter_egg_cache();
+	if ($has_easter_egg_fields) {
+		$available_eggs = argon_get_available_easter_eggs();
+		$configs = argon_is_partial_themeoptions_update() ? get_option('argon_easter_egg_configs', array()) : array();
+		if (!is_array($configs)) $configs = array();
+		foreach ($available_eggs as $egg_id => $egg_data) {
+			$prefix = 'argon_easter_egg_' . $egg_id . '_';
+			if (argon_is_partial_themeoptions_update() && !argon_themeoptions_request_has_any(array($prefix . 'enabled', $prefix . 'date', $prefix . 'type', $prefix . 'duration'))) continue;
+			$enabled = isset($_POST[$prefix . 'enabled']) && $_POST[$prefix . 'enabled'] !== 'false';
+			$date = isset($_POST[$prefix . 'date']) ? sanitize_text_field($_POST[$prefix . 'date']) : $egg_data['default_date'];
+			$type = isset($_POST[$prefix . 'type']) ? sanitize_text_field($_POST[$prefix . 'type']) : $egg_data['default_type'];
+			$duration = isset($_POST[$prefix . 'duration']) ? intval($_POST[$prefix . 'duration']) : 1;
+
+			$configs[$egg_id] = array(
+				'enabled' => $enabled,
+				'date' => $date,
+				'type' => $type,
+				'duration' => $duration
+			);
+		}
+		update_option('argon_easter_egg_configs', $configs);
+		argon_clear_easter_egg_cache();
+	}
 
 	}
 
 }
+
+function argon_test_friend_link_worker_health($worker_url) {
+	$worker_url = rtrim(esc_url_raw(trim((string)$worker_url)), '/');
+	$scheme = strtolower((string)wp_parse_url($worker_url, PHP_URL_SCHEME));
+	$host = (string)wp_parse_url($worker_url, PHP_URL_HOST);
+	if ($worker_url === '' || $scheme !== 'https' || $host === '') {
+		return new WP_Error('invalid_worker_url', __('Worker URL 必须是有效的 HTTPS 地址。', 'argon'));
+	}
+
+	$health_url = $worker_url . '/health';
+	if (function_exists('wp_http_validate_url') && !wp_http_validate_url($health_url)) {
+		return new WP_Error('unsafe_worker_url', __('Worker URL 未通过 WordPress 安全地址校验。', 'argon'));
+	}
+
+	$started_at = microtime(true);
+	$response = wp_safe_remote_get($health_url, array(
+		'timeout' => 8,
+		'redirection' => 2,
+		'limit_response_size' => 4096,
+		'headers' => array('Accept' => 'application/json'),
+	));
+	$duration_ms = max(0, (int)round((microtime(true) - $started_at) * 1000));
+	if (is_wp_error($response)) {
+		return new WP_Error('worker_unreachable', sprintf(__('无法连接 Worker：%s', 'argon'), $response->get_error_message()));
+	}
+
+	$status = (int)wp_remote_retrieve_response_code($response);
+	$payload = json_decode((string)wp_remote_retrieve_body($response), true);
+	if ($status !== 200) {
+		return new WP_Error('worker_http_error', sprintf(__('Worker /health 返回 HTTP %d。', 'argon'), $status));
+	}
+	if (!is_array($payload) || empty($payload['ok']) || !isset($payload['service']) || $payload['service'] !== 'friend-link-checker') {
+		return new WP_Error('worker_invalid_health', __('Worker /health 响应格式或服务标识不正确。', 'argon'));
+	}
+
+	return array(
+		'url' => $health_url,
+		'duration_ms' => $duration_ms,
+		'service' => $payload['service'],
+	);
+}
+
+function argon_ajax_test_friend_link_worker() {
+	if (!current_user_can('manage_options')) {
+		wp_send_json_error(array('message' => __('权限不足。', 'argon')), 403);
+	}
+	check_ajax_referer('argon_update_themeoptions', 'nonce');
+	$worker_url = isset($_POST['worker_url']) ? wp_unslash($_POST['worker_url']) : '';
+	$result = argon_test_friend_link_worker_health($worker_url);
+	if (is_wp_error($result)) {
+		wp_send_json_error(array('message' => $result->get_error_message()), 400);
+	}
+	wp_send_json_success(array(
+		'message' => sprintf(__('连接正常（%d ms）', 'argon'), $result['duration_ms']),
+		'health' => $result,
+	));
+}
+add_action('wp_ajax_argon_test_friend_link_worker', 'argon_ajax_test_friend_link_worker');
+
+function argon_ajax_save_themeoption_row() {
+	if (!current_user_can('manage_options')) {
+		wp_send_json_error(array('message' => __('权限不足。', 'argon')), 403);
+	}
+	check_ajax_referer('argon_update_themeoptions', 'nonce');
+	$_POST['update_themeoptions'] = 'true';
+	$_POST['argon_update_themeoptions_nonce'] = isset($_POST['nonce']) ? $_POST['nonce'] : '';
+	$_POST['argon_partial_themeoptions'] = 'true';
+	argon_update_themeoptions();
+	wp_send_json_success(array('message' => __('设置已保存。', 'argon')));
+}
+add_action('wp_ajax_argon_save_themeoption_row', 'argon_ajax_save_themeoption_row');
 
 argon_update_themeoptions();
 

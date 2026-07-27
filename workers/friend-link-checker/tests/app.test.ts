@@ -102,6 +102,17 @@ describe('Worker HTTP API', () => {
     services = makeServices();
   });
 
+  it('reports a stable public health response', async () => {
+    const response = await handleFetch(
+      new Request('https://neutral-checker.workers.dev/health'),
+      services
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    await expect(response.json()).resolves.toEqual({ ok: true, service: 'friend-link-checker' });
+  });
+
   it('accepts a valid signed task and only queues its job ID', async () => {
     const request = await signedSubmission({
       job_id: 'link_123',

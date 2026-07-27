@@ -3144,7 +3144,8 @@ function positionEmotionKeyboard() {
 	var viewportBottom = window.scrollY + window.innerHeight - 10;
 	
 	var top = btnRect.top + window.scrollY - keyboardHeight - 10;
-	var left = btnRect.right + window.scrollX - keyboardWidth;
+	var buttonCenter = btnRect.left + window.scrollX + btnRect.width / 2;
+	var left = buttonCenter - keyboardWidth / 2;
 	
 	if (top < viewportTop) {
 		top = btnRect.bottom + window.scrollY + 10;
@@ -3203,10 +3204,14 @@ $(document).on("click", ".emotion-keyboard .emotion-group-name", function () {
 	$(".emotion-keyboard .emotion-group-name").attr("aria-selected", "false");
 	$(this).addClass("active").attr("aria-selected", "true");
 	$(".emotion-keyboard .emotion-group:not(.d-none)").addClass("d-none");
-	var group = $(".emotion-keyboard .emotion-group[index='" + $(this).attr("index") + "']").removeClass("d-none").get(0);
+	var index = $(this).attr("data-index");
+	var group = $(".emotion-keyboard .emotion-group[data-index='" + index + "']").removeClass("d-none").get(0);
+	$(".emotion-keyboard .emotion-group-description").addClass("d-none");
+	$(".emotion-keyboard .emotion-group-description[data-index='" + index + "']").removeClass("d-none");
 	suspendAnimatedStickers(group);
 	lazyloadStickers(group);
 	this.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+	positionEmotionKeyboard();
 });
 
 $(document).on("click", ".emotion-keyboard-scroll", function () {

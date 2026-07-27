@@ -8,7 +8,7 @@ Author URI: https://solstice23.top/
 
 Description: 杞荤泩銆佺畝娲併€佺編瑙傜殑 Wordpress 涓婚
 
-Version: 1.5.10
+Version: 1.5.11
 
 License: GNU General Public License v3.0
 
@@ -7041,9 +7041,11 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 	min-width: min(360px, calc(100vw - 24px));
 
-	height: min(440px, calc(100vh - 96px));
+	height: auto;
 
-	min-height: min(320px, calc(100vh - 96px));
+	max-height: min(440px, calc(100vh - 96px));
+
+	min-height: 0;
 
 	flex-direction: column;
 
@@ -7051,7 +7053,7 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 	position: absolute;
 
-	z-index: 1050;
+	z-index: 1080;
 
 	transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
 
@@ -7097,9 +7099,11 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 #todo-input,
 #post_comment_content,
-#emotion_keyboard {
+#emotion_keyboard,
+.todo-completed-divider.collapsed {
 	background: transparent !important;
 	box-shadow: none !important;
+	border: none !important;
 }
 
 html.darkmode .emotion-keyboard {
@@ -7114,7 +7118,9 @@ html.darkmode .emotion-keyboard {
 
 .emotion-keyboard-content {
 
-	flex: 1;
+	flex: 1 1 auto;
+
+	min-height: 0;
 
 	overflow-y: auto;
 
@@ -7152,15 +7158,33 @@ html.darkmode .emotion-keyboard {
 
 .emotion-item.emotion-item-sticker {
 
-	padding: 2px;
+	display: flex;
+
+	flex-direction: column;
+
+	align-items: stretch;
+
+	min-width: 0;
+
+	margin: 0;
+
+	padding: 4px;
 
 	background: rgba(126, 126, 126, 0.15);
+
+	overflow: hidden;
 
 }
 
 .emotion-item>img {
 
-	max-height: 60px;
+	width: 100%;
+
+	height: 64px;
+
+	max-height: 64px;
+
+	object-fit: contain;
 
 	border-radius: 3px;
 
@@ -7170,6 +7194,19 @@ html.darkmode .emotion-keyboard {
 
 	background: var(--color-widgets);
 
+}
+
+.emotion-item-title {
+	display: block;
+	min-width: 0;
+	max-width: 100%;
+	padding: 4px 2px 1px;
+	font-size: 12px;
+	line-height: 1.35;
+	text-align: center;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .emotion-item.emotion-item-sticker:hover>img[src^="data:image/svg+xml;base64,PHN2ZyBjbGFzcz0iZW1vdGlvbi1sb2FkaW5nI"] {
@@ -7198,6 +7235,12 @@ html.darkmode .emotion-keyboard {
 
 }
 
+.emotion-keyboard-descriptions {
+	flex: 0 0 auto;
+	min-height: 0;
+	padding: 0 14px;
+}
+
 .emotion-group-description {
 
 	text-align: right;
@@ -7206,13 +7249,28 @@ html.darkmode .emotion-keyboard {
 
 	opacity: 0.6;
 
+	padding: 7px 0 5px;
+
+	white-space: nowrap;
+
+	overflow: hidden;
+
+	text-overflow: ellipsis;
+
 }
 
 .emotion-keyboard-navigation {
 	display: grid;
 	grid-template-columns: 38px minmax(0, 1fr) 38px;
 	align-items: stretch;
-	border-top: 1px solid var(--color-border-on-foreground);
+	border-top: none;
+}
+
+.emotion-group-stickers {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+	gap: 12px;
+	align-content: start;
 }
 
 .emotion-keyboard-bar {
