@@ -262,6 +262,35 @@ describe('Queue consumer', () => {
     await processQueueMessage({ jobId: 'link_123', generation: 'generation-123456' }, services);
     expect(services.fetcher).toHaveBeenCalledTimes(1);
   });
+
+  it('bounds callback metadata to the WordPress request limit', async () => {
+    const oversized = '编'.repeat(20_000);
+    store.jobs.set('link_123', queuedJob({
+      status: 'complete',
+      callbackStatus: 'pending',
+      callbackNextAttemptAt: NOW,
+      checkedAt: NOW,
+      detectedUrl: `https://friend-site.top/${'a'.repeat(20_000)}`,
+      primary: oversized,
+      subtitle: oversized,
+      description: oversized,
+      avatar: `https://friend-site.top/${'b'.repeat(20_000)}`,
+      lastError: oversized
+    }));
+
+    await processQueueMessage({ jobId: 'link_123', generation: 'generation-123456' }, services);
+
+    expect(services.callbacks).toHaveLength(1);
+    const rawBody = await services.callbacks[0].text();
+    const payload = JSON.parse(rawBody);
+    expect(new TextEncoder().encode(rawBody).byteLength).toBeLessThanOrEqual(16 * 1024);
+    expect(payload.result.primary).toHaveLength(200);
+    expect(payload.result.subtitle).toHaveLength(300);
+    expect(payload.result.description).toHaveLength(1_000);
+    expect(payload.result.detected_url.length).toBeLessThanOrEqual(2_048);
+    expect(payload.result.avatar.length).toBeLessThanOrEqual(2_048);
+    expect(payload.result.error).toHaveLength(300);
+  });
 });
 
 describe('Cron scheduler', () => {

@@ -12,6 +12,13 @@ const CALLBACK_TIMEOUT_MS = 8_000;
 const CALLBACK_RETRY_BASE_SECONDS = 5 * 60;
 const CALLBACK_RETRY_MAX_SECONDS = 6 * 60 * 60;
 const CRON_BATCH_SIZE = 25;
+const CALLBACK_FIELD_LIMITS = {
+  url: 2_048,
+  primary: 200,
+  subtitle: 300,
+  description: 1_000,
+  error: 300
+} as const;
 
 export type { RuntimeServices } from './app';
 
@@ -19,6 +26,14 @@ function nextCheckAt(job: FriendLinkJob, succeeded: boolean, now: number): numbe
   if (succeeded) return now + SUCCESS_RECHECK_SECONDS;
   const multiplier = 2 ** Math.min(job.failureCount, 5);
   return now + Math.min(INITIAL_FAILURE_RECHECK_SECONDS * multiplier, MAX_FAILURE_RECHECK_SECONDS);
+}
+
+function truncateCallbackText(value: string, maxCodeUnits: number): string {
+  if (value.length <= maxCodeUnits) return value;
+  let truncated = value.slice(0, maxCodeUnits);
+  const lastCodeUnit = truncated.charCodeAt(truncated.length - 1);
+  if (lastCodeUnit >= 0xd800 && lastCodeUnit <= 0xdbff) truncated = truncated.slice(0, -1);
+  return truncated;
 }
 
 function callbackPayload(job: FriendLinkJob): Record<string, unknown> {
@@ -31,15 +46,15 @@ function callbackPayload(job: FriendLinkJob): Record<string, unknown> {
       state: job.status,
       accessible: job.accessible,
       readable: job.readable,
-      detected_url: job.detectedUrl,
-      primary: job.primary,
-      subtitle: job.subtitle,
-      description: job.description,
-      avatar: job.avatar,
+      detected_url: truncateCallbackText(job.detectedUrl, CALLBACK_FIELD_LIMITS.url),
+      primary: truncateCallbackText(job.primary, CALLBACK_FIELD_LIMITS.primary),
+      subtitle: truncateCallbackText(job.subtitle, CALLBACK_FIELD_LIMITS.subtitle),
+      description: truncateCallbackText(job.description, CALLBACK_FIELD_LIMITS.description),
+      avatar: truncateCallbackText(job.avatar, CALLBACK_FIELD_LIMITS.url),
       backlink_state: job.backlinkState,
       source: 'cloudflare_worker',
       attempts: job.attempts,
-      error: job.lastError
+      error: truncateCallbackText(job.lastError, CALLBACK_FIELD_LIMITS.error)
     }
   };
 }

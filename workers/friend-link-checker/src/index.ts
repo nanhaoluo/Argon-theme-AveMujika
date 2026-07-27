@@ -4,23 +4,22 @@ import { createPublicDnsResolver } from './detector';
 import { handleScheduled, processQueueMessage } from './processor';
 import type { QueueMessage } from './types';
 
-export interface Env {
-  DB: D1Database;
-  CHECK_QUEUE: Queue<QueueMessage>;
-  ALLOWED_ORIGIN: string;
-  SITE_URL: string;
-  CALLBACK_URL: string;
+interface WorkerSecrets {
   SUBMIT_HMAC_SECRET: string;
   CALLBACK_HMAC_SECRET: string;
   ADMIN_READ_TOKEN: string;
 }
+
+type RuntimeEnv = Omit<WorkerBindings, 'CHECK_QUEUE'> & WorkerSecrets & {
+  CHECK_QUEUE: Queue<QueueMessage>;
+};
 
 function randomQueueDelaySeconds(): number {
   const random = crypto.getRandomValues(new Uint16Array(1))[0];
   return 30 + (random % 151);
 }
 
-function createServices(env: Env): RuntimeServices {
+function createServices(env: RuntimeEnv): RuntimeServices {
   const fetcher = (input: string, init?: RequestInit) => fetch(input, init);
   return {
     config: {
@@ -47,12 +46,15 @@ function createServices(env: Env): RuntimeServices {
   };
 }
 
-const worker: ExportedHandler<Env, QueueMessage> = {
+const worker = {
   async fetch(request, env) {
     try {
       return await handleFetch(request, createServices(env));
     } catch (error) {
-      console.error('friend-link-checker request failed', error instanceof Error ? error.message : 'unknown_error');
+      console.error(JSON.stringify({
+        message: 'friend-link-checker request failed',
+        error: error instanceof Error ? error.message : 'unknown_error'
+      }));
       return new Response(JSON.stringify({ success: false, error: 'internal_error' }), {
         status: 500,
         headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }
@@ -67,7 +69,10 @@ const worker: ExportedHandler<Env, QueueMessage> = {
         await processQueueMessage(message.body, services);
         message.ack();
       } catch (error) {
-        console.error('friend-link-checker queue task failed', error instanceof Error ? error.message : 'unknown_error');
+        console.error(JSON.stringify({
+          message: 'friend-link-checker queue task failed',
+          error: error instanceof Error ? error.message : 'unknown_error'
+        }));
         message.retry({ delaySeconds: 300 });
       }
     }
@@ -76,6 +81,6 @@ const worker: ExportedHandler<Env, QueueMessage> = {
   async scheduled(_controller, env) {
     await handleScheduled(createServices(env));
   }
-};
+} satisfies ExportedHandler<RuntimeEnv, QueueMessage>;
 
 export default worker;
