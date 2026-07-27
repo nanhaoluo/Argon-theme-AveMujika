@@ -112,7 +112,7 @@
 						continue;
 					}
 					$title = isset($emotion['title']) && $emotion['title'] !== '' ? $emotion['title'] : $code;
-					$sticker_replacements[':' . $code . ':'] = "<img class='comment-sticker' src='" . esc_url($emotion['src']) . "' alt='" . esc_attr($title) . "' loading='lazy' decoding='async' referrerpolicy='same-origin' draggable='false'/>";
+					$sticker_replacements[':' . $code . ':'] = "<img class='comment-sticker' src='" . esc_url($emotion['src']) . "' alt='" . esc_attr($title) . "' loading='lazy' decoding='async' referrerpolicy='strict-origin-when-cross-origin' draggable='false'/>";
 				}
 			}
 		}

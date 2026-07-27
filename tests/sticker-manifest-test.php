@@ -195,8 +195,9 @@ argon_sticker_assert(
 );
 argon_sticker_assert(
 	strpos($comment_renderer, 'argon_replace_comment_stickers') !== false
-	&& strpos($emotion_renderer, "referrerpolicy='same-origin'") !== false,
-	'评论贴图没有安全输出或没有发送同源 Referer。'
+	&& strpos($emotion_renderer, "referrerpolicy='strict-origin-when-cross-origin'") !== false
+	&& strpos($template, "referrerpolicy='strict-origin-when-cross-origin'") !== false,
+	'评论贴图没有安全输出，或站点别名请求不会发送可校验的来源域名。'
 );
 argon_sticker_assert(
 	strpos($javascript, 'suspendAnimatedStickers') !== false

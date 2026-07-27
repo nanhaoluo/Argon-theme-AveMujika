@@ -6,4 +6,4 @@
 
 支持的图片格式为 JPG、PNG、GIF、WebP 和 AVIF。SVG 因可能包含可执行内容而不加载。图片文件名会参与生成评论中的表情代码，因此图片上线后不应随意改名；原有小恐龙和花表情代码已做兼容。
 
-Apache 会自动读取本目录的 `.htaccess`，禁止目录索引、地址栏直开和跨站盗链。Nginx 不读取 `.htaccess`，需要将 `nginx-hotlink.conf.example` 的内容放入当前站点的 `server {}` 后重载。两种方案都由 Web 服务器直接处理并保留一年静态缓存，不经过 PHP 图片代理。
+Apache 会自动读取本目录的 `.htaccess`，禁止目录索引、地址栏直开和跨站盗链。Nginx 不读取 `.htaccess`，需要将 `nginx-hotlink.conf.example` 的内容放入当前站点的 `server {}` 后重载。图片 URL 中的 `?v=` 只负责缓存失效，并不是安全令牌；防盗链依据请求来源判断，因此站内页面能加载图片，而地址栏直开和外站引用返回 403。主题输出 `strict-origin-when-cross-origin` 策略，使同一站点配置的多个域名也能把来源域名交给 Web 服务器校验。两种方案都由 Web 服务器直接处理并保留一年静态缓存，不经过 PHP 图片代理。

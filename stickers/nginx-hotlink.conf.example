@@ -1,5 +1,7 @@
 # 将本段放入当前 WordPress 站点的 server {}，然后 nginx -t && reload。
 # server_names 会自动使用当前 server_name，无需在主题中硬编码域名。
+# 地址栏直开或外站引用会返回 403；站内页面请求会返回图片。
+# 图片 URL 中的 ?v= 仅用于刷新缓存，不是授权令牌。
 location ~* /wp-content/themes/[^/]+/stickers/.*\.(?:avif|gif|jpeg|jpg|png|webp)$ {
     valid_referers server_names;
     if ($invalid_referer) {

@@ -23,7 +23,7 @@
 					if (isset($emotion['type']) && $emotion['type'] == 'sticker'){
 						$animatedClass = !empty($emotion['animated']) ? ' emotion-item-animated' : '';
 						$animatedValue = !empty($emotion['animated']) ? 'true' : 'false';
-						echo "<div class='emotion-item emotion-item-sticker" . esc_attr($animatedClass) . "' code='" . esc_attr($emotion['code']) . "' title='" . esc_attr($title) . "'><img src='" . esc_attr($stickerPlaceholder) . "' data-sticker-src='" . esc_url($emotion['src']) . "' data-sticker-animated='" . esc_attr($animatedValue) . "' alt='" . esc_attr($title) . "' loading='lazy' decoding='async' referrerpolicy='same-origin' draggable='false'/></div>";
+						echo "<div class='emotion-item emotion-item-sticker" . esc_attr($animatedClass) . "' code='" . esc_attr($emotion['code']) . "' title='" . esc_attr($title) . "'><img src='" . esc_attr($stickerPlaceholder) . "' data-sticker-src='" . esc_url($emotion['src']) . "' data-sticker-animated='" . esc_attr($animatedValue) . "' alt='" . esc_attr($title) . "' loading='lazy' decoding='async' referrerpolicy='strict-origin-when-cross-origin' draggable='false'/></div>";
 					}
 				}
 				if (isset($group['description'])){
