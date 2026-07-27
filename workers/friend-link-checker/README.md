@@ -14,11 +14,11 @@
 
 接单请求本身绝不抓取目标网站。任务会随机延迟 30～180 秒，再由 Queue 消费者发起请求，避免把提交者 IP 带进目标请求并降低时间关联。
 
-> 当前目录已经完成 Worker、Queue、D1、Cron 和回调协议。WordPress 的签名签发器与回调接收端尚未接入主题；在完成下一步主题对接前，Worker 可以部署和自测，但不会自动收到现有友链页面的任务。对接不需要修改 `settings.php`。
+> 当前目录已经完成 Worker、Queue、D1、Cron、WordPress 签名签发器和回调接收端。主题接入不修改 `settings.php`，密钥只从 `wp-config.php` 常量或同名环境变量读取。
 
 ## 1. 准备中性 Worker
 
-建议使用独立 Cloudflare 账号和不含博客名称的 `workers.dev` 子域名。不要把 Worker 绑定到 `cartol.top` 所在 zone；Cloudflare 会给 Worker 子请求增加 `CF-Worker` 标识，使用博客域名可能泄露站点关联。
+最强关联隔离应使用独立 Cloudflare 账号和中性的 `workers.dev` 子域名。当前部署选择 `worker.cartol.top` Custom Domain：它不会暴露 WordPress 源站 IP，但目标站可能通过 Cloudflare 的 `CF-Worker` 标识判断请求来自 `cartol.top` 所在 zone。
 
 进入本目录安装依赖：
 
@@ -78,7 +78,19 @@ npx wrangler secret put ADMIN_READ_TOKEN
 - `ADMIN_READ_TOKEN` 只用于管理员读取 Worker 中的任务状态。
 - 密钥不能进入前端 JavaScript、Git、`wrangler.jsonc` 或聊天记录。
 
-## 4. 部署
+## 4. 配置 WordPress 服务端
+
+在服务器的 `wp-config.php` 中、`/* That's all, stop editing! */` 之前加入：
+
+```php
+define('ARGON_FRIEND_LINK_WORKER_URL', 'https://worker.cartol.top');
+define('ARGON_FRIEND_LINK_SUBMIT_HMAC_SECRET', '粘贴 Worker 中 SUBMIT_HMAC_SECRET 的值');
+define('ARGON_FRIEND_LINK_CALLBACK_HMAC_SECRET', '粘贴 Worker 中 CALLBACK_HMAC_SECRET 的值');
+```
+
+两个 HMAC 值必须与 Cloudflare Worker 中对应的 Secret 完全一致，且彼此不同。`ADMIN_READ_TOKEN` 不需要写入 WordPress。主题只把服务器签好的固定 JSON 交给浏览器转发，浏览器永远拿不到 HMAC 密钥。
+
+## 5. 部署
 
 ```powershell
 npm run check
@@ -88,7 +100,7 @@ npm run deploy
 部署后检查：
 
 ```powershell
-Invoke-RestMethod "https://你的中性子域.workers.dev/health"
+Invoke-RestMethod "https://worker.cartol.top/health"
 ```
 
 预期返回：

@@ -9,8 +9,9 @@
 $root = dirname(__DIR__);
 $functions = file_get_contents($root . '/functions.php');
 $page = file_get_contents($root . '/friend-links.php');
+$worker_bridge = file_get_contents($root . '/inc/friend-link-worker.php');
 
-if ($functions === false || $page === false) {
+if ($functions === false || $page === false || $worker_bridge === false) {
     fwrite(STDERR, "无法读取友链相关文件。\n");
     exit(1);
 }
@@ -26,6 +27,37 @@ argon_flink_test_assert(
     && strpos($page, 'detector.detectSite') !== false
     && strpos($page, 'detector.checkBacklink') !== false,
     '友链页没有完整接入浏览器检测模块。'
+);
+argon_flink_test_assert(
+    strpos($functions, "require_once get_template_directory() . '/inc/friend-link-worker.php';") !== false
+    && strpos($worker_bridge, "register_rest_route('argon/v1', '/friend-link-ticket'") !== false
+    && strpos($worker_bridge, "register_rest_route('argon/v1', '/friend-link-result'") !== false,
+    '主题没有注册 Worker 签发与回调桥接。'
+);
+argon_flink_test_assert(
+    strpos($page, 'dispatchFriendLinkWorkerJob') !== false
+    && strpos($page, "rest_url('argon/v1/friend-link-ticket')") !== false
+    && strpos($page, "wp_create_nonce('wp_rest')") !== false
+    && strpos($page, "requestHeaders['X-WP-Nonce']") !== false
+    && strpos($page, 'detector.detectSite(link.url)') === false,
+    '批量复检没有使用完整 REST Cookie 认证转发 Worker 异步任务。'
+);
+argon_flink_test_assert(
+    strpos($worker_bridge, 'ARGON_FRIEND_LINK_SUBMIT_HMAC_SECRET') !== false
+    && strpos($worker_bridge, 'ARGON_FRIEND_LINK_CALLBACK_HMAC_SECRET') !== false
+    && strpos($worker_bridge, "hash_hmac('sha256'") !== false
+    && strpos($worker_bridge, 'hash_equals(') !== false,
+    'Worker 桥接没有使用独立 HMAC 密钥和恒定时间比较。'
+);
+argon_flink_test_assert(
+    strpos($functions, '$worker_target_changed = false;') !== false
+    && strpos($functions, "['worker_generation'] = '';") !== false
+    && strpos($page, "'worker_refresh_required' => \$updated && \$worker_refresh_required") !== false,
+    '编辑目标地址后没有废弃旧 Worker 代际并触发新任务。'
+);
+argon_flink_test_assert(
+    strpos($worker_bridge, "!in_array(\$known_backlink_state, array('found', 'missing'), true)") !== false,
+    'Worker 的 unknown 回调仍可能覆盖已知互链结论。'
 );
 argon_flink_test_assert(
     strpos($page, 'id="apply-display-name"') !== false

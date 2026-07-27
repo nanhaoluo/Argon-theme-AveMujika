@@ -6634,6 +6634,7 @@ function argon_update_friend_link($id, $data) {
             continue;
         }
         if ($link['id'] === $id) {
+            $worker_target_changed = false;
             foreach ($data as $field => $value) {
                 if (is_array($value)) {
                     continue;
@@ -6642,12 +6643,27 @@ function argon_update_friend_link($id, $data) {
                     $value = wp_unslash($value);
                 }
                 if (in_array($field, array('url', 'links_page', 'avatar', 'author_avatar', 'site_logo', 'favicon', 'auto_favicon', 'site_image', 'image', 'canonical_url', 'feed_url', 'detected_links_page', 'browser_detected_url'), true)) {
-                    $links[$key][$field] = esc_url_raw($value);
+                    $sanitized_url = esc_url_raw($value);
+                    if (
+                        in_array($field, array('url', 'links_page'), true)
+                        && $sanitized_url !== (isset($link[$field]) ? (string)$link[$field] : '')
+                    ) {
+                        $worker_target_changed = true;
+                    }
+                    $links[$key][$field] = $sanitized_url;
                 } elseif ($field === 'email') {
                     $links[$key][$field] = sanitize_email($value);
                 } elseif ($field !== 'id' && $field !== 'created_at') {
                     $links[$key][$field] = is_bool($value) ? $value : sanitize_text_field($value);
                 }
+            }
+            if ($worker_target_changed) {
+                // 目标变化后立即废弃旧代际，避免 Worker 对旧地址的回调覆盖新记录。
+                $links[$key]['worker_generation'] = '';
+                $links[$key]['worker_status'] = 'pending_dispatch';
+                $links[$key]['worker_submitted_at'] = 0;
+                $links[$key]['worker_error'] = '';
+                $links[$key]['next_browser_check_at'] = time();
             }
             $links[$key]['updated_at'] = time();
             $updated = true;
@@ -6844,7 +6860,15 @@ function argon_handle_link_application_v3($post_data) {
         set_transient($rate_limit_key, $apply_count + 1, $limit_period);
     }
     
-    return array('success' => true, 'message' => __('申请已提交，等待管理员审核。', 'argon'));
+    $dispatch_token = function_exists('argon_friend_link_worker_create_dispatch_token')
+        ? argon_friend_link_worker_create_dispatch_token($new_link['id'])
+        : '';
+    return array(
+        'success' => true,
+        'message' => __('申请已提交，等待管理员审核。', 'argon'),
+        'id' => $new_link['id'],
+        'dispatch_token' => $dispatch_token,
+    );
 }
 
 /**
@@ -7247,6 +7271,8 @@ function argon_disable_friend_link_server_checks() {
     wp_clear_scheduled_hook('argon_friend_link_application_check');
 }
 add_action('init', 'argon_disable_friend_link_server_checks', 20);
+
+require_once get_template_directory() . '/inc/friend-link-worker.php';
 
 // 添加自定义时间间隔
 // ==================== AI 查询组件 ====================
