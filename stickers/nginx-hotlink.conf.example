@@ -1,0 +1,12 @@
+# 将本段放入当前 WordPress 站点的 server {}，然后 nginx -t && reload。
+# server_names 会自动使用当前 server_name，无需在主题中硬编码域名。
+location ~* /wp-content/themes/[^/]+/stickers/.*\.(?:avif|gif|jpeg|jpg|png|webp)$ {
+    valid_referers server_names;
+    if ($invalid_referer) {
+        return 403;
+    }
+
+    add_header Cache-Control "public, max-age=31536000, immutable";
+    add_header X-Content-Type-Options "nosniff" always;
+    try_files $uri =404;
+}

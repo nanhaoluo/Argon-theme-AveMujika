@@ -1,0 +1,16 @@
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # 仅允许由当前站点页面发起的图片请求；空 Referer（地址栏直开）同样拒绝。
+    RewriteCond %{HTTP_REFERER}|%{HTTP_HOST} !^https?://([^/:]+)(?::[0-9]+)?/.*\|\1(?::[0-9]+)?$ [NC]
+    RewriteRule \.(?:avif|gif|jpeg|jpg|png|webp)$ - [F,L]
+</IfModule>
+
+<IfModule mod_headers.c>
+    <FilesMatch "\.(?:avif|gif|jpeg|jpg|png|webp)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+        Header always set X-Content-Type-Options "nosniff"
+    </FilesMatch>
+</IfModule>

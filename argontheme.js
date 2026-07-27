@@ -3102,8 +3102,29 @@ $(document).on('click', '.comment-upvote', function () {
 	});
 });
 /*评论表情面板*/
-function lazyloadStickers() {
-	// 原生懒加载无需额外处理
+var stickerPlaceholder = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+
+function lazyloadStickers(group) {
+	var target = group || document.querySelector(".emotion-keyboard .emotion-group:not(.d-none)");
+	if (!target) return;
+	$("img[data-sticker-src]", target).each(function () {
+		if (this.getAttribute("src") !== this.getAttribute("data-sticker-src")) {
+			this.setAttribute("src", this.getAttribute("data-sticker-src"));
+		}
+	});
+}
+
+function suspendAnimatedStickers(exceptGroup) {
+	$(".emotion-keyboard img[data-sticker-animated='true']").each(function () {
+		if (exceptGroup && exceptGroup.contains(this)) return;
+		this.setAttribute("src", stickerPlaceholder);
+	});
+}
+
+function closeEmotionKeyboard() {
+	$("#comment_emotion_btn").removeClass("comment-emotion-keyboard-open");
+	$("#emotion_keyboard").removeClass("comment-emotion-keyboard-open");
+	suspendAnimatedStickers(null);
 }
 
 function positionEmotionKeyboard() {
@@ -3143,20 +3164,22 @@ $(document).on("click", "#comment_emotion_btn", function (e) {
 	if (!isOpen) {
 		$("#comment_emotion_btn").addClass("comment-emotion-keyboard-open");
 		$("#emotion_keyboard").addClass("comment-emotion-keyboard-open");
+		lazyloadStickers();
 		setTimeout(function() {
 			positionEmotionKeyboard();
 		}, 10);
 	} else {
-		$("#comment_emotion_btn").removeClass("comment-emotion-keyboard-open");
-		$("#emotion_keyboard").removeClass("comment-emotion-keyboard-open");
+		closeEmotionKeyboard();
 	}
 });
 
 $(document).on("click", ".emotion-keyboard .emotion-group-name", function () {
 	$(".emotion-keyboard .emotion-group-name.active").removeClass("active");
 	$(this).addClass("active");
-	$(".emotion-keyboard .emotion-group:not(d-none)").addClass("d-none");
-	$(".emotion-keyboard .emotion-group[index='" + $(this).attr("index") + "']").removeClass("d-none");
+	$(".emotion-keyboard .emotion-group:not(.d-none)").addClass("d-none");
+	var group = $(".emotion-keyboard .emotion-group[index='" + $(this).attr("index") + "']").removeClass("d-none").get(0);
+	suspendAnimatedStickers(group);
+	lazyloadStickers(group);
 });
 
 function inputInsertText(text, input) {
@@ -3182,8 +3205,7 @@ function inputInsertText(text, input) {
 }
 
 $(document).on("click", ".emotion-keyboard .emotion-item", function () {
-	$("#comment_emotion_btn").removeClass("comment-emotion-keyboard-open");
-	$("#emotion_keyboard").removeClass("comment-emotion-keyboard-open");
+	closeEmotionKeyboard();
 	if ($(this).hasClass("emotion-item-sticker")) {
 		inputInsertText(" :" + $(this).attr("code") + ": ", document.getElementById("post_comment_content"));
 	} else {
@@ -3200,8 +3222,7 @@ document.addEventListener('click', (e) => {
 		return;
 	}
 	if (e.target.id != "comment_emotion_btn" && e.target.id != "emotion_keyboard" && !document.getElementById("comment_emotion_btn").contains(e.target) && !document.getElementById("emotion_keyboard").contains(e.target)) {
-		$("#comment_emotion_btn").removeClass("comment-emotion-keyboard-open");
-		$("#emotion_keyboard").removeClass("comment-emotion-keyboard-open");
+		closeEmotionKeyboard();
 	}
 });
 

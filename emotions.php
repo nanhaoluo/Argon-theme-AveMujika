@@ -1,7 +1,9 @@
 <?php
+	require_once get_template_directory() . '/inc/stickers.php';
+
 	$emotionListDefault = array(
 		array(
-			'groupname' => __('颜文字', 'argon'), 
+			'groupname' => __('颜文字', 'argon'),
 			'list' => array(
 				array('type' => 'text', 'text' => "|´・ω・)ノ"),
 				array('type' => 'text', 'text' => "ヾ(≧∇≦*)ゝ"),
@@ -32,7 +34,7 @@
 			)
 		),
 		array(
-			'groupname' => 'Emoji', 
+			'groupname' => 'Emoji',
 			'list' => array(
 				array('type' => 'text', 'text' => "😂"),
 				array('type' => 'text', 'text' => "😀"),
@@ -72,47 +74,53 @@
 				array('type' => 'text', 'text' => "🍉"),
 				array('type' => 'text', 'text' => "😣")
 			)
-		),
-		array(
-			'groupname' => '小恐龙', 
-			'list' => array(
-				array('type' => 'sticker', 'code' => 'dinosaur-shy', 'src' => $GLOBALS['assets_path'] . '/stickers/dinosaur/1.jpg'),
-				array('type' => 'sticker', 'code' => 'dinosaur-daze', 'src' => $GLOBALS['assets_path'] . '/stickers/dinosaur/2.jpg'),
-				array('type' => 'sticker', 'code' => 'dinosaur-sweat', 'src' => $GLOBALS['assets_path'] . '/stickers/dinosaur/3.jpg'),
-				array('type' => 'sticker', 'code' => 'dinosaur-proud', 'src' => $GLOBALS['assets_path'] . '/stickers/dinosaur/4.jpg'),
-				array('type' => 'sticker', 'code' => 'dinosaur-powerless', 'src' => $GLOBALS['assets_path'] . '/stickers/dinosaur/5.jpg'),
-				array('type' => 'sticker', 'code' => 'dinosaur-pouting', 'src' => $GLOBALS['assets_path'] . '/stickers/dinosaur/6.jpg'),
-				array('type' => 'sticker', 'code' => 'dinosaur-eating', 'src' => $GLOBALS['assets_path'] . '/stickers/dinosaur/7.jpg'),
-				array('type' => 'sticker', 'code' => 'dinosaur-ok', 'src' => $GLOBALS['assets_path'] . '/stickers/dinosaur/8.jpg'),
-				array('type' => 'sticker', 'code' => 'dinosaur-doubt', 'src' => $GLOBALS['assets_path'] . '/stickers/dinosaur/9.jpg'),
-				array('type' => 'sticker', 'code' => 'dinosaur-depressed', 'src' => $GLOBALS['assets_path'] . '/stickers/dinosaur/10.jpg'),
-				array('type' => 'sticker', 'code' => 'dinosaur-close-eyes', 'src' => $GLOBALS['assets_path'] . '/stickers/dinosaur/11.jpg'),
-				array('type' => 'sticker', 'code' => 'dinosaur-sleeping', 'src' => $GLOBALS['assets_path'] . '/stickers/dinosaur/12.jpg'),
-				array('type' => 'sticker', 'code' => 'dinosaur-puzzled', 'src' => $GLOBALS['assets_path'] . '/stickers/dinosaur/13.jpg'),
-				array('type' => 'sticker', 'code' => 'dinosaur-agree', 'src' => $GLOBALS['assets_path'] . '/stickers/dinosaur/14.jpg'),
-				array('type' => 'sticker', 'code' => 'dinosaur-crazy', 'src' => $GLOBALS['assets_path'] . '/stickers/dinosaur/15.jpg'),
-				array('type' => 'sticker', 'code' => 'dinosaur-angry', 'src' => $GLOBALS['assets_path'] . '/stickers/dinosaur/16.jpg')
-			)
-		),
-		array(
-			'groupname' => '花!', 
-			'list' => array(
-				array('type' => 'sticker', 'code' => 'flower-flower', 'src' => $GLOBALS['assets_path'] . '/stickers/flower/1.jpg'),
-				array('type' => 'sticker', 'code' => 'flower-grass', 'src' => $GLOBALS['assets_path'] . '/stickers/flower/2.jpg'),
-				array('type' => 'sticker', 'code' => 'flower-leaf', 'src' => $GLOBALS['assets_path'] . '/stickers/flower/3.jpg'),
-				array('type' => 'sticker', 'code' => 'flower-star', 'src' => $GLOBALS['assets_path'] . '/stickers/flower/4.jpg'),
-				array('type' => 'sticker', 'code' => 'flower-sun', 'src' => $GLOBALS['assets_path'] . '/stickers/flower/5.jpg'),
-				array('type' => 'sticker', 'code' => 'flower-moon', 'src' => $GLOBALS['assets_path'] . '/stickers/flower/6.jpg'),
-				array('type' => 'sticker', 'code' => 'flower-water', 'src' => $GLOBALS['assets_path'] . '/stickers/flower/7.jpg'),
-				array('type' => 'sticker', 'code' => 'flower-heihei', 'src' => $GLOBALS['assets_path'] . '/stickers/flower/8.jpg'),
-				array('type' => 'sticker', 'code' => 'flower-lemon', 'src' => $GLOBALS['assets_path'] . '/stickers/flower/9.jpg'),
-				array('type' => 'sticker', 'code' => 'flower-birthday', 'src' => $GLOBALS['assets_path'] . '/stickers/flower/10.jpg'),
-				array('type' => 'sticker', 'code' => 'flower-sea', 'src' => $GLOBALS['assets_path'] . '/stickers/flower/11.jpg'),
-				array('type' => 'sticker', 'code' => 'flower-vegetable', 'src' => $GLOBALS['assets_path'] . '/stickers/flower/12.jpg'),
-				array('type' => 'sticker', 'code' => 'flower-tile', 'src' => $GLOBALS['assets_path'] . '/stickers/flower/13.jpg'),
-				array('type' => 'sticker', 'code' => 'flower-utf', 'src' => $GLOBALS['assets_path'] . '/stickers/flower/14.jpg'),
-			),
-			'description' => 'Source: github.com/k4yt3x/flowerhd'
 		)
 	);
+
+	/**
+	 * 获取当前可用的表情列表。贴图目录只在真正渲染评论或表情面板时读取。
+	 */
+	function argon_get_emotion_list() {
+		global $emotionListDefault;
+
+		static $emotion_list = null;
+		if ($emotion_list === null) {
+			$emotion_list = array_merge($emotionListDefault, argon_load_sticker_groups());
+		}
+
+		return apply_filters('argon_emotion_list', $emotion_list);
+	}
+
+	/**
+	 * 一次构建完整替换表，再单次扫描评论，避免按“评论数 × 全部图片数”遍历。
+	 * 键使用过滤器提供的原始 code，保留第三方自定义字符的兼容性。
+	 */
+	function argon_replace_comment_stickers($comment_text) {
+		static $sticker_replacements = null;
+		if ($sticker_replacements === null) {
+			$sticker_replacements = array();
+			foreach (argon_get_emotion_list() as $group) {
+				if (!isset($group['list']) || !is_array($group['list'])) {
+					continue;
+				}
+				foreach ($group['list'] as $emotion) {
+					if (!isset($emotion['type'], $emotion['code'], $emotion['src']) || $emotion['type'] !== 'sticker') {
+						continue;
+					}
+					$code = (string) $emotion['code'];
+					if ($code === '') {
+						continue;
+					}
+					$title = isset($emotion['title']) && $emotion['title'] !== '' ? $emotion['title'] : $code;
+					$sticker_replacements[':' . $code . ':'] = "<img class='comment-sticker' src='" . esc_url($emotion['src']) . "' alt='" . esc_attr($title) . "' loading='lazy' decoding='async' referrerpolicy='same-origin' draggable='false'/>";
+				}
+			}
+		}
+
+		if (!$sticker_replacements || strpos($comment_text, ':') === false) {
+			return $comment_text;
+		}
+
+		return strtr($comment_text, $sticker_replacements);
+	}
 ?>

@@ -2142,22 +2142,7 @@ function argon_get_comment_text($comment_ID = 0, $args = array()) {
 	);
 	//表情
 	if (get_option("argon_comment_emotion_keyboard", "true") != "false"){
-		global $emotionListDefault;
-		$emotionList = apply_filters("argon_emotion_list", $emotionListDefault);
-		foreach ($emotionList as $groupIndex => $group){ 
-			foreach ($group['list'] as $index => $emotion){
-				if ($emotion['type'] != 'sticker'){
-					continue;
-				}
-				if (!isset($emotion['code']) || mb_strlen($emotion['code']) == 0){
-					continue;
-				}
-				if (!isset($emotion['src']) || mb_strlen($emotion['src']) == 0){
-					continue;
-				}
-				$comment_text = str_replace(':' . $emotion['code'] . ':', "<img class='comment-sticker' src='" . $emotion['src'] . "' loading='lazy'/>", $comment_text);
-			}
-		}
+		$comment_text = argon_replace_comment_stickers($comment_text);
 	}
 	return apply_filters( 'comment_text', $comment_text, $comment, $args );
 }
