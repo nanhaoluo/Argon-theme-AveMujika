@@ -1414,12 +1414,6 @@ if (apply_filters('argon_page_background_url', get_option('argon_page_background
 
 	</button>
 
-	<button id="fabtn_open_sidebar" class="btn btn-icon btn-neutral fabtn shadow-sm" type="button" aria-controls="leftbar" aria-expanded="false" aria-label="<?php esc_attr_e('打开侧栏', 'argon'); ?>" tooltip="<?php esc_attr_e('打开侧栏', 'argon'); ?>">
-
-		<span class="btn-inner--icon"><i class="fa fa-bars"></i></span>
-
-	</button>
-
 	<button id="fabtn_back_to_top" class="btn btn-icon btn-neutral fabtn shadow-sm" type="button" aria-label="Back To Top" tooltip="<?php _e('回到顶部', 'argon'); ?>">
 
 		<span class="btn-inner--icon"><i class="fa fa-angle-up"></i></span>

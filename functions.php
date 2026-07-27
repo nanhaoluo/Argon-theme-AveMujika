@@ -2007,10 +2007,20 @@ function user_can_view_comment($id){
 	if (current_user_can("manage_options")){
 		return true;
 	}
-	if ($_COOKIE['argon_user_token'] == get_comment_meta($id, "private_mode", true)){
+	if (isset($_COOKIE['argon_user_token']) && $_COOKIE['argon_user_token'] == get_comment_meta($id, "private_mode", true)){
 		return true;
 	}
 	return false;
+}
+
+/**
+ * AJAX 刚创建的评论在 set_comment_cookies() 写入响应头后，当前 PHP 请求还读不到新 Cookie。
+ * 仅允许评论提交接口临时指定的那一条评论绕过当前请求内的可见性检查，避免 Walker
+ * 返回一个空的 <li>，同时不放宽后续请求或其他评论的权限。
+ */
+function argon_comment_is_forced_visible($id) {
+	return isset($GLOBALS['argon_force_visible_comment_id'])
+		&& intval($GLOBALS['argon_force_visible_comment_id']) === intval($id);
 }
 //过滤 RSS 中悄悄话
 function remove_rss_private_comment_title_and_author($str){
@@ -2318,7 +2328,7 @@ $GLOBALS['argon_comment_options']['show_comment_parent_info'] = (get_option("arg
 function argon_comment_format($comment, $args, $depth){
 	global $comment_enable_upvote, $comment_enable_pinning;
 	$GLOBALS['comment'] = $comment;
-	if (!($comment -> placeholder) && user_can_view_comment(get_comment_ID())){
+	if (!($comment -> placeholder) && (user_can_view_comment(get_comment_ID()) || argon_comment_is_forced_visible(get_comment_ID()))){
 	?>
 	<li class="comment-item" id="comment-<?php comment_ID(); ?>" data-id="<?php comment_ID(); ?>" data-use-markdown="<?php echo get_comment_meta(get_comment_ID(), "use_markdown", true);?>">
 		<div class="comment-item-left-wrapper">
@@ -3033,6 +3043,7 @@ function ajax_post_comment(){
 			do_action('set_comment_cookies', $_comment, $user);
 		}
 	}
+	$GLOBALS['argon_force_visible_comment_id'] = intval($comment -> comment_ID);
 	$html = wp_list_comments(
 		array(
 			'type'      => 'comment',
@@ -3041,6 +3052,7 @@ function ajax_post_comment(){
 		),
 		array($comment)
 	);
+	unset($GLOBALS['argon_force_visible_comment_id']);
 	$newCaptchaSeed = get_comment_captcha_seed(true);
 	$newCaptcha = get_comment_captcha($newCaptchaSeed);
 	if (current_user_can('moderate_comments')){

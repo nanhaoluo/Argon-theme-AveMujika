@@ -8738,6 +8738,8 @@ body.noscroll:before {
 	align-items: center !important;
 	gap: 10px !important;
 	margin-bottom: 25px;
+	position: relative;
+	z-index: 1051;
 }
 
 /* ---------- 鍒嗕韩鎸夐挳 ---------- */
@@ -8745,6 +8747,11 @@ body.noscroll:before {
 	position: relative;
 	display: inline-flex;
 	align-items: flex-end;
+	z-index: 1052;
+}
+
+#share_container.opened {
+	z-index: 1060;
 }
 
 #comments_toggle {
@@ -8808,6 +8815,7 @@ body.noscroll:before {
 	position: absolute;
 	bottom: 0;
 	right: 0;
+	z-index: 1053;
 	display: flex;
 	flex-direction: row;
 	gap: 6px;

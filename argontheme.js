@@ -2702,7 +2702,7 @@ const ARGON_FABTN_INIT_MAX_ATTEMPTS = 40;
 
 				// 插入新评论
 				try {
-					result.html = String(result.html || "").replace(/<(\/).noscript>/g, "");
+					result.html = String(result.html || "").replace(/<\/?noscript\b[^>]*>/gi, "");
 					let parentID = result.parentID;
 					if (parentID == "" || parentID == null) {
 						parentID = 0;

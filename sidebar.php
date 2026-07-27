@@ -1004,10 +1004,6 @@ if (!class_exists('mobileToolbarMenuWalker')) {
 
 									echo "</ul></div>";
 
-								}else{
-
-									echo "<div style='height: 20px;'></div>";
-
 								}
 
 							?>

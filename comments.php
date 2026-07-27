@@ -482,7 +482,7 @@ function resetGeetestCaptcha() {
 						<span class="btn-inner--text"><?php _e('取消', 'argon');?></span>
 					</button>
 					<?php if (get_option("argon_comment_emotion_keyboard", "true") != "false"){ ?>
-						<button id="comment_emotion_btn" class="btn btn-icon btn-primary pull-right" type="button" title="<?php _e('表情', 'argon');?>">
+						<button id="comment_emotion_btn" class="btn btn-icon btn-primary pull-right" type="button" aria-label="<?php esc_attr_e('表情', 'argon');?>">
 							<i class="fa fa-smile-o" aria-hidden="true"></i>
 						</button>
 					<?php } ?>
