@@ -62,8 +62,13 @@ if (isset($_POST['flink_action'])) {
         case 'add':
             $id = argon_add_friend_link(array(
                 'name' => isset($_POST['name']) ? $_POST['name'] : '',
+                'auto_name' => isset($_POST['auto_name']) && $_POST['auto_name'] === '1',
                 'display_name' => isset($_POST['display_name']) ? $_POST['display_name'] : '',
+                'user_display_name' => isset($_POST['user_display_name']) && $_POST['user_display_name'] === '1',
                 'url' => isset($_POST['url']) ? $_POST['url'] : '',
+                'browser_detected_url' => isset($_POST['browser_detected_url']) ? $_POST['browser_detected_url'] : '',
+                'browser_detected' => isset($_POST['browser_detected']) && $_POST['browser_detected'] === '1',
+                'accessible' => isset($_POST['accessible']) && $_POST['accessible'] === '1' ? true : null,
                 'avatar' => isset($_POST['avatar']) ? $_POST['avatar'] : '',
                 'user_avatar' => isset($_POST['user_avatar']) && $_POST['user_avatar'] === '1',
                 'description' => isset($_POST['description']) ? $_POST['description'] : '',
@@ -135,10 +140,15 @@ if (isset($_POST['flink_action'])) {
                 $data['user_avatar'] = $avatar !== '' && ($avatar !== $existing_avatar || !empty($existing_link['user_avatar']));
             }
             if (array_key_exists('display_name', $data)) {
-                $display_name = trim((string)$data['display_name']);
-                $existing_display_name = isset($existing_link['display_name']) ? trim((string)$existing_link['display_name']) : '';
-                $data['user_display_name'] = $display_name !== '' && ($display_name !== $existing_display_name || !empty($existing_link['user_display_name']));
+                if (isset($_POST['user_display_name'])) {
+                    $data['user_display_name'] = $_POST['user_display_name'] === '1';
+                } else {
+                    $display_name = trim((string)$data['display_name']);
+                    $existing_display_name = isset($existing_link['display_name']) ? trim((string)$existing_link['display_name']) : '';
+                    $data['user_display_name'] = $display_name !== '' && ($display_name !== $existing_display_name || !empty($existing_link['user_display_name']));
+                }
             }
+            if (isset($_POST['auto_name'])) $data['auto_name'] = $_POST['auto_name'] === '1';
             if (empty($data)) {
                 $response = array('success' => true, 'message' => __('没有需要保存的变化', 'argon'));
                 break;
@@ -153,135 +163,59 @@ if (isset($_POST['flink_action'])) {
             $response = $link ? array('success' => true, 'data' => $link) : array('success' => false);
             break;
             
-        case 'check_backlink':
-            $id = isset($_POST['id']) ? sanitize_text_field($_POST['id']) : '';
-            $link = argon_get_friend_link($id);
-            if ($link) {
-                $raw_links_page = isset($_POST['links_page']) ? trim(wp_unslash($_POST['links_page'])) : '';
-                if ($raw_links_page !== '' && !preg_match('/^https?:\/\//i', $raw_links_page)) {
-                    $raw_links_page = 'https://' . $raw_links_page;
-                }
-                $links_page = $raw_links_page !== '' ? esc_url_raw($raw_links_page) : (!empty($link['links_page']) ? $link['links_page'] : '');
-                if (empty($links_page)) {
-                    $response = array('success' => false, 'message' => __('请先填写对方的友链页面地址', 'argon'));
-                    break;
-                }
-                $raw_url = isset($_POST['url']) ? trim(wp_unslash($_POST['url'])) : '';
-                if ($raw_url !== '' && !preg_match('/^https?:\/\//i', $raw_url)) {
-                    $raw_url = 'https://' . $raw_url;
-                }
-                $url = $raw_url !== '' ? esc_url_raw($raw_url) : $link['url'];
-                $has_backlink = $links_page ? argon_check_backlink($links_page, true) : null;
-                $accessible = argon_check_site_accessible($url);
-                $check_update = array('url' => $url, 'links_page' => $links_page, 'accessible' => $accessible, 'last_check' => time());
-                if ($has_backlink !== null) $check_update['has_backlink'] = $has_backlink;
-                argon_update_friend_link($id, $check_update);
-                $response = array(
-                    'success' => $has_backlink !== null,
-                    'message' => $has_backlink === null ? __('暂时无法完整读取对方友链页面，请稍后重试', 'argon') : '',
-                    'has_backlink' => $has_backlink,
-                    'accessible' => $accessible,
-                    'links_page' => $links_page
-                );
-            } else {
-                $response = array('success' => false, 'message' => __('友链不存在或已被删除，请刷新页面后重试', 'argon'));
-            }
-            break;
-            
-        case 'check_all':
-            $batch_size = isset($_POST['batch_size']) ? intval($_POST['batch_size']) : 3;
-            $response = argon_process_friend_link_check_batch($batch_size, true);
-            if (!empty($response['locked'])) {
-                $response['message'] = __('自动检测任务正在运行，请稍后重试', 'argon');
-            } else {
-                $response['message'] = sprintf(__('本批已检测 %d 条友链，其余友链将继续由自动任务分批检测', 'argon'), intval($response['processed']));
-            }
-            break;
-            
-        case 'fetch_info':
-            $url = isset($_POST['url']) ? esc_url_raw($_POST['url']) : '';
-            if (empty($url)) {
-                $response = array('success' => false, 'message' => __('请输入网址', 'argon'));
-            } else {
-                $info = argon_fetch_site_info($url, true);
-                $response = array('success' => true, 'data' => $info);
-            }
-            break;
-
-        case 'refresh_info':
+        case 'browser_sync':
             $id = isset($_POST['id']) ? sanitize_text_field($_POST['id']) : '';
             $link = $id ? argon_get_friend_link($id) : null;
             if (!$link) {
                 $response = array('success' => false, 'message' => __('友链不存在', 'argon'));
                 break;
             }
-
-            $raw_url = isset($_POST['url']) ? trim(wp_unslash($_POST['url'])) : '';
-            if ($raw_url === '') {
-                $raw_url = isset($link['url']) ? $link['url'] : '';
+            $update_data = array('check_source' => 'browser');
+            if (isset($_POST['site_checked']) && $_POST['site_checked'] === '1') {
+                $update_data['last_browser_check'] = time();
+                $update_data['next_browser_check_at'] = time() + DAY_IN_SECONDS;
             }
-            if ($raw_url !== '' && !preg_match('/^https?:\/\//i', $raw_url)) {
-                $raw_url = 'https://' . $raw_url;
-            }
-            $url = esc_url_raw($raw_url);
-            if (empty($url)) {
-                $response = array('success' => false, 'message' => __('请输入网址', 'argon'));
-                break;
-            }
-
-            $info = argon_fetch_site_info($url, true);
-            $best_image = function_exists('argon_select_friend_link_image') ? argon_select_friend_link_image($info) : '';
-            $update_data = array(
-                'url' => $url,
-                'last_check' => time(),
-                'accessible' => !empty($info['accessible']),
-                'blocked_by_waf' => !empty($info['blocked_by_waf']),
-                'is_wordpress' => !empty($info['is_wordpress']),
-                'error_reason' => !empty($info['error_reason']) ? $info['error_reason'] : ''
-            );
-            if (!empty($info['accessible'])) $update_data['last_info_update'] = time();
-
-            $can_update_display_name = array_key_exists('user_display_name', $link) ? empty($link['user_display_name']) : empty($link['display_name']);
-            if ($can_update_display_name && !empty($info['title'])) {
-                $update_data['display_name'] = $info['title'];
-            }
-            if (!empty($info['description'])) {
-                $description = wp_strip_all_tags($info['description']);
-                $description = function_exists('mb_substr') ? mb_substr($description, 0, 100) : substr($description, 0, 100);
-                $update_data['auto_description'] = $description;
-                if (empty($link['description'])) $update_data['description'] = $description;
-            }
-            foreach (array('author_avatar', 'site_logo', 'favicon', 'site_image', 'image', 'canonical_url', 'feed_url') as $field) {
-                if (!empty($info[$field])) {
-                    $update_data[$field] = $info[$field];
+            if (isset($_POST['accessible']) && $_POST['accessible'] === '1') $update_data['accessible'] = true;
+            if (!empty($_POST['detected_url'])) {
+                $detected_url = esc_url_raw(wp_unslash($_POST['detected_url']));
+                $current_host = wp_parse_url($link['url'] ?? '', PHP_URL_HOST);
+                $detected_host = wp_parse_url($detected_url, PHP_URL_HOST);
+                if (!$current_host || !$detected_host || !argon_is_allowed_friend_link_detected_host($current_host, $detected_host)) {
+                    $response = array('success' => false, 'message' => __('浏览器返回的地址不属于原站点，已拒绝保存', 'argon'));
+                    break;
                 }
+                $update_data['browser_detected_url'] = $detected_url;
+                if (isset($_POST['apply_detected_url']) && $_POST['apply_detected_url'] === '1') $update_data['url'] = $detected_url;
             }
-            foreach (array('author_name', 'language', 'keywords', 'theme_color') as $field) {
-                if (!empty($info[$field])) $update_data[$field] = $info[$field];
+            if (!empty($_POST['links_page'])) $update_data['links_page'] = esc_url_raw(wp_unslash($_POST['links_page']));
+            $primary = isset($_POST['primary']) ? sanitize_text_field(wp_unslash($_POST['primary'])) : '';
+            $subtitle = isset($_POST['subtitle']) ? sanitize_text_field(wp_unslash($_POST['subtitle'])) : '';
+            if ($primary !== '' && (!empty($link['auto_name']) || empty($link['name']))) $update_data['name'] = $primary;
+            $can_update_display_name = array_key_exists('user_display_name', $link) ? empty($link['user_display_name']) : empty($link['display_name']);
+            if ($can_update_display_name && $subtitle !== '') $update_data['display_name'] = $subtitle;
+            $description = isset($_POST['description']) ? sanitize_text_field(wp_unslash($_POST['description'])) : '';
+            if ($description !== '') $update_data['auto_description'] = $description;
+            $avatar = isset($_POST['avatar']) ? esc_url_raw(wp_unslash($_POST['avatar'])) : '';
+            if ($avatar !== '' && empty($link['user_avatar'])) $update_data['avatar'] = $avatar;
+            if (isset($_POST['has_backlink']) && in_array($_POST['has_backlink'], array('0', '1'), true)) {
+                $update_data['has_backlink'] = $_POST['has_backlink'] === '1';
+                $update_data['verified'] = $_POST['has_backlink'] === '1';
+                $update_data['last_backlink_check'] = time();
+                $update_data['last_backlink_attempt'] = time();
+                $update_data['backlink_check_result'] = $_POST['has_backlink'] === '1' ? 'found' : 'missing';
+            } elseif (isset($_POST['backlink_unknown']) && $_POST['backlink_unknown'] === '1') {
+                $update_data['last_backlink_attempt'] = time();
+                $update_data['backlink_check_result'] = 'unknown';
             }
-            if (!empty($info['favicon'])) {
-                $update_data['auto_favicon'] = $info['favicon'];
-            }
-            if (!empty($best_image) && empty($link['user_avatar'])) {
-                $update_data['avatar'] = $best_image;
-                $update_data['image'] = $best_image;
-                $update_data['user_avatar'] = false;
-            }
-
             $updated = argon_update_friend_link($id, $update_data);
-            if ($updated) {
-                $info['url'] = $url;
-                $info['avatar'] = !empty($update_data['avatar']) ? $update_data['avatar'] : (isset($link['avatar']) ? $link['avatar'] : '');
-                $info['user_avatar'] = !empty($link['user_avatar']);
-                $info['user_display_name'] = !$can_update_display_name;
-                if (!$can_update_display_name) $info['title'] = $link['display_name'];
-                if (!empty($link['description'])) $info['description'] = $link['description'];
-                $info['last_info_update'] = $update_data['last_info_update'] ?? ($link['last_info_update'] ?? 0);
-                $info['last_check'] = $update_data['last_check'];
-                $response = array('success' => true, 'message' => __('已更新并保存', 'argon'), 'data' => $info);
-            } else {
-                $response = array('success' => false, 'message' => __('保存失败', 'argon'), 'data' => $info);
-            }
+            $response = array('success' => $updated, 'message' => $updated ? __('浏览器检测结果已保存', 'argon') : __('保存失败', 'argon'));
+            break;
+
+        case 'check_backlink':
+        case 'check_all':
+        case 'fetch_info':
+        case 'refresh_info':
+            $response = array('success' => false, 'message' => __('服务器外联检测已停用，请使用浏览器检测', 'argon'));
             break;
             
         default:
@@ -314,7 +248,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['argon_link_apply'])) 
 
 // 从 URL 参数或 session 获取申请结果
 if (isset($_GET['apply_success'])) {
-    $apply_result = array('success' => true, 'message' => __('申请已提交，系统将在后台自动检测互链', 'argon'));
+    $apply_result = array('success' => true, 'message' => __('申请已提交，等待管理员审核', 'argon'));
 } elseif (isset($_GET['apply_error'])) {
     if (!session_id()) session_start();
     $error_msg = isset($_SESSION['flink_apply_error']) ? $_SESSION['flink_apply_error'] : __('申请失败', 'argon');
@@ -325,6 +259,22 @@ if (isset($_GET['apply_success'])) {
 // 获取友链数据
 $all_approved_links = argon_get_friend_links_raw('approved');
 $pending_links = $is_admin ? argon_get_friend_links_raw('pending') : array();
+$browser_check_links = array();
+if ($is_admin) {
+    $browser_check_candidates = array_merge($pending_links, $all_approved_links);
+    usort($browser_check_candidates, function($a, $b) {
+        return intval($a['next_browser_check_at'] ?? 0) - intval($b['next_browser_check_at'] ?? 0);
+    });
+    foreach (array_slice($browser_check_candidates, 0, 3) as $candidate) {
+        if (empty($candidate['id']) || empty($candidate['url'])) continue;
+        $browser_check_links[] = array(
+            'id' => $candidate['id'],
+            'url' => $candidate['url'],
+            'links_page' => $candidate['links_page'] ?? '',
+            'due' => intval($candidate['next_browser_check_at'] ?? 0) <= time()
+        );
+    }
+}
 $show_apply_form = get_option('argon_friend_link_allow_apply', 'true') === 'true';
 $requirements = get_option('argon_friend_link_requirements', '');
 $hide_no_backlink = get_option('argon_friend_link_hide_no_backlink', 'true') === 'true';
@@ -449,6 +399,7 @@ html.darkmode body.flinks-page {
 }
 
 .flinks-header-card { text-align: center; padding: 40px 24px 30px; background: transparent !important; box-shadow: none !important; }
+.flinks-detect-status { display: block; min-height: 18px; margin-top: 5px; color: var(--flinks-text-soft); font-size: 11px; line-height: 1.45; }
 .flinks-header-icon { width: 64px; height: 64px; margin: 0 auto 20px; background: var(--themecolor-gradient); border-radius: var(--card-radius); display: flex; align-items: center; justify-content: center; font-size: 28px; color: #fff; box-shadow: 0 4px 12px rgba(var(--themecolor-rgbstr), 0.2); transition: transform var(--animation-fast) var(--ease-standard); }
 .flinks-header-icon:hover { transform: translateY(-2px); }
 .flinks-title { font-size: 24px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper); background: none !important; }
@@ -490,6 +441,7 @@ html.darkmode body.flinks-page {
 /* 状态标记 */
 .flink-status-badge { position: absolute; top: 6px; right: 6px; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 500; cursor: help; }
 .flink-status-badge.no-backlink { background: #fef3c7; color: #d97706; }
+.flink-status-badge.unknown { background: rgba(107, 114, 128, 0.14); color: var(--flinks-text-muted); }
 .flink-status-badge.inaccessible { background: #fee2e2; color: #dc2626; }
 .flink-status-badge.waf-blocked { background: #fce7f3; color: #db2777; }
 .flink-status-badge.auto-approved { background: #d1fae5; color: #059669; cursor: pointer; }
@@ -765,7 +717,7 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
 <!-- 管理面板（仅管理员可见） -->
 <?php if ($is_admin) : ?>
 <article class="post card shadow-sm bg-white border-0 flinks-admin-card" style="margin-bottom: 16px;" id="admin-panel">
-    <div class="flinks-admin-title"><i class="fa fa-cog"></i><?php _e('友链管理', 'argon'); ?> <button class="btn btn-sm btn-secondary" style="margin-left:auto;font-size:11px;" id="check-all-btn" title="<?php esc_attr_e('系统每 6 小时自动检测一批友链', 'argon'); ?>"><?php _e('立即检测一批', 'argon'); ?></button></div>
+    <div class="flinks-admin-title"><i class="fa fa-cog"></i><?php _e('友链管理', 'argon'); ?> <button class="btn btn-sm btn-secondary" style="margin-left:auto;font-size:11px;" id="check-all-btn" title="<?php esc_attr_e('由当前浏览器检测最多 3 条友链，不经过服务器', 'argon'); ?>"><?php _e('立即检测一批', 'argon'); ?></button></div>
     
     <?php if (!empty($pending_links)) : ?>
     <div class="flinks-admin-section">
@@ -802,6 +754,7 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
                         <input type="url" id="add-url" placeholder="https://example.com">
                         <button type="button" class="btn btn-secondary" id="fetch-info"><?php _e('获取', 'argon'); ?></button>
                     </div>
+                    <small class="flinks-detect-status" id="add-detect-status" aria-live="polite"></small>
                 </div>
                 <div><label><?php _e('网站名称', 'argon'); ?> *</label><input type="text" id="add-name" placeholder="<?php _e('主标题', 'argon'); ?>"></div>
             </div>
@@ -844,13 +797,16 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
                 
                 // 状态检测
                 $has_backlink = isset($link['has_backlink']) ? $link['has_backlink'] : null;
+                $backlink_check_result = isset($link['backlink_check_result']) ? $link['backlink_check_result'] : '';
                 $accessible = isset($link['accessible']) ? $link['accessible'] : null;
                 $blocked_by_waf = isset($link['blocked_by_waf']) ? $link['blocked_by_waf'] : false;
                 $error_reason = isset($link['error_reason']) ? $link['error_reason'] : '';
                 $auto_approved = !empty($link['auto_approved']);
                 $status_badge = '';
                 if ($is_admin) {
-                    if ($blocked_by_waf) {
+                    if ($backlink_check_result === 'unknown') {
+                        $status_badge = '<span class="flink-status-badge unknown">' . __('状态未知', 'argon') . '</span>';
+                    } elseif ($blocked_by_waf) {
                         $status_badge = '<span class="flink-status-badge waf-blocked" title="' . esc_attr($error_reason) . '">' . __('WAF拦截', 'argon') . '</span>';
                     } elseif ($accessible === false) {
                         $title = $error_reason ? esc_attr($error_reason) : '';
@@ -925,17 +881,29 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
         <form method="post" action="<?php echo esc_url($_SERVER['REQUEST_URI']); ?>" class="flinks-form" id="apply-form">
             <?php wp_nonce_field('argon_link_apply', 'argon_link_apply_nonce'); ?>
             <input type="hidden" name="argon_link_apply" value="1">
+            <input type="hidden" name="apply_browser_detected" id="apply-browser-detected" value="0">
+            <input type="hidden" name="apply_name_manual" id="apply-name-manual" value="1">
+            <input type="hidden" name="apply_display_name_manual" id="apply-display-name-manual" value="1">
+            <input type="hidden" name="apply_avatar_manual" id="apply-avatar-manual" value="1">
+            <input type="hidden" name="apply_description_manual" id="apply-description-manual" value="1">
             <div class="row">
                 <div class="col-md-6">
                     <div class="form-group">
                         <label class="form-control-label"><?php _e('网站地址', 'argon'); ?> <span class="text-danger">*</span></label>
                         <input type="url" name="apply_url" id="apply-url" class="form-control" required placeholder="https://example.com">
+                        <small class="flinks-detect-status" id="apply-detect-status" aria-live="polite"></small>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
                         <label class="form-control-label"><?php _e('网站名称', 'argon'); ?></label>
                         <input type="text" name="apply_name" id="apply-name" class="form-control" placeholder="<?php _e('选填', 'argon'); ?>">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label class="form-control-label"><?php _e('副标题', 'argon'); ?></label>
+                        <input type="text" name="apply_display_name" id="apply-display-name" class="form-control" placeholder="<?php _e('可由浏览器自动识别', 'argon'); ?>">
                     </div>
                 </div>
                 <div class="col-md-6">
@@ -952,7 +920,7 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
-                        <label class="form-control-label"><?php _e('友链页面', 'argon'); ?> <small class="flinks-autopass-note"><?php _e('填写可自动通过', 'argon'); ?></small></label>
+                        <label class="form-control-label"><?php _e('友链页面', 'argon'); ?> <small class="flinks-autopass-note"><?php _e('便于管理员浏览器检测', 'argon'); ?></small></label>
                         <input type="url" name="apply_links_page" class="form-control" placeholder="<?php _e('您放置友链的页面地址', 'argon'); ?>">
                     </div>
                 </div>
@@ -1051,6 +1019,7 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
 </div>
 <?php endif; ?>
 
+<script src="<?php echo esc_url(get_template_directory_uri() . '/assets/js/friend-links-browser.js'); ?>" data-pjax></script>
 <script data-pjax>
 function toggleApplyForm() {
     var c = document.querySelector('.flinks-apply-content');
@@ -1147,12 +1116,106 @@ if (typeof initGeetest4 === 'function') {
 }
 <?php endif; ?>
 
+// 访客申请的站点识别完全由当前浏览器执行，服务器只接收表单结果。
+(function() {
+    var detector = window.ArgonFriendLinkBrowser;
+    var urlInput = document.getElementById('apply-url');
+    if (!detector || !urlInput) return;
+
+    var detectedInput = document.getElementById('apply-browser-detected');
+    var status = document.getElementById('apply-detect-status');
+    var fields = [
+        { input: document.getElementById('apply-name'), manual: document.getElementById('apply-name-manual'), key: 'primary' },
+        { input: document.getElementById('apply-display-name'), manual: document.getElementById('apply-display-name-manual'), key: 'subtitle' },
+        { input: document.getElementById('apply-avatar'), manual: document.getElementById('apply-avatar-manual'), key: 'avatar' },
+        { input: document.getElementById('apply-desc'), manual: document.getElementById('apply-description-manual'), key: 'description' }
+    ];
+    var requestSequence = 0;
+    var timer = null;
+
+    fields.forEach(function(field) {
+        if (!field.input || !field.manual) return;
+        field.manual.value = '0';
+        field.input.addEventListener('input', function() {
+            field.manual.value = '1';
+        });
+    });
+
+    function setDetectStatus(message) {
+        if (status) status.textContent = message || '';
+    }
+
+    function detectApplicationSite() {
+        var inputValue = urlInput.value.trim();
+        if (!inputValue) {
+            setDetectStatus('');
+            return;
+        }
+        var sequence = ++requestSequence;
+        if (detectedInput) detectedInput.value = '0';
+        setDetectStatus('<?php _e('正在由浏览器探测主站、www 与 blog 域名...', 'argon'); ?>');
+        detector.detectSite(inputValue).then(function(result) {
+            if (sequence !== requestSequence) return;
+            if (!result.success) {
+                setDetectStatus('<?php _e('浏览器未能访问候选站点，请检查地址或手动填写资料', 'argon'); ?>');
+                return;
+            }
+            if (result.url) urlInput.value = result.url;
+            if (detectedInput) detectedInput.value = '1';
+            fields.forEach(function(field) {
+                var value = result.info && result.info[field.key] ? result.info[field.key] : '';
+                if (value && field.input && field.input.maxLength > 0) value = value.slice(0, field.input.maxLength);
+                if (field.input && field.manual && field.manual.value !== '1' && value) field.input.value = value;
+            });
+            var descCount = document.getElementById('desc-count');
+            var descInput = document.getElementById('apply-desc');
+            if (descCount && descInput) descCount.textContent = descInput.value.length;
+            setDetectStatus(result.readable
+                ? '<?php _e('已在浏览器中识别主标题、副标题与站点资料', 'argon'); ?>'
+                : '<?php _e('已找到候选域名，但目标站未开放跨域读取，请手动确认并补全资料', 'argon'); ?>');
+        }).catch(function() {
+            if (sequence === requestSequence) setDetectStatus('<?php _e('浏览器探测失败，请手动填写资料', 'argon'); ?>');
+        });
+    }
+
+    urlInput.addEventListener('input', function() {
+        requestSequence++;
+        if (detectedInput) detectedInput.value = '0';
+        setDetectStatus('');
+        fields.forEach(function(field) {
+            if (field.input && field.manual && field.manual.value !== '1') field.input.value = '';
+        });
+        var descCount = document.getElementById('desc-count');
+        if (descCount) descCount.textContent = document.getElementById('apply-desc').value.length;
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(detectApplicationSite, 650);
+    });
+    urlInput.addEventListener('blur', function() {
+        if (timer) clearTimeout(timer);
+        detectApplicationSite();
+    });
+})();
+
 <?php if ($is_admin) : ?>
 (function() {
     var nonce = '<?php echo wp_create_nonce('argon_flink_manage'); ?>';
     var ajaxUrl = <?php echo wp_json_encode(esc_url_raw(wp_unslash($_SERVER['REQUEST_URI']))); ?>;
+    var localSiteUrl = <?php echo wp_json_encode(home_url('/')); ?>;
+    var browserBatchLinks = <?php echo wp_json_encode($browser_check_links); ?>;
+    var detector = window.ArgonFriendLinkBrowser;
+    var addNameIsManual = false;
+    var addDisplayNameIsManual = false;
     var addAvatarIsManual = false;
+    var addDescriptionIsManual = false;
+    var addBrowserResult = null;
+    var addDetectSequence = 0;
+    var editNameIsManual = false;
+    var editDisplayNameIsManual = false;
     var editAvatarIsManual = false;
+    var editDescriptionIsManual = false;
+    var editContextSequence = 0;
+    var editDetectSequence = 0;
+    var editBacklinkSequence = 0;
 
     function setMessage(type, message) {
         var box = document.getElementById('edit-action-message');
@@ -1174,18 +1237,22 @@ if (typeof initGeetest4 === 'function') {
         return value;
     }
 
+    var addNameInput = document.getElementById('add-name');
+    var addDisplayNameInput = document.getElementById('add-display-name');
     var addAvatarInput = document.getElementById('add-avatar');
+    var addDescriptionInput = document.getElementById('add-desc');
+    var editNameInput = document.getElementById('edit-name');
+    var editDisplayNameInput = document.getElementById('edit-display-name');
     var editAvatarInput = document.getElementById('edit-avatar');
-    if (addAvatarInput) {
-        addAvatarInput.addEventListener('input', function() {
-            addAvatarIsManual = this.value.trim() !== '';
-        });
-    }
-    if (editAvatarInput) {
-        editAvatarInput.addEventListener('input', function() {
-            editAvatarIsManual = this.value.trim() !== '';
-        });
-    }
+    var editDescriptionInput = document.getElementById('edit-desc');
+    if (addNameInput) addNameInput.addEventListener('input', function() { addNameIsManual = this.value.trim() !== ''; });
+    if (addDisplayNameInput) addDisplayNameInput.addEventListener('input', function() { addDisplayNameIsManual = this.value.trim() !== ''; });
+    if (addAvatarInput) addAvatarInput.addEventListener('input', function() { addAvatarIsManual = this.value.trim() !== ''; });
+    if (addDescriptionInput) addDescriptionInput.addEventListener('input', function() { addDescriptionIsManual = this.value.trim() !== ''; });
+    if (editNameInput) editNameInput.addEventListener('input', function() { editNameIsManual = true; });
+    if (editDisplayNameInput) editDisplayNameInput.addEventListener('input', function() { editDisplayNameIsManual = true; });
+    if (editAvatarInput) editAvatarInput.addEventListener('input', function() { editAvatarIsManual = true; });
+    if (editDescriptionInput) editDescriptionInput.addEventListener('input', function() { editDescriptionIsManual = true; });
     
     function flinkAction(action, data, callback) {
         data.flink_action = action;
@@ -1204,6 +1271,66 @@ if (typeof initGeetest4 === 'function') {
             });
     }
 
+    function syncBrowserResult(id, result, extra, callback) {
+        var info = result && result.info ? result.info : {};
+        var payload = {
+            id: id,
+            site_checked: result ? '1' : '0',
+            accessible: result && result.success && result.readable ? '1' : '',
+            detected_url: result && result.url ? result.url : '',
+            primary: info.primary || '',
+            subtitle: info.subtitle || '',
+            description: info.description || '',
+            avatar: info.avatar || ''
+        };
+        Object.keys(extra || {}).forEach(function(key) { payload[key] = extra[key]; });
+        flinkAction('browser_sync', payload, callback || function() {});
+    }
+
+    function setAddDetectStatus(message) {
+        var status = document.getElementById('add-detect-status');
+        if (status) status.textContent = message || '';
+    }
+
+    function detectAddSite(button) {
+        var urlInput = document.getElementById('add-url');
+        var url = urlInput ? urlInput.value.trim() : '';
+        if (!url) return Promise.resolve(false);
+        if (!detector) {
+            setAddDetectStatus('<?php _e('浏览器检测模块加载失败，请刷新页面重试', 'argon'); ?>');
+            return Promise.resolve(false);
+        }
+        var sequence = ++addDetectSequence;
+        if (button) { button.disabled = true; button.textContent = '...'; }
+        setAddDetectStatus('<?php _e('正在由浏览器探测主站、www 与 blog 域名...', 'argon'); ?>');
+        return detector.detectSite(url).then(function(result) {
+            if (sequence !== addDetectSequence) return false;
+            addBrowserResult = result.success ? result : null;
+            if (!result.success) {
+                setAddDetectStatus('<?php _e('浏览器未能访问候选站点，请检查地址', 'argon'); ?>');
+                return false;
+            }
+            if (result.url) urlInput.value = result.url;
+            var info = result.info || {};
+            if (!addNameIsManual && info.primary) addNameInput.value = info.primary;
+            if (!addDisplayNameIsManual && info.subtitle) addDisplayNameInput.value = info.subtitle;
+            if (!addDescriptionIsManual && info.description) addDescriptionInput.value = info.description.slice(0, 100);
+            if (!addAvatarIsManual && info.avatar) addAvatarInput.value = info.avatar;
+            setAddDetectStatus(result.readable
+                ? '<?php _e('已识别主标题、副标题与站点资料', 'argon'); ?>'
+                : '<?php _e('已找到候选域名，但受跨域限制，无法确认页面状态', 'argon'); ?>');
+            return true;
+        }).catch(function() {
+            if (sequence !== addDetectSequence) return false;
+            addBrowserResult = null;
+            setAddDetectStatus('<?php _e('浏览器探测失败，请手动填写资料', 'argon'); ?>');
+            return false;
+        }).then(function(success) {
+            if (button) { button.disabled = false; button.textContent = '<?php _e('获取', 'argon'); ?>'; }
+            return success;
+        });
+    }
+
     // 移除自动审核标记
     window.removeAutoTag = function(el) {
         if (!confirm('<?php _e('确定移除自动审核标记？', 'argon'); ?>')) return;
@@ -1214,28 +1341,33 @@ if (typeof initGeetest4 === 'function') {
         });
     };
     
-    // 获取网站信息（服务器端）
+    // 获取网站信息（当前浏览器直连目标站）
     var fetchInfoBtn = document.getElementById('fetch-info');
     if (fetchInfoBtn) {
         fetchInfoBtn.addEventListener('click', function() {
-            var url = normalizeUrlInput(document.getElementById('add-url').value);
+            var url = document.getElementById('add-url').value.trim();
             if (!url) return alert('<?php _e('请输入网址', 'argon'); ?>');
-            document.getElementById('add-url').value = url;
-            this.disabled = true; this.textContent = '...';
-            var btn = this;
+            detectAddSite(this);
+        });
+    }
 
-            flinkAction('fetch_info', { url: url }, function(res) {
-                btn.disabled = false; btn.textContent = '<?php _e('获取', 'argon'); ?>';
-                if (res.success && res.data) {
-                    if (res.data.title) document.getElementById('add-display-name').value = res.data.title;
-                    if (res.data.description) document.getElementById('add-desc').value = res.data.description;
-                    var avatar = res.data.site_image || res.data.author_avatar || res.data.favicon || '';
-                    if (avatar) document.getElementById('add-avatar').value = avatar;
-                    addAvatarIsManual = false;
-                } else {
-                    alert(res.message || '<?php _e('获取失败', 'argon'); ?>');
-                }
-            });
+    var addUrlInput = document.getElementById('add-url');
+    var addDetectTimer = null;
+    if (addUrlInput) {
+        addUrlInput.addEventListener('input', function() {
+            addDetectSequence++;
+            addBrowserResult = null;
+            setAddDetectStatus('');
+            if (!addNameIsManual) addNameInput.value = '';
+            if (!addDisplayNameIsManual) addDisplayNameInput.value = '';
+            if (!addAvatarIsManual) addAvatarInput.value = '';
+            if (!addDescriptionIsManual) addDescriptionInput.value = '';
+            if (addDetectTimer) clearTimeout(addDetectTimer);
+            addDetectTimer = setTimeout(function() { detectAddSite(null); }, 650);
+        });
+        addUrlInput.addEventListener('blur', function() {
+            if (addDetectTimer) clearTimeout(addDetectTimer);
+            detectAddSite(null);
         });
     }
 
@@ -1255,11 +1387,17 @@ if (typeof initGeetest4 === 'function') {
             var btn = this;
             flinkAction('add', {
                 name: name,
+                auto_name: addNameIsManual ? '0' : '1',
                 url: url,
                 display_name: document.getElementById('add-display-name').value.trim(),
+                user_display_name: addDisplayNameIsManual ? '1' : '0',
+                browser_detected: addBrowserResult ? '1' : '0',
+                browser_detected_url: addBrowserResult && addBrowserResult.url ? addBrowserResult.url : '',
+                accessible: addBrowserResult && addBrowserResult.success && addBrowserResult.readable ? '1' : '',
                 avatar: document.getElementById('add-avatar').value.trim(),
                 user_avatar: addAvatarIsManual ? '1' : '0',
-                description: document.getElementById('add-desc').value.trim(),
+                description: addDescriptionIsManual ? document.getElementById('add-desc').value.trim() : '',
+                auto_description: addDescriptionIsManual ? '' : document.getElementById('add-desc').value.trim(),
                 category: document.getElementById('add-category').value.trim()
             }, function(res) {
                 if (res.success) location.reload();
@@ -1293,51 +1431,115 @@ if (typeof initGeetest4 === 'function') {
         });
     });
 
-    // 检测所有友链
+    // 浏览器分批检测；服务端只保存结果，不发起任何目标站请求。
     var checkAllBtn = document.getElementById('check-all-btn');
-    if (checkAllBtn) {
-        checkAllBtn.addEventListener('click', function() {
-            if (!confirm('<?php _e('将立即检测最多 3 条友链，其余友链会由自动任务分批完成，确定继续？', 'argon'); ?>')) return;
-            this.disabled = true; this.textContent = '<?php _e('检测中...', 'argon'); ?>';
-            flinkAction('check_all', { batch_size: 3 }, function(res) {
-                if (res.success) {
-                    alert(res.message || '<?php _e('本批检测完成', 'argon'); ?>');
-                    location.reload();
-                }
-                else { checkAllBtn.disabled = false; checkAllBtn.textContent = '<?php _e('立即检测一批', 'argon'); ?>'; alert(res.message || '<?php _e('检测失败', 'argon'); ?>'); }
+    var browserBatchRunning = false;
+
+    function runBrowserBatch(interactive) {
+        if (browserBatchRunning) return;
+        if (!detector) {
+            if (interactive) alert('<?php _e('浏览器检测模块加载失败，请刷新页面重试', 'argon'); ?>');
+            return;
+        }
+        var batch = interactive ? browserBatchLinks.slice(0, 3) : browserBatchLinks.filter(function(link) { return link.due; }).slice(0, 3);
+        if (!batch.length) {
+            if (interactive) alert('<?php _e('当前没有可检测的友链', 'argon'); ?>');
+            return;
+        }
+        browserBatchRunning = true;
+        if (checkAllBtn && interactive) {
+            checkAllBtn.disabled = true;
+            checkAllBtn.textContent = '<?php _e('检测中...', 'argon'); ?>';
+        }
+
+        var completed = 0;
+        batch.reduce(function(chain, link) {
+            return chain.then(function() {
+                var sitePromise = detector.detectSite(link.url).catch(function() {
+                    return { success: false, readable: false, url: '', info: {} };
+                });
+                var backlinkPromise = link.links_page
+                    ? detector.checkBacklink(link.links_page, localSiteUrl).catch(function() { return null; })
+                    : Promise.resolve(null);
+                return Promise.all([sitePromise, backlinkPromise]).then(function(results) {
+                    var extra = { links_page: link.links_page || '' };
+                    if (results[1] === true || results[1] === false) extra.has_backlink = results[1] ? '1' : '0';
+                    else if (link.links_page) extra.backlink_unknown = '1';
+                    return new Promise(function(resolve) {
+                        syncBrowserResult(link.id, results[0], extra, function() {
+                            completed++;
+                            resolve();
+                        });
+                    });
+                });
             });
+        }, Promise.resolve()).then(function() {
+            browserBatchRunning = false;
+            if (checkAllBtn) {
+                checkAllBtn.disabled = false;
+                checkAllBtn.textContent = '<?php _e('立即检测一批', 'argon'); ?>';
+            }
+            if (interactive) {
+                alert('<?php _e('浏览器检测完成，已处理', 'argon'); ?> ' + completed + ' <?php _e('条友链', 'argon'); ?>');
+                location.reload();
+            }
         });
     }
 
+    if (checkAllBtn) {
+        checkAllBtn.addEventListener('click', function() {
+            if (!confirm('<?php _e('将由当前浏览器直接检测最多 3 条友链，确定继续？', 'argon'); ?>')) return;
+            runBrowserBatch(true);
+        });
+    }
+    setTimeout(function() { runBrowserBatch(false); }, 700);
+
     // 编辑弹窗
     window.openEditModal = function(id) {
+        var contextSequence = ++editContextSequence;
+        editDetectSequence++;
+        editBacklinkSequence++;
         flinkAction('get', { id: id }, function(res) {
+            if (contextSequence !== editContextSequence) return;
             if (res.success && res.data) {
                 var link = res.data;
                 clearMessage();
                 document.getElementById('edit-id').value = link.id;
                 document.getElementById('edit-name').value = link.name || '';
+                editNameIsManual = !link.auto_name;
                 document.getElementById('edit-display-name').value = link.display_name || '';
+                editDisplayNameIsManual = !!link.user_display_name;
                 document.getElementById('edit-url').value = link.url || '';
                 document.getElementById('edit-links-page').value = link.links_page || '';
                 document.getElementById('edit-avatar').value = link.avatar || '';
                 editAvatarIsManual = !!link.user_avatar;
-                document.getElementById('edit-desc').value = link.description || '';
+                document.getElementById('edit-desc').value = link.description || link.auto_description || '';
+                editDescriptionIsManual = !!link.description;
                 document.getElementById('edit-category').value = link.category || '';
                 document.getElementById('edit-hide-no-backlink').value = link.hide_no_backlink || '';
+                document.getElementById('edit-fetch-btn').disabled = false;
+                document.getElementById('edit-fetch-btn').textContent = '<?php _e('更新信息', 'argon'); ?>';
+                document.getElementById('edit-check-btn').disabled = false;
+                document.getElementById('edit-check-btn').textContent = '<?php _e('检测互链', 'argon'); ?>';
 
                 // 显示状态信息
                 var statusHtml = '';
-                if (link.last_check) {
-                    var date = new Date(link.last_check * 1000);
-                    statusHtml += '<?php _e('上次检测', 'argon'); ?>: ' + date.toLocaleString() + '<br>';
+                if (link.last_browser_check) {
+                    var date = new Date(link.last_browser_check * 1000);
+                    statusHtml += '<?php _e('上次站点检测', 'argon'); ?>: ' + date.toLocaleString() + '<br>';
+                }
+                if (link.last_backlink_attempt) {
+                    var backlinkDate = new Date(link.last_backlink_attempt * 1000);
+                    statusHtml += '<?php _e('上次互链尝试', 'argon'); ?>: ' + backlinkDate.toLocaleString() + '<br>';
                 }
                 if (link.accessible === false) {
                     statusHtml += '<?php _e('网站状态', 'argon'); ?>: <span class="badge badge-danger"><?php _e('无法访问', 'argon'); ?></span><br>';
                 } else if (link.accessible === true) {
                     statusHtml += '<?php _e('网站状态', 'argon'); ?>: <span class="badge badge-success"><?php _e('正常', 'argon'); ?></span><br>';
                 }
-                if (link.has_backlink === false) {
+                if (link.backlink_check_result === 'unknown') {
+                    statusHtml += '<?php _e('互链状态', 'argon'); ?>: <span class="badge badge-secondary"><?php _e('跨域不可读，状态未知', 'argon'); ?></span>';
+                } else if (link.has_backlink === false) {
                     statusHtml += '<?php _e('互链状态', 'argon'); ?>: <span class="badge badge-warning"><?php _e('未检测到本站链接', 'argon'); ?></span>';
                 } else if (link.has_backlink === true) {
                     statusHtml += '<?php _e('互链状态', 'argon'); ?>: <span class="badge badge-success"><?php _e('已上友链', 'argon'); ?></span>';
@@ -1354,6 +1556,9 @@ if (typeof initGeetest4 === 'function') {
     };
     
     window.closeEditModal = function() {
+        editContextSequence++;
+        editDetectSequence++;
+        editBacklinkSequence++;
         document.getElementById('edit-modal').classList.remove('show');
         clearMessage();
     };
@@ -1367,51 +1572,45 @@ if (typeof initGeetest4 === 'function') {
         });
     }
 
-    // 更新信息（从网站获取最新数据）
+    // 更新信息（当前浏览器直连目标站）
     var editFetchBtn = document.getElementById('edit-fetch-btn');
     if (editFetchBtn) {
         editFetchBtn.addEventListener('click', function() {
-            var url = normalizeUrlInput(document.getElementById('edit-url').value);
+            var url = document.getElementById('edit-url').value.trim();
             if (!url) return alert('<?php _e('请先填写网址', 'argon'); ?>');
-            document.getElementById('edit-url').value = url;
-
             clearMessage();
             this.disabled = true; this.textContent = '<?php _e('获取中...', 'argon'); ?>';
             var btn = this;
-                
-            flinkAction('refresh_info', {
-                id: document.getElementById('edit-id').value,
-                url: url
-            }, function(res) {
+            var editId = document.getElementById('edit-id').value;
+            var contextSequence = editContextSequence;
+            var detectSequence = ++editDetectSequence;
+            detector.detectSite(url).then(function(result) {
+                if (contextSequence !== editContextSequence || detectSequence !== editDetectSequence || document.getElementById('edit-id').value !== editId) return;
+                if (!result.success) throw new Error('<?php _e('浏览器未能访问候选站点', 'argon'); ?>');
+                var info = result.info || {};
+                if (result.url) document.getElementById('edit-url').value = result.url;
+                if (!editNameIsManual && info.primary) document.getElementById('edit-name').value = info.primary;
+                if (!editDisplayNameIsManual && info.subtitle) document.getElementById('edit-display-name').value = info.subtitle;
+                if (!editAvatarIsManual && info.avatar) document.getElementById('edit-avatar').value = info.avatar;
+                if (!editDescriptionIsManual && info.description) document.getElementById('edit-desc').value = info.description.slice(0, 100);
+                syncBrowserResult(editId, result, { apply_detected_url: '1' }, function(res) {
+                    if (contextSequence !== editContextSequence || detectSequence !== editDetectSequence || document.getElementById('edit-id').value !== editId) return;
+                    btn.disabled = false; btn.textContent = '<?php _e('更新信息', 'argon'); ?>';
+                    if (!res.success) {
+                        setMessage('error', res.message || '<?php _e('检测结果保存失败', 'argon'); ?>');
+                        return;
+                    }
+                    document.getElementById('edit-status-info').innerHTML = result.readable
+                        ? '<strong><?php _e('浏览器检测完成并已保存', 'argon'); ?></strong>'
+                        : '<strong><?php _e('已找到候选域名', 'argon'); ?></strong> <span class="badge badge-warning"><?php _e('跨域不可读', 'argon'); ?></span>';
+                    setMessage(result.readable ? 'success' : 'info', result.readable
+                        ? '<?php _e('已更新主副标题与站点资料', 'argon'); ?>'
+                        : '<?php _e('目标站未开放跨域读取，未覆盖原有资料', 'argon'); ?>');
+                });
+            }).catch(function(error) {
+                if (contextSequence !== editContextSequence || detectSequence !== editDetectSequence || document.getElementById('edit-id').value !== editId) return;
                 btn.disabled = false; btn.textContent = '<?php _e('更新信息', 'argon'); ?>';
-                if (res.success && res.data) {
-                    var displayName = document.getElementById('edit-display-name');
-                    var editUrl = document.getElementById('edit-url');
-                    var avatar = document.getElementById('edit-avatar');
-                    var desc = document.getElementById('edit-desc');
-
-                    if (res.data.url) editUrl.value = res.data.url;
-                    if (res.data.title) displayName.value = res.data.title;
-                    var newAvatar = res.data.avatar || '';
-                    if (newAvatar) avatar.value = newAvatar;
-                    editAvatarIsManual = !!res.data.user_avatar;
-                    if (res.data.description) desc.value = res.data.description;
-
-                    var infoHtml = '<strong><?php _e('已更新并保存', 'argon'); ?></strong>';
-                    if (res.data.blocked_by_waf) {
-                        infoHtml += ' <span class="badge badge-warning"><?php _e('被 WAF 拦截', 'argon'); ?></span>';
-                    } else if (res.data.accessible === false) {
-                        infoHtml += ' <span class="badge badge-danger"><?php _e('无法访问', 'argon'); ?></span>';
-                    }
-                    if (res.data.last_info_update) {
-                        var updatedAt = new Date(res.data.last_info_update * 1000);
-                        infoHtml += '<br><?php _e('更新时间', 'argon'); ?>: ' + updatedAt.toLocaleString();
-                    }
-                    document.getElementById('edit-status-info').innerHTML = infoHtml;
-                    setMessage('success', res.message || '<?php _e('站点信息已保存', 'argon'); ?>');
-                } else {
-                    setMessage('error', res.message || (res.data && res.data.error_reason) || '<?php _e('获取失败', 'argon'); ?>');
-                }
+                setMessage('error', error && error.message ? error.message : '<?php _e('浏览器探测失败', 'argon'); ?>');
             });
         });
     }
@@ -1420,29 +1619,54 @@ if (typeof initGeetest4 === 'function') {
     var editCheckBtn = document.getElementById('edit-check-btn');
     if (editCheckBtn) {
         editCheckBtn.addEventListener('click', function() {
-            var linksPage = document.getElementById('edit-links-page').value.trim();
+            var linksPage = normalizeUrlInput(document.getElementById('edit-links-page').value);
             if (!linksPage) {
                 return alert('<?php _e('请先填写对方的友链页面地址', 'argon'); ?>');
             }
+            document.getElementById('edit-links-page').value = linksPage;
             var id = document.getElementById('edit-id').value;
+            var contextSequence = editContextSequence;
+            var backlinkSequence = ++editBacklinkSequence;
             clearMessage();
             this.disabled = true; this.textContent = '<?php _e('检测中...', 'argon'); ?>';
             var btn = this;
-            flinkAction('check_backlink', {
-                id: id,
-                url: document.getElementById('edit-url').value.trim(),
-                links_page: linksPage
-            }, function(res) {
-                btn.disabled = false; btn.textContent = '<?php _e('检测互链', 'argon'); ?>';
-                if (res.success) {
-                    var statusHtml = '<?php _e('互链页面', 'argon'); ?>: ' + (res.links_page || linksPage) + '<br>';
-                    statusHtml += '<?php _e('网站状态', 'argon'); ?>: <span class="badge ' + (res.accessible ? 'badge-success' : 'badge-danger') + '">' + (res.accessible ? '<?php _e('正常', 'argon'); ?>' : '<?php _e('无法访问', 'argon'); ?>') + '</span><br>';
-                    statusHtml += '<?php _e('互链状态', 'argon'); ?>: <span class="badge ' + (res.has_backlink ? 'badge-success' : 'badge-warning') + '">' + (res.has_backlink ? '<?php _e('已上友链', 'argon'); ?>' : '<?php _e('未检测到本站链接', 'argon'); ?>') + '</span>';
-                    document.getElementById('edit-status-info').innerHTML = statusHtml;
-                    setMessage(res.has_backlink ? 'success' : 'info', res.has_backlink ? '<?php _e('检测完成，已保存互链状态', 'argon'); ?>' : '<?php _e('检测完成，暂未发现本站链接', 'argon'); ?>');
-                } else {
-                    setMessage('error', res.message || '<?php _e('检测失败', 'argon'); ?>');
+            detector.checkBacklink(linksPage, localSiteUrl).then(function(hasBacklink) {
+                if (contextSequence !== editContextSequence || backlinkSequence !== editBacklinkSequence || document.getElementById('edit-id').value !== id) return;
+                if (hasBacklink === null) {
+                    syncBrowserResult(id, null, {
+                        links_page: linksPage,
+                        backlink_unknown: '1'
+                    }, function(res) {
+                        if (contextSequence !== editContextSequence || backlinkSequence !== editBacklinkSequence || document.getElementById('edit-id').value !== id) return;
+                        btn.disabled = false; btn.textContent = '<?php _e('检测互链', 'argon'); ?>';
+                        if (!res.success) {
+                            setMessage('error', res.message || '<?php _e('检测结果保存失败', 'argon'); ?>');
+                            return;
+                        }
+                        document.getElementById('edit-status-info').innerHTML = '<?php _e('互链状态', 'argon'); ?>: <span class="badge badge-secondary"><?php _e('跨域不可读，状态未知', 'argon'); ?></span>';
+                        setMessage('info', '<?php _e('目标页面未开放跨域读取，互链状态保持未知且不会覆盖原记录', 'argon'); ?>');
+                    });
+                    return;
                 }
+                syncBrowserResult(id, null, {
+                    links_page: linksPage,
+                    has_backlink: hasBacklink ? '1' : '0'
+                }, function(res) {
+                    if (contextSequence !== editContextSequence || backlinkSequence !== editBacklinkSequence || document.getElementById('edit-id').value !== id) return;
+                    btn.disabled = false; btn.textContent = '<?php _e('检测互链', 'argon'); ?>';
+                    if (!res.success) {
+                        setMessage('error', res.message || '<?php _e('检测结果保存失败', 'argon'); ?>');
+                        return;
+                    }
+                    document.getElementById('edit-status-info').innerHTML = '<?php _e('互链状态', 'argon'); ?>: <span class="badge ' + (hasBacklink ? 'badge-success' : 'badge-warning') + '">' + (hasBacklink ? '<?php _e('已上友链', 'argon'); ?>' : '<?php _e('未检测到本站链接', 'argon'); ?>') + '</span>';
+                    setMessage(hasBacklink ? 'success' : 'info', hasBacklink
+                        ? '<?php _e('浏览器检测完成，已保存互链状态', 'argon'); ?>'
+                        : '<?php _e('浏览器已完整读取页面，暂未发现本站链接', 'argon'); ?>');
+                });
+            }).catch(function() {
+                if (contextSequence !== editContextSequence || backlinkSequence !== editBacklinkSequence || document.getElementById('edit-id').value !== id) return;
+                btn.disabled = false; btn.textContent = '<?php _e('检测互链', 'argon'); ?>';
+                setMessage('info', '<?php _e('浏览器无法跨域读取目标页面，互链状态保持未知', 'argon'); ?>');
             });
         });
     }
@@ -1463,12 +1687,15 @@ if (typeof initGeetest4 === 'function') {
             flinkAction('update', {
                 id: id,
                 name: name,
+                auto_name: editNameIsManual ? '0' : '1',
                 display_name: document.getElementById('edit-display-name').value.trim(),
+                user_display_name: editDisplayNameIsManual ? '1' : '0',
                 url: url,
                 links_page: document.getElementById('edit-links-page').value.trim(),
                 avatar: document.getElementById('edit-avatar').value.trim(),
                 user_avatar: editAvatarIsManual ? '1' : '0',
-                description: document.getElementById('edit-desc').value.trim(),
+                description: editDescriptionIsManual ? document.getElementById('edit-desc').value.trim() : '',
+                auto_description: editDescriptionIsManual ? '' : document.getElementById('edit-desc').value.trim(),
                 category: document.getElementById('edit-category').value.trim(),
                 hide_no_backlink: document.getElementById('edit-hide-no-backlink').value
             }, function(res) {
