@@ -8,7 +8,7 @@ Author URI: https://solstice23.top/
 
 Description: 杞荤泩銆佺畝娲併€佺編瑙傜殑 Wordpress 涓婚
 
-Version: 1.5.9
+Version: 1.5.10
 
 License: GNU General Public License v3.0
 
@@ -7035,11 +7035,15 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 .emotion-keyboard {
 
-	max-width: min(500px, calc(100vw - 40px));
+	width: min(720px, calc(100vw - 24px));
 
-	min-width: min(300px, calc(100vw - 40px));
+	max-width: calc(100vw - 24px);
 
-	height: 300px;
+	min-width: min(360px, calc(100vw - 24px));
+
+	height: min(440px, calc(100vh - 96px));
+
+	min-height: min(320px, calc(100vh - 96px));
 
 	flex-direction: column;
 
@@ -7089,6 +7093,13 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 	border: none !important;
 
+}
+
+#todo-input,
+#post_comment_content,
+#emotion_keyboard {
+	background: transparent !important;
+	box-shadow: none !important;
 }
 
 html.darkmode .emotion-keyboard {
@@ -7197,16 +7208,52 @@ html.darkmode .emotion-keyboard {
 
 }
 
+.emotion-keyboard-navigation {
+	display: grid;
+	grid-template-columns: 38px minmax(0, 1fr) 38px;
+	align-items: stretch;
+	border-top: 1px solid var(--color-border-on-foreground);
+}
+
 .emotion-keyboard-bar {
 
 	overflow-x: auto;
 
 	white-space: nowrap;
 
-	box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.06);
+	display: flex;
 
-	transform: scaleY(-1);
+	min-width: 0;
 
+	overscroll-behavior-inline: contain;
+
+	scroll-behavior: smooth;
+
+	scrollbar-width: thin;
+
+	scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+
+}
+
+.emotion-keyboard-scroll {
+	border: none;
+	background: transparent;
+	color: inherit;
+	cursor: pointer;
+	opacity: 0.72;
+	transition: color var(--animation-fast) var(--ease-standard), opacity var(--animation-fast) var(--ease-standard), background-color var(--animation-fast) var(--ease-standard);
+}
+
+.emotion-keyboard-scroll:hover:not(:disabled),
+.emotion-keyboard-scroll:focus-visible {
+	background: var(--color-border-on-foreground);
+	color: var(--themecolor);
+	opacity: 1;
+}
+
+.emotion-keyboard-scroll:disabled {
+	cursor: default;
+	opacity: 0.2;
 }
 
 .emotion-keyboard-bar::-webkit-scrollbar-track {
@@ -7237,9 +7284,23 @@ html.darkmode .emotion-keyboard {
 
 .emotion-group-name {
 
-	display: inline-block;
+	display: inline-flex;
+
+	align-items: center;
+
+	justify-content: center;
+
+	flex: 0 0 auto;
 
 	padding: 10px 20px;
+
+	border: none;
+
+	background: transparent;
+
+	color: inherit;
+
+	font: inherit;
 
 	cursor: pointer;
 
@@ -7248,8 +7309,6 @@ html.darkmode .emotion-keyboard {
 	position: relative;
 
 	user-select: none;
-
-	transform: scaleY(-1);
 
 }
 

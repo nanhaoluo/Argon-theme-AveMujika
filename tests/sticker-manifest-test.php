@@ -183,6 +183,7 @@ $template = @file_get_contents($root . '/template-parts/emotion-keyboard.php');
 $comment_renderer = @file_get_contents($root . '/functions.php');
 $emotion_renderer = @file_get_contents($root . '/emotions.php');
 $javascript = @file_get_contents($root . '/argontheme.js');
+$stylesheet = @file_get_contents($root . '/style.css');
 $apache = @file_get_contents($root . '/stickers/.htaccess');
 $nginx = @file_get_contents($root . '/stickers/nginx-hotlink.conf.example');
 $server_extension_pattern = '(?:' . implode('|', $allowed_extensions) . ')';
@@ -203,6 +204,18 @@ argon_sticker_assert(
 	strpos($javascript, 'suspendAnimatedStickers') !== false
 	&& strpos($javascript, 'data-sticker-animated') !== false,
 	'动态表情没有在分类切换或关闭面板后暂停。'
+);
+argon_sticker_assert(
+	strpos($template, 'emotion-keyboard-scroll') !== false
+	&& strpos($javascript, 'scrollEmotionKeyboardBar') !== false
+	&& strpos($javascript, 'keyboard.offsetWidth') !== false
+	&& strpos($javascript, 'keyboard.offsetHeight') !== false,
+	'放大的表情面板没有可操作的分类滚动菜单，或定位仍使用旧的固定尺寸。'
+);
+argon_sticker_assert(
+	preg_match('/\.emotion-keyboard\s*\{[^}]*width:\s*min\(720px,/s', $stylesheet) === 1
+	&& preg_match('/#todo-input\s*,\s*#post_comment_content\s*,\s*#emotion_keyboard\s*\{[^}]*background:\s*transparent\s*!important;[^}]*box-shadow:\s*none\s*!important;/s', $stylesheet) === 1,
+	'表情面板没有扩大，或 TODO、评论输入框和表情面板没有复用透明表面样式。'
 );
 argon_sticker_assert(
 	strpos($apache, 'HTTP_REFERER') !== false

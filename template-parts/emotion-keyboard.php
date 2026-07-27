@@ -33,15 +33,24 @@
 			}
 		?>
 	</div>
-	<div class="emotion-keyboard-bar">
-		<?php
-			foreach ($emotionList as $groupIndex => $group){
-				$className = "emotion-group-name";
-				if ($groupIndex == 0){
-					$className .= " active";
+	<div class="emotion-keyboard-navigation">
+		<button class="emotion-keyboard-scroll emotion-keyboard-scroll-prev" type="button" data-direction="-1" aria-label="<?php echo esc_attr(__('向左滚动表情分类', 'argon')); ?>">
+			<i class="fa fa-chevron-left" aria-hidden="true"></i>
+		</button>
+		<div class="emotion-keyboard-bar" role="tablist" tabindex="0" aria-label="<?php echo esc_attr(__('表情分类', 'argon')); ?>">
+			<?php
+				foreach ($emotionList as $groupIndex => $group){
+					$className = "emotion-group-name";
+					$isActive = $groupIndex == 0;
+					if ($isActive){
+						$className .= " active";
+					}
+					echo "<button type='button' class='" . esc_attr($className) . "' index='" . esc_attr($groupIndex) . "' role='tab' aria-selected='" . ($isActive ? 'true' : 'false') . "'>" . esc_html($group['groupname']) . "</button>";
 				}
-				echo "<div class='" . esc_attr($className) . "' index='" . esc_attr($groupIndex) . "'>" . esc_html($group['groupname']) . "</div>";
-			}
-		?>
+			?>
+		</div>
+		<button class="emotion-keyboard-scroll emotion-keyboard-scroll-next" type="button" data-direction="1" aria-label="<?php echo esc_attr(__('向右滚动表情分类', 'argon')); ?>">
+			<i class="fa fa-chevron-right" aria-hidden="true"></i>
+		</button>
 	</div>
 </div>

@@ -3138,14 +3138,19 @@ function positionEmotionKeyboard() {
 	}
 	
 	var btnRect = btn.getBoundingClientRect();
-	var keyboardHeight = 300;
-	var keyboardWidth = Math.min(500, window.innerWidth - 40);
+	var keyboardHeight = keyboard.offsetHeight;
+	var keyboardWidth = keyboard.offsetWidth;
+	var viewportTop = window.scrollY + 10;
+	var viewportBottom = window.scrollY + window.innerHeight - 10;
 	
 	var top = btnRect.top + window.scrollY - keyboardHeight - 10;
 	var left = btnRect.right + window.scrollX - keyboardWidth;
 	
-	if (top < window.scrollY + 10) {
+	if (top < viewportTop) {
 		top = btnRect.bottom + window.scrollY + 10;
+	}
+	if (top + keyboardHeight > viewportBottom) {
+		top = Math.max(viewportTop, viewportBottom - keyboardHeight);
 	}
 	if (left < window.scrollX + 10) {
 		left = window.scrollX + 10;
@@ -3158,6 +3163,25 @@ function positionEmotionKeyboard() {
 	keyboard.style.left = left + "px";
 }
 
+function updateEmotionKeyboardScrollButtons() {
+	var bar = document.querySelector(".emotion-keyboard-bar");
+	if (!bar) return;
+	var maxScrollLeft = Math.max(0, bar.scrollWidth - bar.clientWidth);
+	var prev = document.querySelector(".emotion-keyboard-scroll-prev");
+	var next = document.querySelector(".emotion-keyboard-scroll-next");
+	if (prev) prev.disabled = bar.scrollLeft <= 1;
+	if (next) next.disabled = bar.scrollLeft >= maxScrollLeft - 1;
+}
+
+function scrollEmotionKeyboardBar(direction) {
+	var bar = document.querySelector(".emotion-keyboard-bar");
+	if (!bar) return;
+	bar.scrollBy({
+		left: direction * Math.max(180, Math.round(bar.clientWidth * 0.7)),
+		behavior: "smooth"
+	});
+}
+
 $(document).on("click", "#comment_emotion_btn", function (e) {
 	e.stopPropagation();
 	var isOpen = $("#comment_emotion_btn").hasClass("comment-emotion-keyboard-open");
@@ -3167,6 +3191,7 @@ $(document).on("click", "#comment_emotion_btn", function (e) {
 		lazyloadStickers();
 		setTimeout(function() {
 			positionEmotionKeyboard();
+			updateEmotionKeyboardScrollButtons();
 		}, 10);
 	} else {
 		closeEmotionKeyboard();
@@ -3175,12 +3200,33 @@ $(document).on("click", "#comment_emotion_btn", function (e) {
 
 $(document).on("click", ".emotion-keyboard .emotion-group-name", function () {
 	$(".emotion-keyboard .emotion-group-name.active").removeClass("active");
-	$(this).addClass("active");
+	$(".emotion-keyboard .emotion-group-name").attr("aria-selected", "false");
+	$(this).addClass("active").attr("aria-selected", "true");
 	$(".emotion-keyboard .emotion-group:not(.d-none)").addClass("d-none");
 	var group = $(".emotion-keyboard .emotion-group[index='" + $(this).attr("index") + "']").removeClass("d-none").get(0);
 	suspendAnimatedStickers(group);
 	lazyloadStickers(group);
+	this.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
 });
+
+$(document).on("click", ".emotion-keyboard-scroll", function () {
+	scrollEmotionKeyboardBar(parseInt(this.getAttribute("data-direction"), 10) || 1);
+});
+
+document.addEventListener("scroll", function (event) {
+	if (event.target && event.target.matches && event.target.matches(".emotion-keyboard-bar")) {
+		updateEmotionKeyboardScrollButtons();
+	}
+}, true);
+
+document.addEventListener("wheel", function (event) {
+	var bar = event.target.closest ? event.target.closest(".emotion-keyboard-bar") : null;
+	if (!bar || bar.scrollWidth <= bar.clientWidth) return;
+	var delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+	if (!delta) return;
+	event.preventDefault();
+	bar.scrollLeft += delta;
+}, { passive: false });
 
 function inputInsertText(text, input) {
 	$(input).focus();
@@ -3229,6 +3275,7 @@ document.addEventListener('click', (e) => {
 window.addEventListener('resize', function() {
 	if ($("#emotion_keyboard").hasClass("comment-emotion-keyboard-open")) {
 		positionEmotionKeyboard();
+		updateEmotionKeyboardScrollButtons();
 	}
 });
 /*查看评论编辑记录*/
