@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { checkBacklink, detectSite, type WorkerFetcher } from '../src/detector';
+import { checkBacklink, createPublicDnsResolver, detectSite, type WorkerFetcher } from '../src/detector';
 
 const publicResolver = async (): Promise<string[]> => ['93.184.216.34'];
 
@@ -17,7 +17,71 @@ function htmlResponse(value: string, status = 200, headers: Record<string, strin
   });
 }
 
+describe('public DNS resolution', () => {
+  it('falls back to the secondary DoH provider when Cloudflare DNS is unavailable', async () => {
+    const fetcher: WorkerFetcher = vi.fn(async (input) => {
+      const url = String(input);
+      if (url.startsWith('https://cloudflare-dns.com/')) throw new Error('cloudflare_dns_unavailable');
+      if (url.startsWith('https://dns.google/resolve') && url.includes('type=A')) {
+        return jsonResponse({ Status: 0, Answer: [{ type: 1, data: '93.184.216.34' }] }, url);
+      }
+      return jsonResponse({ Status: 0, Answer: [] }, url);
+    });
+
+    await expect(createPublicDnsResolver(fetcher)('sample-blog.dev')).resolves.toEqual(['93.184.216.34']);
+  });
+
+  it('accepts a public AAAA result when the A query fails', async () => {
+    const fetcher: WorkerFetcher = vi.fn(async (input) => {
+      const url = String(input);
+      if (url.includes('type=A&') || /[?&]type=A$/.test(url)) throw new Error('a_lookup_failed');
+      return jsonResponse({ Status: 0, Answer: [{ type: 28, data: '2606:2800:220:1:248:1893:25c8:1946' }] }, url);
+    });
+
+    await expect(createPublicDnsResolver(fetcher)('sample-blog.dev')).resolves.toEqual([
+      '2606:2800:220:1:248:1893:25c8:1946'
+    ]);
+  });
+
+  it('does not fall back past a private DNS answer', async () => {
+    const fetcher: WorkerFetcher = vi.fn(async (input) => {
+      const url = String(input);
+      if (url.startsWith('https://dns.google/')) {
+        return jsonResponse({ Status: 0, Answer: [{ type: 1, data: '93.184.216.34' }] }, url);
+      }
+      if (url.includes('type=A')) {
+        return jsonResponse({ Status: 0, Answer: [{ type: 1, data: '127.0.0.1' }] }, url);
+      }
+      return jsonResponse({ Status: 0, Answer: [] }, url);
+    });
+
+    await expect(createPublicDnsResolver(fetcher)('sample-blog.dev')).rejects.toThrow('dns_private_address');
+    expect(fetcher).not.toHaveBeenCalledWith(expect.stringContaining('dns.google'), expect.anything());
+  });
+});
+
 describe('site detection', () => {
+  it('checks candidate hosts concurrently so one slow candidate cannot serialize the whole job', async () => {
+    let activeRequests = 0;
+    let maxActiveRequests = 0;
+    const fetcher: WorkerFetcher = vi.fn(async () => {
+      activeRequests += 1;
+      maxActiveRequests = Math.max(maxActiveRequests, activeRequests);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      activeRequests -= 1;
+      return htmlResponse('missing', 404);
+    });
+
+    const result = await detectSite('sample-blog.dev', {
+      fetcher,
+      resolver: publicResolver,
+      timeoutMs: 500
+    });
+
+    expect(result.state).toBe('unknown');
+    expect(maxActiveRequests).toBeGreaterThan(1);
+  });
+
   it('selects readable WordPress metadata from the blog candidate', async () => {
     const fetcher: WorkerFetcher = vi.fn(async (input) => {
       const url = String(input);

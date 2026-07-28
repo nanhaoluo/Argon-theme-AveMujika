@@ -22,6 +22,12 @@ const CALLBACK_FIELD_LIMITS = {
 
 export type { RuntimeServices } from './app';
 
+export type QueueProcessingResult =
+  | { disposition: 'ack' }
+  | { disposition: 'retry'; delaySeconds: number; error: string };
+
+const ACK_RESULT: QueueProcessingResult = { disposition: 'ack' };
+
 function nextCheckAt(job: FriendLinkJob, succeeded: boolean, now: number): number {
   if (succeeded) return now + SUCCESS_RECHECK_SECONDS;
   const multiplier = 2 ** Math.min(job.failureCount, 5);
@@ -60,20 +66,20 @@ function callbackPayload(job: FriendLinkJob): Record<string, unknown> {
   };
 }
 
-async function deliverCallback(job: FriendLinkJob, services: RuntimeServices): Promise<void> {
-  const callbackUrl = assertSafePublicUrl(services.config.callbackUrl).toString();
-  if (!services.config.callbackSecret) throw new Error('callback_secret_missing');
+async function deliverCallback(job: FriendLinkJob, services: RuntimeServices): Promise<QueueProcessingResult> {
   const timestamp = services.now();
-  const nonce = crypto.randomUUID();
-  const rawBody = JSON.stringify(callbackPayload(job));
-  const signature = await signHmac(
-    services.config.callbackSecret,
-    `${timestamp}.${nonce}.${rawBody}`
-  );
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort('callback_timeout'), CALLBACK_TIMEOUT_MS);
 
   try {
+    const callbackUrl = assertSafePublicUrl(services.config.callbackUrl).toString();
+    if (!services.config.callbackSecret) throw new Error('callback_secret_missing');
+    const nonce = crypto.randomUUID();
+    const rawBody = JSON.stringify(callbackPayload(job));
+    const signature = await signHmac(
+      services.config.callbackSecret,
+      `${timestamp}.${nonce}.${rawBody}`
+    );
     const response = await services.fetcher(callbackUrl, {
       method: 'POST',
       redirect: 'manual',
@@ -89,35 +95,54 @@ async function deliverCallback(job: FriendLinkJob, services: RuntimeServices): P
     await response.body?.cancel();
     if (!response.ok) throw new Error(`callback_http_${response.status}`);
     await services.store.markCallbackDelivered(job.id, job.generation, timestamp);
+    return ACK_RESULT;
   } catch (error) {
+    const callbackError = truncateCallbackText(controller.signal.aborted
+      ? 'callback_timeout'
+      : (error instanceof Error && error.message ? error.message : 'callback_failed'), CALLBACK_FIELD_LIMITS.error);
     const retryDelay = Math.min(
       CALLBACK_RETRY_BASE_SECONDS * (2 ** Math.min(job.callbackAttempts, 6)),
       CALLBACK_RETRY_MAX_SECONDS
     );
-    await services.store.deferCallback(job.id, job.generation, timestamp + retryDelay, timestamp);
-    throw error;
+    await services.store.deferCallback(
+      job.id,
+      job.generation,
+      timestamp + retryDelay,
+      timestamp,
+      callbackError
+    );
+    return { disposition: 'retry', delaySeconds: retryDelay, error: callbackError };
   } finally {
     clearTimeout(timer);
   }
 }
 
-export async function processQueueMessage(message: QueueMessage, services: RuntimeServices): Promise<void> {
+export async function processQueueMessage(
+  message: QueueMessage,
+  services: RuntimeServices
+): Promise<QueueProcessingResult> {
   const existing = await services.store.getJob(message.jobId);
-  if (!existing) return;
-  if (existing.generation !== message.generation) return;
+  if (!existing) return ACK_RESULT;
+  if (existing.generation !== message.generation) return ACK_RESULT;
 
   if (
     (existing.status === 'complete' || existing.status === 'unknown' || existing.status === 'error') &&
     existing.callbackStatus === 'pending'
   ) {
-    if (existing.callbackNextAttemptAt > services.now()) return;
-    await deliverCallback(existing, services);
-    return;
+    const now = services.now();
+    if (existing.callbackNextAttemptAt > now) {
+      return {
+        disposition: 'retry',
+        delaySeconds: Math.max(1, existing.callbackNextAttemptAt - now),
+        error: existing.callbackLastError || 'callback_retry_deferred'
+      };
+    }
+    return deliverCallback(existing, services);
   }
-  if (existing.status !== 'queued') return;
+  if (existing.status !== 'queued') return ACK_RESULT;
 
   const claimed = await services.store.claimQueuedJob(existing.id, existing.generation, services.now());
-  if (!claimed) return;
+  if (!claimed) return ACK_RESULT;
   const checkedAt = services.now();
   const site = await detectSite(claimed.url, { fetcher: services.fetcher, resolver: services.resolver });
   const linksPage = claimed.linksPage || site.linksPage;
@@ -145,8 +170,8 @@ export async function processQueueMessage(message: QueueMessage, services: Runti
 
   const saved = await services.store.getJob(claimed.id);
   if (!saved) throw new Error('job_disappeared_after_detection');
-  if (saved.generation !== claimed.generation) return;
-  await deliverCallback(saved, services);
+  if (saved.generation !== claimed.generation) return ACK_RESULT;
+  return deliverCallback(saved, services);
 }
 
 export async function handleScheduled(services: RuntimeServices): Promise<void> {

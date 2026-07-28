@@ -30,6 +30,7 @@ function queuedJob(overrides: Partial<FriendLinkJob> = {}): FriendLinkJob {
     callbackStatus: 'not_ready',
     callbackAttempts: 0,
     callbackNextAttemptAt: 0,
+    callbackLastError: '',
     createdAt: NOW,
     updatedAt: NOW,
     ...overrides
@@ -83,6 +84,7 @@ class ProcessingStore implements JobStore {
       callbackStatus: 'pending',
       callbackAttempts: 0,
       callbackNextAttemptAt: detection.checkedAt,
+      callbackLastError: '',
       updatedAt: detection.checkedAt
     });
   }
@@ -90,17 +92,23 @@ class ProcessingStore implements JobStore {
   async markCallbackDelivered(id: string, generation: string): Promise<void> {
     const job = this.jobs.get(id);
     if (job?.generation === generation) {
-      this.jobs.set(id, { ...job, callbackStatus: 'delivered', callbackNextAttemptAt: 0 });
+      this.jobs.set(id, {
+        ...job,
+        callbackStatus: 'delivered',
+        callbackNextAttemptAt: 0,
+        callbackLastError: ''
+      });
     }
   }
 
-  async deferCallback(id: string, generation: string, nextAttemptAt: number): Promise<void> {
+  async deferCallback(id: string, generation: string, nextAttemptAt: number, _now?: number, error = ''): Promise<void> {
     const job = this.jobs.get(id);
     if (job?.generation === generation) {
       this.jobs.set(id, {
         ...job,
         callbackAttempts: job.callbackAttempts + 1,
-        callbackNextAttemptAt: nextAttemptAt
+        callbackNextAttemptAt: nextAttemptAt,
+        callbackLastError: error
       });
     }
   }
@@ -317,13 +325,16 @@ describe('Queue consumer', () => {
 
     await expect(
       processQueueMessage({ jobId: 'link_123', generation: 'generation-123456' }, services)
-    ).rejects.toThrow('callback_http_503');
+    ).resolves.toMatchObject({ disposition: 'retry', delaySeconds: 300, error: 'callback_http_503' });
     expect(store.jobs.get('link_123')).toMatchObject({
       callbackAttempts: 1,
-      callbackNextAttemptAt: NOW + 300
+      callbackNextAttemptAt: NOW + 300,
+      callbackLastError: 'callback_http_503'
     });
 
-    await processQueueMessage({ jobId: 'link_123', generation: 'generation-123456' }, services);
+    await expect(
+      processQueueMessage({ jobId: 'link_123', generation: 'generation-123456' }, services)
+    ).resolves.toMatchObject({ disposition: 'retry', delaySeconds: 300 });
     expect(services.fetcher).toHaveBeenCalledTimes(1);
   });
 

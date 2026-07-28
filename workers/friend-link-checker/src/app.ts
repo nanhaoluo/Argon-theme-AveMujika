@@ -109,6 +109,7 @@ function createQueuedJob(id: string, generation: string, url: URL, linksPage: st
     callbackStatus: 'not_ready',
     callbackAttempts: 0,
     callbackNextAttemptAt: 0,
+    callbackLastError: '',
     createdAt: now,
     updatedAt: now
   };

@@ -74,8 +74,17 @@ const worker = {
     const services = createServices(env);
     for (const message of batch.messages) {
       try {
-        await processQueueMessage(message.body, services);
-        message.ack();
+        const result = await processQueueMessage(message.body, services);
+        if (result.disposition === 'retry') {
+          console.warn(JSON.stringify({
+            message: 'friend-link-checker callback deferred',
+            error: result.error,
+            retry_after_seconds: result.delaySeconds
+          }));
+          message.retry({ delaySeconds: result.delaySeconds });
+        } else {
+          message.ack();
+        }
       } catch (error) {
         console.error(JSON.stringify({
           message: 'friend-link-checker queue task failed',

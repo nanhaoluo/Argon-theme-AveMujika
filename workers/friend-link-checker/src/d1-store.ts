@@ -36,6 +36,7 @@ function rowToJob(row: JobRow): FriendLinkJob {
     callbackStatus: asString(row.callback_status) as FriendLinkJob['callbackStatus'],
     callbackAttempts: asNumber(row.callback_attempts),
     callbackNextAttemptAt: asNumber(row.callback_next_attempt_at),
+    callbackLastError: asString(row.callback_last_error),
     createdAt: asNumber(row.created_at),
     updatedAt: asNumber(row.updated_at)
   };
@@ -79,6 +80,7 @@ export class D1JobStore implements JobStore {
             callback_status = 'not_ready',
             callback_attempts = 0,
             callback_next_attempt_at = 0,
+            callback_last_error = '',
             updated_at = excluded.updated_at
         `).bind(
           job.id,
@@ -145,6 +147,7 @@ export class D1JobStore implements JobStore {
         callback_status = 'pending',
         callback_attempts = 0,
         callback_next_attempt_at = ?,
+        callback_last_error = '',
         updated_at = ?
       WHERE id = ? AND generation = ?
     `).bind(
@@ -177,7 +180,7 @@ export class D1JobStore implements JobStore {
     await this.database
       .prepare(`
         UPDATE jobs
-        SET callback_status = 'delivered', callback_next_attempt_at = 0, updated_at = ?
+        SET callback_status = 'delivered', callback_next_attempt_at = 0, callback_last_error = '', updated_at = ?
         WHERE id = ? AND generation = ?
       `)
       .bind(now, id, generation)
@@ -188,13 +191,14 @@ export class D1JobStore implements JobStore {
     id: string,
     generation: string,
     nextAttemptAt: number,
-    now = Math.floor(Date.now() / 1000)
+    now = Math.floor(Date.now() / 1000),
+    error = 'callback_failed'
   ): Promise<void> {
     await this.database.prepare(`
       UPDATE jobs
-      SET callback_attempts = callback_attempts + 1, callback_next_attempt_at = ?, updated_at = ?
+      SET callback_attempts = callback_attempts + 1, callback_next_attempt_at = ?, callback_last_error = ?, updated_at = ?
       WHERE id = ? AND generation = ? AND callback_status = 'pending'
-    `).bind(nextAttemptAt, now, id, generation).run();
+    `).bind(nextAttemptAt, error, now, id, generation).run();
   }
 
   async listDueJobs(now: number, limit = 25): Promise<FriendLinkJob[]> {

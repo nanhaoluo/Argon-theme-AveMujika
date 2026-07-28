@@ -11,7 +11,10 @@ import {
 const SITE_RESPONSE_LIMIT = 384 * 1024;
 const WORDPRESS_RESPONSE_LIMIT = 128 * 1024;
 const BACKLINK_RESPONSE_LIMIT = 512 * 1024;
+const DNS_RESPONSE_LIMIT = 64 * 1024;
 const MAX_REDIRECTS = 2;
+const DNS_QUERY_TIMEOUT_MS = 2_000;
+const CANDIDATE_CONCURRENCY = 3;
 
 export type WorkerFetcher = (input: string, init?: RequestInit) => Promise<Response>;
 export type HostResolver = (hostname: string, signal?: AbortSignal) => Promise<string[]>;
@@ -156,33 +159,75 @@ async function fetchReadableText(
 
 export function createPublicDnsResolver(fetcher: WorkerFetcher): HostResolver {
   const cache = new Map<string, Promise<string[]>>();
+
+  const queryProvider = async (
+    hostname: string,
+    provider: 'cloudflare' | 'google',
+    parentSignal?: AbortSignal
+  ): Promise<string[]> => {
+    const query = async (type: 'A' | 'AAAA'): Promise<string[]> => {
+      const controller = new AbortController();
+      const abortFromParent = () => controller.abort(parentSignal?.reason || 'dns_parent_aborted');
+      if (parentSignal?.aborted) abortFromParent();
+      else parentSignal?.addEventListener('abort', abortFromParent, { once: true });
+      const timer = setTimeout(() => controller.abort('dns_timeout'), DNS_QUERY_TIMEOUT_MS);
+      const url = provider === 'cloudflare'
+        ? `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(hostname)}&type=${type}`
+        : `https://dns.google/resolve?name=${encodeURIComponent(hostname)}&type=${type}`;
+      try {
+        const response = await fetcher(url, {
+          method: 'GET',
+          redirect: 'error',
+          signal: controller.signal,
+          headers: { Accept: 'application/dns-json' }
+        });
+        if (!response.ok) {
+          await cancelBody(response);
+          throw new Error(`${provider}_dns_http_${response.status}`);
+        }
+        const data = JSON.parse(await readTextLimited(response, DNS_RESPONSE_LIMIT)) as {
+          Status?: number;
+          Answer?: Array<{ type?: number; data?: string }>;
+        };
+        if (data.Status !== 0 && data.Status !== undefined) return [];
+        const wantedType = type === 'A' ? 1 : 28;
+        return (data.Answer ?? [])
+          .filter((answer) => answer.type === wantedType && typeof answer.data === 'string')
+          .map((answer) => String(answer.data));
+      } finally {
+        clearTimeout(timer);
+        parentSignal?.removeEventListener('abort', abortFromParent);
+      }
+    };
+
+    const results = await Promise.allSettled([query('A'), query('AAAA')]);
+    const addresses = results.flatMap((result) => result.status === 'fulfilled' ? result.value : []);
+    if (addresses.some((address) => !isPublicIpAddress(address))) throw new Error('dns_private_address');
+    if (addresses.length) return [...new Set(addresses)];
+
+    const rejected = results.find((result): result is PromiseRejectedResult => result.status === 'rejected');
+    if (rejected) throw rejected.reason;
+    throw new Error('dns_no_public_address');
+  };
+
   return async (hostname: string, signal?: AbortSignal): Promise<string[]> => {
     const normalized = hostname.toLowerCase().replace(/\.$/, '').replace(/^\[|\]$/g, '');
     if (isPublicIpAddress(normalized)) return [normalized];
     const cached = cache.get(normalized);
     if (cached) return cached;
 
-    const lookup = Promise.all(['A', 'AAAA'].map(async (type) => {
-      const url = `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(normalized)}&type=${type}`;
-      const response = await fetcher(url, {
-        method: 'GET',
-        redirect: 'error',
-        signal,
-        headers: { Accept: 'application/dns-json' }
-      });
-      if (!response.ok) throw new Error(`dns_http_${response.status}`);
-      const data = await response.json() as { Status?: number; Answer?: Array<{ type?: number; data?: string }> };
-      if (data.Status !== 0 && data.Status !== undefined) return [];
-      const wantedType = type === 'A' ? 1 : 28;
-      return (data.Answer ?? [])
-        .filter((answer) => answer.type === wantedType && typeof answer.data === 'string')
-        .map((answer) => String(answer.data));
-    })).then((groups) => {
-      const addresses = groups.flat();
-      if (!addresses.length) throw new Error('dns_no_public_address');
-      if (addresses.some((address) => !isPublicIpAddress(address))) throw new Error('dns_private_address');
-      return addresses;
-    });
+    const lookup = (async () => {
+      let lastError: unknown = new Error('dns_no_public_address');
+      for (const provider of ['cloudflare', 'google'] as const) {
+        try {
+          return await queryProvider(normalized, provider, signal);
+        } catch (error) {
+          if (error instanceof Error && error.message === 'dns_private_address') throw error;
+          lastError = error;
+        }
+      }
+      throw lastError;
+    })();
     cache.set(normalized, lookup);
     void lookup.catch(() => {
       if (cache.get(normalized) === lookup) cache.delete(normalized);
@@ -622,11 +667,15 @@ export async function detectSite(value: string, options: DetectionOptions = {}):
   const readable: CandidateResult[] = [];
   let anyAccessible = false;
 
-  for (const candidate of candidates) {
-    const result = await inspectCandidate(candidate, resolvedOptions);
-    anyAccessible ||= result.accessible;
-    attempts.push({ url: candidate, accessible: result.accessible, readable: result.readable });
-    if (result.readable) readable.push(result);
+  for (let offset = 0; offset < candidates.length; offset += CANDIDATE_CONCURRENCY) {
+    const batch = candidates.slice(offset, offset + CANDIDATE_CONCURRENCY);
+    const results = await Promise.all(batch.map((candidate) => inspectCandidate(candidate, resolvedOptions)));
+    results.forEach((result, index) => {
+      const candidate = batch[index];
+      anyAccessible ||= result.accessible;
+      attempts.push({ url: candidate, accessible: result.accessible, readable: result.readable });
+      if (result.readable) readable.push(result);
+    });
   }
 
   readable.sort((left, right) => right.score - left.score);

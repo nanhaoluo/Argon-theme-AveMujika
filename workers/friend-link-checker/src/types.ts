@@ -26,6 +26,7 @@ export interface FriendLinkJob {
   callbackStatus: CallbackStatus;
   callbackAttempts: number;
   callbackNextAttemptAt: number;
+  callbackLastError: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -49,7 +50,7 @@ export interface JobStore {
   claimQueuedJob(id: string, generation: string, now?: number): Promise<FriendLinkJob | null>;
   saveDetection(id: string, generation: string, detection?: DetectionSave): Promise<void>;
   markCallbackDelivered(id: string, generation: string, now?: number): Promise<void>;
-  deferCallback(id: string, generation: string, nextAttemptAt: number, now?: number): Promise<void>;
+  deferCallback(id: string, generation: string, nextAttemptAt: number, now?: number, error?: string): Promise<void>;
   listDueJobs(now: number, limit?: number): Promise<FriendLinkJob[]>;
   markJobsQueued(messages: QueueMessage[], now?: number): Promise<void>;
   deleteExpiredNonces(now: number): Promise<void>;

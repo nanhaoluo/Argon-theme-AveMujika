@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { Miniflare } from 'miniflare';
 import { D1JobStore } from '../src/d1-store';
@@ -31,6 +31,7 @@ function queuedJob(overrides: Partial<FriendLinkJob> = {}): FriendLinkJob {
     callbackStatus: 'not_ready',
     callbackAttempts: 0,
     callbackNextAttemptAt: 0,
+    callbackLastError: '',
     createdAt: NOW,
     updatedAt: NOW,
     ...overrides
@@ -48,10 +49,12 @@ describe('D1 job store', () => {
       d1Databases: ['DB']
     });
     const database = await miniflare.getD1Database('DB') as unknown as D1Database;
-    const migrationPath = fileURLToPath(new URL('../migrations/0001_initial.sql', import.meta.url));
-    const migration = readFileSync(migrationPath, 'utf8');
-    for (const statement of migration.split(';').map((value) => value.trim()).filter(Boolean)) {
-      await database.prepare(statement).run();
+    const migrationsDirectory = fileURLToPath(new URL('../migrations/', import.meta.url));
+    for (const filename of readdirSync(migrationsDirectory).filter((value) => value.endsWith('.sql')).sort()) {
+      const migration = readFileSync(`${migrationsDirectory}/${filename}`, 'utf8');
+      for (const statement of migration.split(';').map((value) => value.trim()).filter(Boolean)) {
+        await database.prepare(statement).run();
+      }
     }
     store = new D1JobStore(database);
   });
@@ -64,7 +67,11 @@ describe('D1 job store', () => {
     const job = queuedJob({ linksPage: '' });
     await store.acceptSubmission(job, 'nonce-1234567890', NOW + 300);
 
-    await expect(store.getJob(job.id)).resolves.toMatchObject({ id: job.id, status: 'queued' });
+    await expect(store.getJob(job.id)).resolves.toMatchObject({
+      id: job.id,
+      status: 'queued',
+      callbackLastError: ''
+    });
     await expect(store.claimQueuedJob(job.id, job.generation, NOW + 1)).resolves.toMatchObject({ status: 'running' });
 
     await store.saveDetection(job.id, job.generation, {
@@ -94,6 +101,36 @@ describe('D1 job store', () => {
       backlinkState: 'found',
       callbackStatus: 'pending',
       attempts: 1
+    });
+  });
+
+  it('persists the latest callback delivery error separately from detection errors', async () => {
+    const job = queuedJob();
+    await store.acceptSubmission(job, 'nonce-callback-error', NOW + 300);
+    await store.claimQueuedJob(job.id, job.generation, NOW);
+    await store.saveDetection(job.id, job.generation, {
+      site: {
+        state: 'ok', accessible: true, readable: true, detectedUrl: job.url,
+        primary: '示例博客', subtitle: '', description: '', avatar: '', linksPage: job.linksPage,
+        source: 'html', attempts: []
+      },
+      backlinkState: 'unknown',
+      checkedAt: NOW,
+      nextCheckAt: NOW + 86_400,
+      error: ''
+    });
+    await store.deferCallback(job.id, job.generation, NOW + 300, NOW, 'callback_http_503');
+
+    await expect(store.getJob(job.id)).resolves.toMatchObject({
+      lastError: '',
+      callbackAttempts: 1,
+      callbackLastError: 'callback_http_503'
+    });
+
+    await store.markCallbackDelivered(job.id, job.generation, NOW + 1);
+    await expect(store.getJob(job.id)).resolves.toMatchObject({
+      callbackStatus: 'delivered',
+      callbackLastError: ''
     });
   });
 
