@@ -1349,12 +1349,48 @@ if (argonConfig.waterflow_columns != "1") {
 	window.argonApplyMobileLayout = applyMobileLayout;
 }();
 
+/* 评论展开动画结束后解除 max-height 上限：展开态 2000px 上限配合卡片
+   overflow:hidden 会把长评论列表和"加载更多评论"按钮一起裁掉。
+   折叠时先移除该标记并强制回流，让 max-height 从 none 回到 2000px
+   再过渡到 0，保证折叠动画仍然生效。 */
+function argonMarkCommentsExpandDone($area) {
+	if (!$area.length || $area.hasClass("comments-collapsed") || $area.hasClass("comments-expand-done")) {
+		return;
+	}
+	var el = $area.get(0);
+	var timer = null;
+	var finish = function () {
+		el.removeEventListener("transitionend", onEnd);
+		clearTimeout(timer);
+		$area.addClass("comments-expand-done");
+	};
+	var onEnd = function (e) {
+		if (e.target !== el || e.propertyName !== "max-height") {
+			return;
+		}
+		finish();
+	};
+	el.addEventListener("transitionend", onEnd);
+	timer = setTimeout(finish, 600); // --animation-slow(400ms) 未触发过渡事件时兜底
+}
+function argonExpandCommentsArea($area) {
+	$area.removeClass("comments-collapsed");
+	argonMarkCommentsExpandDone($area);
+}
+function argonCollapseCommentsArea($area) {
+	if ($area.length && $area.hasClass("comments-expand-done")) {
+		$area.removeClass("comments-expand-done");
+		void $area.get(0).offsetHeight; // 强制回流：max-height 先回到 2000px 再过渡到 0
+	}
+	$area.addClass("comments-collapsed");
+}
+
 function expandPostComments() {
 	var commentsArea = $("#comments");
 	var postCommentArea = $("#post_comment");
 	var toggleBtn = $("#comments_toggle");
-	commentsArea.removeClass("comments-collapsed");
-	postCommentArea.removeClass("comments-collapsed");
+	argonExpandCommentsArea(commentsArea);
+	argonExpandCommentsArea(postCommentArea);
 	if (toggleBtn.length > 0) {
 		toggleBtn.addClass("expanded");
 		toggleBtn.find("i").removeClass("fa-comments").addClass("fa-comment-o");
@@ -1548,10 +1584,10 @@ function toggleArgonPostComments() {
 	var $postComment = $('#post_comment');
 	if ($btn.length === 0 || $comments.length === 0) return;
 	if ($comments.hasClass('comments-collapsed')) {
-		$comments.removeClass('comments-collapsed');
+		argonExpandCommentsArea($comments);
 		setArgonCommentsToggleState(true);
 		window.setTimeout(function () {
-			$postComment.removeClass('comments-collapsed');
+			argonExpandCommentsArea($postComment);
 		}, 150);
 		window.setTimeout(function () {
 			if ($comments.length > 0) {
@@ -1559,10 +1595,10 @@ function toggleArgonPostComments() {
 			}
 		}, 300);
 	} else {
-		$postComment.addClass('comments-collapsed');
+		argonCollapseCommentsArea($postComment);
 		setArgonCommentsToggleState(false);
 		window.setTimeout(function () {
-			$comments.addClass('comments-collapsed');
+			argonCollapseCommentsArea($comments);
 		}, 150);
 	}
 }
@@ -1779,9 +1815,9 @@ const ARGON_FABTN_INIT_MAX_ATTEMPTS = 40;
 			toggleBtn.find("i").removeClass("fa-comments").addClass("fa-comment-o");
 			toggleBtn.find(".btn-inner--text").text("折叠评论");
 			toggleBtn.addClass("expanded");
-			commentsArea.removeClass("comments-collapsed");
+			argonExpandCommentsArea(commentsArea);
 			setTimeout(function () {
-				postCommentArea.removeClass("comments-collapsed");
+				argonExpandCommentsArea(postCommentArea);
 				$("#post_comment_content").focus();
 			}, 150);
 		} else {
@@ -2675,7 +2711,8 @@ const ARGON_FABTN_INIT_MAX_ATTEMPTS = 40;
 				if (typeof window.expandPostComments === "function") {
 					window.expandPostComments();
 				} else {
-					$("#comments, #post_comment").removeClass("comments-collapsed");
+					argonExpandCommentsArea($("#comments"));
+					argonExpandCommentsArea($("#post_comment"));
 				}
 
 				// 显示成功提示
@@ -2726,10 +2763,17 @@ const ARGON_FABTN_INIT_MAX_ATTEMPTS = 40;
 					}
 					calcHumanTimesOnPage();
 
+					var $newComment = $("#comment-" + result.id);
+					// 滚动入场观察器只登记初始化时已有的节点；AJAX 新评论必须立即解除
+					// opacity:0 的初始态，否则会像被遮罩盖住一样直到刷新页面。
+					$newComment.addClass("animate-in");
+					if ($newComment.length > 0 && typeof lazyloadInit === "function") {
+						lazyloadInit($newComment.get(0));
+					}
+
 					// 滚动到新评论
-					var newComment = $("#comment-" + result.id);
-					if (newComment.length > 0) {
-						window.ArgonMotion.scrollTo(newComment.offset().top - 100);
+					if ($newComment.length > 0) {
+						window.ArgonMotion.scrollTo($newComment.offset().top - 100);
 					}
 				} catch (e) {
 					ArgonDebug.warn('Comment insertion error:', e);

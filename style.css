@@ -5311,6 +5311,7 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 /* 璇勮鎶樺彔鍔熻兘 - Material 3 鍔ㄧ敾浼樺寲 */
 #comments,
 #post_comment {
+	overflow-anchor: none;
 	transition:
 		opacity var(--animation-normal) var(--ease-standard),
 		max-height var(--animation-slow) var(--ease-emphasized),
@@ -5357,6 +5358,22 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 	transition-delay: 0.15s;
 }
 
+/* 高度过渡期间必须裁住内容，否则内容先溢出、容器再追赶高度，
+   浏览器的滚动锚定会在长评论区反复修正页面位置。 */
+#comments:not(.comments-collapsed):not(.comments-expand-done),
+#post_comment:not(.comments-collapsed):not(.comments-expand-done) {
+	overflow: hidden;
+}
+
+/* 展开动画结束后解除高度上限：2000px 上限配合卡片 overflow:hidden
+   会把长评论列表和"加载更多评论"按钮一起裁掉。
+   由 JS 在 transitionend（或兜底定时器）后添加该类。 */
+#comments:not(.comments-collapsed).comments-expand-done,
+#post_comment:not(.comments-collapsed).comments-expand-done {
+	max-height: none;
+	overflow: visible;
+}
+
 /* 璇勮鍒囨崲鎸夐挳鍥炬爣鍔ㄧ敾 */
 #comments_toggle .btn-inner--icon i {
 	transition: transform var(--animation-slow) var(--ease-spring);
@@ -5391,30 +5408,15 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 
 }
 
-#comments .comment-item:target:before,
-#comments .comment-item:before {
+#comments .comment-item {
 
-	content: "";
-
-	display: block;
-
-	position: absolute;
-
-	left: -10px;
-
-	right: -10px;
-
-	top: 0;
-
-	bottom: 0;
-
-	background-color: var(--themecolor);
-
-	opacity: 0.15;
+	transition: background-color 0.25s ease;
 
 	border-radius: var(--card-radius);
 
-	pointer-events: none;
+}
+
+#comments .comment-item:target {
 
 	animation: comment-focus-breath 2s linear;
 
@@ -5422,19 +5424,9 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 
 }
 
-#comments .comment-item:before {
+#comments .comment-item.highlight {
 
-	animation: none;
-
-	opacity: 0;
-
-	transition: opacity 0.25s ease;
-
-}
-
-#comments .comment-item.highlight:before {
-
-	opacity: 0.2;
+	background-color: rgba(var(--themecolor-rgbstr, 94, 114, 228), 0.12);
 
 }
 
@@ -5442,25 +5434,25 @@ html.darkmode .has-thumbnail .related-post-title.clamp {
 
 	0% {
 
-		opacity: 0.5;
+		background-color: rgba(var(--themecolor-rgbstr, 94, 114, 228), 0.5);
 
 	}
 
 	33% {
 
-		opacity: 0.05;
+		background-color: rgba(var(--themecolor-rgbstr, 94, 114, 228), 0.05);
 
 	}
 
 	66% {
 
-		opacity: 0.3;
+		background-color: rgba(var(--themecolor-rgbstr, 94, 114, 228), 0.3);
 
 	}
 
 	100% {
 
-		opacity: 0.15;
+		background-color: rgba(var(--themecolor-rgbstr, 94, 114, 228), 0.15);
 
 	}
 
@@ -8797,7 +8789,7 @@ body.noscroll:before {
 	gap: 10px !important;
 	margin-bottom: 25px;
 	position: relative;
-	z-index: 1051;
+	z-index: 1;
 }
 
 /* ---------- 鍒嗕韩鎸夐挳 ---------- */
