@@ -38,9 +38,11 @@ argon_frontend_ui_assert(
 	'评论高亮仍使用覆盖内容的伪元素遮罩。'
 );
 argon_frontend_ui_assert(
-	strpos($themejs, '$newComment.addClass("animate-in")') !== false
-	&& strpos($themejs, 'lazyloadInit($newComment.get(0))') !== false,
-	'动态插入的新评论没有立即解除入场隐藏状态，或没有登记其中的懒加载资源。'
+	strpos($themejs, 'function argonRevealInsertedComments') !== false
+	&& strpos($themejs, 'comment.classList.add("animate-in")') !== false
+	&& strpos($themejs, 'commentsBeforeInsert') !== false
+	&& strpos($themejs, 'typeof lazyload === "function"') !== false,
+	'动态插入的新评论没有按 DOM 差集解除入场隐藏状态，或没有登记其中的懒加载资源。'
 );
 argon_frontend_ui_assert(
 	preg_match('/#comments:not\(\.comments-collapsed\)\.comments-expand-done\s*,\s*#post_comment:not\(\.comments-collapsed\)\.comments-expand-done\s*\{[^}]*max-height:\s*none/s', $style) === 1,

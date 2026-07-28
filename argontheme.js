@@ -2404,6 +2404,29 @@ const ARGON_FABTN_INIT_MAX_ATTEMPTS = 40;
 		$(".post-comment-captcha-container").removeClass("active");
 	});
 
+	/*
+	 * AJAX 响应可能包含分隔节点，且 result.id 不应成为评论可见性的唯一依据。
+	 * 通过插入前后的节点身份差集找出所有新评论，并在任何后续格式化逻辑执行前
+	 * 解除滚动入场动画的隐藏态。
+	 */
+	function argonRevealInsertedComments(root, commentsBeforeInsert, lazyload) {
+		if (!root || typeof root.querySelectorAll !== "function") {
+			return [];
+		}
+		var knownComments = Array.isArray(commentsBeforeInsert) ? commentsBeforeInsert : [];
+		var currentComments = Array.prototype.slice.call(root.querySelectorAll(".comment-item"));
+		var insertedComments = currentComments.filter(function (comment) {
+			return knownComments.indexOf(comment) === -1;
+		});
+		insertedComments.forEach(function (comment) {
+			comment.classList.add("animate-in");
+			if (typeof lazyload === "function") {
+				lazyload(comment);
+			}
+		});
+		return insertedComments;
+	}
+
 	function restoreCommentSubmitControls(isAdmin) {
 		$("#post_comment").removeClass("sending");
 		$("#post_comment_content").removeAttr("disabled");
@@ -2740,6 +2763,10 @@ const ARGON_FABTN_INIT_MAX_ATTEMPTS = 40;
 				// 插入新评论
 				try {
 					result.html = String(result.html || "").replace(/<\/?noscript\b[^>]*>/gi, "");
+					var commentsRoot = document.getElementById("comments");
+					var commentsBeforeInsert = commentsRoot
+						? Array.prototype.slice.call(commentsRoot.querySelectorAll(".comment-item"))
+						: [];
 					let parentID = result.parentID;
 					if (parentID == "" || parentID == null) {
 						parentID = 0;
@@ -2761,15 +2788,25 @@ const ARGON_FABTN_INIT_MAX_ATTEMPTS = 40;
 							$("#comment-" + parentID + " + .comment-divider").after("<li><ul class='children'>" + result.html + "</ul></li>");
 						}
 					}
+					var insertedComments = argonRevealInsertedComments(
+						commentsRoot,
+						commentsBeforeInsert,
+						typeof lazyloadInit === "function" ? lazyloadInit : null
+					);
 					calcHumanTimesOnPage();
 
-					var $newComment = $("#comment-" + result.id);
-					// 滚动入场观察器只登记初始化时已有的节点；AJAX 新评论必须立即解除
-					// opacity:0 的初始态，否则会像被遮罩盖住一样直到刷新页面。
-					$newComment.addClass("animate-in");
-					if ($newComment.length > 0 && typeof lazyloadInit === "function") {
-						lazyloadInit($newComment.get(0));
+					var newCommentElement = null;
+					var expectedCommentId = "comment-" + result.id;
+					for (var insertedIndex = 0; insertedIndex < insertedComments.length; insertedIndex++) {
+						if (insertedComments[insertedIndex].id === expectedCommentId) {
+							newCommentElement = insertedComments[insertedIndex];
+							break;
+						}
 					}
+					if (!newCommentElement && insertedComments.length === 1) {
+						newCommentElement = insertedComments[0];
+					}
+					var $newComment = $(newCommentElement || []);
 
 					// 滚动到新评论
 					if ($newComment.length > 0) {

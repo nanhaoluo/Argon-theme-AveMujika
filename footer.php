@@ -46,8 +46,7 @@
 		</div>
 
 		<!-- 加载主题核心 JS -->
-		<?php $assets_version = function_exists('argon_get_assets_version') ? argon_get_assets_version() : $GLOBALS['theme_version']; ?>
-		<script src="<?php echo esc_url($GLOBALS['assets_path'] . '/argontheme.js?v=' . $assets_version); ?>"></script>
+		<script src="<?php echo esc_url($GLOBALS['assets_path'] . '/argontheme.js?v=' . argon_get_asset_file_version('argontheme.js')); ?>"></script>
 
 		<?php if (get_option('argon_math_render') == 'mathjax3') { /*Mathjax V3*/?>
 

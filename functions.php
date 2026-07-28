@@ -100,6 +100,17 @@ function argon_get_assets_version() {
 }
 
 /**
+ * 为单个主题资源追加文件修改时间，避免资源内容更新但主题版本未变化时
+ * 浏览器继续命中长缓存。
+ */
+function argon_get_asset_file_version($relative_path) {
+	$base_version = argon_get_assets_version();
+	$asset_file = get_template_directory() . '/' . ltrim((string) $relative_path, '/\\');
+	$modified_time = is_file($asset_file) ? filemtime($asset_file) : false;
+	return $modified_time ? $base_version . '.f' . $modified_time : $base_version;
+}
+
+/**
  * 强制刷新时发送禁止缓存的 HTTP 头
  */
 function argon_force_refresh_headers() {
