@@ -222,6 +222,55 @@ describe('site detection', () => {
     expect(result.avatar).toBe('https://community-forum.dev/assets/community-logo.svg');
   });
 
+  it('ignores post-list avatars when a real navbar logo exists', async () => {
+    const fetcher: WorkerFetcher = vi.fn(async (input) => {
+      const url = String(input);
+      if (url.endsWith('/wp-json/')) return jsonResponse({ name: 'ZyxBlog', home: 'https://dorazhang.cn/', site_icon_url: '' }, url);
+      if (url === 'https://dorazhang.cn/') {
+        return htmlResponse(`
+          <html><body>
+            <a class="navbar-brand" href="https://dorazhang.cn/">
+              <img class="logo" src="data:image/svg+xml,placeholder" alt="ZyxBlog" data-lazy-src="https://dorazhang.cn/wp-content/uploads/2025/03/logo-m.png">
+            </a>
+            <div class="post-list-avatar"><img src="/theme/loading.gif" data-src="https://q2.qlogo.cn/headimg_dl?dst_uin=2078170660&spec=100" alt="avatar" class="avatar lazy"></div>
+            <div class="post-list-avatar"><img src="/theme/loading.gif" data-src="https://dn-qiniu-avatar.qbox.me/avatar/50e6d265" alt="avatar" class="avatar lazy"></div>
+          </body></html>
+        `);
+      }
+      return htmlResponse('missing', 404);
+    });
+
+    const result = await detectSite('dorazhang.cn', { fetcher, resolver: publicResolver, timeoutMs: 100 });
+
+    expect(result.state).toBe('ok');
+    expect(result.avatar).toBe('https://dorazhang.cn/wp-content/uploads/2025/03/logo-m.png');
+  });
+
+  it('prefers the site profile avatar over a small theme login placeholder', async () => {
+    const fetcher: WorkerFetcher = vi.fn(async (input) => {
+      const url = String(input);
+      if (url.endsWith('/wp-json/')) return jsonResponse({ name: '我鬼知道の博客', home: 'https://wgzdy.top/', site_icon_url: false }, url);
+      if (url === 'https://wgzdy.top/') {
+        return htmlResponse(`
+          <html><body>
+            <div class="header-user-avatar"><a href="https://wgzdy.top/wp-login.php">
+              <img alt="header_user_avatar" src="https://s.nmxc.ltd/sakurairo_vision/@2.5/basic/topavatar.png" width="30" height="30">
+            </a></div>
+            <div class="focusinfo"><div class="header-tou"><a href="https://wgzdy.top/">
+              <img alt="avatar" src=" https://wgzdy.top/wp-content/uploads/avater.webp">
+            </a></div></div>
+          </body></html>
+        `);
+      }
+      return htmlResponse('missing', 404);
+    });
+
+    const result = await detectSite('wgzdy.top', { fetcher, resolver: publicResolver, timeoutMs: 100 });
+
+    expect(result.state).toBe('ok');
+    expect(result.avatar).toBe('https://wgzdy.top/wp-content/uploads/avater.webp');
+  });
+
   it('keeps blocked or unreachable candidates unknown instead of calling them offline', async () => {
     const fetcher: WorkerFetcher = vi.fn(async () => htmlResponse('forbidden', 403));
     const result = await detectSite('sample-blog.dev', { fetcher, resolver: publicResolver, timeoutMs: 100 });

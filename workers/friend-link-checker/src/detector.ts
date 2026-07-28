@@ -379,7 +379,9 @@ function findBestAvatar(html: string, baseUrl: string): AvatarCandidate {
     }
   }
 
-  for (const tag of html.match(/<img\b[^>]*>/gi) ?? []) {
+  for (const match of html.matchAll(/<img\b[^>]*>/gi)) {
+    const tag = match[0];
+    const context = html.slice(Math.max(0, (match.index || 0) - 280), (match.index || 0) + tag.length).toLowerCase();
     const srcset = getTagAttribute(tag, 'data-srcset') || getTagAttribute(tag, 'srcset');
     const source = getTagAttribute(tag, 'data-src')
       || getTagAttribute(tag, 'data-original')
@@ -391,13 +393,27 @@ function findBestAvatar(html: string, baseUrl: string): AvatarCandidate {
       getTagAttribute(tag, 'title'), getTagAttribute(tag, 'itemprop'), source
     ].join(' ').toLowerCase();
     if (/comment|reply|review|testimonial/.test(identity)) continue;
-    if (/avatar|author|profile|headimg|portrait|userpic|user-pic/.test(identity)) {
+    const width = Number.parseInt(getTagAttribute(tag, 'width'), 10) || 0;
+    const height = Number.parseInt(getTagAttribute(tag, 'height'), 10) || 0;
+    const hasAvatarIdentity = /avatar|headimg|portrait|userpic|user-pic/.test(identity);
+    const hasExplicitAuthorIdentity = /author|profile/.test(identity);
+    const hasSiteProfileContext = /header-tou|focusinfo|site[-_ ]?author|author[-_ ]?card|profile[-_ ]?card|owner[-_ ]?avatar|about[-_ ]?author/.test(context);
+    const hasListAvatarContext = /post[-_ ]?(?:list|meta|card)[-_ ]?avatar|comment[-_ ]?(?:author|avatar|item)|review[-_ ]?avatar|testimonial[-_ ]?avatar/.test(context);
+    const hasLoginPlaceholderContext = /wp-login\.php|no-logged|login-link|header-user-avatar/.test(context)
+      && (/topavatar|default[-_ ]?avatar|guest[-_ ]?avatar/.test(identity) || (width > 0 && width <= 32) || (height > 0 && height <= 32));
+    const isTinyAvatar = hasAvatarIdentity && !hasSiteProfileContext
+      && ((width > 0 && width <= 32) || (height > 0 && height <= 32));
+    if (hasSiteProfileContext && (hasAvatarIdentity || hasExplicitAuthorIdentity)) {
       addAvatarCandidate(candidates, source, baseUrl, 400);
+    } else if (hasListAvatarContext || hasLoginPlaceholderContext || isTinyAvatar) {
+      addAvatarCandidate(candidates, source, baseUrl, 80);
+    } else if (hasExplicitAuthorIdentity) {
+      addAvatarCandidate(candidates, source, baseUrl, 400);
+    } else if (hasAvatarIdentity) {
+      addAvatarCandidate(candidates, source, baseUrl, 200);
     } else if (/site[-_ ]?logo|site[-_ ]?icon|brand[-_ ]?logo|blog[-_ ]?logo|header[-_ ]?logo|(?:^|[\/_. -])logo(?:[._\/ -]|$)/.test(identity)) {
       addAvatarCandidate(candidates, source, baseUrl, 300);
     } else if (source && !/emoji|sprite|tracking|pixel|spacer|advert|captcha|qrcode|qr-code/.test(identity)) {
-      const width = Number.parseInt(getTagAttribute(tag, 'width'), 10) || 0;
-      const height = Number.parseInt(getTagAttribute(tag, 'height'), 10) || 0;
       if (!((width && width <= 32) || (height && height <= 32))) {
         addAvatarCandidate(candidates, source, baseUrl, 160 + (width >= 128 || height >= 128 ? 20 : 0));
       }

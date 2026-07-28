@@ -307,7 +307,12 @@
             try { addJsonLdAvatarCandidates(JSON.parse(jsonMatch[1]), candidates, baseUrl, ''); } catch (error) {}
         }
 
-        (String(html || '').match(/<img\b[^>]*>/gi) || []).forEach(function(tag) {
+        var htmlText = String(html || '');
+        var imageMatcher = /<img\b[^>]*>/gi;
+        var imageMatch;
+        while ((imageMatch = imageMatcher.exec(htmlText)) !== null) {
+            var tag = imageMatch[0];
+            var context = htmlText.slice(Math.max(0, imageMatch.index - 280), imageMatch.index + tag.length).toLowerCase();
             var srcset = getHtmlTagAttribute(tag, 'data-srcset') || getHtmlTagAttribute(tag, 'srcset');
             var source = getHtmlTagAttribute(tag, 'data-src')
                 || getHtmlTagAttribute(tag, 'data-original')
@@ -318,19 +323,33 @@
                 getHtmlTagAttribute(tag, 'class'), getHtmlTagAttribute(tag, 'id'), getHtmlTagAttribute(tag, 'alt'),
                 getHtmlTagAttribute(tag, 'title'), getHtmlTagAttribute(tag, 'itemprop'), source
             ].join(' ').toLowerCase();
-            if (/comment|reply|review|testimonial/.test(identity)) return;
-            if (/avatar|author|profile|headimg|portrait|userpic|user-pic/.test(identity)) {
+            if (/comment|reply|review|testimonial/.test(identity)) continue;
+            var width = parseInt(getHtmlTagAttribute(tag, 'width'), 10) || 0;
+            var height = parseInt(getHtmlTagAttribute(tag, 'height'), 10) || 0;
+            var hasAvatarIdentity = /avatar|headimg|portrait|userpic|user-pic/.test(identity);
+            var hasExplicitAuthorIdentity = /author|profile/.test(identity);
+            var hasSiteProfileContext = /header-tou|focusinfo|site[-_ ]?author|author[-_ ]?card|profile[-_ ]?card|owner[-_ ]?avatar|about[-_ ]?author/.test(context);
+            var hasListAvatarContext = /post[-_ ]?(?:list|meta|card)[-_ ]?avatar|comment[-_ ]?(?:author|avatar|item)|review[-_ ]?avatar|testimonial[-_ ]?avatar/.test(context);
+            var hasLoginPlaceholderContext = /wp-login\.php|no-logged|login-link|header-user-avatar/.test(context)
+                && (/topavatar|default[-_ ]?avatar|guest[-_ ]?avatar/.test(identity) || (width > 0 && width <= 32) || (height > 0 && height <= 32));
+            var isTinyAvatar = hasAvatarIdentity && !hasSiteProfileContext
+                && ((width > 0 && width <= 32) || (height > 0 && height <= 32));
+            if (hasSiteProfileContext && (hasAvatarIdentity || hasExplicitAuthorIdentity)) {
                 addAvatarCandidate(candidates, source, baseUrl, 400);
+            } else if (hasListAvatarContext || hasLoginPlaceholderContext || isTinyAvatar) {
+                addAvatarCandidate(candidates, source, baseUrl, 80);
+            } else if (hasExplicitAuthorIdentity) {
+                addAvatarCandidate(candidates, source, baseUrl, 400);
+            } else if (hasAvatarIdentity) {
+                addAvatarCandidate(candidates, source, baseUrl, 200);
             } else if (/site[-_ ]?logo|site[-_ ]?icon|brand[-_ ]?logo|blog[-_ ]?logo|header[-_ ]?logo|(?:^|[\/_. -])logo(?:[._\/ -]|$)/.test(identity)) {
                 addAvatarCandidate(candidates, source, baseUrl, 300);
             } else if (source && !/emoji|sprite|tracking|pixel|spacer|advert|captcha|qrcode|qr-code/.test(identity)) {
-                var width = parseInt(getHtmlTagAttribute(tag, 'width'), 10) || 0;
-                var height = parseInt(getHtmlTagAttribute(tag, 'height'), 10) || 0;
                 if (!((width && width <= 32) || (height && height <= 32))) {
                     addAvatarCandidate(candidates, source, baseUrl, 160 + (width >= 128 || height >= 128 ? 20 : 0));
                 }
             }
-        });
+        }
 
         (String(html || '').match(/<link\b[^>]*>/gi) || []).forEach(function(tag) {
             var rel = getHtmlTagAttribute(tag, 'rel').toLowerCase();
@@ -540,7 +559,7 @@
                 readable: false,
                 score: 10,
                 url: candidate,
-                info: { primary: '', subtitle: '', description: '', avatar: '', linksPage: '', source: 'opaque' }
+                info: { primary: fallbackSiteName(candidate), subtitle: '', description: '', avatar: '', linksPage: '', source: 'opaque' }
             };
         });
     }

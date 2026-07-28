@@ -109,6 +109,28 @@ async function run() {
     assert.strictEqual(customForum.siteName, '星海论坛');
     assert.strictEqual(customForum.avatar, 'https://forum.example/assets/community-logo.svg');
 
+    const doraZhangAvatar = browser.extractHtmlInfo(
+        '<html><body>' +
+        '<a class="navbar-brand" href="https://www.dorazhang.cn/">' +
+        '<img class="logo" src="data:image/svg+xml,placeholder" alt="ZyxBlog" data-lazy-src="https://www.dorazhang.cn/wp-content/uploads/2025/03/logo-m.png"></a>' +
+        '<div class="post-list-avatar"><img src="/theme/loading.gif" data-src="https://q2.qlogo.cn/headimg_dl?dst_uin=2078170660&spec=100" alt="avatar" class="avatar lazy"></div>' +
+        '<div class="post-list-avatar"><img src="/theme/loading.gif" data-src="https://dn-qiniu-avatar.qbox.me/avatar/50e6d265" alt="avatar" class="avatar lazy"></div>' +
+        '</body></html>',
+        'https://www.dorazhang.cn/'
+    );
+    assert.strictEqual(doraZhangAvatar.avatar, 'https://www.dorazhang.cn/wp-content/uploads/2025/03/logo-m.png');
+
+    const wgzdyAvatar = browser.extractHtmlInfo(
+        '<html><body>' +
+        '<div class="header-user-avatar"><a href="https://www.wgzdy.top/wp-login.php">' +
+        '<img alt="header_user_avatar" src="https://s.nmxc.ltd/sakurairo_vision/@2.5/basic/topavatar.png" width="30" height="30"></a></div>' +
+        '<div class="focusinfo"><div class="header-tou"><a href="https://www.wgzdy.top/">' +
+        '<img alt="avatar" src=" https://www.wgzdy.top/wp-content/uploads/avater.webp"></a></div></div>' +
+        '</body></html>',
+        'https://www.wgzdy.top/'
+    );
+    assert.strictEqual(wgzdyAvatar.avatar, 'https://www.wgzdy.top/wp-content/uploads/avater.webp');
+
     const separatedDescription = await browser.detectSite('separate.example', {
         timeout: 1000,
         fetch: function(url) {
@@ -200,6 +222,7 @@ async function run() {
     });
     assert.strictEqual(opaque.success, true);
     assert.strictEqual(opaque.readable, false);
+    assert.strictEqual(opaque.info.primary, 'opaque.example');
 
     const backlink = await browser.checkBacklink('https://friend.example/links/', 'https://www.sample-blog.dev/', {
         timeout: 1000,
