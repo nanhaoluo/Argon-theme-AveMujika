@@ -6590,33 +6590,54 @@ function argon_add_friend_link($data) {
         return false; // 返回 false 表示重复
     }
     
-    $user_avatar = array_key_exists('user_avatar', $data) ? !empty($data['user_avatar']) : !empty($data['avatar']);
-    $user_display_name = array_key_exists('user_display_name', $data) ? !empty($data['user_display_name']) : !empty($data['display_name']);
-    $browser_detected = !empty($data['browser_detected']);
-    $accessible = array_key_exists('accessible', $data) && $data['accessible'] !== null ? (bool)$data['accessible'] : null;
-    
+    $name_source = isset($data['name_source'])
+        ? argon_friend_link_normalize_source($data['name_source'])
+        : (!empty($data['auto_name']) ? 'worker' : 'admin');
+    $display_name_source = isset($data['display_name_source'])
+        ? argon_friend_link_normalize_source($data['display_name_source'])
+        : (!empty($data['user_display_name']) || !empty($data['display_name']) ? 'admin' : 'worker');
+    $avatar_source = isset($data['avatar_source'])
+        ? argon_friend_link_normalize_source($data['avatar_source'])
+        : (!empty($data['user_avatar']) || !empty($data['avatar']) ? 'admin' : 'worker');
+    $description_source = isset($data['description_source'])
+        ? argon_friend_link_normalize_source($data['description_source'])
+        : (!empty($data['description']) ? 'admin' : 'worker');
+    $links_page_source = isset($data['links_page_source'])
+        ? argon_friend_link_normalize_source($data['links_page_source'])
+        : (!empty($data['links_page']) ? 'admin' : 'worker');
+    $user_avatar = $avatar_source !== 'worker' && !empty($data['avatar']);
+    $user_display_name = $display_name_source !== 'worker' && !empty($data['display_name']);
     $new_link = array(
         'id' => uniqid('fl_'),
         'name' => sanitize_text_field($data['name']),
-        'auto_name' => !empty($data['auto_name']),
+        'auto_name' => $name_source === 'worker',
+        'name_source' => $name_source,
         'display_name' => isset($data['display_name']) ? sanitize_text_field($data['display_name']) : '',
         'user_display_name' => $user_display_name,
+        'display_name_source' => $display_name_source,
         'url' => $url,
         'browser_detected_url' => !empty($data['browser_detected_url']) ? esc_url_raw($data['browser_detected_url']) : '',
+        'links_page' => !empty($data['links_page']) ? esc_url_raw($data['links_page']) : '',
+        'links_page_source' => $links_page_source,
         'avatar' => !empty($data['avatar']) ? esc_url_raw($data['avatar']) : '',
         'user_avatar' => $user_avatar,
+        'avatar_source' => $avatar_source,
         'description' => !empty($data['description']) ? sanitize_text_field($data['description']) : '',
         'auto_description' => !empty($data['auto_description']) ? sanitize_text_field($data['auto_description']) : '',
+        'description_source' => $description_source,
         'category' => isset($data['category']) ? sanitize_text_field($data['category']) : '',
         'email' => isset($data['email']) ? sanitize_email($data['email']) : '',
         'message' => isset($data['message']) ? sanitize_textarea_field($data['message']) : '',
         'status' => isset($data['status']) ? $data['status'] : 'approved',
         'verified' => false,
         'is_wordpress' => false,
-        'accessible' => $accessible,
-        'check_source' => $browser_detected ? 'browser' : '',
-        'last_browser_check' => $browser_detected ? time() : 0,
-        'next_browser_check_at' => $browser_detected ? time() + DAY_IN_SECONDS : time(),
+        'accessible' => null,
+        'check_source' => '',
+        'last_browser_check' => 0,
+        'worker_status' => 'pending_dispatch',
+        'worker_generation' => '',
+        'worker_dispatch_attempts' => 0,
+        'next_worker_dispatch_at' => time(),
         'last_check' => 0,
         'last_info_update' => 0,
         'next_check_at' => 0,
@@ -6625,6 +6646,9 @@ function argon_add_friend_link($data) {
     
     $links[] = $new_link;
     update_option('argon_friend_links', $links);
+    if (function_exists('argon_friend_link_worker_dispatch_async')) {
+        argon_friend_link_worker_dispatch_async($new_link['id']);
+    }
     return $new_link['id'];
 }
 
@@ -6670,8 +6694,9 @@ function argon_update_friend_link($id, $data) {
                 $links[$key]['worker_generation'] = '';
                 $links[$key]['worker_status'] = 'pending_dispatch';
                 $links[$key]['worker_submitted_at'] = 0;
+                $links[$key]['worker_dispatch_attempts'] = 0;
                 $links[$key]['worker_error'] = '';
-                $links[$key]['next_browser_check_at'] = time();
+                $links[$key]['next_worker_dispatch_at'] = time();
             }
             $links[$key]['updated_at'] = time();
             $updated = true;
@@ -6817,6 +6842,7 @@ function argon_handle_link_application_v3($post_data) {
     
     // 获取申请者填写的友链页面
     $links_page = isset($post_data['apply_links_page']) ? esc_url_raw($post_data['apply_links_page']) : '';
+    $links_page_is_manual = !empty($links_page) && (!isset($post_data['apply_links_page_manual']) || $post_data['apply_links_page_manual'] === '1');
     
     // 浏览器提交的数据不能作为自动审核依据，申请始终进入人工审核。
     $has_backlink = null;
@@ -6829,15 +6855,20 @@ function argon_handle_link_application_v3($post_data) {
         'id' => uniqid('fl_'),
         'name' => sanitize_text_field($final_name),
         'auto_name' => !$name_is_manual,
+        'name_source' => $name_is_manual ? 'visitor' : 'worker',
         'display_name' => sanitize_text_field($display_name),
         'user_display_name' => $display_name_is_manual,
+        'display_name_source' => $display_name_is_manual ? 'visitor' : 'worker',
         'url' => esc_url_raw($url),
         'browser_detected_url' => $browser_detected ? esc_url_raw($url) : '',
         'links_page' => $links_page,
+        'links_page_source' => $links_page_is_manual ? 'visitor' : 'worker',
         'avatar' => $final_avatar,
         'user_avatar' => $avatar_is_manual,
+        'avatar_source' => $avatar_is_manual ? 'visitor' : 'worker',
         'description' => sanitize_text_field($final_desc),
         'auto_description' => sanitize_text_field($auto_description),
+        'description_source' => $description_is_manual ? 'visitor' : 'worker',
         'category' => '',
         'email' => isset($post_data['apply_email']) ? sanitize_email($post_data['apply_email']) : '',
         'status' => $status,
@@ -6846,9 +6877,12 @@ function argon_handle_link_application_v3($post_data) {
         'accessible' => null,
         'blocked_by_waf' => false,
         'is_wordpress' => false,
-        'check_source' => $browser_detected ? 'visitor_browser' : '',
-        'last_browser_check' => $browser_detected ? time() : 0,
-        'next_browser_check_at' => time(),
+        'check_source' => '',
+        'last_browser_check' => 0,
+        'worker_status' => 'pending_dispatch',
+        'worker_generation' => '',
+        'worker_dispatch_attempts' => 0,
+        'next_worker_dispatch_at' => time(),
         'last_check' => 0,
         'last_info_update' => 0,
         'next_check_at' => time(),
@@ -6868,14 +6902,14 @@ function argon_handle_link_application_v3($post_data) {
         set_transient($rate_limit_key, $apply_count + 1, $limit_period);
     }
     
-    $dispatch_token = function_exists('argon_friend_link_worker_create_dispatch_token')
-        ? argon_friend_link_worker_create_dispatch_token($new_link['id'])
-        : '';
+    $worker_dispatch = function_exists('argon_friend_link_worker_dispatch_async')
+        ? argon_friend_link_worker_dispatch_async($new_link['id'])
+        : new WP_Error('worker_bridge_missing', '友链检测 Worker 桥接未加载');
     return array(
         'success' => true,
         'message' => __('申请已提交，等待管理员审核。', 'argon'),
         'id' => $new_link['id'],
-        'dispatch_token' => $dispatch_token,
+        'worker_dispatched' => !is_wp_error($worker_dispatch),
     );
 }
 
@@ -7048,9 +7082,12 @@ function argon_ajax_manage_friend_link() {
         case 'add':
             $link_id = argon_add_friend_link(array(
                 'name' => $_POST['name'],
+                'name_source' => 'admin',
                 'url' => $_POST['url'],
                 'avatar' => isset($_POST['avatar']) ? $_POST['avatar'] : '',
+                'avatar_source' => !empty($_POST['avatar']) ? 'admin' : 'worker',
                 'description' => isset($_POST['description']) ? $_POST['description'] : '',
+                'description_source' => !empty($_POST['description']) ? 'admin' : 'worker',
                 'category' => isset($_POST['category']) ? $_POST['category'] : '',
                 'status' => 'approved'
             ));
@@ -7071,8 +7108,14 @@ function argon_ajax_manage_friend_link() {
                 $avatar = trim((string)$update_data['avatar']);
                 $existing_avatar = isset($existing_link['avatar']) ? trim((string)$existing_link['avatar']) : '';
                 $update_data['user_avatar'] = $avatar !== '' && ($avatar !== $existing_avatar || !empty($existing_link['user_avatar']));
+                $update_data['avatar_source'] = $avatar !== '' ? 'admin' : 'worker';
             }
-            argon_update_friend_link($id, $update_data);
+            if (array_key_exists('name', $update_data)) $update_data['name_source'] = !empty($update_data['name']) ? 'admin' : 'worker';
+            if (array_key_exists('description', $update_data)) $update_data['description_source'] = !empty($update_data['description']) ? 'admin' : 'worker';
+            $updated = argon_update_friend_link($id, $update_data);
+            if ($updated && array_key_exists('url', $update_data) && function_exists('argon_friend_link_worker_dispatch_async')) {
+                argon_friend_link_worker_dispatch_async($id);
+            }
             wp_send_json_success();
             break;
             
@@ -7103,11 +7146,13 @@ function argon_ajax_manage_friend_link() {
             break;
             
         case 'verify':
-            wp_send_json_error('服务器外联检测已停用，请在友链页面使用浏览器检测');
-            break;
-        
         case 'check_access':
-            wp_send_json_error('服务器外联检测已停用，请在友链页面使用浏览器检测');
+            if (empty($id)) wp_send_json_error('ID 不能为空');
+            $dispatch = function_exists('argon_friend_link_worker_dispatch_async')
+                ? argon_friend_link_worker_dispatch_async($id)
+                : new WP_Error('worker_bridge_missing', 'Worker 桥接未加载');
+            if (is_wp_error($dispatch)) wp_send_json_error($dispatch->get_error_message());
+            wp_send_json_success(array('message' => '已提交 Cloudflare Worker 异步检测'));
             break;
             
         default:

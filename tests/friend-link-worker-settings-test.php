@@ -198,9 +198,9 @@ argon_worker_settings_assert(
 $GLOBALS['argon_worker_settings_options']['argon_friend_link_worker_enabled'] = 'false';
 $GLOBALS['argon_worker_settings_transients'] = array();
 argon_worker_settings_assert(
-    argon_friend_link_worker_create_dispatch_token('fl_settings') === ''
+    !argon_friend_link_worker_is_configured()
     && empty($GLOBALS['argon_worker_settings_transients']),
-    'Worker 未启用时仍签发了一次性派发令牌。'
+    'Worker 未启用时仍被视为可派发状态。'
 );
 
 putenv('ARGON_FRIEND_LINK_WORKER_ENABLED=true');

@@ -29,26 +29,29 @@ argon_flink_test_assert(
 );
 argon_flink_test_assert(
     strpos($functions, "require_once get_template_directory() . '/inc/friend-link-worker.php';") !== false
-    && strpos($worker_bridge, "register_rest_route('argon/v1', '/friend-link-ticket'") !== false
     && strpos($worker_bridge, "register_rest_route('argon/v1', '/friend-link-result'") !== false,
-    '主题没有注册 Worker 签发与回调桥接。'
+    '主题没有注册 Worker 回调桥接。'
 );
 argon_flink_test_assert(
-    strpos($page, 'dispatchFriendLinkWorkerJob') !== false
-    && strpos($page, "rest_url('argon/v1/friend-link-ticket')") !== false
-    && strpos($page, "wp_create_nonce('wp_rest')") !== false
-    && strpos($page, "requestHeaders['X-WP-Nonce']") !== false
-    && strpos($page, 'detector.detectSite(link.url)') === false,
-    '批量复检没有使用完整 REST Cookie 认证转发 Worker 异步任务。'
+    strpos($worker_bridge, 'function argon_friend_link_worker_dispatch_async(') !== false
+    && strpos($worker_bridge, 'wp_remote_post($ticket[\'url\']') !== false
+    && strpos($worker_bridge, "'blocking' => false") !== false
+    && strpos($worker_bridge, "add_action('argon_friend_link_worker_dispatch_pending'") !== false
+    && strpos($worker_bridge, "wp_schedule_event(time() + MINUTE_IN_SECONDS, 'hourly'") !== false
+    && strpos($page, 'dispatchFriendLinkWorkerJob') === false
+    && strpos($page, "rest_url('argon/v1/friend-link-ticket')") === false,
+    '首次 Worker 任务仍依赖管理员浏览器，或服务端没有非阻塞派发与自动补派。'
 );
 $edit_check_start = strpos($page, "var editCheckBtn = document.getElementById('edit-check-btn');");
 $edit_check_end = strpos($page, '// 保存编辑', $edit_check_start);
 $edit_check_section = substr($page, $edit_check_start, $edit_check_end - $edit_check_start);
 argon_flink_test_assert(
     strpos($edit_check_section, "flinkAction('update'") !== false
-    && strpos($edit_check_section, 'dispatchFriendLinkWorkerJob(id') !== false
+    && strpos($edit_check_section, "flinkAction('dispatch_worker'") !== false
+    && strpos($edit_check_section, 'submitWorkerDetection({ success: true, worker_dispatched: false })') !== false
+    && strpos($edit_check_section, '请先填写对方的友链页面地址') === false
     && strpos($edit_check_section, 'detector.checkBacklink') === false,
-    '编辑窗口的互链检测没有先保存页面地址再调用 Cloudflare Worker。'
+    '编辑窗口没有在已填写时先保存友链页、未填写时交给 Worker 自动识别。'
 );
 argon_flink_test_assert(
     strpos($page, "checkAllBtn.onclick = function()") !== false
@@ -72,15 +75,14 @@ argon_flink_test_assert(
 argon_flink_test_assert(
     strpos($worker_bridge, 'function argon_friend_link_worker_is_configured()') !== false
     && strpos($worker_bridge, 'if (!argon_friend_link_worker_is_configured())') !== false
-    && strpos($page, 'if ($is_admin && $friend_link_worker_ready)') !== false
     && strpos($page, 'var argonFriendLinkWorkerReady =') !== false
     && strpos($page, 'if (!argonFriendLinkWorkerReady)') !== false,
-    'Worker 未配置时仍可能创建令牌、自动批量派发或从管理操作派发。'
+    'Worker 未配置时仍可能创建任务或从管理操作派发。'
 );
 argon_flink_test_assert(
     strpos($functions, '$worker_target_changed = false;') !== false
     && strpos($functions, "['worker_generation'] = '';") !== false
-    && strpos($page, "'worker_refresh_required' => \$updated && \$worker_refresh_required") !== false,
+    && strpos($page, 'argon_friend_link_worker_dispatch_async($id)') !== false,
     '编辑目标地址后没有废弃旧 Worker 代际并触发新任务。'
 );
 argon_flink_test_assert(
@@ -94,9 +96,17 @@ argon_flink_test_assert(
 );
 argon_flink_test_assert(
     strpos($page, 'id="apply-links-page"') !== false
+    && strpos($page, 'name="apply_links_page_manual"') !== false
     && strpos($page, "key: 'linksPage'") !== false
     && strpos($page, 'id="add-links-page"') !== false,
     '自动资料识别没有覆盖访客和管理员的对方友链页面字段。'
+);
+argon_flink_test_assert(
+    strpos($functions, "'name_source' => \$name_is_manual ? 'visitor' : 'worker'") !== false
+    && strpos($functions, "'links_page_source' => \$links_page_is_manual ? 'visitor' : 'worker'") !== false
+    && strpos($page, "var nameSource = addNameIsManual ? 'admin' : 'worker'") !== false
+    && strpos($worker_bridge, 'argon_friend_link_worker_can_update_field') !== false,
+    '友链字段没有记录 Worker、访客和管理员三档来源优先级。'
 );
 argon_flink_test_assert(
     strpos($page, 'class="flink-avatar has-image') === false
@@ -131,10 +141,36 @@ argon_flink_test_assert(
     '编辑窗口仍使用迟缓的层级动画时长。'
 );
 argon_flink_test_assert(
-    strpos($page, "case 'browser_sync':") !== false
+    strpos($page, "case 'browser_sync':") === false
     && strpos($page, "case 'check_all':") !== false
-    && strpos($page, '服务器外联检测已停用') !== false,
-    '页面端旧服务器外联入口没有熔断。'
+    && strpos($page, "case 'dispatch_worker':") !== false
+    && strpos($page, 'browserBatchLinks') === false,
+    '浏览器检测结果仍被当作正式检测结论，或管理页仍承担自动派发。'
+);
+$apply_detect_start = strpos($page, 'function detectApplicationSite()');
+$apply_detect_end = strpos($page, "urlInput.addEventListener('input'", $apply_detect_start);
+$apply_detect_section = substr($page, $apply_detect_start, $apply_detect_end - $apply_detect_start);
+$add_detect_start = strpos($page, 'function detectAddSite(button)');
+$add_detect_end = strpos($page, '// 移除自动审核标记', $add_detect_start);
+$add_detect_section = substr($page, $add_detect_start, $add_detect_end - $add_detect_start);
+$edit_detect_start = strpos($page, "editFetchBtn.addEventListener('click'");
+$edit_detect_end = strpos($page, '// 检测互链', $edit_detect_start);
+$edit_detect_section = substr($page, $edit_detect_start, $edit_detect_end - $edit_detect_start);
+argon_flink_test_assert(
+    strpos($page, '跨域不可读，状态未知') === false
+    && strpos($page, '受跨域限制，无法确认页面状态') === false
+    && strpos($apply_detect_section, '提交后将由 Worker 异步检测并补全资料') !== false
+    && strpos($add_detect_section, '保存后将由 Worker 异步检测并补全资料') !== false
+    && strpos($edit_detect_section, '正式检测请点击“检测互链”交由 Worker 执行') !== false,
+    '浏览器预填提示仍被误写成 Worker 的跨域检测结论，或与实际派发时机不符。'
+);
+$unknown_status_pos = strpos($page, "link.backlink_check_result === 'unknown'");
+$missing_links_page_pos = strrpos(substr($page, 0, $unknown_status_pos), 'if (!link.links_page)');
+argon_flink_test_assert(
+    $missing_links_page_pos !== false
+    && $missing_links_page_pos < $unknown_status_pos
+    && strpos($page, '友链页面暂时不可读，状态未知') !== false,
+    '未填写友链页面仍被误报为 Worker 无法读取目标站。'
 );
 
 $add_start = strpos($functions, 'function argon_add_friend_link(');
@@ -160,8 +196,9 @@ $application_section = substr($functions, $application_start, $application_end -
 argon_flink_test_assert(
     strpos($application_section, 'argon_fetch_site_info(') === false
     && strpos($application_section, 'argon_check_backlink(') === false
-    && strpos($application_section, 'wp_schedule_single_event(') === false,
-    '访客申请仍会抓站或调度服务器检测。'
+    && strpos($application_section, "argon_friend_link_worker_dispatch_async(\$new_link['id'])") !== false
+    && strpos($application_section, 'dispatch_token') === false,
+    '访客申请没有由服务端异步派发 Worker，或仍依赖一次性浏览器令牌。'
 );
 argon_flink_test_assert(
     strpos($functions, "wp_unschedule_hook('argon_friend_links_auto_check')") !== false
@@ -184,9 +221,10 @@ argon_flink_test_assert(
     '友链兼容检测函数仍包含服务器外联请求。'
 );
 argon_flink_test_assert(
-    strpos($functions, "case 'verify':\n            wp_send_json_error('服务器外联检测已停用，请在友链页面使用浏览器检测');") !== false
-    && strpos($functions, "case 'check_access':\n            wp_send_json_error('服务器外联检测已停用，请在友链页面使用浏览器检测');") !== false,
-    '旧版 AJAX 仍可能触发服务器外联。'
+    strpos($functions, "case 'verify':") !== false
+    && strpos($functions, "case 'check_access':") !== false
+    && strpos($functions, 'argon_friend_link_worker_dispatch_async($id)') !== false,
+    '旧版 AJAX 没有改为派发 Cloudflare Worker。'
 );
 
 if ($failures) {

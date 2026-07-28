@@ -122,7 +122,7 @@ export async function processQueueMessage(message: QueueMessage, services: Runti
   const site = await detectSite(claimed.url, { fetcher: services.fetcher, resolver: services.resolver });
   const linksPage = claimed.linksPage || site.linksPage;
   const backlink = linksPage
-    ? await checkBacklink(linksPage, claimed.url, services.config.siteUrl, {
+    ? await checkBacklink(linksPage, site.detectedUrl || claimed.url, services.config.siteUrl, {
         fetcher: services.fetcher,
         resolver: services.resolver
       })

@@ -18,18 +18,27 @@ $GLOBALS['argon_worker_test_links'] = array(
         'id' => 'fl_contract',
         'name' => '旧标题',
         'auto_name' => true,
+        'name_source' => 'worker',
         'display_name' => '',
         'user_display_name' => false,
+        'display_name_source' => 'worker',
         'url' => 'https://sample-blog.dev/',
         'links_page' => '',
+        'links_page_source' => 'worker',
         'avatar' => '',
         'user_avatar' => false,
+        'avatar_source' => 'worker',
+        'description' => '',
+        'auto_description' => '',
+        'description_source' => 'worker',
         'has_backlink' => null,
     ),
 );
 $GLOBALS['argon_worker_test_transients'] = array();
 $GLOBALS['argon_worker_test_routes'] = array();
 $GLOBALS['argon_worker_test_is_admin'] = true;
+$GLOBALS['argon_worker_test_remote_posts'] = array();
+$GLOBALS['argon_worker_test_uuid_counter'] = 0;
 
 class WP_Error {
     public $code;
@@ -85,7 +94,10 @@ function esc_url_raw($value) { return filter_var((string)$value, FILTER_VALIDATE
 function sanitize_text_field($value) { return trim(strip_tags((string)$value)); }
 function wp_unslash($value) { return $value; }
 function wp_json_encode($value, $flags = 0) { return json_encode($value, $flags); }
-function wp_generate_uuid4() { return '12345678-1234-4abc-8def-1234567890ab'; }
+function wp_generate_uuid4() {
+    $GLOBALS['argon_worker_test_uuid_counter']++;
+    return sprintf('12345678-1234-4abc-8def-%012d', $GLOBALS['argon_worker_test_uuid_counter']);
+}
 function wp_generate_password($length = 12, $special_chars = true, $extra_special_chars = false) {
     return substr(str_repeat('PublicDispatchToken', 4), 0, $length);
 }
@@ -102,6 +114,12 @@ function delete_transient($key) {
     unset($GLOBALS['argon_worker_test_transients'][$key]);
     return true;
 }
+function wp_remote_post($url, $args = array()) {
+    $GLOBALS['argon_worker_test_remote_posts'][] = array('url' => $url, 'args' => $args);
+    return array('response' => array('code' => false));
+}
+function wp_next_scheduled($hook, $args = array()) { return false; }
+function wp_schedule_single_event($timestamp, $hook, $args = array()) { return true; }
 function argon_get_friend_link($id) {
     return isset($GLOBALS['argon_worker_test_links'][$id]) ? $GLOBALS['argon_worker_test_links'][$id] : null;
 }
@@ -121,21 +139,24 @@ function argon_worker_assert($condition, $message) {
 
 argon_register_friend_link_worker_routes();
 argon_worker_assert(
-    isset($GLOBALS['argon_worker_test_routes']['argon/v1/friend-link-ticket'])
+    !isset($GLOBALS['argon_worker_test_routes']['argon/v1/friend-link-ticket'])
     && isset($GLOBALS['argon_worker_test_routes']['argon/v1/friend-link-result']),
-    'REST 签发或回调路由未注册。'
+    '浏览器 ticket 路由仍存在，或 Worker 回调路由未注册。'
 );
 
-$admin_request = new WP_REST_Request(json_encode(array(
-    'job_id' => 'fl_contract',
-    'nonce' => 'valid-admin-nonce',
-)));
-$admin_response = argon_friend_link_worker_ticket_rest($admin_request);
-$admin_data = $admin_response instanceof WP_REST_Response ? $admin_response->get_data() : array();
-argon_worker_assert($admin_response instanceof WP_REST_Response && $admin_response->get_status() === 200, '管理员签发请求失败。');
-argon_worker_assert(!empty($admin_data['ticket']['body']) && !empty($admin_data['ticket']['headers']), '签发响应缺少原始请求体或签名头。');
-
-$ticket = isset($admin_data['ticket']) ? $admin_data['ticket'] : array();
+$dispatched = argon_friend_link_worker_dispatch_async('fl_contract');
+$remote_post = !empty($GLOBALS['argon_worker_test_remote_posts']) ? end($GLOBALS['argon_worker_test_remote_posts']) : array();
+$ticket = array(
+    'url' => isset($remote_post['url']) ? $remote_post['url'] : '',
+    'body' => isset($remote_post['args']['body']) ? $remote_post['args']['body'] : '',
+    'headers' => isset($remote_post['args']['headers']) ? $remote_post['args']['headers'] : array(),
+);
+argon_worker_assert($dispatched === true, '服务端没有成功发起非阻塞 Worker 请求。');
+argon_worker_assert(
+    isset($remote_post['args']['blocking'])
+    && $remote_post['args']['blocking'] === false,
+    'Worker 请求不是非阻塞模式。'
+);
 $timestamp = isset($ticket['headers']['X-Argon-Timestamp']) ? $ticket['headers']['X-Argon-Timestamp'] : '';
 $nonce = isset($ticket['headers']['X-Argon-Nonce']) ? $ticket['headers']['X-Argon-Nonce'] : '';
 $signature = isset($ticket['headers']['X-Argon-Signature']) ? $ticket['headers']['X-Argon-Signature'] : '';
@@ -151,14 +172,6 @@ argon_worker_assert(
     && $GLOBALS['argon_worker_test_links']['fl_contract']['worker_generation'] === $nonce,
     '签发后没有保存当前任务代际。'
 );
-
-$GLOBALS['argon_worker_test_is_admin'] = false;
-$dispatch_token = argon_friend_link_worker_create_dispatch_token('fl_contract');
-$public_request = new WP_REST_Request(json_encode(array('dispatch_token' => $dispatch_token)));
-$public_response = argon_friend_link_worker_ticket_rest($public_request);
-argon_worker_assert($public_response instanceof WP_REST_Response && $public_response->get_status() === 200, '一次性访客令牌无法签发任务。');
-$replayed_ticket = argon_friend_link_worker_ticket_rest($public_request);
-argon_worker_assert($replayed_ticket instanceof WP_REST_Response && $replayed_ticket->get_status() === 403, '一次性访客令牌可以重复使用。');
 
 $generation = $GLOBALS['argon_worker_test_links']['fl_contract']['worker_generation'];
 $callback_payload = array(
@@ -202,9 +215,134 @@ argon_worker_assert(
     $updated_link['name'] === '编程小记'
     && $updated_link['display_name'] === '其实我也不知道建这个站拿来干嘛=-='
     && $updated_link['links_page'] === 'https://blog.sample-blog.dev/friends/'
+    && $updated_link['avatar'] === 'https://blog.sample-blog.dev/favicon.ico'
+    && $updated_link['auto_description'] === '自动识别描述'
+    && $updated_link['name_source'] === 'worker'
+    && $updated_link['display_name_source'] === 'worker'
+    && $updated_link['links_page_source'] === 'worker'
+    && $updated_link['avatar_source'] === 'worker'
+    && $updated_link['description_source'] === 'worker'
     && $updated_link['has_backlink'] === true
     && $updated_link['check_source'] === 'cloudflare_worker',
     '合法 Worker 回调没有更新自动字段和互链状态。'
+);
+
+argon_update_friend_link('fl_contract', array('avatar' => '', 'avatar_source' => 'worker'));
+argon_friend_link_worker_dispatch_async('fl_contract');
+$favicon_payload = $callback_payload;
+$favicon_payload['generation'] = $GLOBALS['argon_worker_test_links']['fl_contract']['worker_generation'];
+$favicon_payload['result']['avatar'] = 'https://blog.sample-blog.dev/favicon.ico';
+$favicon_body = json_encode($favicon_payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+$favicon_nonce = 'callback_nonce_favicon_12345';
+$favicon_signature = 'sha256=' . hash_hmac('sha256', $callback_timestamp . '.' . $favicon_nonce . '.' . $favicon_body, ARGON_FRIEND_LINK_CALLBACK_HMAC_SECRET);
+$favicon_response = argon_friend_link_worker_result_rest(new WP_REST_Request($favicon_body, array(
+    'X-Argon-Timestamp' => $callback_timestamp,
+    'X-Argon-Nonce' => $favicon_nonce,
+    'X-Argon-Signature' => $favicon_signature,
+)));
+argon_worker_assert(
+    $favicon_response instanceof WP_REST_Response
+    && $favicon_response->get_status() === 200
+    && argon_get_friend_link('fl_contract')['avatar'] === 'https://blog.sample-blog.dev/favicon.ico',
+    '测试前置失败：Worker favicon 回调未被处理。'
+);
+
+argon_update_friend_link('fl_contract', array(
+    'avatar' => 'https://blog.sample-blog.dev/assets/site-logo.png',
+    'avatar_source' => 'worker',
+));
+argon_friend_link_worker_dispatch_async('fl_contract');
+$degrade_payload = $callback_payload;
+$degrade_payload['generation'] = $GLOBALS['argon_worker_test_links']['fl_contract']['worker_generation'];
+$degrade_payload['result']['avatar'] = 'https://blog.sample-blog.dev/favicon.ico';
+$degrade_body = json_encode($degrade_payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+$degrade_nonce = 'callback_nonce_degrade_12345';
+$degrade_signature = 'sha256=' . hash_hmac('sha256', $callback_timestamp . '.' . $degrade_nonce . '.' . $degrade_body, ARGON_FRIEND_LINK_CALLBACK_HMAC_SECRET);
+$degrade_response = argon_friend_link_worker_result_rest(new WP_REST_Request($degrade_body, array(
+    'X-Argon-Timestamp' => $callback_timestamp,
+    'X-Argon-Nonce' => $degrade_nonce,
+    'X-Argon-Signature' => $degrade_signature,
+)));
+argon_worker_assert(
+    $degrade_response instanceof WP_REST_Response
+    && $degrade_response->get_status() === 200
+    && argon_get_friend_link('fl_contract')['avatar'] === 'https://blog.sample-blog.dev/assets/site-logo.png',
+    '通用 favicon.ico 降级覆盖了已有的智能头像。'
+);
+
+argon_update_friend_link('fl_contract', array(
+    'name' => '访客名称',
+    'name_source' => 'visitor',
+    'display_name' => '访客副标题',
+    'display_name_source' => 'visitor',
+    'avatar' => 'https://sample-blog.dev/visitor.png',
+    'avatar_source' => 'visitor',
+    'description' => '访客描述',
+    'description_source' => 'visitor',
+    'links_page' => 'https://sample-blog.dev/visitor-links/',
+    'links_page_source' => 'visitor',
+));
+argon_friend_link_worker_dispatch_async('fl_contract');
+$visitor_payload = $callback_payload;
+$visitor_payload['generation'] = $GLOBALS['argon_worker_test_links']['fl_contract']['worker_generation'];
+$visitor_payload['result']['primary'] = 'Worker 新名称';
+$visitor_payload['result']['subtitle'] = 'Worker 新副标题';
+$visitor_payload['result']['avatar'] = 'https://sample-blog.dev/worker.png';
+$visitor_payload['result']['description'] = 'Worker 新描述';
+$visitor_payload['result']['links_page'] = 'https://sample-blog.dev/worker-links/';
+$visitor_body = json_encode($visitor_payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+$visitor_nonce = 'callback_nonce_visitor_12345';
+$visitor_signature = 'sha256=' . hash_hmac('sha256', $callback_timestamp . '.' . $visitor_nonce . '.' . $visitor_body, ARGON_FRIEND_LINK_CALLBACK_HMAC_SECRET);
+$visitor_response = argon_friend_link_worker_result_rest(new WP_REST_Request($visitor_body, array(
+    'X-Argon-Timestamp' => $callback_timestamp,
+    'X-Argon-Nonce' => $visitor_nonce,
+    'X-Argon-Signature' => $visitor_signature,
+)));
+$visitor_link = argon_get_friend_link('fl_contract');
+argon_worker_assert(
+    $visitor_response instanceof WP_REST_Response
+    && $visitor_response->get_status() === 200
+    && $visitor_link['name'] === '访客名称'
+    && $visitor_link['display_name'] === '访客副标题'
+    && $visitor_link['avatar'] === 'https://sample-blog.dev/visitor.png'
+    && $visitor_link['description'] === '访客描述'
+    && $visitor_link['links_page'] === 'https://sample-blog.dev/visitor-links/',
+    'Worker 自动结果覆盖了访客主动填写的字段。'
+);
+
+argon_update_friend_link('fl_contract', array(
+    'name' => '管理员名称',
+    'name_source' => 'admin',
+    'display_name' => '管理员副标题',
+    'display_name_source' => 'admin',
+    'avatar' => 'https://sample-blog.dev/admin.png',
+    'avatar_source' => 'admin',
+    'description' => '管理员描述',
+    'description_source' => 'admin',
+    'links_page' => 'https://sample-blog.dev/admin-links/',
+    'links_page_source' => 'admin',
+));
+argon_friend_link_worker_dispatch_async('fl_contract');
+$admin_payload = $callback_payload;
+$admin_payload['generation'] = $GLOBALS['argon_worker_test_links']['fl_contract']['worker_generation'];
+$admin_body = json_encode($admin_payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+$admin_nonce = 'callback_nonce_admin_123456';
+$admin_signature = 'sha256=' . hash_hmac('sha256', $callback_timestamp . '.' . $admin_nonce . '.' . $admin_body, ARGON_FRIEND_LINK_CALLBACK_HMAC_SECRET);
+$admin_priority_response = argon_friend_link_worker_result_rest(new WP_REST_Request($admin_body, array(
+    'X-Argon-Timestamp' => $callback_timestamp,
+    'X-Argon-Nonce' => $admin_nonce,
+    'X-Argon-Signature' => $admin_signature,
+)));
+$admin_link = argon_get_friend_link('fl_contract');
+argon_worker_assert(
+    $admin_priority_response instanceof WP_REST_Response
+    && $admin_priority_response->get_status() === 200
+    && $admin_link['name'] === '管理员名称'
+    && $admin_link['display_name'] === '管理员副标题'
+    && $admin_link['avatar'] === 'https://sample-blog.dev/admin.png'
+    && $admin_link['description'] === '管理员描述'
+    && $admin_link['links_page'] === 'https://sample-blog.dev/admin-links/',
+    'Worker 自动结果覆盖了管理员字段。'
 );
 
 $replay_response = argon_friend_link_worker_result_rest($callback_request);

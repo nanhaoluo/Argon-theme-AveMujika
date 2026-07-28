@@ -45,6 +45,7 @@ export interface BacklinkDetection {
 
 interface CandidateResult extends Omit<SiteDetection, 'state' | 'attempts'> {
   score: number;
+  avatarTier?: number;
 }
 
 class FetchProblem extends Error {
@@ -214,12 +215,218 @@ function findMeta(html: string, key: string): string {
   return '';
 }
 
+function findJsonLdSiteName(value: unknown): string {
+  if (!value || typeof value !== 'object') return '';
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const name = findJsonLdSiteName(item);
+      if (name) return name;
+    }
+    return '';
+  }
+  const node = value as Record<string, unknown>;
+  const type = cleanText(Array.isArray(node['@type']) ? node['@type'].join(' ') : node['@type']);
+  if (/website|organization|blog|forum|onlinestore/i.test(type)) {
+    const ownName = cleanText(node.name || node.alternateName || node.headline);
+    if (ownName) return ownName;
+  }
+  for (const child of Object.values(node)) {
+    if (!child || typeof child !== 'object') continue;
+    const childName = findJsonLdSiteName(child);
+    if (childName) return childName;
+  }
+  return '';
+}
+
+function findDeclaredSiteName(html: string): string {
+  const metaName = findMeta(html, 'og:site_name')
+    || findMeta(html, 'application-name');
+  if (metaName) return metaName;
+
+  for (const match of html.matchAll(/<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const structuredName = findJsonLdSiteName(JSON.parse(match[1]));
+      if (structuredName) return structuredName;
+    } catch {
+      // Ignore malformed structured data and continue with visible brand elements.
+    }
+  }
+
+  for (const match of html.matchAll(/<(h1|a|div|span)\b([^>]*)>([\s\S]*?)<\/\1>/gi)) {
+    const openingTag = `<${match[1]} ${match[2]}>`;
+    const identity = `${getTagAttribute(openingTag, 'class')} ${getTagAttribute(openingTag, 'id')}`;
+    if (!/(?:site|blog|forum)[-_ ]?(?:title|name)|(?:brand|navbar-brand)|(?:^|\s)logo(?:\s|$)/i.test(identity)) continue;
+    let name = cleanText(match[3]);
+    if (!name) {
+      const imageTag = match[3].match(/<img\b[^>]*>/i)?.[0] || '';
+      name = getTagAttribute(imageTag, 'alt');
+    }
+    if (name && name.length <= 120) return name;
+  }
+  return '';
+}
+
+function fallbackSiteName(url: string): string {
+  try {
+    return new URL(url).hostname.toLowerCase().replace(/^(?:www|blog)\./, '');
+  } catch {
+    return '';
+  }
+}
+
 function findLinkByRel(html: string, relName: string, baseUrl: string): string {
   for (const tag of html.match(/<link\b[^>]*>/gi) ?? []) {
     const rel = getTagAttribute(tag, 'rel').toLowerCase().split(/\s+/);
     if (rel.includes(relName)) return absoluteUrl(getTagAttribute(tag, 'href'), baseUrl);
   }
   return '';
+}
+
+interface AvatarCandidate {
+  url: string;
+  score: number;
+  tier: number;
+}
+
+function avatarUrlBonus(url: string): number {
+  const value = url.toLowerCase();
+  let score = 0;
+  if (/favicon\.ico(?:[?#]|$)/.test(value)) score -= 80;
+  if (/site[-_]?logo|blog[-_]?logo|brand[-_]?logo|\/logo[._/-]/.test(value)) score += 35;
+  if (/avatar|author|profile|headimg|portrait|userpic|user-pic/.test(value)) score += 30;
+  if (/apple-touch|mask-icon|fluid-icon/.test(value)) score += 20;
+  if (/(?:192|180|152|144|128|96|64)(?:x(?:192|180|152|144|128|96|64))?/.test(value)) score += 12;
+  if (/\.svg(?:[?#]|$)/.test(value)) score += 8;
+  return score;
+}
+
+function avatarTierFromScore(score: number): number {
+  if (score >= 380) return 5;
+  if (score >= 280) return 4;
+  if (score >= 190) return 3;
+  if (score >= 150) return 2;
+  if (score > 1) return 1;
+  return 0;
+}
+
+function addAvatarCandidate(candidates: AvatarCandidate[], value: unknown, baseUrl: string, score: number): void {
+  const url = absoluteUrl(value, baseUrl);
+  if (!url) return;
+  const existing = candidates.find((candidate) => candidate.url === url);
+  const weightedScore = score + avatarUrlBonus(url);
+  const tier = avatarTierFromScore(score);
+  if (existing) {
+    existing.score = Math.max(existing.score, weightedScore);
+    existing.tier = Math.max(existing.tier, tier);
+  } else candidates.push({ url, score: weightedScore, tier });
+}
+
+function addJsonLdAvatarCandidates(
+  value: unknown,
+  candidates: AvatarCandidate[],
+  baseUrl: string,
+  context = ''
+): void {
+  if (!value || typeof value !== 'object') return;
+  if (Array.isArray(value)) {
+    for (const item of value) addJsonLdAvatarCandidates(item, candidates, baseUrl, context);
+    return;
+  }
+  const node = value as Record<string, unknown>;
+  const type = cleanText(Array.isArray(node['@type']) ? node['@type'].join(' ') : node['@type']).toLowerCase();
+  let nextContext = context;
+  if (/website|organization|blog|publisher/.test(type)) nextContext = 'site';
+  else if (/person|author/.test(type)) nextContext = 'author';
+
+  const addImageValue = (image: unknown, score: number): void => {
+    if (typeof image === 'string') addAvatarCandidate(candidates, image, baseUrl, score);
+    else if (image && typeof image === 'object') {
+      const record = image as Record<string, unknown>;
+      addAvatarCandidate(candidates, record.url || record.contentUrl || record['@id'], baseUrl, score);
+    }
+  };
+  if (nextContext === 'site') {
+    addImageValue(node.logo, 300);
+    addImageValue(node.image, 220);
+  } else if (nextContext === 'author') {
+    addImageValue(node.image || node.logo, 400);
+  }
+  for (const [key, child] of Object.entries(node)) {
+    if (!child || typeof child !== 'object') continue;
+    const childContext = /author|creator/.test(key.toLowerCase())
+      ? 'author'
+      : (/publisher|provider|organization/.test(key.toLowerCase()) ? 'site' : nextContext);
+    addJsonLdAvatarCandidates(child, candidates, baseUrl, childContext);
+  }
+}
+
+function findBestAvatar(html: string, baseUrl: string): AvatarCandidate {
+  const candidates: AvatarCandidate[] = [];
+  for (const [key, score] of [
+    ['author:image', 400], ['author:avatar', 400], ['profile:image', 390], ['profile:avatar', 390],
+    ['og:logo', 300], ['logo', 295], ['application-logo', 290], ['msapplication-tileimage', 110],
+    ['og:image', 220], ['og:image:secure_url', 220], ['twitter:image', 210], ['twitter:image:src', 210],
+    ['image', 200], ['thumbnail', 190]
+  ] as Array<[string, number]>) {
+    addAvatarCandidate(candidates, findMeta(html, key), baseUrl, score);
+  }
+
+  for (const match of html.matchAll(/<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      addJsonLdAvatarCandidates(JSON.parse(match[1]), candidates, baseUrl);
+    } catch {
+      // Ignore malformed structured data and continue with the other candidates.
+    }
+  }
+
+  for (const tag of html.match(/<img\b[^>]*>/gi) ?? []) {
+    const srcset = getTagAttribute(tag, 'data-srcset') || getTagAttribute(tag, 'srcset');
+    const source = getTagAttribute(tag, 'data-src')
+      || getTagAttribute(tag, 'data-original')
+      || getTagAttribute(tag, 'data-lazy-src')
+      || getTagAttribute(tag, 'src')
+      || (srcset ? srcset.split(',')[0].trim().split(/\s+/)[0] : '');
+    const identity = [
+      getTagAttribute(tag, 'class'), getTagAttribute(tag, 'id'), getTagAttribute(tag, 'alt'),
+      getTagAttribute(tag, 'title'), getTagAttribute(tag, 'itemprop'), source
+    ].join(' ').toLowerCase();
+    if (/comment|reply|review|testimonial/.test(identity)) continue;
+    if (/avatar|author|profile|headimg|portrait|userpic|user-pic/.test(identity)) {
+      addAvatarCandidate(candidates, source, baseUrl, 400);
+    } else if (/site[-_ ]?logo|site[-_ ]?icon|brand[-_ ]?logo|blog[-_ ]?logo|header[-_ ]?logo|(?:^|[\/_. -])logo(?:[._\/ -]|$)/.test(identity)) {
+      addAvatarCandidate(candidates, source, baseUrl, 300);
+    } else if (source && !/emoji|sprite|tracking|pixel|spacer|advert|captcha|qrcode|qr-code/.test(identity)) {
+      const width = Number.parseInt(getTagAttribute(tag, 'width'), 10) || 0;
+      const height = Number.parseInt(getTagAttribute(tag, 'height'), 10) || 0;
+      if (!((width && width <= 32) || (height && height <= 32))) {
+        addAvatarCandidate(candidates, source, baseUrl, 160 + (width >= 128 || height >= 128 ? 20 : 0));
+      }
+    }
+  }
+
+  for (const tag of html.match(/<link\b[^>]*>/gi) ?? []) {
+    const rel = getTagAttribute(tag, 'rel').toLowerCase();
+    const href = getTagAttribute(tag, 'href');
+    const sizes = getTagAttribute(tag, 'sizes');
+    if (!href) continue;
+    let score = 0;
+    if (/apple-touch-icon/.test(rel)) score = 68;
+    else if (/mask-icon|fluid-icon/.test(rel)) score = 62;
+    else if (/(?:^|\s)(?:shortcut\s+)?icon(?:\s|$)/.test(rel)) score = 52;
+    if (score > 0) addAvatarCandidate(candidates, href, baseUrl, score + (/(?:128|144|152|180|192|256|512)/.test(sizes) ? 15 : 0));
+  }
+
+  addAvatarCandidate(candidates, '/favicon.ico', baseUrl, 1);
+  candidates.sort((left, right) => right.tier - left.tier || right.score - left.score);
+  return candidates[0] || { url: '', score: 0, tier: 0 };
+}
+
+function preferAvatar(primary: string, primaryTier: number, secondary: string, secondaryTier: number): AvatarCandidate {
+  if (!primary) return { url: secondary, score: 0, tier: secondaryTier };
+  if (!secondary) return { url: primary, score: 0, tier: primaryTier };
+  return secondaryTier >= primaryTier
+    ? { url: secondary, score: 0, tier: secondaryTier }
+    : { url: primary, score: 0, tier: primaryTier };
 }
 
 function friendLinksPageScore(url: string, label: string, baseUrl: string): number {
@@ -257,18 +464,18 @@ function extractHtmlInfo(html: string, baseUrl: string): {
   siteName: string;
   description: string;
   avatar: string;
+  avatarTier: number;
   canonicalUrl: string;
   linksPage: string;
 } {
   const titleMatch = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i);
+  const avatar = findBestAvatar(html, baseUrl);
   return {
     title: cleanText(titleMatch?.[1] || findMeta(html, 'og:title')),
-    siteName: findMeta(html, 'og:site_name') || findMeta(html, 'application-name'),
+    siteName: findDeclaredSiteName(html),
     description: findMeta(html, 'description') || findMeta(html, 'og:description'),
-    avatar:
-      findLinkByRel(html, 'apple-touch-icon', baseUrl) ||
-      findLinkByRel(html, 'icon', baseUrl) ||
-      absoluteUrl('/favicon.ico', baseUrl),
+    avatar: avatar.url,
+    avatarTier: avatar.tier,
     canonicalUrl: findLinkByRel(html, 'canonical', baseUrl),
     linksPage: findFriendLinksPage(html, baseUrl)
   };
@@ -294,15 +501,17 @@ async function inspectWordPress(candidate: string, options: DetectionOptions): P
   const description = cleanText(data.description);
   const names = splitTitle(name, '');
   const reportedUrl = absoluteUrl(data.home || data.url, finalUrl);
+  const wordpressAvatar = absoluteUrl(data.site_icon_url, candidate);
   return {
     score: 120,
     accessible: true,
     readable: true,
     detectedUrl: reportedUrl && isSameCandidateSite(candidate, reportedUrl) ? reportedUrl : candidate,
     primary: names.primary,
-    subtitle: names.subtitle || description,
+    subtitle: names.subtitle,
     description,
-    avatar: absoluteUrl(data.site_icon_url, candidate),
+    avatar: wordpressAvatar,
+    avatarTier: wordpressAvatar && !/favicon\.ico(?:[?#]|$)/i.test(wordpressAvatar) ? 3 : 0,
     linksPage: '',
     source: 'wordpress'
   };
@@ -326,10 +535,11 @@ async function inspectHtml(candidate: string, options: DetectionOptions): Promis
     accessible: true,
     readable: true,
     detectedUrl: canonicalUrl,
-    primary: names.primary,
+    primary: names.primary || fallbackSiteName(finalUrl),
     subtitle: names.subtitle,
     description: info.description,
     avatar: info.avatar,
+    avatarTier: info.avatarTier,
     linksPage: info.linksPage,
     source: 'html'
   };
@@ -341,16 +551,25 @@ async function inspectCandidate(candidate: string, options: DetectionOptions): P
     const wordpress = await inspectWordPress(candidate, options);
     try {
       const html = await inspectHtml(wordpress.detectedUrl || candidate, options);
+      const preferredAvatar = preferAvatar(
+        wordpress.avatar,
+        wordpress.avatarTier || 0,
+        html.avatar,
+        html.avatarTier || 0
+      );
       return {
         ...wordpress,
         description: wordpress.description || html.description,
-        avatar: wordpress.avatar || html.avatar,
+        avatar: preferredAvatar.url,
+        avatarTier: preferredAvatar.tier,
         linksPage: html.linksPage
       };
     } catch {
+      const avatar = wordpress.avatar || absoluteUrl('/favicon.ico', wordpress.detectedUrl || candidate);
       return {
         ...wordpress,
-        avatar: wordpress.avatar || absoluteUrl('/favicon.ico', wordpress.detectedUrl || candidate)
+        avatar,
+        avatarTier: wordpress.avatar ? (wordpress.avatarTier || 0) : 0
       };
     }
   } catch (error) {
@@ -453,7 +672,9 @@ export async function checkBacklink(
     );
     if (!isConfirmableHtmlPage(text)) return { state: 'unknown', checkedUrl: finalUrl };
     const localHost = normalizeComparableHostname(localSiteUrl);
-    const found = extractLinks(text, finalUrl).some((url) => normalizeComparableHostname(url) === localHost);
+    const found = extractLinks(text, finalUrl).some((url) =>
+      normalizeComparableHostname(url) === localHost || isSameCandidateSite(url, localSiteUrl)
+    );
     return { state: found ? 'found' : 'missing', checkedUrl: finalUrl };
   } catch {
     return { state: 'unknown', checkedUrl: page.toString() };
@@ -463,19 +684,25 @@ export async function checkBacklink(
 function isConfirmableHtmlPage(html: string): boolean {
   const rawLower = html.toLowerCase();
   const normalized = cleanText(html).toLowerCase();
-  if (!normalized || !/(?:<!doctype\s+html|<html\b|<body\b|<a\b)/i.test(html)) return false;
-  return ![
+  const hasDocumentStructure = /(?:<!doctype\s+html|<html\b|<body\b|<a\b)/i.test(html);
+  const hasMeaningfulContent = Boolean(normalized)
+    || /<img\b[^>]*(?:src|srcset|data-src|alt)\s*=/i.test(html)
+    || /<meta\b[^>]*(?:content)\s*=/i.test(html);
+  if (!hasDocumentStructure || !hasMeaningfulContent) return false;
+
+  const hardChallenge = [
     'just a moment',
     'checking your browser',
     'attention required',
     'cloudflare ray id',
     'cf-chl-',
-    'captcha',
-    'enable javascript and cookies',
-    '人机验证',
-    '访问验证',
-    '安全验证',
-    '请完成验证',
-    '验证码'
+    'enable javascript and cookies'
   ].some((marker) => normalized.includes(marker) || rawLower.includes(marker));
+  if (hardChallenge) return false;
+
+  const title = cleanText(html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '');
+  const heading = cleanText(html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || '');
+  const isVerificationHeading = (value: string): boolean =>
+    /^(?:captcha|人机验证|访问验证|安全验证|请完成验证|验证码)(?:\s*[-–—|:：]\s*[^-–—|:：]{1,80})?$/i.test(value);
+  return !isVerificationHeading(title) && !isVerificationHeading(heading);
 }
