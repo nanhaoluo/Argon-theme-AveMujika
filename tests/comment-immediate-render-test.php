@@ -17,10 +17,10 @@ function argon_comment_render_assert($condition, $message) {
 }
 
 argon_comment_render_assert(
-	strpos($php, "\$GLOBALS['argon_force_visible_comment_id'] = intval(\$comment -> comment_ID);") !== false
-	&& strpos($php, 'argon_comment_is_forced_visible(get_comment_ID())') !== false
-	&& strpos($php, "unset(\$GLOBALS['argon_force_visible_comment_id']);") !== false,
-	'评论提交接口没有把刚创建的评论限定为本次渲染可见。'
+	strpos($php, "'argon_force_visible_comment_id' => intval(\$comment -> comment_ID)") !== false
+	&& strpos($php, 'argon_comment_is_forced_visible(get_comment_ID(), $args)') !== false
+	&& strpos($php, "\$GLOBALS['argon_force_visible_comment_id']") === false,
+	'评论提交接口没有通过当前 Walker 参数限定刚创建评论的渲染可见性。'
 );
 argon_comment_render_assert(
 	strpos($php, "isset(\$_COOKIE['argon_user_token'])") !== false,
