@@ -2168,6 +2168,8 @@ const ARGON_FABTN_INIT_MAX_ATTEMPTS = 40;
 		$('#post_comment').addClass("editing");
 		$("#post_comment_content").val($("#comment-" + editID + " .comment-item-source").text());
 		$("#post_comment_content").trigger("change");
+		argonBuildStickerMap();
+		argonSyncTextareaToEditor();
 		if ($("#comment-" + editID).data("use-markdown") == true && document.getElementById("comment_post_use_markdown") != null) {
 			document.getElementById("comment_post_use_markdown").checked = true;
 		} else {
@@ -2189,7 +2191,11 @@ const ARGON_FABTN_INIT_MAX_ATTEMPTS = 40;
 		editing = false;
 		editID = 0;
 		$("#post_comment").removeClass("post-comment-force-privatemode-on post-comment-force-privatemode-off");
-		if (clear == true) $("#post_comment_content").val("");
+		if (clear == true) {
+			$("#post_comment_content").val("");
+			var editor = document.getElementById("post_comment_content_editor");
+			if (editor) editor.innerHTML = "";
+		}
 		$("#post_comment_content").trigger("change");
 		$('#post_comment').removeClass("editing");
 	}
@@ -2484,6 +2490,7 @@ const ARGON_FABTN_INIT_MAX_ATTEMPTS = 40;
 
 	//发送评论
 	window.postComment = function postComment() {
+		argonSyncEditorToTextarea();
 		let commentContent = $("#post_comment_content").val();
 		let commentName = $("#post_comment_name").val();
 		let commentEmail = $("#post_comment_email").val();
@@ -2741,6 +2748,8 @@ const ARGON_FABTN_INIT_MAX_ATTEMPTS = 40;
 				// 先复位评论表单（确保无论后续操作是否成功都能重置表单）
 				cancelReply();
 				$("#post_comment_content").val("");
+				var editorEl = document.getElementById("post_comment_content_editor");
+				if (editorEl) editorEl.innerHTML = "";
 
 				// 重置数学验证码
 				$("#post_comment_captcha_seed").val(result.newCaptchaSeed);
@@ -2868,6 +2877,7 @@ const ARGON_FABTN_INIT_MAX_ATTEMPTS = 40;
 	}
 	//编辑评论
 	function editComment() {
+		argonSyncEditorToTextarea();
 		let commentContent = $("#post_comment_content").val();
 		let isError = false;
 		let errorMsg = "";
@@ -2978,6 +2988,8 @@ const ARGON_FABTN_INIT_MAX_ATTEMPTS = 40;
 				editing = false;
 				editID = 0;
 				$("#post_comment_content").val("");
+				var editorEl2 = document.getElementById("post_comment_content_editor");
+				if (editorEl2) editorEl2.innerHTML = "";
 				$('#post_comment').removeClass("editing post-comment-force-privatemode-on post-comment-force-privatemode-off");
 				$("#post_comment_content").trigger("change");
 			},
@@ -3382,6 +3394,7 @@ $(document).on("click", "#comment_emotion_btn", function (e) {
 		$("#comment_emotion_btn").addClass("comment-emotion-keyboard-open");
 		$("#emotion_keyboard").addClass("comment-emotion-keyboard-open");
 		lazyloadStickers();
+		argonBuildStickerMap();
 		setTimeout(function() {
 			positionEmotionKeyboard();
 			updateEmotionKeyboardScrollButtons();
@@ -3473,12 +3486,116 @@ function inputInsertText(text, input) {
 	$(input).focus();
 }
 
+/* ---------- 评论表情实时预览：编辑器 <-> textarea 同步 ---------- */
+var argonStickerMap = {};
+function argonBuildStickerMap() {
+	$(".emotion-item-sticker").each(function () {
+		var code = $(this).attr("code");
+		var src = $(this).find("img").attr("data-sticker-src");
+		if (code && src) {
+			argonStickerMap[code] = src;
+		}
+	});
+}
+function argonEscapeHtml(text) {
+	var div = document.createElement("div");
+	div.textContent = text;
+	return div.innerHTML;
+}
+function argonEscapeAttribute(text) {
+	return argonEscapeHtml(text).replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+function argonSyncEditorToTextarea() {
+	var editor = document.getElementById("post_comment_content_editor");
+	var textarea = document.getElementById("post_comment_content");
+	if (!editor || !textarea) return;
+	var clone = editor.cloneNode(true);
+	var stickers = clone.querySelectorAll("img.comment-sticker-inline");
+	for (var i = 0; i < stickers.length; i++) {
+		var code = stickers[i].getAttribute("data-code") || "";
+		var textNode = document.createTextNode(":" + code + ":");
+		stickers[i].parentNode.replaceChild(textNode, stickers[i]);
+	}
+	var brs = clone.querySelectorAll("br");
+	for (var j = 0; j < brs.length; j++) {
+		brs[j].parentNode.replaceChild(document.createTextNode("\n"), brs[j]);
+	}
+	textarea.value = clone.innerText;
+	$(textarea).trigger("change");
+}
+function argonSyncTextareaToEditor() {
+	var editor = document.getElementById("post_comment_content_editor");
+	var textarea = document.getElementById("post_comment_content");
+	if (!editor || !textarea) return;
+	var text = textarea.value;
+	var html = argonEscapeHtml(text);
+	for (var code in argonStickerMap) {
+		if (!argonStickerMap.hasOwnProperty(code)) continue;
+		var escapedCode = code.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+		var regex = new RegExp(":" + escapedCode + ":", "g");
+		html = html.replace(regex, '<img class="comment-sticker-inline" data-code="' + argonEscapeAttribute(code) + '" src="' + argonEscapeAttribute(argonStickerMap[code]) + '" alt="' + argonEscapeAttribute(code) + '" />');
+	}
+	editor.innerHTML = html;
+}
+function argonInitCommentEditor() {
+	var editor = document.getElementById("post_comment_content_editor");
+	var textarea = document.getElementById("post_comment_content");
+	if (!editor || !textarea) return;
+	argonBuildStickerMap();
+	if (textarea.value && textarea.value.trim() !== "") {
+		argonSyncTextareaToEditor();
+	}
+	if (editor.dataset.argonCommentEditorBound !== "true") {
+		editor.dataset.argonCommentEditorBound = "true";
+		editor.addEventListener("input", argonSyncEditorToTextarea);
+		editor.addEventListener("blur", argonSyncEditorToTextarea);
+	}
+}
+if (document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', argonInitCommentEditor);
+} else {
+	argonInitCommentEditor();
+}
+function argonFocusCommentEditor() {
+	var editor = document.getElementById("post_comment_content_editor");
+	if (editor) {
+		editor.focus();
+	} else {
+		$("#post_comment_content").focus();
+	}
+}
+function inputInsertHTML(html, editor) {
+	$(editor).focus();
+	var isSuccess = document.execCommand("insertHTML", false, html);
+	if (!isSuccess) {
+		$(editor).append(html);
+	}
+	$(editor).focus();
+	argonSyncEditorToTextarea();
+}
+
 $(document).on("click", ".emotion-keyboard .emotion-item", function () {
 	closeEmotionKeyboard();
+	var editor = document.getElementById("post_comment_content_editor");
 	if ($(this).hasClass("emotion-item-sticker")) {
-		inputInsertText(" :" + $(this).attr("code") + ": ", document.getElementById("post_comment_content"));
+		if (editor) {
+			var code = $(this).attr("code");
+			var src = $(this).find("img").attr("data-sticker-src");
+			if (src) {
+				argonStickerMap[code] = src;
+			}
+			var imgHtml = ' <img class="comment-sticker-inline" data-code="' + argonEscapeAttribute(code) + '" src="' + argonEscapeAttribute(src || argonStickerMap[code] || "") + '" alt="' + argonEscapeAttribute(code) + '" /> ';
+			inputInsertHTML(imgHtml, editor);
+		} else {
+			inputInsertText(" :" + $(this).attr("code") + ": ", document.getElementById("post_comment_content"));
+		}
 	} else {
-		inputInsertText($(this).attr("text"), document.getElementById("post_comment_content"));
+		if (editor) {
+			inputInsertText($(this).attr("text"), editor);
+			argonSyncEditorToTextarea();
+		} else {
+			inputInsertText($(this).attr("text"), document.getElementById("post_comment_content"));
+		}
 	}
 });
 
@@ -7057,6 +7174,7 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 				function () { handleHashNavigation(); },
 				function () { initArticleSkeletons(); },
 				function () { initPostFullBlur(); },
+			function () { argonInitCommentEditor(); },
 				function () {
 					if (typeof window.argonRequestLeftbarStickyStatusUpdate === 'function') {
 						window.argonRequestLeftbarStickyStatusUpdate();

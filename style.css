@@ -8,7 +8,7 @@ Author URI: https://solstice23.top/
 
 Description: 杞荤泩銆佺畝娲併€佺編瑙傜殑 Wordpress 涓婚
 
-Version: 1.5.11
+Version: 1.5.12
 
 License: GNU General Public License v3.0
 
@@ -5550,6 +5550,7 @@ html.darkmode .comment-item-avatar .avatar {
 .comment-item-inner {
 	display: block;
 	position: relative;
+	z-index: 10;
 	margin-top: 20px;
 	padding-bottom: 40px;
 	border-bottom: var(--color-border-on-foreground) solid 1px;
@@ -5936,6 +5937,10 @@ html.darkmode .comment-upvote:hover {
 	box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.15);
 
 	background: var(--color-widgets);
+
+	position: relative;
+
+	z-index: 9999;
 
 }
 
@@ -6657,6 +6662,74 @@ html.darkmode .post-comment-reply-preview {
 	box-shadow: 0 0 0 3px rgba(var(--themecolor-rgbstr), 0.1);
 }
 
+/* ---------- 评论可视化编辑器（表情实时预览） ---------- */
+#post_comment_content_editor {
+	transition: height 0.15s ease, box-shadow var(--animation-normal) var(--ease-standard), border-color var(--animation-normal) var(--ease-standard);
+	overflow-y: auto;
+	overflow-x: hidden;
+	min-height: 80px;
+	max-height: 400px;
+	resize: none;
+	white-space: pre-wrap;
+	word-wrap: break-word;
+	word-break: break-word;
+	margin-bottom: 8px;
+	margin-top: 0;
+	border-radius: 10px;
+	border: 1px solid var(--color-border-on-foreground-deeper);
+	padding: 12px 14px;
+	font-size: 14px;
+	line-height: 1.6;
+	background-color: var(--color-widgets);
+	color: var(--color-text);
+	outline: none;
+	-webkit-user-select: text;
+	user-select: text;
+	cursor: text;
+	display: block;
+	height: 80px;
+	box-sizing: border-box;
+}
+
+#post_comment_content_editor:focus {
+	border-color: var(--themecolor);
+	box-shadow: 0 0 0 3px rgba(var(--themecolor-rgbstr), 0.1);
+}
+
+#post_comment_content_editor:empty::before {
+	content: attr(data-placeholder);
+	color: var(--color-text-on-widget-deeper, #adb5bd);
+	pointer-events: none;
+}
+
+#post_comment_content_editor .comment-sticker-inline {
+	display: inline-block;
+	vertical-align: middle;
+	max-height: 1.8em;
+	height: 1.8em;
+	width: auto;
+	margin: 0 2px;
+	pointer-events: none;
+	-webkit-user-drag: none;
+	user-select: none;
+}
+
+#post_comment_content_editor .comment-sticker-inline-placeholder {
+	display: inline-block;
+	vertical-align: middle;
+	font-size: 0.85em;
+	color: var(--color-text-on-widget-deeper, #adb5bd);
+	background: rgba(var(--themecolor-rgbstr), 0.08);
+	border-radius: 4px;
+	padding: 1px 4px;
+	margin: 0 2px;
+}
+
+html.darkmode #post_comment_content_editor {
+	background-color: var(--color-widgets);
+	color: var(--color-text);
+}
+
 /* 璇勮琛ㄥ崟杈撳叆妗嗙粺涓€鏍峰紡 */
 #post_comment .form-group {
 	margin-bottom: 0;
@@ -7204,17 +7277,30 @@ html.darkmode .emotion-keyboard {
 
 }
 
+/* 表情标题：显示在表情图片下方，超出宽度时省略号截断，
+   完整文字通过 title 属性悬停显示。 */
 .emotion-item-title {
+
 	display: block;
+
 	min-width: 0;
+
 	max-width: 100%;
+
 	padding: 4px 2px 1px;
+
 	font-size: 12px;
+
 	line-height: 1.35;
+
 	text-align: center;
+
 	white-space: nowrap;
+
 	overflow: hidden;
+
 	text-overflow: ellipsis;
+
 }
 
 .emotion-item.emotion-item-sticker:hover>img[src^="data:image/svg+xml;base64,PHN2ZyBjbGFzcz0iZW1vdGlvbi1sb2FkaW5nI"] {
@@ -7243,13 +7329,9 @@ html.darkmode .emotion-keyboard {
 
 }
 
-.emotion-keyboard-descriptions {
-	flex: 0 0 auto;
-	min-height: 0;
-	padding: 0 14px;
-}
-
 .emotion-group-description {
+
+	grid-column: 1 / -1;
 
 	text-align: right;
 
@@ -7257,7 +7339,7 @@ html.darkmode .emotion-keyboard {
 
 	opacity: 0.6;
 
-	padding: 7px 0 5px;
+	padding: 7px 0 0;
 
 	white-space: nowrap;
 
@@ -9082,83 +9164,40 @@ html.darkmode #share .wechat-qrcode .help {
 }
 
 /* tooltip - 鏄剧ず鍦ㄦ寜閽笂?*/
+/* 分享按钮 tooltip 已移除：避免 title 文本在 btn-icon btn-primary 内部意外显示 */
 #share>a:before,
-#share_show:before {
-	pointer-events: none;
-	position: absolute;
-	bottom: calc(100% + 8px);
-	left: 50%;
-	transform: translateX(-50%) translateY(5px);
-	line-height: 1.4;
-	width: max-content;
-	width: -moz-max-content;
-	text-align: center;
-	font-weight: normal;
-	color: #fff;
-	background: rgba(50, 50, 93, 0.95);
-	padding: 6px 12px;
-	font-size: 13px;
-	border-radius: 6px;
-	z-index: 10;
-	transition: opacity 0.2s ease, transform 0.2s ease;
-	opacity: 0;
-}
-
-#share>a:hover:before,
-#share_show:hover:before {
-	transform: translateX(-50%) translateY(0);
-	opacity: 1;
-}
-
-#share_show:before {
-	content: attr(tooltip);
-	height: max-content;
-	height: -moz-max-content;
-	text-transform: none;
-}
-
-#share .icon-douban:before {
-	content: attr(tooltip);
-}
-
-#share .icon-qq:before {
-	content: attr(tooltip);
-}
-
-#share .icon-qzone:before {
-	content: attr(tooltip);
-}
-
-#share .icon-weibo:before {
-	content: attr(tooltip);
-}
-
-#share .icon-facebook:before {
-	content: attr(tooltip);
-}
-
-#share .icon-twitter:before {
-	content: attr(tooltip);
-}
-
-#share .icon-telegram:before {
-	content: attr(tooltip);
-}
-
-#share .icon-copy-link:before {
+#share>a::before,
+#share_show:before,
+#share_show::before,
+#share .btn:before,
+#share .btn::before,
+#share .icon-douban:before,
+#share .icon-qq:before,
+#share .icon-qzone:before,
+#share .icon-weibo:before,
+#share .icon-facebook:before,
+#share .icon-twitter:before,
+#share .icon-telegram:before,
+#share .icon-copy-link:before,
+#share .social-share-icon:before,
+#share_container [tooltip]:before,
+#share_container [tooltip]::before,
+#share_container .btn-icon.btn-primary:before,
+#share_container .btn-icon.btn-primary::before,
+#share [tooltip]:before,
+#share [tooltip]::before,
+#share .btn-icon.btn-primary:before,
+#share .btn-icon.btn-primary::before,
+#share_show.btn-icon.btn-primary:before,
+#share_show.btn-icon.btn-primary::before {
 	display: none !important;
+	content: none !important;
 }
 
 /* 绉诲姩绔垎浜寜閽€傞厤 */
 @media (max-width: 576px) {
 
 	/* 闅愯棌 tooltip */
-	#share>a:before,
-	#share_show:before {
-		display: none !important;
-	}
-
-	/* 浜岀淮鐮佸脊绐楁敼涓哄乏渚ф樉?*/
 	#share .icon-wechat .wechat-qrcode,
 	#share .icon-copy-link .wechat-qrcode {
 		bottom: auto;

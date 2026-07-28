@@ -80,6 +80,7 @@ $animated_total = 0;
 $codes = array();
 $legacy_codes = array('dinosaur-shy' => false, 'flower-tile' => false);
 $defaulted_title_category_found = false;
+$expected_titled_total = 0;
 $orders = array();
 
 foreach ($manifest_categories as $index => $category) {
@@ -128,6 +129,9 @@ foreach ($manifest_categories as $index => $category) {
 			isset($sticker['title']) && ($expected_filename_as_title ? $sticker['title'] !== '' : $sticker['title'] === ''),
 			'use_filename_as_title 与实际图片标题不一致：' . $sticker['code']
 		);
+		if ($sticker['title'] !== '') {
+			$expected_titled_total++;
+		}
 		$codes[$sticker['code']] = true;
 		if (isset($legacy_codes[$sticker['code']])) {
 			$legacy_codes[$sticker['code']] = true;
@@ -158,7 +162,7 @@ foreach ($sticker_groups as $group) {
 argon_sticker_assert(
 	is_array($flower_group)
 	&& isset($flower_group['source'])
-	&& $flower_group['source'] === 'Source: github.com/k4yt3x/flowerhd',
+	&& $flower_group['source'] === '来源：github.com/k4yt3x/flowerhd',
 	'Flower 来源说明没有由 manifest source 字段提供。'
 );
 
@@ -167,12 +171,24 @@ include $root . '/template-parts/emotion-keyboard.php';
 $keyboard_html = ob_get_clean();
 argon_sticker_assert(substr_count($keyboard_html, 'data-sticker-src=') === $expected_total, '表情面板没有为全部贴图输出延迟加载地址。');
 argon_sticker_assert(substr_count($keyboard_html, 'emotion-item-animated') === $expected_animated_total, '动态贴图标记数量不正确。');
-argon_sticker_assert(strpos($keyboard_html, 'Source: github.com/k4yt3x/flowerhd') !== false, '清单 source 没有渲染到 emotion-group-description。');
+argon_sticker_assert(strpos($keyboard_html, '来源：github.com/k4yt3x/flowerhd') !== false, '清单 source 没有渲染到 emotion-group-description。');
 argon_sticker_assert(
-	strpos($keyboard_html, 'emotion-keyboard-descriptions') !== false
-	&& strpos($keyboard_html, 'emotion-item-title') !== false
-	&& strpos($keyboard_html, "emotion-item-sticker' code=") !== false,
-	'表情来源没有固定在底部区域，或图片标题没有改为图片下方文字。'
+	strpos($keyboard_html, 'emotion-keyboard-descriptions') === false
+	&& strpos($keyboard_html, "emotion-item-sticker' code=") !== false
+	&& $expected_titled_total > 0
+	&& substr_count($keyboard_html, "class='emotion-item-title' title='") === $expected_titled_total,
+	'表情来源仍固定在滚动区外，或图片标题没有以带 title 的文字恢复到表情项下方。'
+);
+argon_sticker_assert(
+	strpos(
+		substr(
+			$keyboard_html,
+			strpos($keyboard_html, '<div class="emotion-keyboard-content">'),
+			strpos($keyboard_html, '<div class="emotion-keyboard-navigation">') - strpos($keyboard_html, '<div class="emotion-keyboard-content">')
+		),
+		'来源：github.com/k4yt3x/flowerhd'
+	) !== false,
+	'表情来源说明没有位于当前可滚动分类内容的末尾。'
 );
 
 $animated_code = '';
@@ -233,9 +249,13 @@ argon_sticker_assert(
 	&& preg_match('/\.emotion-keyboard\s*\{[^}]*height:\s*auto;[^}]*max-height:\s*min\(440px,/s', $stylesheet) === 1
 	&& strpos($stylesheet, 'grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));') !== false
 	&& strpos($stylesheet, '.argon-text-input,') !== false
-	&& strpos($stylesheet, '--argon-text-input-bg: var(--flinks-input-bg') !== false
+	&& strpos($stylesheet, '--argon-text-input-bg: rgba(var(--themecolor-rgbstr), 0.05);') !== false
 	&& strpos($stylesheet, 'html.darkmode .todo-completed-divider.collapsed') !== false,
 	'表情面板没有扩大，或文本输入面没有复用统一的半透明主题样式。'
+);
+argon_sticker_assert(
+	preg_match('/\.emotion-item-title\s*\{[^}]*white-space:\s*nowrap;[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;/s', $stylesheet) === 1,
+	'表情标题缺少单行省略截断样式，超长标题无法显示为省略形式。'
 );
 argon_sticker_assert(
 	strpos($apache, 'HTTP_REFERER') !== false

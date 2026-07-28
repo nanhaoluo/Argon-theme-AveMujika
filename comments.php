@@ -339,7 +339,10 @@ function resetGeetestCaptcha() {
 			</div>
 			<div class="row">
 				<div class="col-md-12">
-					<textarea id="post_comment_content" class="form-control form-control-alternative" placeholder="<?php echo apply_filters("argon_comment_textarea_placeholder", __('评论内容', 'argon'));?>" name="comment" style="height: 80px;"></textarea>
+					<div id="post_comment_content_editor_wrap" class="post-comment-content-editor-wrap">
+						<div id="post_comment_content_editor" class="form-control form-control-alternative post-comment-content-editor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="<?php echo esc_attr(apply_filters("argon_comment_textarea_placeholder", __('评论内容', 'argon'))); ?>"></div>
+						<textarea id="post_comment_content" class="form-control form-control-alternative" placeholder="<?php echo apply_filters("argon_comment_textarea_placeholder", __('评论内容', 'argon'));?>" name="comment" style="height: 80px; display: none;"></textarea>
+					</div>
 				</div>
 				<div class="col-md-12" style="height: 0;overflow: hidden;">
 					<pre id="post_comment_content_hidden" class=""></pre>

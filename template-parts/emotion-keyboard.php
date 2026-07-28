@@ -52,6 +52,9 @@
 						echo "</div>";
 					}
 				}
+				if ($footerParts){
+					echo "<div class='emotion-group-description'>" . esc_html(implode(' · ', $footerParts)) . "</div>";
+				}
 				echo "</div>"; 
 			}
 		?>
@@ -59,19 +62,6 @@
 			<i class="fa fa-search" aria-hidden="true"></i>
 			<span><?php echo esc_html(__('没有找到匹配的表情', 'argon')); ?></span>
 		</div>
-	</div>
-	<div class="emotion-keyboard-descriptions" aria-live="polite">
-		<?php
-			foreach ($emotionList as $groupIndex => $group){
-				$footerParts = array();
-				if (!empty($group['description'])) $footerParts[] = $group['description'];
-				if (!empty($group['source'])) $footerParts[] = $group['source'];
-				if (!$footerParts) continue;
-				$className = 'emotion-group-description';
-				if ($groupIndex != 0) $className .= ' d-none';
-				echo "<div class='" . esc_attr($className) . "' data-index='" . esc_attr($groupIndex) . "'>" . esc_html(implode(' · ', $footerParts)) . "</div>";
-			}
-		?>
 	</div>
 	<div class="emotion-keyboard-navigation">
 		<button class="emotion-keyboard-scroll emotion-keyboard-scroll-prev" type="button" data-direction="-1" aria-label="<?php echo esc_attr(__('向左滚动表情分类', 'argon')); ?>">
