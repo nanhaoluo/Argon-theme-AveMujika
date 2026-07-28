@@ -232,8 +232,10 @@ argon_sticker_assert(
 	preg_match('/\.emotion-keyboard\s*\{[^}]*width:\s*min\(720px,/s', $stylesheet) === 1
 	&& preg_match('/\.emotion-keyboard\s*\{[^}]*height:\s*auto;[^}]*max-height:\s*min\(440px,/s', $stylesheet) === 1
 	&& strpos($stylesheet, 'grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));') !== false
-	&& preg_match('/#todo-input\s*,\s*#post_comment_content\s*,\s*#emotion_keyboard\s*,\s*\.todo-completed-divider\.collapsed\s*\{[^}]*background:\s*transparent\s*!important;[^}]*box-shadow:\s*none\s*!important;[^}]*border:\s*none\s*!important;/s', $stylesheet) === 1,
-	'表情面板没有扩大，或 TODO、评论输入框和表情面板没有复用透明表面样式。'
+	&& strpos($stylesheet, '.argon-text-input,') !== false
+	&& strpos($stylesheet, '--argon-text-input-bg: var(--flinks-input-bg') !== false
+	&& strpos($stylesheet, 'html.darkmode .todo-completed-divider.collapsed') !== false,
+	'表情面板没有扩大，或文本输入面没有复用统一的半透明主题样式。'
 );
 argon_sticker_assert(
 	strpos($apache, 'HTTP_REFERER') !== false

@@ -6990,17 +6990,17 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 	font-size: 22px;
 
-	background: transparent !important;
+	background: var(--themecolor) !important;
 
-	box-shadow: none;
+	box-shadow: 0 3px 10px rgba(var(--themecolor-rgbstr), 0.34), 0 0 0 1px rgba(0, 0, 0, 0.08);
 
-	color: inherit;
+	color: #fff !important;
 
-	border: none;
+	border: 1px solid rgba(255, 255, 255, 0.58);
 
 	transform: none;
 
-	opacity: 0.7;
+	opacity: 1;
 
 	margin-top: 0;
 
@@ -7012,14 +7012,18 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 #comment_emotion_btn:hover {
 	opacity: 1;
-	color: var(--themecolor);
+	background: var(--themecolor-dark) !important;
+	color: #fff !important;
+	box-shadow: 0 4px 14px rgba(var(--themecolor-rgbstr), 0.42), 0 0 0 2px rgba(var(--themecolor-rgbstr), 0.16);
+	transform: translateY(-1px);
 }
 
 #comment_emotion_btn.comment-emotion-keyboard-open {
 
 	border-radius: 100px;
 
-	color: var(--themecolor);
+	background: var(--themecolor-dark2) !important;
+	color: #fff !important;
 
 	opacity: 1;
 
@@ -7045,7 +7049,8 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 	position: absolute;
 
-	z-index: 1080;
+	/* 建立局部层叠上下文；内部分享面板再高也不能越过 z-index:100 的顶栏。 */
+	z-index: 1;
 
 	transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
 
@@ -7089,13 +7094,16 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 }
 
-#todo-input,
-#post_comment_content,
 #emotion_keyboard,
 .todo-completed-divider.collapsed {
-	background: transparent !important;
+	background: rgba(var(--themecolor-rgbstr), 0.05) !important;
 	box-shadow: none !important;
 	border: none !important;
+}
+
+html.darkmode #emotion_keyboard,
+html.darkmode .todo-completed-divider.collapsed {
+	background: rgba(255, 255, 255, 0.05) !important;
 }
 
 html.darkmode .emotion-keyboard {
@@ -19584,4 +19592,218 @@ article.post.card.post-preview-layout-3>.post-header.post-header-with-thumbnail 
 .zoomify-shadow.zoomed,
 .fancybox-container.fancybox-is-open .fancybox-slide--image .fancybox-content {
 	will-change: transform, opacity;
+}
+
+/* Unified themed text fields. Friend-link forms provide the reference tokens;
+   other surfaces reuse the same shape, surface and focus treatment. */
+.argon-text-input,
+#post_comment_content_editor,
+.argon-text-input-group {
+	--argon-text-input-bg: var(--flinks-input-bg, rgba(var(--themecolor-rgbstr), 0.05));
+	--argon-text-input-bg-hover: var(--flinks-surface-hover, rgba(var(--themecolor-rgbstr), 0.08));
+	--argon-text-input-color: var(--flinks-input-text, var(--color-text-deeper));
+	--argon-text-input-placeholder: var(--flinks-placeholder, var(--color-text-on-widget-deeper, #8a93a3));
+}
+
+.argon-text-input,
+#post_comment_content_editor {
+	box-sizing: border-box;
+	border: 1px solid transparent !important;
+	border-radius: calc(var(--card-radius, 10px) * 0.6) !important;
+	background: var(--argon-text-input-bg) !important;
+	color: var(--argon-text-input-color) !important;
+	box-shadow: none !important;
+	font-family: var(--font);
+	outline: none;
+	transition: background-color var(--animation-fast) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), color var(--animation-fast) var(--ease-standard);
+}
+
+.argon-text-input:hover,
+#post_comment_content_editor:hover {
+	background: var(--argon-text-input-bg-hover) !important;
+}
+
+.argon-text-input:focus,
+.argon-text-input:focus-visible,
+#post_comment_content_editor:focus,
+#post_comment_content_editor:focus-visible {
+	background: var(--argon-text-input-bg-hover) !important;
+	border-color: rgba(var(--themecolor-rgbstr), 0.45) !important;
+	box-shadow: 0 0 0 2px rgba(var(--themecolor-rgbstr), 0.15) !important;
+	outline: none;
+}
+
+.argon-text-input::placeholder,
+#post_comment_content_editor:empty::before {
+	color: var(--argon-text-input-placeholder) !important;
+	opacity: 1;
+}
+
+.argon-text-input-group {
+	border: 1px solid transparent !important;
+	border-radius: calc(var(--card-radius, 10px) * 0.6) !important;
+	background: var(--argon-text-input-bg) !important;
+	box-shadow: none !important;
+	transition: background-color var(--animation-fast) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard);
+}
+
+.argon-text-input-group:hover,
+.argon-text-input-group:focus-within {
+	background: var(--argon-text-input-bg-hover) !important;
+	border-color: rgba(var(--themecolor-rgbstr), 0.45) !important;
+	box-shadow: 0 0 0 2px rgba(var(--themecolor-rgbstr), 0.15) !important;
+}
+
+.argon-text-input-group .argon-text-input-embedded,
+.argon-text-input-group .argon-text-input-embedded:hover,
+.argon-text-input-group .argon-text-input-embedded:focus {
+	border: 0 !important;
+	border-radius: 0 !important;
+	background: transparent !important;
+	box-shadow: none !important;
+}
+
+html.darkmode .argon-text-input,
+html.darkmode #post_comment_content_editor,
+html.darkmode .argon-text-input-group {
+	--argon-text-input-bg: var(--flinks-input-bg, rgba(255, 255, 255, 0.06));
+	--argon-text-input-bg-hover: var(--flinks-surface-hover, rgba(255, 255, 255, 0.09));
+}
+
+#navbar_search_input_container:not(.open) .argon-text-input-group {
+	background: transparent !important;
+	border-color: transparent !important;
+	box-shadow: none !important;
+}
+
+#navbar_search_input_container.open .argon-text-input-group {
+	--argon-text-input-bg: rgba(255, 255, 255, 0.94);
+	--argon-text-input-bg-hover: #fff;
+	border-radius: 25px !important;
+	background: var(--argon-text-input-bg) !important;
+	-webkit-backdrop-filter: none;
+	backdrop-filter: none;
+}
+
+#navbar_search_input_container.open .argon-text-input-group:hover,
+#navbar_search_input_container.open .argon-text-input-group:focus-within,
+#navbar_search_input_container.open.has-text .argon-text-input-group {
+	background: var(--argon-text-input-bg-hover) !important;
+}
+
+html.darkmode #navbar_search_input_container.open .argon-text-input-group {
+	--argon-text-input-bg: rgba(32, 32, 32, 0.94);
+	--argon-text-input-bg-hover: #202020;
+}
+
+#navbar_search_input_container.open .argon-text-input-group .input-group-text,
+#navbar_search_input_container.open .argon-text-input-group input.form-control {
+	color: var(--color-text-deeper) !important;
+}
+
+#navbar_search_input_container.open .argon-text-input-group input.form-control::placeholder {
+	color: var(--argon-text-input-placeholder) !important;
+}
+
+/* Emotion keyboard search and root-level layer. */
+#emotion_keyboard.emotion-keyboard-root-layer {
+	position: absolute;
+	z-index: 1;
+}
+
+.emotion-keyboard-toolbar {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: flex-end;
+	padding: 12px 12px 8px;
+	border-bottom: 1px solid var(--color-border-on-foreground);
+}
+
+.emotion-keyboard-search {
+	position: relative;
+	display: block;
+	width: min(260px, 100%);
+	margin: 0;
+}
+
+#emotion_search_input {
+	width: 100%;
+	height: 36px;
+	padding: 7px 34px 7px 32px;
+	font-size: 13px;
+	line-height: 20px;
+}
+
+.emotion-keyboard-search > .fa-search {
+	position: absolute;
+	left: 11px;
+	top: 50%;
+	z-index: 1;
+	color: var(--argon-text-input-placeholder, #8a93a3);
+	transform: translateY(-50%);
+	pointer-events: none;
+}
+
+.emotion-keyboard-search-clear {
+	position: absolute;
+	right: 5px;
+	top: 50%;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: transparent;
+	color: var(--color-text-on-widget-deeper, #8a93a3);
+	cursor: pointer;
+	transform: translateY(-50%);
+}
+
+.emotion-keyboard-search-clear[hidden] {
+	display: none;
+}
+
+.emotion-keyboard-search-clear:hover,
+.emotion-keyboard-search-clear:focus-visible {
+	background: rgba(var(--themecolor-rgbstr), 0.12);
+	color: var(--themecolor);
+	outline: none;
+}
+
+.emotion-group-search-title {
+	display: none;
+}
+
+.emotion-keyboard.emotion-keyboard-searching .emotion-group-search-title {
+	display: block;
+	grid-column: 1 / -1;
+	margin: 0 0 8px;
+	color: var(--color-text-deeper);
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.emotion-keyboard-empty {
+	display: flex;
+	min-height: 150px;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 24px;
+	color: var(--color-text-on-widget-deeper, #8a93a3);
+	font-size: 13px;
+}
+
+@media screen and (max-width: 480px) {
+	.emotion-keyboard-toolbar {
+		padding: 10px 10px 7px;
+	}
+
+	.emotion-keyboard-search {
+		width: 100%;
+	}
 }

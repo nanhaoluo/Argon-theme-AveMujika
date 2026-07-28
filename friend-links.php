@@ -445,7 +445,7 @@ html.darkmode body.flinks-page {
 .flinks-stat:hover { background: rgba(var(--themecolor-rgbstr), 0.12); }
 .flinks-apply-header:focus { outline: none; box-shadow: none; }
 .flinks-apply-header:focus-visible, .flink-card:focus-visible { outline: 2px solid rgba(var(--themecolor-rgbstr), 0.28); outline-offset: 2px; }
-.flinks-add-form input::placeholder, .flink-modal input::placeholder, .flinks-form .form-control::placeholder { color: var(--flinks-placeholder); }
+.flink-modal input::placeholder { color: var(--flinks-placeholder); }
 
 .flinks-welcome-text { font-size: 14px; color: var(--flinks-text-muted); line-height: 1.6; margin-bottom: 16px; padding: 12px 16px; background: var(--flinks-surface-soft); border-radius: var(--card-radius-sm); border-left: 3px solid var(--themecolor); }
 
@@ -532,8 +532,7 @@ html.darkmode body.flinks-page {
 .flinks-form .row > [class*="col-"] { padding-left: 6px; padding-right: 6px; }
 .flinks-form .form-group { margin-bottom: 8px; }
 .flinks-form .form-control-label { font-size: 12px; font-weight: 600; margin-bottom: 3px; color: var(--color-text-deeper); display: block; font-family: var(--font); }
-.flinks-form .form-control { border-radius: calc(var(--card-radius) * 0.6); border: 1px solid transparent; padding: 7px 10px; font-size: 13px; font-family: var(--font); background: var(--flinks-input-bg); color: var(--flinks-input-text); }
-.flinks-form .form-control:focus { border-color: rgba(var(--themecolor-rgbstr), 0.45); box-shadow: 0 0 0 2px rgba(var(--themecolor-rgbstr), 0.15); outline: none; }
+.flinks-form .form-control { padding: 7px 10px; font-size: 13px; }
 .flinks-form .char-count { font-size: 11px; color: var(--flinks-text-soft); float: right; }
 .flinks-autopass-note { color: var(--flinks-success-text); font-weight: normal; }
 .flinks-submit { margin-top: 10px; text-align: center; }
@@ -579,8 +578,7 @@ html.darkmode body.flinks-page {
 .flinks-add-form .form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 8px; }
 .flinks-add-form .form-row.full { grid-template-columns: 1fr; }
 .flinks-add-form label { font-size: 12px; font-weight: 500; color: var(--color-text-deeper); margin-bottom: 3px; display: block; }
-.flinks-add-form input { width: 100%; padding: 6px 10px; font-size: 13px; border: 1px solid var(--color-border); border-radius: calc(var(--card-radius) * 0.6); font-family: var(--font); box-sizing: border-box; background: var(--color-foreground); color: var(--flinks-input-text); }
-.flinks-add-form input:focus { border-color: var(--themecolor); outline: none; box-shadow: 0 0 0 2px rgba(var(--themecolor-rgbstr), 0.12); }
+.flinks-add-form input { width: 100%; padding: 6px 10px; font-size: 13px; }
 .flinks-add-form .input-with-btn { display: flex; gap: 6px; }
 .flinks-add-form .input-with-btn input { flex: 1; min-width: 0; }
 .flinks-add-form .input-with-btn .btn { flex-shrink: 0; padding: 6px 10px; font-size: 12px; }
@@ -785,23 +783,23 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
                 <div>
                     <label><?php _e('网站地址', 'argon'); ?> *</label>
                     <div class="input-with-btn">
-                        <input type="url" id="add-url" placeholder="https://example.com">
+                        <input type="url" id="add-url" class="argon-text-input" placeholder="https://example.com">
                         <button type="button" class="btn btn-secondary" id="fetch-info"><?php _e('获取', 'argon'); ?></button>
                     </div>
                     <small class="flinks-detect-status" id="add-detect-status" aria-live="polite"></small>
                 </div>
-                <div><label><?php _e('网站名称', 'argon'); ?> *</label><input type="text" id="add-name" placeholder="<?php _e('主标题', 'argon'); ?>"></div>
+                <div><label><?php _e('网站名称', 'argon'); ?> *</label><input type="text" id="add-name" class="argon-text-input" placeholder="<?php _e('主标题', 'argon'); ?>"></div>
             </div>
             <div class="form-row">
-                <div><label><?php _e('副标题', 'argon'); ?></label><input type="text" id="add-display-name" placeholder="<?php _e('自动获取的标题', 'argon'); ?>"></div>
-                <div><label><?php _e('分类', 'argon'); ?></label><input type="text" id="add-category" placeholder="<?php _e('留空为默认', 'argon'); ?>"></div>
+                <div><label><?php _e('副标题', 'argon'); ?></label><input type="text" id="add-display-name" class="argon-text-input" placeholder="<?php _e('自动获取的标题', 'argon'); ?>"></div>
+                <div><label><?php _e('分类', 'argon'); ?></label><input type="text" id="add-category" class="argon-text-input" placeholder="<?php _e('留空为默认', 'argon'); ?>"></div>
             </div>
             <div class="form-row">
-                <div><label><?php _e('头像', 'argon'); ?></label><input type="url" id="add-avatar" placeholder="<?php _e('自动获取', 'argon'); ?>"></div>
-                <div><label><?php _e('描述', 'argon'); ?></label><input type="text" id="add-desc" maxlength="100" placeholder="<?php _e('主描述', 'argon'); ?>"></div>
+                <div><label><?php _e('头像', 'argon'); ?></label><input type="url" id="add-avatar" class="argon-text-input" placeholder="<?php _e('自动获取', 'argon'); ?>"></div>
+                <div><label><?php _e('描述', 'argon'); ?></label><input type="text" id="add-desc" class="argon-text-input" maxlength="100" placeholder="<?php _e('主描述', 'argon'); ?>"></div>
             </div>
             <div class="form-row full">
-                <div><label><?php _e('对方友链页面', 'argon'); ?></label><input type="url" id="add-links-page" placeholder="<?php _e('自动获取或手动填写', 'argon'); ?>"></div>
+                <div><label><?php _e('对方友链页面', 'argon'); ?></label><input type="url" id="add-links-page" class="argon-text-input" placeholder="<?php _e('自动获取或手动填写', 'argon'); ?>"></div>
             </div>
             <div class="form-actions">
                 <button type="button" class="btn btn-primary" id="add-link-btn"><?php _e('添加', 'argon'); ?></button>
@@ -927,44 +925,44 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
                 <div class="col-md-6">
                     <div class="form-group">
                         <label class="form-control-label"><?php _e('网站地址', 'argon'); ?> <span class="text-danger">*</span></label>
-                        <input type="url" name="apply_url" id="apply-url" class="form-control" required placeholder="https://example.com">
+                        <input type="url" name="apply_url" id="apply-url" class="form-control argon-text-input" required placeholder="https://example.com">
                         <small class="flinks-detect-status" id="apply-detect-status" aria-live="polite"></small>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
                         <label class="form-control-label"><?php _e('网站名称', 'argon'); ?></label>
-                        <input type="text" name="apply_name" id="apply-name" class="form-control" placeholder="<?php _e('选填', 'argon'); ?>">
+                        <input type="text" name="apply_name" id="apply-name" class="form-control argon-text-input" placeholder="<?php _e('选填', 'argon'); ?>">
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
                         <label class="form-control-label"><?php _e('副标题', 'argon'); ?></label>
-                        <input type="text" name="apply_display_name" id="apply-display-name" class="form-control" placeholder="<?php _e('可由浏览器自动识别', 'argon'); ?>">
+                        <input type="text" name="apply_display_name" id="apply-display-name" class="form-control argon-text-input" placeholder="<?php _e('可由浏览器自动识别', 'argon'); ?>">
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
                         <label class="form-control-label"><?php _e('网站图标', 'argon'); ?></label>
-                        <input type="url" name="apply_avatar" id="apply-avatar" class="form-control" placeholder="<?php _e('选填', 'argon'); ?>">
+                        <input type="url" name="apply_avatar" id="apply-avatar" class="form-control argon-text-input" placeholder="<?php _e('选填', 'argon'); ?>">
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
                         <label class="form-control-label"><?php _e('联系邮箱', 'argon'); ?></label>
-                        <input type="email" name="apply_email" class="form-control" placeholder="<?php _e('选填', 'argon'); ?>">
+                        <input type="email" name="apply_email" class="form-control argon-text-input" placeholder="<?php _e('选填', 'argon'); ?>">
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
                         <label class="form-control-label"><?php _e('友链页面', 'argon'); ?> <small class="flinks-autopass-note"><?php _e('填写可自动通过', 'argon'); ?></small></label>
-                        <input type="url" name="apply_links_page" id="apply-links-page" class="form-control" placeholder="<?php _e('您放置友链的页面地址', 'argon'); ?>">
+                        <input type="url" name="apply_links_page" id="apply-links-page" class="form-control argon-text-input" placeholder="<?php _e('您放置友链的页面地址', 'argon'); ?>">
                     </div>
                 </div>
                 <div class="col-12">
                     <div class="form-group">
                         <label class="form-control-label"><?php _e('网站描述', 'argon'); ?> <span class="char-count"><span id="desc-count">0</span>/100</span></label>
-                        <textarea name="apply_description" id="apply-desc" class="form-control" maxlength="100" rows="2" placeholder="<?php _e('选填', 'argon'); ?>" oninput="document.getElementById('desc-count').textContent=this.value.length" style="resize:vertical;min-height:60px;"></textarea>
+                        <textarea name="apply_description" id="apply-desc" class="form-control argon-text-input" maxlength="100" rows="2" placeholder="<?php _e('选填', 'argon'); ?>" oninput="document.getElementById('desc-count').textContent=this.value.length" style="resize:vertical;min-height:60px;"></textarea>
                     </div>
                 </div>
             </div>
@@ -980,7 +978,7 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
                 <input type="hidden" name="gen_time" id="flink-gen-time">
                 <?php else : ?>
                 <div class="input-group input-group-sm">
-                    <input type="text" name="comment_captcha" id="flink-captcha-input" class="form-control" placeholder="<?php _e('验证码', 'argon'); ?>" required style="max-width:120px;">
+                    <input type="text" name="comment_captcha" id="flink-captcha-input" class="form-control argon-text-input" placeholder="<?php _e('验证码', 'argon'); ?>" required style="max-width:120px;">
                     <div class="input-group-append">
                         <span class="input-group-text flinks-captcha-text" id="flink-captcha-text" onclick="refreshCaptcha()" title="<?php _e('点击刷新', 'argon'); ?>"><?php echo get_comment_captcha(); ?></span>
                     </div>

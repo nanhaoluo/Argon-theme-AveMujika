@@ -3151,7 +3151,7 @@ var stickerPlaceholder = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAAC
 function lazyloadStickers(group) {
 	var target = group || document.querySelector(".emotion-keyboard .emotion-group:not(.d-none)");
 	if (!target) return;
-	$("img[data-sticker-src]", target).each(function () {
+	$(".emotion-item:not(.d-none) img[data-sticker-src]", target).each(function () {
 		if (this.getAttribute("src") !== this.getAttribute("data-sticker-src")) {
 			this.setAttribute("src", this.getAttribute("data-sticker-src"));
 		}
@@ -3168,6 +3168,7 @@ function suspendAnimatedStickers(exceptGroup) {
 function closeEmotionKeyboard() {
 	$("#comment_emotion_btn").removeClass("comment-emotion-keyboard-open");
 	$("#emotion_keyboard").removeClass("comment-emotion-keyboard-open");
+	resetEmotionKeyboardSearch(false);
 	suspendAnimatedStickers(null);
 }
 
@@ -3180,11 +3181,21 @@ function positionEmotionKeyboard() {
 	if (keyboard.parentElement !== document.body) {
 		document.body.appendChild(keyboard);
 	}
+	keyboard.classList.add("emotion-keyboard-root-layer");
 	
 	var btnRect = btn.getBoundingClientRect();
 	var keyboardHeight = keyboard.offsetHeight;
 	var keyboardWidth = keyboard.offsetWidth;
-	var viewportTop = window.scrollY + 10;
+	var viewportTopOffset = 10;
+	var toolbar = document.getElementById("navbar-main");
+	if (toolbar) {
+		var toolbarRect = toolbar.getBoundingClientRect();
+		var toolbarPosition = window.getComputedStyle(toolbar).position;
+		if ((toolbarPosition === "fixed" || toolbarPosition === "sticky") && toolbarRect.bottom > 0 && toolbarRect.top < window.innerHeight) {
+			viewportTopOffset = Math.max(viewportTopOffset, Math.ceil(toolbarRect.bottom) + 10);
+		}
+	}
+	var viewportTop = window.scrollY + viewportTopOffset;
 	var viewportBottom = window.scrollY + window.innerHeight - 10;
 	
 	var top = btnRect.top + window.scrollY - keyboardHeight - 10;
@@ -3227,6 +3238,86 @@ function scrollEmotionKeyboardBar(direction) {
 	});
 }
 
+function argonNormalizeEmotionSearch(value) {
+	return String(value || "").trim().toLocaleLowerCase();
+}
+
+function argonShowEmotionKeyboardGroup(index) {
+	var $keyboard = $("#emotion_keyboard");
+	$keyboard.removeClass("emotion-keyboard-searching");
+	$keyboard.find(".emotion-item").removeClass("d-none");
+	$keyboard.find(".emotion-group").addClass("d-none");
+	var $group = $keyboard.find(".emotion-group[data-index='" + index + "']").removeClass("d-none");
+	if (!$group.length) {
+		$group = $keyboard.find(".emotion-group").first().removeClass("d-none");
+	}
+	var $descriptions = $keyboard.find(".emotion-keyboard-descriptions");
+	if ($descriptions.length) {
+		$descriptions.removeClass("d-none");
+		$descriptions.find(".emotion-group-description").addClass("d-none");
+		$descriptions.find(".emotion-group-description[data-index='" + $group.attr("data-index") + "']").removeClass("d-none");
+	}
+	$keyboard.find(".emotion-keyboard-empty").addClass("d-none");
+	var group = $group.get(0);
+	suspendAnimatedStickers(group);
+	lazyloadStickers(group);
+	return group;
+}
+
+function resetEmotionKeyboardSearch(reposition) {
+	var keyboard = document.getElementById("emotion_keyboard");
+	if (!keyboard) return;
+	var input = document.getElementById("emotion_search_input");
+	var clearButton = keyboard.querySelector(".emotion-keyboard-search-clear");
+	var result = document.getElementById("emotion_search_result");
+	if (input) input.value = "";
+	if (clearButton) clearButton.hidden = true;
+	if (result) result.textContent = "";
+	var active = keyboard.querySelector(".emotion-group-name.active");
+	argonShowEmotionKeyboardGroup(active ? active.getAttribute("data-index") : "0");
+	if (reposition && keyboard.classList.contains("comment-emotion-keyboard-open")) {
+		window.requestAnimationFrame(positionEmotionKeyboard);
+	}
+}
+
+function filterEmotionKeyboard(value) {
+	var keyboard = document.getElementById("emotion_keyboard");
+	if (!keyboard) return;
+	var query = argonNormalizeEmotionSearch(value);
+	var clearButton = keyboard.querySelector(".emotion-keyboard-search-clear");
+	var result = document.getElementById("emotion_search_result");
+	if (clearButton) clearButton.hidden = query === "";
+	if (query === "") {
+		resetEmotionKeyboardSearch(true);
+		return;
+	}
+
+	keyboard.classList.add("emotion-keyboard-searching");
+	suspendAnimatedStickers(null);
+	$(keyboard).find(".emotion-keyboard-descriptions").addClass("d-none");
+	var resultCount = 0;
+	$(keyboard).find(".emotion-group").each(function () {
+		var $group = $(this);
+		var groupMatches = argonNormalizeEmotionSearch($group.attr("data-search")).indexOf(query) !== -1;
+		var groupResultCount = 0;
+		$group.find(".emotion-item").each(function () {
+			var matches = groupMatches || argonNormalizeEmotionSearch($(this).attr("data-search")).indexOf(query) !== -1;
+			$(this).toggleClass("d-none", !matches);
+			if (matches) groupResultCount++;
+		});
+		$group.toggleClass("d-none", groupResultCount === 0);
+		if (groupResultCount > 0) lazyloadStickers(this);
+		resultCount += groupResultCount;
+	});
+	$(keyboard).find(".emotion-keyboard-empty").toggleClass("d-none", resultCount !== 0);
+	if (result) {
+		result.textContent = resultCount > 0
+			? resultCount + " " + __("个匹配表情")
+			: __("没有找到匹配的表情");
+	}
+	window.requestAnimationFrame(positionEmotionKeyboard);
+}
+
 $(document).on("click", "#comment_emotion_btn", function (e) {
 	e.stopPropagation();
 	var isOpen = $("#comment_emotion_btn").hasClass("comment-emotion-keyboard-open");
@@ -3247,15 +3338,41 @@ $(document).on("click", ".emotion-keyboard .emotion-group-name", function () {
 	$(".emotion-keyboard .emotion-group-name.active").removeClass("active");
 	$(".emotion-keyboard .emotion-group-name").attr("aria-selected", "false");
 	$(this).addClass("active").attr("aria-selected", "true");
-	$(".emotion-keyboard .emotion-group:not(.d-none)").addClass("d-none");
+	resetEmotionKeyboardSearch(false);
 	var index = $(this).attr("data-index");
-	var group = $(".emotion-keyboard .emotion-group[data-index='" + index + "']").removeClass("d-none").get(0);
-	$(".emotion-keyboard .emotion-group-description").addClass("d-none");
-	$(".emotion-keyboard .emotion-group-description[data-index='" + index + "']").removeClass("d-none");
-	suspendAnimatedStickers(group);
-	lazyloadStickers(group);
+	argonShowEmotionKeyboardGroup(index);
 	this.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
 	positionEmotionKeyboard();
+});
+
+$(document).on("input", "#emotion_search_input", function () {
+	filterEmotionKeyboard(this.value);
+});
+
+$(document).on("click", ".emotion-keyboard-search-clear", function (e) {
+	e.preventDefault();
+	e.stopPropagation();
+	resetEmotionKeyboardSearch(true);
+	$("#emotion_search_input").focus();
+});
+
+$(document).on("keydown", "#emotion_search_input", function (e) {
+	if (e.key !== "Escape") return;
+	e.preventDefault();
+	if (this.value.trim() !== "") {
+		resetEmotionKeyboardSearch(true);
+		this.focus();
+		return;
+	}
+	closeEmotionKeyboard();
+	$("#comment_emotion_btn").focus();
+});
+
+$(document).on("pjax:beforeReplace", function () {
+	var keyboard = document.getElementById("emotion_keyboard");
+	if (keyboard && keyboard.parentElement === document.body) {
+		keyboard.remove();
+	}
 });
 
 $(document).on("click", ".emotion-keyboard-scroll", function () {

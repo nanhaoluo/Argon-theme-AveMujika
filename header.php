@@ -1027,7 +1027,7 @@ if ($bg_opacity == '') {
 
 							<div id="navbar_search_input_container">
 
-								<div class="input-group input-group-alternative">
+								<div class="input-group input-group-alternative argon-text-input-group">
 
 									<div class="input-group-prepend">
 
@@ -1035,7 +1035,7 @@ if ($bg_opacity == '') {
 
 									</div>
 
-									<input id="navbar_search_input" class="form-control" placeholder="<?php _e('搜索什么...', 'argon');?>" type="text" autocomplete="off">
+									<input id="navbar_search_input" class="form-control argon-text-input argon-text-input-embedded" placeholder="<?php _e('搜索什么...', 'argon');?>" type="text" autocomplete="off">
 
 								</div>
 

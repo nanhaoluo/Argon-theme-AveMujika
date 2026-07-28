@@ -551,7 +551,7 @@ if (!class_exists('mobileToolbarMenuWalker')) {
 
 					<i class="menu-item-icon fa fa-search mr-0"></i> <?php _e('搜索', 'argon');?>
 
-					<input id="leftbar_search_input" type="text" placeholder="<?php _e('搜索什么...', 'argon');?>" class="form-control form-control-alternative" autocomplete="off">
+					<input id="leftbar_search_input" type="text" placeholder="<?php _e('搜索什么...', 'argon');?>" class="form-control form-control-alternative argon-text-input" autocomplete="off">
 
 				</button>
 
@@ -1057,7 +1057,7 @@ if (!class_exists('mobileToolbarMenuWalker')) {
 				
 				<?php if ($is_author) : ?>
 				<div class="todo-add-form">
-					<input type="text" id="todo-input" class="form-control form-control-sm" placeholder="<?php _e('添加新的待办事项...', 'argon'); ?>" maxlength="100">
+					<input type="text" id="todo-input" class="form-control form-control-sm argon-text-input" placeholder="<?php _e('添加新的待办事项...', 'argon'); ?>" maxlength="100">
 					<button type="button" id="todo-add-btn" class="btn btn-sm btn-primary" title="<?php _e('添加', 'argon'); ?>">
 						<i class="fa fa-plus"></i>
 					</button>
