@@ -26,8 +26,14 @@ describe('site detection', () => {
           name: '编程小记',
           description: '其实我也不知道建这个站拿来干嘛=-=',
           home: 'https://blog.sample-blog.dev/',
-          site_icon_url: 'https://blog.sample-blog.dev/icon.png'
+          site_icon_url: ''
         }, url);
+      }
+      if (url === 'https://blog.sample-blog.dev/') {
+        return htmlResponse(`
+          <!doctype html><html><head><link rel="icon" href="/icon.png"></head>
+          <body><a href="/friends/">友情链接</a></body></html>
+        `);
       }
       return htmlResponse('not found', 404);
     });
@@ -38,6 +44,8 @@ describe('site detection', () => {
     expect(result.detectedUrl).toBe('https://blog.sample-blog.dev/');
     expect(result.primary).toBe('编程小记');
     expect(result.subtitle).toBe('其实我也不知道建这个站拿来干嘛=-=');
+    expect(result.avatar).toBe('https://blog.sample-blog.dev/icon.png');
+    expect(result.linksPage).toBe('https://blog.sample-blog.dev/friends/');
     expect(result.source).toBe('wordpress');
   });
 

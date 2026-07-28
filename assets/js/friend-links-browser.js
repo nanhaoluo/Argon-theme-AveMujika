@@ -145,8 +145,61 @@
         return '';
     }
 
+    function findLinkInHtmlByRel(html, relName, baseUrl) {
+        var tags = String(html || '').match(/<link\b[^>]*>/gi) || [];
+        for (var i = 0; i < tags.length; i++) {
+            var relMatch = tags[i].match(/\brel\s*=\s*["']([^"']+)["']/i);
+            var hrefMatch = tags[i].match(/\bhref\s*=\s*["']([^"']+)["']/i);
+            var rel = relMatch ? relMatch[1].toLowerCase().split(/\s+/) : [];
+            if (hrefMatch && rel.indexOf(relName) !== -1) return absoluteUrl(hrefMatch[1], baseUrl);
+        }
+        return '';
+    }
+
+    function friendLinksPageScore(url, label, baseUrl) {
+        if (!url || !isSameCandidateSiteUrl(url, baseUrl)) return 0;
+        var parsed = parseInput(url);
+        if (!parsed) return 0;
+        var path = (parsed.pathname || '/').toLowerCase();
+        var text = cleanText(label).toLowerCase();
+        var score = 0;
+        if (/友情链接|友链|友人帐|友人账|朋友们|friend\s*links?|blogroll/.test(text)) score += 80;
+        else if (/^(?:links?|friends?)$/.test(text)) score += 60;
+        if (/(?:^|\/)(?:friends?|friend[-_]?links?|flinks?|links?|blogroll)(?:[\/.\-_]|$)/.test(path)) score += 50;
+        return score;
+    }
+
+    function findFriendLinksPage(html, baseUrl) {
+        var bestUrl = '';
+        var bestScore = 0;
+        function consider(href, label) {
+            var url = absoluteUrl(href, baseUrl);
+            var score = friendLinksPageScore(url, label, baseUrl);
+            if (score > bestScore) {
+                bestScore = score;
+                bestUrl = url;
+            }
+        }
+
+        if (typeof DOMParser !== 'undefined') {
+            var doc = new DOMParser().parseFromString(String(html || ''), 'text/html');
+            Array.prototype.forEach.call(doc.querySelectorAll('a[href]'), function(anchor) {
+                consider(anchor.getAttribute('href'), anchor.textContent || anchor.getAttribute('title') || '');
+            });
+            return bestUrl;
+        }
+
+        var matcher = /<a\b([^>]*)>([\s\S]*?)<\/a>/gi;
+        var match;
+        while ((match = matcher.exec(String(html || ''))) !== null) {
+            var hrefMatch = match[1].match(/\bhref\s*=\s*["']([^"']+)["']/i);
+            if (hrefMatch) consider(hrefMatch[1], match[2]);
+        }
+        return bestUrl;
+    }
+
     function extractHtmlInfo(html, baseUrl) {
-        var result = { title: '', siteName: '', description: '', avatar: '', canonicalUrl: '' };
+        var result = { title: '', siteName: '', description: '', avatar: '', canonicalUrl: '', linksPage: '' };
         if (typeof DOMParser !== 'undefined') {
             var doc = new DOMParser().parseFromString(String(html || ''), 'text/html');
             var meta = function(selector) {
@@ -158,8 +211,9 @@
             result.description = meta('meta[name="description"]') || meta('meta[property="og:description"]');
             var icon = doc.querySelector('link[rel~="apple-touch-icon"], link[rel~="icon"], link[rel="shortcut icon"]');
             var canonical = doc.querySelector('link[rel~="canonical"]');
-            result.avatar = absoluteUrl(icon ? icon.getAttribute('href') : '', baseUrl);
+            result.avatar = absoluteUrl(icon ? icon.getAttribute('href') : '/favicon.ico', baseUrl);
             result.canonicalUrl = absoluteUrl(canonical ? canonical.getAttribute('href') : '', baseUrl);
+            result.linksPage = findFriendLinksPage(html, baseUrl);
             return result;
         }
 
@@ -167,6 +221,11 @@
         result.title = cleanText(titleMatch ? titleMatch[1] : findMetaInHtml(html, 'og:title'));
         result.siteName = findMetaInHtml(html, 'og:site_name') || findMetaInHtml(html, 'application-name');
         result.description = findMetaInHtml(html, 'description') || findMetaInHtml(html, 'og:description');
+        result.avatar = findLinkInHtmlByRel(html, 'apple-touch-icon', baseUrl)
+            || findLinkInHtmlByRel(html, 'icon', baseUrl)
+            || absoluteUrl('/favicon.ico', baseUrl);
+        result.canonicalUrl = findLinkInHtmlByRel(html, 'canonical', baseUrl);
+        result.linksPage = findFriendLinksPage(html, baseUrl);
         return result;
     }
 
@@ -204,7 +263,7 @@
             var names = splitTitle(data.name, '');
             var description = cleanText(data.description);
             var reportedUrl = absoluteUrl(data.home || data.url || candidate, candidate) || candidate;
-            return {
+            var wordpressResult = {
                 success: true,
                 readable: true,
                 score: 120,
@@ -214,9 +273,19 @@
                     subtitle: names.subtitle || description,
                     description: description,
                     avatar: absoluteUrl(data.site_icon_url || '', candidate),
+                    linksPage: '',
                     source: 'wordpress'
                 }
             };
+            return inspectHtml(wordpressResult.url, fetchImpl, timeout).then(function(htmlResult) {
+                wordpressResult.info.description = wordpressResult.info.description || htmlResult.info.description;
+                wordpressResult.info.avatar = wordpressResult.info.avatar || htmlResult.info.avatar;
+                wordpressResult.info.linksPage = htmlResult.info.linksPage || '';
+                return wordpressResult;
+            }).catch(function() {
+                wordpressResult.info.avatar = wordpressResult.info.avatar || absoluteUrl('/favicon.ico', wordpressResult.url);
+                return wordpressResult;
+            });
         });
     }
 
@@ -242,6 +311,7 @@
                         subtitle: names.subtitle,
                         description: info.description,
                         avatar: info.avatar,
+                        linksPage: info.linksPage,
                         source: 'html'
                     }
                 };
@@ -259,7 +329,7 @@
                 readable: false,
                 score: 10,
                 url: candidate,
-                info: { primary: '', subtitle: '', description: '', avatar: '', source: 'opaque' }
+                info: { primary: '', subtitle: '', description: '', avatar: '', linksPage: '', source: 'opaque' }
             };
         });
     }
@@ -355,6 +425,7 @@
         buildCandidates: buildCandidates,
         splitTitle: splitTitle,
         extractHtmlInfo: extractHtmlInfo,
+        findFriendLinksPage: findFriendLinksPage,
         detectSite: detectSite,
         checkBacklink: checkBacklink
     };

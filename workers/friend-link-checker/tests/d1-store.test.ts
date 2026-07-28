@@ -61,7 +61,7 @@ describe('D1 job store', () => {
   });
 
   it('stores, claims and completes a queued detection job', async () => {
-    const job = queuedJob();
+    const job = queuedJob({ linksPage: '' });
     await store.acceptSubmission(job, 'nonce-1234567890', NOW + 300);
 
     await expect(store.getJob(job.id)).resolves.toMatchObject({ id: job.id, status: 'queued' });
@@ -77,6 +77,7 @@ describe('D1 job store', () => {
         subtitle: '小记副标题',
         description: '站点介绍',
         avatar: 'https://blog.sample-blog.dev/favicon.ico',
+        linksPage: 'https://blog.sample-blog.dev/friends/',
         source: 'wordpress',
         attempts: []
       },
@@ -89,6 +90,7 @@ describe('D1 job store', () => {
     await expect(store.getJob(job.id)).resolves.toMatchObject({
       status: 'complete',
       primary: '编程小记',
+      linksPage: 'https://blog.sample-blog.dev/friends/',
       backlinkState: 'found',
       callbackStatus: 'pending',
       attempts: 1
@@ -111,7 +113,7 @@ describe('D1 job store', () => {
     await store.saveDetection('future', 'generation-123456', {
       site: {
         state: 'ok', accessible: true, readable: true, detectedUrl: 'https://sample-blog.dev/',
-        primary: '示例博客', subtitle: '', description: '', avatar: '', source: 'html', attempts: []
+        primary: '示例博客', subtitle: '', description: '', avatar: '', linksPage: '', source: 'html', attempts: []
       },
       backlinkState: 'unknown',
       checkedAt: NOW,
@@ -156,7 +158,7 @@ describe('D1 job store', () => {
       await store.saveDetection(id, generation, {
         site: {
           state: 'ok', accessible: true, readable: true, detectedUrl: 'https://sample-blog.dev/',
-          primary: '示例博客', subtitle: '', description: '', avatar: '', source: 'html', attempts: []
+          primary: '示例博客', subtitle: '', description: '', avatar: '', linksPage: '', source: 'html', attempts: []
         },
         backlinkState: 'unknown',
         checkedAt: NOW,

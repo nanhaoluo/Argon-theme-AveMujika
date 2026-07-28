@@ -24,9 +24,8 @@ function argon_flink_test_assert($condition, $message) {
 
 argon_flink_test_assert(
     strpos($page, '/assets/js/friend-links-browser.js') !== false
-    && strpos($page, 'detector.detectSite') !== false
-    && strpos($page, 'detector.checkBacklink') !== false,
-    '友链页没有完整接入浏览器检测模块。'
+    && strpos($page, 'detector.detectSite') !== false,
+    '友链页没有接入浏览器站点资料检测模块。'
 );
 argon_flink_test_assert(
     strpos($functions, "require_once get_template_directory() . '/inc/friend-link-worker.php';") !== false
@@ -41,6 +40,27 @@ argon_flink_test_assert(
     && strpos($page, "requestHeaders['X-WP-Nonce']") !== false
     && strpos($page, 'detector.detectSite(link.url)') === false,
     '批量复检没有使用完整 REST Cookie 认证转发 Worker 异步任务。'
+);
+$edit_check_start = strpos($page, "var editCheckBtn = document.getElementById('edit-check-btn');");
+$edit_check_end = strpos($page, '// 保存编辑', $edit_check_start);
+$edit_check_section = substr($page, $edit_check_start, $edit_check_end - $edit_check_start);
+argon_flink_test_assert(
+    strpos($edit_check_section, "flinkAction('update'") !== false
+    && strpos($edit_check_section, 'dispatchFriendLinkWorkerJob(id') !== false
+    && strpos($edit_check_section, 'detector.checkBacklink') === false,
+    '编辑窗口的互链检测没有先保存页面地址再调用 Cloudflare Worker。'
+);
+argon_flink_test_assert(
+    strpos($page, "checkAllBtn.onclick = function()") !== false
+    && strpos($page, "checkAllBtn.addEventListener('click'") === false
+    && strpos($page, "adminPanel.dataset.argonFriendLinksBound === 'true'") !== false,
+    '批量检测按钮不是幂等绑定，PJAX 重执行时会累计确认弹窗。'
+);
+argon_flink_test_assert(
+    strpos($page, 'id="check-all-btn"') !== false
+    && strpos($page, 'aria-label="<?php echo esc_attr($friend_link_worker_ready') !== false
+    && strpos($page, '<i class="fa fa-refresh" aria-hidden="true"></i></button>') !== false,
+    '批量检测按钮仍显示冗余文字，而不是图标和无障碍名称。'
 );
 argon_flink_test_assert(
     strpos($worker_bridge, 'ARGON_FRIEND_LINK_SUBMIT_HMAC_SECRET') !== false
@@ -71,6 +91,44 @@ argon_flink_test_assert(
     strpos($page, 'id="apply-display-name"') !== false
     && strpos($page, 'name="apply_display_name"') !== false,
     '访客申请缺少自动识别副标题字段。'
+);
+argon_flink_test_assert(
+    strpos($page, 'id="apply-links-page"') !== false
+    && strpos($page, "key: 'linksPage'") !== false
+    && strpos($page, 'id="add-links-page"') !== false,
+    '自动资料识别没有覆盖访客和管理员的对方友链页面字段。'
+);
+argon_flink_test_assert(
+    strpos($page, 'class="flink-avatar has-image') === false
+    && substr_count($page, 'alt="" aria-hidden="true" decoding="async"') >= 2,
+    '友链头像在加载成功前隐藏了字母回退，或仍可能显示 alt 文本。'
+);
+argon_flink_test_assert(
+    strpos($page, 'flink-verified') === false
+    && strpos($page, 'fa fa-check-circle flink-verified') === false,
+    '访客可见的友链互链认证图标仍在输出。'
+);
+argon_flink_test_assert(
+    strpos($page, "<?php _e('填写可自动通过', 'argon'); ?>") !== false
+    && strpos($page, '便于管理员浏览器检测') === false,
+    '友链页面提示文案没有恢复为原有自动通过说明。'
+);
+
+$open_modal_start = strpos($page, 'window.openEditModal = function(id)');
+$open_modal_end = strpos($page, 'window.closeEditModal = function()', $open_modal_start);
+$open_modal_section = substr($page, $open_modal_start, $open_modal_end - $open_modal_start);
+argon_flink_test_assert(
+    strpos($open_modal_section, "classList.add('show')") !== false
+    && strpos($open_modal_section, "classList.add('show')") < strpos($open_modal_section, "flinkAction('get'"),
+    '编辑窗口仍等待网络请求完成后才打开。'
+);
+$overlay_rule_start = strpos($page, '.flink-modal-overlay {');
+$overlay_rule_end = strpos($page, '.flink-modal-overlay.show', $overlay_rule_start);
+$overlay_rule = substr($page, $overlay_rule_start, $overlay_rule_end - $overlay_rule_start);
+argon_flink_test_assert(
+    strpos($overlay_rule, 'var(--motion-popup-duration)') !== false
+    && strpos($overlay_rule, 'var(--motion-layer-duration)') === false,
+    '编辑窗口仍使用迟缓的层级动画时长。'
 );
 argon_flink_test_assert(
     strpos($page, "case 'browser_sync':") !== false

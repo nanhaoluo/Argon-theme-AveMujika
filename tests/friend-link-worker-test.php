@@ -21,7 +21,7 @@ $GLOBALS['argon_worker_test_links'] = array(
         'display_name' => '',
         'user_display_name' => false,
         'url' => 'https://sample-blog.dev/',
-        'links_page' => 'https://sample-blog.dev/friends/',
+        'links_page' => '',
         'avatar' => '',
         'user_avatar' => false,
         'has_backlink' => null,
@@ -175,6 +175,7 @@ $callback_payload = array(
         'subtitle' => '其实我也不知道建这个站拿来干嘛=-=',
         'description' => '自动识别描述',
         'avatar' => 'https://blog.sample-blog.dev/favicon.ico',
+        'links_page' => 'https://blog.sample-blog.dev/friends/',
         'backlink_state' => 'found',
         'source' => 'cloudflare_worker',
         'attempts' => 1,
@@ -200,6 +201,7 @@ argon_worker_assert($callback_response instanceof WP_REST_Response && $callback_
 argon_worker_assert(
     $updated_link['name'] === '编程小记'
     && $updated_link['display_name'] === '其实我也不知道建这个站拿来干嘛=-='
+    && $updated_link['links_page'] === 'https://blog.sample-blog.dev/friends/'
     && $updated_link['has_backlink'] === true
     && $updated_link['check_source'] === 'cloudflare_worker',
     '合法 Worker 回调没有更新自动字段和互链状态。'

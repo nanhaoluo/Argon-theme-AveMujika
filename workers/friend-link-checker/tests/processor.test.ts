@@ -73,6 +73,7 @@ class ProcessingStore implements JobStore {
       subtitle: detection.site.subtitle,
       description: detection.site.description,
       avatar: detection.site.avatar,
+      linksPage: job.linksPage || detection.site.linksPage,
       backlinkState: detection.backlinkState,
       checkedAt: detection.checkedAt,
       nextCheckAt: detection.nextCheckAt,
@@ -145,7 +146,7 @@ function makeServices(store: ProcessingStore): RuntimeServices & { sent: QueueMe
       }
       return new Response('missing', { status: 404 });
     }
-    if (input === 'https://friend-site.top/friends') {
+    if (input === 'https://friend-site.top/friends' || input === 'https://blog.friend-site.top/friends') {
       return new Response('<a href="https://blog.sample-blog.dev/">本站</a>', { status: 200 });
     }
     return new Response('missing', { status: 404 });
@@ -209,6 +210,32 @@ describe('Queue consumer', () => {
       generation: 'generation-123456',
       result: { backlink_state: 'found', source: 'cloudflare_worker' }
     });
+  });
+
+  it('discovers a missing friend-links page and checks it through the worker', async () => {
+    store = new ProcessingStore(queuedJob({ linksPage: '' }));
+    services = makeServices(store);
+    const baseFetcher = services.fetcher;
+    services.fetcher = vi.fn(async (input: string, init?: RequestInit) => {
+      if (input === 'https://blog.friend-site.top/') {
+        return new Response(`
+          <!doctype html><html><head><link rel="icon" href="/icon.png"></head>
+          <body><a href="/friends">友情链接</a></body></html>
+        `, { status: 200 });
+      }
+      return baseFetcher(input, init);
+    });
+
+    await processQueueMessage({ jobId: 'link_123', generation: 'generation-123456' }, services);
+
+    expect(store.jobs.get('link_123')).toMatchObject({
+      linksPage: 'https://blog.friend-site.top/friends',
+      avatar: 'https://blog.friend-site.top/icon.png',
+      backlinkState: 'found'
+    });
+    const callback = services.callbacks[0];
+    const payload = JSON.parse(await callback.text());
+    expect(payload.result.links_page).toBe('https://blog.friend-site.top/friends');
   });
 
   it('keeps blocked targets unknown and never reports a missing backlink from failure', async () => {

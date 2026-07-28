@@ -51,6 +51,7 @@ function callbackPayload(job: FriendLinkJob): Record<string, unknown> {
       subtitle: truncateCallbackText(job.subtitle, CALLBACK_FIELD_LIMITS.subtitle),
       description: truncateCallbackText(job.description, CALLBACK_FIELD_LIMITS.description),
       avatar: truncateCallbackText(job.avatar, CALLBACK_FIELD_LIMITS.url),
+      links_page: truncateCallbackText(job.linksPage, CALLBACK_FIELD_LIMITS.url),
       backlink_state: job.backlinkState,
       source: 'cloudflare_worker',
       attempts: job.attempts,
@@ -119,8 +120,9 @@ export async function processQueueMessage(message: QueueMessage, services: Runti
   if (!claimed) return;
   const checkedAt = services.now();
   const site = await detectSite(claimed.url, { fetcher: services.fetcher, resolver: services.resolver });
-  const backlink = claimed.linksPage
-    ? await checkBacklink(claimed.linksPage, claimed.url, services.config.siteUrl, {
+  const linksPage = claimed.linksPage || site.linksPage;
+  const backlink = linksPage
+    ? await checkBacklink(linksPage, claimed.url, services.config.siteUrl, {
         fetcher: services.fetcher,
         resolver: services.resolver
       })

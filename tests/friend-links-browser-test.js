@@ -40,8 +40,20 @@ async function run() {
                             name: '编程小记 – 其实我也不知道建这个站拿来干嘛=-=',
                             description: '一份编程与生活记录',
                             home: 'https://blog.sample-blog.dev/',
-                            site_icon_url: 'https://blog.sample-blog.dev/icon.png'
+                            site_icon_url: ''
                         });
+                    }
+                });
+            }
+            if (url === 'https://blog.sample-blog.dev/') {
+                return Promise.resolve({
+                    ok: true,
+                    url: url,
+                    text: function() {
+                        return Promise.resolve(
+                            '<html><head><link rel="icon" href="/icon.png"></head>' +
+                            '<body><a href="/friends/">友情链接</a></body></html>'
+                        );
                     }
                 });
             }
@@ -52,6 +64,8 @@ async function run() {
     assert.strictEqual(detected.url, 'https://blog.sample-blog.dev/');
     assert.strictEqual(detected.info.primary, '编程小记');
     assert.strictEqual(detected.info.subtitle, '其实我也不知道建这个站拿来干嘛=-=');
+    assert.strictEqual(detected.info.avatar, 'https://blog.sample-blog.dev/icon.png');
+    assert.strictEqual(detected.info.linksPage, 'https://blog.sample-blog.dev/friends/');
 
     const constrained = await browser.detectSite('sample-blog.dev', {
         timeout: 1000,

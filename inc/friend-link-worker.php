@@ -360,6 +360,14 @@ function argon_friend_link_worker_result_rest($request) {
     if ($avatar !== '' && empty($link['user_avatar'])) {
         $update['avatar'] = $avatar;
     }
+    $links_page = isset($result['links_page']) ? esc_url_raw($result['links_page']) : '';
+    if (
+        $links_page !== ''
+        && empty($link['links_page'])
+        && argon_friend_link_worker_detected_url_allowed($link, $links_page)
+    ) {
+        $update['links_page'] = $links_page;
+    }
 
     $backlink_state = isset($result['backlink_state']) ? sanitize_text_field($result['backlink_state']) : 'unknown';
     if (!in_array($backlink_state, array('found', 'missing', 'unknown'), true)) {

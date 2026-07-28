@@ -33,6 +33,7 @@ export interface SiteDetection {
   subtitle: string;
   description: string;
   avatar: string;
+  linksPage: string;
   source: 'wordpress' | 'html' | 'unknown';
   attempts: Array<{ url: string; accessible: boolean; readable: boolean }>;
 }
@@ -221,12 +222,43 @@ function findLinkByRel(html: string, relName: string, baseUrl: string): string {
   return '';
 }
 
+function friendLinksPageScore(url: string, label: string, baseUrl: string): number {
+  if (!url || !isSameCandidateSite(url, baseUrl)) return 0;
+  let path = '';
+  try {
+    path = assertSafePublicUrl(url).pathname.toLowerCase();
+  } catch {
+    return 0;
+  }
+  const text = cleanText(label).toLowerCase();
+  let score = 0;
+  if (/友情链接|友链|友人帐|友人账|朋友们|friend\s*links?|blogroll/.test(text)) score += 80;
+  else if (/^(?:links?|friends?)$/.test(text)) score += 60;
+  if (/(?:^|\/)(?:friends?|friend[-_]?links?|flinks?|links?|blogroll)(?:[\/.\-_]|$)/.test(path)) score += 50;
+  return score;
+}
+
+function findFriendLinksPage(html: string, baseUrl: string): string {
+  let bestUrl = '';
+  let bestScore = 0;
+  for (const match of html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)) {
+    const href = absoluteUrl(getTagAttribute(match[1], 'href'), baseUrl);
+    const score = friendLinksPageScore(href, match[2], baseUrl);
+    if (score > bestScore) {
+      bestScore = score;
+      bestUrl = href;
+    }
+  }
+  return bestUrl;
+}
+
 function extractHtmlInfo(html: string, baseUrl: string): {
   title: string;
   siteName: string;
   description: string;
   avatar: string;
   canonicalUrl: string;
+  linksPage: string;
 } {
   const titleMatch = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i);
   return {
@@ -237,7 +269,8 @@ function extractHtmlInfo(html: string, baseUrl: string): {
       findLinkByRel(html, 'apple-touch-icon', baseUrl) ||
       findLinkByRel(html, 'icon', baseUrl) ||
       absoluteUrl('/favicon.ico', baseUrl),
-    canonicalUrl: findLinkByRel(html, 'canonical', baseUrl)
+    canonicalUrl: findLinkByRel(html, 'canonical', baseUrl),
+    linksPage: findFriendLinksPage(html, baseUrl)
   };
 }
 
@@ -270,6 +303,7 @@ async function inspectWordPress(candidate: string, options: DetectionOptions): P
     subtitle: names.subtitle || description,
     description,
     avatar: absoluteUrl(data.site_icon_url, candidate),
+    linksPage: '',
     source: 'wordpress'
   };
 }
@@ -296,6 +330,7 @@ async function inspectHtml(candidate: string, options: DetectionOptions): Promis
     subtitle: names.subtitle,
     description: info.description,
     avatar: info.avatar,
+    linksPage: info.linksPage,
     source: 'html'
   };
 }
@@ -303,7 +338,21 @@ async function inspectHtml(candidate: string, options: DetectionOptions): Promis
 async function inspectCandidate(candidate: string, options: DetectionOptions): Promise<CandidateResult> {
   let accessible = false;
   try {
-    return await inspectWordPress(candidate, options);
+    const wordpress = await inspectWordPress(candidate, options);
+    try {
+      const html = await inspectHtml(wordpress.detectedUrl || candidate, options);
+      return {
+        ...wordpress,
+        description: wordpress.description || html.description,
+        avatar: wordpress.avatar || html.avatar,
+        linksPage: html.linksPage
+      };
+    } catch {
+      return {
+        ...wordpress,
+        avatar: wordpress.avatar || absoluteUrl('/favicon.ico', wordpress.detectedUrl || candidate)
+      };
+    }
   } catch (error) {
     accessible ||= error instanceof FetchProblem && error.reachable;
   }
@@ -321,6 +370,7 @@ async function inspectCandidate(candidate: string, options: DetectionOptions): P
     subtitle: '',
     description: '',
     avatar: '',
+    linksPage: '',
     source: 'unknown'
   };
 }
@@ -356,6 +406,7 @@ export async function detectSite(value: string, options: DetectionOptions = {}):
       subtitle: '',
       description: '',
       avatar: '',
+      linksPage: '',
       source: 'unknown',
       attempts
     };
