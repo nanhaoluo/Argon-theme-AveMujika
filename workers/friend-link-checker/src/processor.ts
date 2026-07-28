@@ -127,13 +127,20 @@ export async function processQueueMessage(message: QueueMessage, services: Runti
         resolver: services.resolver
       })
     : { state: 'unknown' as const, checkedUrl: '' };
+  const detectionError = site.state !== 'ok'
+    ? 'target_unreadable'
+    : !linksPage
+      ? 'links_page_not_found'
+      : backlink.state === 'unknown'
+        ? 'links_page_unreadable'
+        : '';
 
   await services.store.saveDetection(claimed.id, claimed.generation, {
     site,
     backlinkState: backlink.state,
     checkedAt,
     nextCheckAt: nextCheckAt(claimed, site.state === 'ok', checkedAt),
-    error: site.state === 'ok' ? '' : 'target_unreadable'
+    error: detectionError
   });
 
   const saved = await services.store.getJob(claimed.id);

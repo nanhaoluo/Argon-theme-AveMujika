@@ -349,10 +349,12 @@ $replay_response = argon_friend_link_worker_result_rest($callback_request);
 argon_worker_assert($replay_response instanceof WP_REST_Response && $replay_response->get_status() === 409, '相同回调随机数可以重放。');
 
 $unknown_payload = $callback_payload;
+$unknown_payload['generation'] = $GLOBALS['argon_worker_test_links']['fl_contract']['worker_generation'];
 $unknown_payload['result']['backlink_state'] = 'unknown';
 $unknown_payload['result']['state'] = 'unknown';
 $unknown_payload['result']['accessible'] = false;
 $unknown_payload['result']['readable'] = false;
+$unknown_payload['result']['error'] = 'target_unreadable';
 $unknown_body = json_encode($unknown_payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 $unknown_nonce = 'callback_nonce_unknown_12345';
 $unknown_signature = 'sha256=' . hash_hmac(
@@ -371,7 +373,8 @@ argon_worker_assert(
     && $unknown_response->get_status() === 200
     && $unknown_updated_link['accessible'] === true
     && $unknown_updated_link['has_backlink'] === true
-    && $unknown_updated_link['backlink_check_result'] === 'found',
+    && $unknown_updated_link['backlink_check_result'] === 'found'
+    && $unknown_updated_link['worker_error'] === 'target_unreadable',
     'unknown 回调覆盖了已有互链结论。'
 );
 

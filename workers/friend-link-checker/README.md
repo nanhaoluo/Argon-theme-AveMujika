@@ -10,6 +10,8 @@ WordPress 服务端非阻塞 POST /v1/jobs -> D1 + Queue
                                       WordPress <- 签名回调
 ```
 
+> 上传或更新 WordPress 主题不会更新 Cloudflare Worker。只要修改了本目录下的 Worker 源码，就必须在本目录重新执行 `npm run check` 和 `npm run deploy`，线上检测逻辑才会生效。
+
 接单请求只校验签名并入队，不抓取目标站。Queue 会在 30～180 秒随机延迟后处理任务，降低提交动作与探测请求之间的时间关联。
 
 ## 准备工作

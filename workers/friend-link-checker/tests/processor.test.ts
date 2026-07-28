@@ -238,6 +238,42 @@ describe('Queue consumer', () => {
     expect(payload.result.links_page).toBe('https://blog.friend-site.top/friends');
   });
 
+  it('explains when the site is readable but no friend-links page can be discovered', async () => {
+    store = new ProcessingStore(queuedJob({ linksPage: '' }));
+    services = makeServices(store);
+
+    await processQueueMessage({ jobId: 'link_123', generation: 'generation-123456' }, services);
+
+    expect(store.jobs.get('link_123')).toMatchObject({
+      status: 'complete',
+      linksPage: '',
+      backlinkState: 'unknown',
+      lastError: 'links_page_not_found',
+      callbackStatus: 'delivered'
+    });
+    const payload = JSON.parse(await services.callbacks[0].text());
+    expect(payload.result.error).toBe('links_page_not_found');
+  });
+
+  it('distinguishes an unreadable friend-links page from an unreadable target site', async () => {
+    const baseFetcher = services.fetcher;
+    services.fetcher = vi.fn(async (input: string, init?: RequestInit) => {
+      if (input === 'https://friend-site.top/friends' || input === 'https://blog.friend-site.top/friends') {
+        return new Response('blocked', { status: 403 });
+      }
+      return baseFetcher(input, init);
+    });
+
+    await processQueueMessage({ jobId: 'link_123', generation: 'generation-123456' }, services);
+
+    expect(store.jobs.get('link_123')).toMatchObject({
+      status: 'complete',
+      backlinkState: 'unknown',
+      lastError: 'links_page_unreadable',
+      callbackStatus: 'delivered'
+    });
+  });
+
   it('keeps blocked targets unknown and never reports a missing backlink from failure', async () => {
     services.fetcher = vi.fn(async (input: string, init?: RequestInit) => {
       if (input === services.config.callbackUrl) {
@@ -254,6 +290,7 @@ describe('Queue consumer', () => {
       accessible: true,
       readable: false,
       backlinkState: 'unknown',
+      lastError: 'target_unreadable',
       callbackStatus: 'delivered'
     });
   });

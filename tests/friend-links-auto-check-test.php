@@ -49,9 +49,25 @@ argon_flink_test_assert(
     strpos($edit_check_section, "flinkAction('update'") !== false
     && strpos($edit_check_section, "flinkAction('dispatch_worker'") !== false
     && strpos($edit_check_section, 'submitWorkerDetection({ success: true, worker_dispatched: false })') !== false
+    && strpos($edit_check_section, 'pollWorkerDetection(id, contextSequence, backlinkSequence') !== false
     && strpos($edit_check_section, '请先填写对方的友链页面地址') === false
     && strpos($edit_check_section, 'detector.checkBacklink') === false,
-    '编辑窗口没有在已填写时先保存友链页、未填写时交给 Worker 自动识别。'
+    '编辑窗口没有在已填写时先保存友链页、未填写时交给 Worker 自动识别并轮询结果。'
+);
+argon_flink_test_assert(
+    strpos($page, 'function pollWorkerDetection(') !== false
+    && strpos($page, "flinkAction('get', { id: id }") !== false
+    && strpos($page, "workerStatus === 'submitted'") !== false
+    && strpos($page, "workerStatus === 'complete'") !== false
+    && strpos($page, "workerStatus === 'unknown'") !== false
+    && strpos($page, 'setTimeout(poll,') !== false,
+    'Worker 检测提交后没有持续读取已保存状态，编辑窗口会永久停留在检测中。'
+);
+argon_flink_test_assert(
+    strpos($page, 'Date.now() - startedAt >= 300000') !== false
+    && strpos($page, '30～180 秒') !== false
+    && strpos($edit_check_section, "document.getElementById('edit-save-btn').disabled = true") === false,
+    '状态轮询没有覆盖 Queue 的随机延迟，或检测期间仍无必要地锁住保存按钮。'
 );
 argon_flink_test_assert(
     strpos($page, "checkAllBtn.onclick = function()") !== false
@@ -132,6 +148,11 @@ argon_flink_test_assert(
     && strpos($open_modal_section, "classList.add('show')") < strpos($open_modal_section, "flinkAction('get'"),
     '编辑窗口仍等待网络请求完成后才打开。'
 );
+argon_flink_test_assert(
+    strpos($open_modal_section, "link.worker_status === 'submitted'") !== false
+    && strpos($open_modal_section, 'pollWorkerDetection(id, contextSequence, editBacklinkSequence') !== false,
+    '页面刷新后重新打开编辑窗口时，没有续接尚未完成的 Worker 状态轮询。'
+);
 $overlay_rule_start = strpos($page, '.flink-modal-overlay {');
 $overlay_rule_end = strpos($page, '.flink-modal-overlay.show', $overlay_rule_start);
 $overlay_rule = substr($page, $overlay_rule_start, $overlay_rule_end - $overlay_rule_start);
@@ -156,6 +177,16 @@ $add_detect_section = substr($page, $add_detect_start, $add_detect_end - $add_de
 $edit_detect_start = strpos($page, "editFetchBtn.addEventListener('click'");
 $edit_detect_end = strpos($page, '// 检测互链', $edit_detect_start);
 $edit_detect_section = substr($page, $edit_detect_start, $edit_detect_end - $edit_detect_start);
+$edit_save_start = strpos($page, "editSaveBtn.addEventListener('click'");
+$edit_save_end = strpos($page, '// 删除', $edit_save_start);
+$edit_save_section = substr($page, $edit_save_start, $edit_save_end - $edit_save_start);
+argon_flink_test_assert(
+    strpos($page, 'var editFieldSnapshots = {}') !== false
+    && strpos($edit_save_section, "linksPage !== editFieldSnapshots.links_page") !== false
+    && strpos($edit_save_section, "avatar !== editFieldSnapshots.avatar") !== false
+    && strpos($edit_save_section, "description !== editFieldSnapshots.description") !== false,
+    '保存编辑仍会用异步检测前的旧表单覆盖 Worker 已回写的资料。'
+);
 argon_flink_test_assert(
     strpos($page, '跨域不可读，状态未知') === false
     && strpos($page, '受跨域限制，无法确认页面状态') === false
@@ -169,8 +200,10 @@ $missing_links_page_pos = strrpos(substr($page, 0, $unknown_status_pos), 'if (!l
 argon_flink_test_assert(
     $missing_links_page_pos !== false
     && $missing_links_page_pos < $unknown_status_pos
-    && strpos($page, '友链页面暂时不可读，状态未知') !== false,
-    '未填写友链页面仍被误报为 Worker 无法读取目标站。'
+    && strpos($page, 'Worker 未发现友链页面') !== false
+    && strpos($page, 'Worker 无法读取友链页面') !== false
+    && strpos($page, '目标网站暂时不可读') !== false,
+    'Worker 的站点不可读、未发现友链页和友链页不可读仍被混为同一状态。'
 );
 
 $add_start = strpos($functions, 'function argon_add_friend_link(');

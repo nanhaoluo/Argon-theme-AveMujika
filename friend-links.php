@@ -1215,6 +1215,8 @@ if (typeof initGeetest4 === 'function') {
     var editContextSequence = 0;
     var editDetectSequence = 0;
     var editBacklinkSequence = 0;
+    var editWorkerPollTimer = null;
+    var editFieldSnapshots = {};
 
     function setMessage(type, message) {
         var box = document.getElementById('edit-action-message');
@@ -1228,6 +1230,163 @@ if (typeof initGeetest4 === 'function') {
         if (!box) return;
         box.className = 'flink-action-message';
         box.textContent = '';
+    }
+
+    function cancelWorkerPolling() {
+        if (editWorkerPollTimer) clearTimeout(editWorkerPollTimer);
+        editWorkerPollTimer = null;
+    }
+
+    function rememberEditFieldSnapshots() {
+        editFieldSnapshots = {
+            name: document.getElementById('edit-name').value.trim(),
+            display_name: document.getElementById('edit-display-name').value.trim(),
+            links_page: document.getElementById('edit-links-page').value.trim(),
+            avatar: document.getElementById('edit-avatar').value.trim(),
+            description: document.getElementById('edit-desc').value.trim()
+        };
+    }
+
+    function workerErrorMessage(link) {
+        var error = link && link.worker_error ? String(link.worker_error) : '';
+        if (error === 'target_unreadable') return '<?php _e('目标网站暂时不可读，Worker 未能继续检测互链', 'argon'); ?>';
+        if (error === 'links_page_not_found') return '<?php _e('Worker 未发现友链页面，请填写准确地址后重新检测', 'argon'); ?>';
+        if (error === 'links_page_unreadable') return '<?php _e('Worker 无法读取友链页面，当前状态未知', 'argon'); ?>';
+        if (error) return '<?php _e('Worker 返回错误', 'argon'); ?>: ' + error;
+        if (link && !link.links_page) return '<?php _e('Worker 未发现友链页面，请填写准确地址后重新检测', 'argon'); ?>';
+        return '<?php _e('Worker 无法读取友链页面，当前状态未知', 'argon'); ?>';
+    }
+
+    function renderEditWorkerStatus(link) {
+        if (!link) return;
+        var statusHtml = '';
+        var workerStatus = link.worker_status || '';
+        var workerAttempts = parseInt(link.worker_dispatch_attempts || 0, 10) || 0;
+        var workerStatusText = '';
+        var workerStatusClass = 'badge-secondary';
+        if (workerStatus === 'pending_dispatch') {
+            workerStatusText = '<?php _e('等待服务端派发', 'argon'); ?>';
+        } else if (workerStatus === 'dispatching') {
+            workerStatusText = '<?php _e('正在向 Worker 提交', 'argon'); ?>';
+            workerStatusClass = 'badge-info';
+        } else if (workerStatus === 'submitted') {
+            workerStatusText = '<?php _e('任务已发出，Queue 通常 30～180 秒开始检测', 'argon'); ?>';
+            workerStatusClass = 'badge-info';
+        } else if (workerStatus === 'complete') {
+            workerStatusText = '<?php _e('Worker 检测完成并已保存', 'argon'); ?>';
+            workerStatusClass = 'badge-success';
+        } else if (workerStatus === 'unknown') {
+            workerStatusText = '<?php _e('Worker 已完成，结论未知', 'argon'); ?>';
+            workerStatusClass = 'badge-warning';
+        } else if (workerStatus === 'dispatch_failed') {
+            workerStatusText = '<?php _e('任务派发失败，等待自动重试', 'argon'); ?>';
+            workerStatusClass = 'badge-danger';
+        } else if (workerStatus === 'error') {
+            workerStatusText = '<?php _e('Worker 检测失败', 'argon'); ?>';
+            workerStatusClass = 'badge-danger';
+        }
+        if (workerStatusText) {
+            statusHtml += '<?php _e('检测流程', 'argon'); ?>: <span class="badge ' + workerStatusClass + '">' + workerStatusText + '</span>';
+            if (workerAttempts) statusHtml += ' <small>(<?php _e('派发次数', 'argon'); ?>: ' + workerAttempts + ')</small>';
+            statusHtml += '<br>';
+        }
+
+        var lastSiteCheck = link.worker_checked_at || link.last_check || 0;
+        if (lastSiteCheck) {
+            var date = new Date(lastSiteCheck * 1000);
+            statusHtml += '<?php _e('上次站点检测', 'argon'); ?>: ' + date.toLocaleString() + '<br>';
+        }
+        if (link.last_backlink_attempt) {
+            var backlinkDate = new Date(link.last_backlink_attempt * 1000);
+            statusHtml += '<?php _e('上次互链尝试', 'argon'); ?>: ' + backlinkDate.toLocaleString() + '<br>';
+        }
+        if (link.accessible === false) {
+            statusHtml += '<?php _e('网站状态', 'argon'); ?>: <span class="badge badge-danger"><?php _e('无法访问', 'argon'); ?></span><br>';
+        } else if (link.accessible === true) {
+            statusHtml += '<?php _e('网站状态', 'argon'); ?>: <span class="badge badge-success"><?php _e('正常', 'argon'); ?></span><br>';
+        }
+
+        var workerActive = workerStatus === 'pending_dispatch' || workerStatus === 'dispatching' || workerStatus === 'submitted';
+        if (workerActive) {
+            statusHtml += '<?php _e('互链状态', 'argon'); ?>: <span class="badge badge-info"><?php _e('等待 Worker 检测结果', 'argon'); ?></span>';
+        } else if (link.worker_error === 'target_unreadable') {
+            statusHtml += '<?php _e('互链状态', 'argon'); ?>: <span class="badge badge-secondary"><?php _e('目标网站暂时不可读', 'argon'); ?></span>';
+        } else if (!link.links_page) {
+            var missingPageText = workerStatus === 'complete' || workerStatus === 'unknown' || workerStatus === 'error'
+                ? '<?php _e('Worker 未发现友链页面', 'argon'); ?>'
+                : '<?php _e('未填写友链页面', 'argon'); ?>';
+            statusHtml += '<?php _e('互链状态', 'argon'); ?>: <span class="badge badge-secondary">' + missingPageText + '</span>';
+        } else if (link.backlink_check_result === 'unknown') {
+            statusHtml += '<?php _e('互链状态', 'argon'); ?>: <span class="badge badge-secondary"><?php _e('Worker 无法读取友链页面', 'argon'); ?></span>';
+        } else if (link.has_backlink === false) {
+            statusHtml += '<?php _e('互链状态', 'argon'); ?>: <span class="badge badge-warning"><?php _e('未检测到本站链接', 'argon'); ?></span>';
+        } else if (link.has_backlink === true) {
+            statusHtml += '<?php _e('互链状态', 'argon'); ?>: <span class="badge badge-success"><?php _e('已上友链', 'argon'); ?></span>';
+        }
+        document.getElementById('edit-status-info').innerHTML = statusHtml || '<?php _e('暂无检测记录', 'argon'); ?>';
+    }
+
+    function applyWorkerSnapshot(link) {
+        if (!link) return;
+        if (editNameSource === 'worker' && link.name_source === 'worker' && link.name) {
+            document.getElementById('edit-name').value = link.name;
+            editFieldSnapshots.name = link.name;
+        }
+        if (editDisplayNameSource === 'worker' && link.display_name_source === 'worker') {
+            document.getElementById('edit-display-name').value = link.display_name || '';
+            editFieldSnapshots.display_name = link.display_name || '';
+        }
+        if (editAvatarSource === 'worker' && link.avatar_source === 'worker') {
+            document.getElementById('edit-avatar').value = link.avatar || '';
+            editFieldSnapshots.avatar = link.avatar || '';
+        }
+        if (editDescriptionSource === 'worker' && link.description_source === 'worker') {
+            document.getElementById('edit-desc').value = link.description || link.auto_description || '';
+            editFieldSnapshots.description = link.description || link.auto_description || '';
+        }
+        if (editLinksPageSource === 'worker' && link.links_page_source === 'worker') {
+            document.getElementById('edit-links-page').value = link.links_page || '';
+            editFieldSnapshots.links_page = link.links_page || '';
+        }
+    }
+
+    function pollWorkerDetection(id, contextSequence, backlinkSequence, startedAt) {
+        cancelWorkerPolling();
+        var poll = function() {
+            flinkAction('get', { id: id }, function(res) {
+                if (contextSequence !== editContextSequence || backlinkSequence !== editBacklinkSequence || document.getElementById('edit-id').value !== id) return;
+                var checkBtn = document.getElementById('edit-check-btn');
+                if (!res.success || !res.data) {
+                    if (checkBtn) { checkBtn.disabled = false; checkBtn.textContent = '<?php _e('检测互链', 'argon'); ?>'; }
+                    setMessage('error', res.message || '<?php _e('无法读取 Worker 检测状态，请稍后重试', 'argon'); ?>');
+                    return;
+                }
+
+                var link = res.data;
+                applyWorkerSnapshot(link);
+                renderEditWorkerStatus(link);
+                var workerStatus = link.worker_status || '';
+                var terminal = workerStatus === 'complete' || workerStatus === 'unknown' || workerStatus === 'error' || workerStatus === 'dispatch_failed';
+                if (terminal) {
+                    if (checkBtn) { checkBtn.disabled = false; checkBtn.textContent = '<?php _e('重新检测', 'argon'); ?>'; }
+                    if (workerStatus === 'complete' && link.has_backlink === true) {
+                        setMessage('success', '<?php _e('Worker 检测完成：已发现本站链接，结果已自动保存', 'argon'); ?>');
+                    } else if (workerStatus === 'complete' && link.has_backlink === false) {
+                        setMessage('info', '<?php _e('Worker 检测完成：未检测到本站链接，结果已自动保存', 'argon'); ?>');
+                    } else {
+                        setMessage(workerStatus === 'dispatch_failed' || workerStatus === 'error' ? 'error' : 'info', workerErrorMessage(link));
+                    }
+                    return;
+                }
+                if (Date.now() - startedAt >= 300000) {
+                    if (checkBtn) { checkBtn.disabled = false; checkBtn.textContent = '<?php _e('重新检测', 'argon'); ?>'; }
+                    setMessage('info', '<?php _e('5 分钟内未收到 Worker 回调；请检查 Worker 是否已部署、Queue 与回调配置，后台仍会自动重试', 'argon'); ?>');
+                    return;
+                }
+                editWorkerPollTimer = setTimeout(poll, 1200);
+            });
+        };
+        editWorkerPollTimer = setTimeout(poll, 500);
     }
 
     function normalizeUrlInput(value) {
@@ -1449,6 +1608,7 @@ if (typeof initGeetest4 === 'function') {
 
     // 编辑弹窗
     window.openEditModal = function(id) {
+        cancelWorkerPolling();
         var contextSequence = ++editContextSequence;
         editDetectSequence++;
         editBacklinkSequence++;
@@ -1484,6 +1644,7 @@ if (typeof initGeetest4 === 'function') {
                 editDescriptionSource = link.description_source || (link.description ? 'visitor' : 'worker');
                 document.getElementById('edit-category').value = link.category || '';
                 document.getElementById('edit-hide-no-backlink').value = link.hide_no_backlink || '';
+                rememberEditFieldSnapshots();
                 document.getElementById('edit-fetch-btn').disabled = false;
                 document.getElementById('edit-fetch-btn').textContent = '<?php _e('更新信息', 'argon'); ?>';
                 document.getElementById('edit-check-btn').disabled = false;
@@ -1491,32 +1652,14 @@ if (typeof initGeetest4 === 'function') {
                 document.getElementById('edit-delete-btn').disabled = false;
                 document.getElementById('edit-save-btn').disabled = false;
 
-                // 显示状态信息
-                var statusHtml = '';
-                var lastSiteCheck = link.worker_checked_at || link.last_check || 0;
-                if (lastSiteCheck) {
-                    var date = new Date(lastSiteCheck * 1000);
-                    statusHtml += '<?php _e('上次站点检测', 'argon'); ?>: ' + date.toLocaleString() + '<br>';
+                renderEditWorkerStatus(link);
+                if (link.worker_status === 'pending_dispatch' || link.worker_status === 'dispatching' || link.worker_status === 'submitted') {
+                    document.getElementById('edit-check-btn').disabled = true;
+                    document.getElementById('edit-check-btn').textContent = '<?php _e('检测中...', 'argon'); ?>';
+                    var workerStartedAt = (parseInt(link.worker_submitted_at || link.worker_dispatched_at || 0, 10) || 0) * 1000;
+                    if (!workerStartedAt || workerStartedAt > Date.now()) workerStartedAt = Date.now();
+                    pollWorkerDetection(id, contextSequence, editBacklinkSequence, workerStartedAt);
                 }
-                if (link.last_backlink_attempt) {
-                    var backlinkDate = new Date(link.last_backlink_attempt * 1000);
-                    statusHtml += '<?php _e('上次互链尝试', 'argon'); ?>: ' + backlinkDate.toLocaleString() + '<br>';
-                }
-                if (link.accessible === false) {
-                    statusHtml += '<?php _e('网站状态', 'argon'); ?>: <span class="badge badge-danger"><?php _e('无法访问', 'argon'); ?></span><br>';
-                } else if (link.accessible === true) {
-                    statusHtml += '<?php _e('网站状态', 'argon'); ?>: <span class="badge badge-success"><?php _e('正常', 'argon'); ?></span><br>';
-                }
-                if (!link.links_page) {
-                    statusHtml += '<?php _e('互链状态', 'argon'); ?>: <span class="badge badge-secondary"><?php _e('未填写友链页面', 'argon'); ?></span>';
-                } else if (link.backlink_check_result === 'unknown') {
-                    statusHtml += '<?php _e('互链状态', 'argon'); ?>: <span class="badge badge-secondary"><?php _e('友链页面暂时不可读，状态未知', 'argon'); ?></span>';
-                } else if (link.has_backlink === false) {
-                    statusHtml += '<?php _e('互链状态', 'argon'); ?>: <span class="badge badge-warning"><?php _e('未检测到本站链接', 'argon'); ?></span>';
-                } else if (link.has_backlink === true) {
-                    statusHtml += '<?php _e('互链状态', 'argon'); ?>: <span class="badge badge-success"><?php _e('已上友链', 'argon'); ?></span>';
-                }
-                document.getElementById('edit-status-info').innerHTML = statusHtml || '<?php _e('暂无检测记录', 'argon'); ?>';
 
             } else {
                 document.getElementById('edit-status-info').textContent = '<?php _e('友链信息加载失败', 'argon'); ?>';
@@ -1526,6 +1669,7 @@ if (typeof initGeetest4 === 'function') {
     };
     
     window.closeEditModal = function() {
+        cancelWorkerPolling();
         editContextSequence++;
         editDetectSequence++;
         editBacklinkSequence++;
@@ -1600,13 +1744,15 @@ if (typeof initGeetest4 === 'function') {
                 }
                 var showSubmitted = function(workerResponse) {
                     if (contextSequence !== editContextSequence || backlinkSequence !== editBacklinkSequence || document.getElementById('edit-id').value !== id) return;
-                    btn.disabled = false; btn.textContent = '<?php _e('检测互链', 'argon'); ?>';
                     if (workerResponse && workerResponse.success === false) {
+                        btn.disabled = false; btn.textContent = '<?php _e('检测互链', 'argon'); ?>';
                         setMessage('error', workerResponse.message || '<?php _e('Worker 任务提交失败，请重试', 'argon'); ?>');
                         return;
                     }
-                    document.getElementById('edit-status-info').innerHTML = '<?php _e('互链状态', 'argon'); ?>: <span class="badge badge-secondary"><?php _e('Worker 检测中', 'argon'); ?></span>';
-                    setMessage('success', '<?php _e('已提交 Cloudflare Worker，检测结果会自动回写', 'argon'); ?>');
+                    btn.textContent = '<?php _e('检测中...', 'argon'); ?>';
+                    document.getElementById('edit-status-info').innerHTML = '<?php _e('检测流程', 'argon'); ?>: <span class="badge badge-info"><?php _e('任务已发出，Queue 通常 30～180 秒开始检测', 'argon'); ?></span>';
+                    setMessage('info', '<?php _e('窗口会自动刷新 Worker 状态，检测结果会直接保存，无需再次点击保存', 'argon'); ?>');
+                    pollWorkerDetection(id, contextSequence, backlinkSequence, Date.now());
                 };
                 if (res.worker_dispatched === true) showSubmitted(res);
                 else flinkAction('dispatch_worker', { id: id }, showSubmitted);
@@ -1636,26 +1782,37 @@ if (typeof initGeetest4 === 'function') {
             var linksPage = document.getElementById('edit-links-page').value.trim();
             var avatar = document.getElementById('edit-avatar').value.trim();
             var description = document.getElementById('edit-desc').value.trim();
-            flinkAction('update', {
+            var updateData = {
                 id: id,
-                name: name,
-                auto_name: editNameSource === 'worker' ? '1' : '0',
-                name_source: editNameSource,
-                display_name: displayName,
-                user_display_name: displayName && editDisplayNameSource !== 'worker' ? '1' : '0',
-                display_name_source: displayName ? editDisplayNameSource : 'worker',
                 url: url,
-                links_page: linksPage,
-                links_page_source: linksPage ? editLinksPageSource : 'worker',
-                avatar: avatar,
-                user_avatar: avatar && editAvatarSource !== 'worker' ? '1' : '0',
-                avatar_source: avatar ? editAvatarSource : 'worker',
-                description: description && editDescriptionSource !== 'worker' ? description : '',
-                auto_description: description && editDescriptionSource === 'worker' ? description : '',
-                description_source: description ? editDescriptionSource : 'worker',
                 category: document.getElementById('edit-category').value.trim(),
                 hide_no_backlink: document.getElementById('edit-hide-no-backlink').value
-            }, function(res) {
+            };
+            if (editNameSource !== 'worker' || name !== editFieldSnapshots.name) {
+                updateData.name = name;
+                updateData.auto_name = editNameSource === 'worker' ? '1' : '0';
+                updateData.name_source = editNameSource;
+            }
+            if (editDisplayNameSource !== 'worker' || displayName !== editFieldSnapshots.display_name) {
+                updateData.display_name = displayName;
+                updateData.user_display_name = displayName && editDisplayNameSource !== 'worker' ? '1' : '0';
+                updateData.display_name_source = displayName ? editDisplayNameSource : 'worker';
+            }
+            if (editLinksPageSource !== 'worker' || linksPage !== editFieldSnapshots.links_page) {
+                updateData.links_page = linksPage;
+                updateData.links_page_source = linksPage ? editLinksPageSource : 'worker';
+            }
+            if (editAvatarSource !== 'worker' || avatar !== editFieldSnapshots.avatar) {
+                updateData.avatar = avatar;
+                updateData.user_avatar = avatar && editAvatarSource !== 'worker' ? '1' : '0';
+                updateData.avatar_source = avatar ? editAvatarSource : 'worker';
+            }
+            if (editDescriptionSource !== 'worker' || description !== editFieldSnapshots.description) {
+                updateData.description = description && editDescriptionSource !== 'worker' ? description : '';
+                updateData.auto_description = description && editDescriptionSource === 'worker' ? description : '';
+                updateData.description_source = description ? editDescriptionSource : 'worker';
+            }
+            flinkAction('update', updateData, function(res) {
                 btn.disabled = false; btn.textContent = '<?php _e('保存', 'argon'); ?>';
                 if (res.success) {
                     if (res.worker_refresh_required && res.worker_dispatched === false) {
