@@ -38,6 +38,8 @@ argon_flink_test_assert(
     && strpos($worker_bridge, "'blocking' => false") !== false
     && strpos($worker_bridge, "add_action('argon_friend_link_worker_dispatch_pending'") !== false
     && strpos($worker_bridge, "wp_schedule_event(time() + MINUTE_IN_SECONDS, 'hourly'") !== false
+    && strpos($worker_bridge, "add_action('argon_friend_link_worker_sync_pending'") !== false
+    && strpos($worker_bridge, "'argon_friend_link_worker_five_minutes', 'argon_friend_link_worker_sync_pending'") !== false
     && strpos($page, 'dispatchFriendLinkWorkerJob') === false
     && strpos($page, "rest_url('argon/v1/friend-link-ticket')") === false,
     '首次 Worker 任务仍依赖管理员浏览器，或服务端没有非阻塞派发与自动补派。'
@@ -56,12 +58,20 @@ argon_flink_test_assert(
 );
 argon_flink_test_assert(
     strpos($page, 'function pollWorkerDetection(') !== false
-    && strpos($page, "flinkAction('get', { id: id }") !== false
+    && strpos($page, "flinkAction('get', { id: id, sync_worker_result: '1' }") !== false
+    && strpos($page, 'argon_friend_link_worker_sync_result($id)') !== false
     && strpos($page, "workerStatus === 'submitted'") !== false
     && strpos($page, "workerStatus === 'complete'") !== false
     && strpos($page, "workerStatus === 'unknown'") !== false
     && strpos($page, 'setTimeout(poll,') !== false,
     'Worker 检测提交后没有持续读取已保存状态，编辑窗口会永久停留在检测中。'
+);
+argon_flink_test_assert(
+    strpos($worker_bridge, 'function argon_friend_link_worker_apply_result_payload(') !== false
+    && strpos($worker_bridge, 'function argon_friend_link_worker_sync_result(') !== false
+    && strpos($worker_bridge, "'/v1/jobs/' . rawurlencode(\$link_id) . '/result'") !== false
+    && strpos($worker_bridge, "argon_friend_link_worker_apply_result_payload(\$payload, 'pull')") !== false,
+    'Worker 回调失败时，WordPress 没有签名主动拉取并复用同一结果落库逻辑。'
 );
 argon_flink_test_assert(
     strpos($page, 'Date.now() - startedAt >= 300000') !== false

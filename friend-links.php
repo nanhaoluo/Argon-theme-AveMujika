@@ -188,6 +188,16 @@ if (isset($_POST['flink_action'])) {
         case 'get':
             $id = isset($_POST['id']) ? sanitize_text_field($_POST['id']) : '';
             $link = argon_get_friend_link($id);
+            $should_sync_worker = isset($_POST['sync_worker_result']) && $_POST['sync_worker_result'] === '1';
+            if (
+                $link
+                && $should_sync_worker
+                && function_exists('argon_friend_link_worker_sync_result')
+                && in_array(isset($link['worker_status']) ? $link['worker_status'] : '', array('dispatching', 'submitted'), true)
+            ) {
+                argon_friend_link_worker_sync_result($id);
+                $link = argon_get_friend_link($id);
+            }
             $response = $link ? array('success' => true, 'data' => $link) : array('success' => false);
             break;
             
@@ -1353,7 +1363,7 @@ if (typeof initGeetest4 === 'function') {
     function pollWorkerDetection(id, contextSequence, backlinkSequence, startedAt) {
         cancelWorkerPolling();
         var poll = function() {
-            flinkAction('get', { id: id }, function(res) {
+            flinkAction('get', { id: id, sync_worker_result: '1' }, function(res) {
                 if (contextSequence !== editContextSequence || backlinkSequence !== editBacklinkSequence || document.getElementById('edit-id').value !== id) return;
                 var checkBtn = document.getElementById('edit-check-btn');
                 if (!res.success || !res.data) {
@@ -1380,7 +1390,10 @@ if (typeof initGeetest4 === 'function') {
                 }
                 if (Date.now() - startedAt >= 300000) {
                     if (checkBtn) { checkBtn.disabled = false; checkBtn.textContent = '<?php _e('重新检测', 'argon'); ?>'; }
-                    setMessage('info', '<?php _e('5 分钟内未收到 Worker 回调；请检查 Worker 是否已部署、Queue 与回调配置，后台仍会自动重试', 'argon'); ?>');
+                    var syncError = link.worker_result_sync_error ? String(link.worker_result_sync_error) : '';
+                    setMessage('info', syncError
+                        ? '<?php _e('Worker 结果暂未同步成功，后台会继续主动拉取', 'argon'); ?>: ' + syncError
+                        : '<?php _e('Worker 任务仍在处理，后台会继续主动拉取结果', 'argon'); ?>');
                     return;
                 }
                 editWorkerPollTimer = setTimeout(poll, 1200);

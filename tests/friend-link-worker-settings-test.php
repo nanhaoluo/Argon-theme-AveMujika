@@ -81,6 +81,7 @@ class WP_Error {
 }
 
 function add_action($hook, $callback, $priority = 10, $accepted_args = 1) {}
+function add_filter($hook, $callback, $priority = 10, $accepted_args = 1) {}
 function __($text, $domain = null) { return $text; }
 function get_option($name, $default = false) {
     return array_key_exists($name, $GLOBALS['argon_worker_settings_options'])

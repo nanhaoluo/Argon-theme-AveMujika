@@ -25,8 +25,9 @@ class MemoryStore implements JobStore {
     throw new Error('not used by this test');
   }
 
-  async markCallbackDelivered(): Promise<void> {
-    throw new Error('not used by this test');
+  async markCallbackDelivered(id: string, generation: string): Promise<void> {
+    const job = this.jobs.get(id);
+    if (job?.generation === generation) this.jobs.set(id, { ...job, callbackStatus: 'delivered' });
   }
 
   async deferCallback(): Promise<void> {
@@ -88,6 +89,25 @@ async function signedSubmission(
       'content-type': 'application/json',
       origin: overrides.origin ?? 'https://blog.sample-blog.dev',
       'x-argon-timestamp': String(timestamp),
+      'x-argon-nonce': nonce,
+      'x-argon-signature': `sha256=${signature}`
+    },
+    body
+  });
+}
+
+async function signedResultRead(
+  jobId: string,
+  generation: string,
+  nonce = 'result-nonce-123456'
+): Promise<Request> {
+  const body = JSON.stringify({ generation });
+  const signature = await signHmac(SUBMIT_SECRET, `${NOW}.${nonce}.${body}`);
+  return new Request(`https://neutral-checker.workers.dev/v1/jobs/${jobId}/result`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-argon-timestamp': String(NOW),
       'x-argon-nonce': nonce,
       'x-argon-signature': `sha256=${signature}`
     },
@@ -204,5 +224,62 @@ describe('Worker HTTP API', () => {
     );
     expect(authorized.status).toBe(200);
     await expect(authorized.json()).resolves.toMatchObject({ id: 'link_123', status: 'queued' });
+  });
+
+  it('lets WordPress pull a terminal result with its signed generation when callback delivery is blocked', async () => {
+    const submit = await signedSubmission({ job_id: 'link_123', url: 'sample-blog.dev' });
+    await handleFetch(submit, services);
+    const queued = services.store.jobs.get('link_123')!;
+    services.store.jobs.set('link_123', {
+      ...queued,
+      status: 'complete',
+      accessible: true,
+      readable: true,
+      detectedUrl: 'https://blog.sample-blog.dev/',
+      primary: '编程小记',
+      avatar: 'https://blog.sample-blog.dev/author.png',
+      backlinkState: 'found',
+      checkedAt: NOW,
+      callbackStatus: 'pending',
+      callbackLastError: 'callback_http_403'
+    });
+
+    const response = await handleFetch(
+      await signedResultRead('link_123', 'nonce-1234567890'),
+      services
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      version: 1,
+      job_id: 'link_123',
+      generation: 'nonce-1234567890',
+      result: {
+        state: 'complete',
+        primary: '编程小记',
+        avatar: 'https://blog.sample-blog.dev/author.png',
+        backlink_state: 'found',
+        source: 'cloudflare_worker'
+      }
+    });
+    expect(services.store.jobs.get('link_123')).toMatchObject({ callbackStatus: 'delivered' });
+  });
+
+  it('does not expose a result for a stale generation and reports queued work as pending', async () => {
+    const submit = await signedSubmission({ job_id: 'link_123', url: 'sample-blog.dev' });
+    await handleFetch(submit, services);
+
+    const stale = await handleFetch(
+      await signedResultRead('link_123', 'stale-generation-123', 'result-nonce-stale-1'),
+      services
+    );
+    expect(stale.status).toBe(409);
+
+    const pending = await handleFetch(
+      await signedResultRead('link_123', 'nonce-1234567890', 'result-nonce-pending-1'),
+      services
+    );
+    expect(pending.status).toBe(202);
+    await expect(pending.json()).resolves.toMatchObject({ success: true, status: 'queued' });
   });
 });

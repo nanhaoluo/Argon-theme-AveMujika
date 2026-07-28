@@ -7,7 +7,7 @@ WordPress 服务端非阻塞 POST /v1/jobs -> D1 + Queue
                                                   |
                                          Queue 消费者访问目标站
                                                   |
-                                      WordPress <- 签名回调
+                    签名回调（快速路径）或 WordPress 签名主动拉取结果
 ```
 
 > 上传或更新 WordPress 主题不会更新 Cloudflare Worker。只要修改了本目录下的 Worker 源码，就必须在本目录重新执行 `npm run check` 和 `npm run deploy`，线上检测逻辑才会生效。
@@ -205,8 +205,10 @@ npm test
 ## API 与安全边界
 
 - `POST /v1/jobs`：校验 WordPress 的 HMAC、5 分钟时间窗和随机数防重放，只写 D1/Queue，返回 `202`。
+- `POST /v1/jobs/<job_id>/result`：WordPress 使用提交 HMAC 和当前 `generation` 主动读取结果；任务未完成返回 `202`，完成返回与回调相同的结果载荷。该接口用于主机 WAF 拦截 Worker 回调时的服务端兜底，不向浏览器暴露密钥。
 - `GET /v1/jobs/<job_id>`：需要 `Authorization: Bearer <ADMIN_READ_TOKEN>`，不要从公开页面调用。
 - `POST CALLBACK_URL`：Worker 使用独立回调 HMAC；WordPress 校验签名、时间窗、随机数和任务代际。
+- WordPress 管理窗口仅在检测轮询时按 8 秒节流主动同步，普通打开编辑窗口不会等待 Worker；无人打开后台时由 5 分钟 WP-Cron 继续同步。
 - Queue 消费者会检查目标及每次重定向的 DNS 结果，拒绝私网、回环、保留和不可解析地址，避免 SSRF。
 - `backlink_state=unknown` 表示超时、地区限制、真实验证页或内容不可读，不会被当成“确认未上链”；普通页面仅加载验证码脚本不会触发该状态。
 - 相同友链重新提交时会生成新 `generation`，旧 Queue 消息和旧回调不能覆盖新结果。

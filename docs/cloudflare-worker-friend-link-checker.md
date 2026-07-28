@@ -4,7 +4,7 @@
 
 ## 项目状态
 
-主题已经接入 Worker 的服务端非阻塞派发和签名回调，并在“Argon 主题设置 → 友情链接”提供启用开关、Worker URL 与两把 HMAC 密钥配置。
+主题已经接入 Worker 的服务端非阻塞派发、签名回调和 WordPress 服务端主动取回兜底，并在“Argon 主题设置 → 友情链接”提供启用开关、Worker URL 与两把 HMAC 密钥配置。
 
 公开仓库的完整部署步骤、Wrangler 示例、Custom Domain 配置和故障排查统一维护在 [Worker README](../workers/friend-link-checker/README.md)。本页只解释架构选择和源站保护边界，避免两份命令清单发生漂移。
 
@@ -15,10 +15,10 @@ WordPress 服务端签名并非阻塞提交 -> Worker 接单 -> D1 + Queue
                                               |
                                      Queue 消费者访问目标站
                                               |
-                                  WordPress <- 签名回调
+                    签名回调（快速路径）或 WordPress 签名主动拉取结果
 ```
 
-WordPress 只生成固定任务内容和 HMAC，并以非阻塞请求直接交给 Worker；失败任务由服务端定时补派。接单 Worker 只校验并入队，真正访问目标博客的是稍后运行的 Queue 消费者，不是 WordPress 服务器，也不是访客或管理员浏览器。
+WordPress 只生成固定任务内容和 HMAC，并以非阻塞请求直接交给 Worker；失败任务由服务端定时补派。接单 Worker 只校验并入队，真正访问目标博客的是稍后运行的 Queue 消费者，不是 WordPress 服务器，也不是访客或管理员浏览器。结果优先走签名回调；若源站 WAF 拦截 Worker 回调，WordPress 会在管理轮询和 5 分钟 WP-Cron 中使用当前 `generation` 主动取回同一份结果。
 
 这种拆分同时解决三个问题：
 
@@ -32,6 +32,7 @@ WordPress 只生成固定任务内容和 HMAC，并以非阻塞请求直接交�
 - Public Suffix List 用于限定主域、`www`、`blog` 候选的站点边界，避免把共享托管后缀误当成同一网站。
 - 任务提交和结果回调使用两把不同的 HMAC Secret，并校验 5 分钟时间窗与随机数防重放。
 - 每次重新提交都会更新不可变 `generation`；旧 Queue 消息与旧回调不能覆盖新任务。
+- 主动查询结果同样校验提交 HMAC、5 分钟时间窗和 `generation`，只能读取当前友链任务；成功取回后与回调共用同一套字段优先级和落库逻辑。
 - `unknown` 表示地区网络、超时、403、真实验证页或内容不可读，不会被自动当成“未上友链”；普通页面加载评论验证码脚本不会被误判。
 - 管理查询令牌只保存在 Cloudflare Secret 中，不进入 WordPress 后台。
 

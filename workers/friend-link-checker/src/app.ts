@@ -1,5 +1,6 @@
 import { assertSafePublicUrl, isSameCandidateSite } from './domain';
 import { constantTimeEqual, verifySignedPayload } from './security';
+import { isTerminalJob, jobResultPayload } from './result';
 import type {
   FriendLinkJob,
   JobStore,
@@ -192,6 +193,48 @@ async function handleJobRead(request: Request, jobId: string, services: RuntimeS
   return job ? jsonResponse(job, 200) : jsonResponse({ success: false, error: 'not_found' }, 404);
 }
 
+async function handleSignedResultRead(request: Request, jobId: string, services: RuntimeServices): Promise<Response> {
+  if (!services.config.submitSecret) {
+    return jsonResponse({ success: false, error: 'worker_not_configured' }, 503);
+  }
+  let rawBody: string;
+  try {
+    rawBody = await readRequestTextLimited(request);
+  } catch {
+    return jsonResponse({ success: false, error: 'body_too_large' }, 413);
+  }
+  const verified = await verifySignedPayload(request.headers, rawBody, services.config.submitSecret, services.now());
+  if (!verified) return jsonResponse({ success: false, error: 'invalid_signature' }, 401);
+
+  let payload: Record<string, unknown>;
+  try {
+    payload = JSON.parse(rawBody) as Record<string, unknown>;
+  } catch {
+    return jsonResponse({ success: false, error: 'invalid_json' }, 400);
+  }
+  const generation = String(payload.generation || '');
+  if (!JOB_ID_PATTERN.test(jobId) || !/^[A-Za-z0-9_-]{16,128}$/.test(generation)) {
+    return jsonResponse({ success: false, error: 'invalid_job_reference' }, 400);
+  }
+
+  const job = await services.store.getJob(jobId);
+  if (!job) return jsonResponse({ success: false, error: 'not_found' }, 404);
+  if (!constantTimeEqual(job.generation, generation)) {
+    return jsonResponse({ success: false, error: 'stale_generation' }, 409);
+  }
+  if (!isTerminalJob(job)) {
+    return jsonResponse({
+      success: true,
+      job_id: job.id,
+      generation: job.generation,
+      status: job.status
+    }, 202);
+  }
+
+  await services.store.markCallbackDelivered(job.id, job.generation, services.now());
+  return jsonResponse(jobResultPayload(job), 200);
+}
+
 export async function handleFetch(request: Request, services: RuntimeServices): Promise<Response> {
   const url = new URL(request.url);
   if (request.method === 'GET' && url.pathname === '/health') {
@@ -217,6 +260,11 @@ export async function handleFetch(request: Request, services: RuntimeServices): 
 
   if (request.method === 'POST' && url.pathname === '/v1/jobs') {
     return handleSubmission(request, services);
+  }
+
+  const resultMatch = url.pathname.match(/^\/v1\/jobs\/([A-Za-z0-9_-]{1,96})\/result$/);
+  if (request.method === 'POST' && resultMatch) {
+    return handleSignedResultRead(request, resultMatch[1], services);
   }
 
   const jobMatch = url.pathname.match(/^\/v1\/jobs\/([A-Za-z0-9_-]{1,96})$/);

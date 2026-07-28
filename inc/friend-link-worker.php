@@ -344,8 +344,22 @@ function argon_friend_link_worker_ensure_dispatch_schedule() {
     if (!wp_next_scheduled('argon_friend_link_worker_dispatch_pending')) {
         wp_schedule_event(time() + MINUTE_IN_SECONDS, 'hourly', 'argon_friend_link_worker_dispatch_pending');
     }
+    if (!wp_next_scheduled('argon_friend_link_worker_sync_pending')) {
+        wp_schedule_event(time() + MINUTE_IN_SECONDS, 'argon_friend_link_worker_five_minutes', 'argon_friend_link_worker_sync_pending');
+    }
 }
 add_action('init', 'argon_friend_link_worker_ensure_dispatch_schedule');
+
+function argon_friend_link_worker_cron_schedules($schedules) {
+    if (!isset($schedules['argon_friend_link_worker_five_minutes'])) {
+        $schedules['argon_friend_link_worker_five_minutes'] = array(
+            'interval' => 5 * MINUTE_IN_SECONDS,
+            'display' => 'Argon 友链 Worker 每 5 分钟同步',
+        );
+    }
+    return $schedules;
+}
+add_filter('cron_schedules', 'argon_friend_link_worker_cron_schedules');
 
 function argon_friend_link_worker_verify_callback($request) {
     $secret = argon_friend_link_worker_callback_secret();
@@ -395,58 +409,52 @@ function argon_friend_link_worker_detected_url_allowed($link, $detected_url) {
     return in_array(strtolower($detected_host), array($base_host, 'www.' . $base_host, 'blog.' . $base_host), true);
 }
 
-function argon_friend_link_worker_result_rest($request) {
-    $verified = argon_friend_link_worker_verify_callback($request);
-    if (is_wp_error($verified)) {
-        return argon_friend_link_worker_rest_error(
-            $verified->get_error_code(),
-            $verified->get_error_message(),
-            argon_friend_link_worker_error_status($verified)
-        );
-    }
-
-    $payload = json_decode($verified['body'], true);
+function argon_friend_link_worker_apply_result_payload($payload, $delivery = 'callback') {
     if (!is_array($payload) || intval(isset($payload['version']) ? $payload['version'] : 0) !== 1 || !is_array(isset($payload['result']) ? $payload['result'] : null)) {
-        return argon_friend_link_worker_rest_error('invalid_payload', '回调数据结构无效', 400);
+        return new WP_Error('invalid_payload', 'Worker 结果数据结构无效', array('status' => 400));
     }
 
     $job_id = isset($payload['job_id']) ? sanitize_text_field($payload['job_id']) : '';
     $generation = isset($payload['generation']) ? sanitize_text_field($payload['generation']) : '';
     if (!preg_match('/^[A-Za-z0-9_-]{1,96}$/', $job_id) || !preg_match('/^[A-Za-z0-9_-]{16,128}$/', $generation)) {
-        return argon_friend_link_worker_rest_error('invalid_payload', '任务标识无效', 400);
+        return new WP_Error('invalid_payload', 'Worker 任务标识无效', array('status' => 400));
     }
 
     $link = argon_get_friend_link($job_id);
     if (!$link) {
-        return new WP_REST_Response(array('success' => true, 'ignored' => 'link_missing'), 200);
+        return array('success' => true, 'ignored' => 'link_missing');
     }
     $current_generation = isset($link['worker_generation']) ? (string)$link['worker_generation'] : '';
     if ($current_generation === '' || !hash_equals($current_generation, $generation)) {
-        return new WP_REST_Response(array('success' => true, 'ignored' => 'stale_generation'), 200);
+        return array('success' => true, 'ignored' => 'stale_generation');
     }
 
     $result = $payload['result'];
     $state = isset($result['state']) ? sanitize_text_field($result['state']) : 'error';
     if (!in_array($state, array('complete', 'unknown', 'error'), true)) {
-        return argon_friend_link_worker_rest_error('invalid_payload', '任务状态无效', 400);
+        return new WP_Error('invalid_payload', 'Worker 任务状态无效', array('status' => 400));
     }
     if (isset($result['source']) && $result['source'] !== 'cloudflare_worker') {
-        return argon_friend_link_worker_rest_error('invalid_payload', '任务来源无效', 400);
+        return new WP_Error('invalid_payload', 'Worker 任务来源无效', array('status' => 400));
     }
 
     $checked_at = intval(isset($payload['checked_at']) ? $payload['checked_at'] : 0);
     if ($checked_at <= 0 || $checked_at > time() + 300) $checked_at = time();
+    $received_at = time();
     $update = array(
         'worker_status' => $state,
         'worker_checked_at' => $checked_at,
-        'worker_callback_at' => time(),
+        'worker_result_received_at' => $received_at,
         'worker_attempts' => max(0, intval(isset($result['attempts']) ? $result['attempts'] : 0)),
         'worker_dispatch_attempts' => 0,
         'worker_error' => isset($result['error']) ? sanitize_text_field($result['error']) : '',
+        'worker_result_sync_error' => '',
         'check_source' => 'cloudflare_worker',
         'last_check' => $checked_at,
         'next_worker_dispatch_at' => 0,
     );
+    if ($delivery === 'callback') $update['worker_callback_at'] = $received_at;
+    if ($delivery === 'pull') $update['worker_result_synced_at'] = $received_at;
     if ($state === 'complete' || (isset($result['accessible']) && $result['accessible'] === true)) {
         // unknown/error 常由地区网络或验证页导致，不能把既有可访问状态误降为 false。
         $update['accessible'] = isset($result['accessible']) && $result['accessible'] === true;
@@ -495,7 +503,7 @@ function argon_friend_link_worker_result_rest($request) {
 
     $backlink_state = isset($result['backlink_state']) ? sanitize_text_field($result['backlink_state']) : 'unknown';
     if (!in_array($backlink_state, array('found', 'missing', 'unknown'), true)) {
-        return argon_friend_link_worker_rest_error('invalid_payload', '互链状态无效', 400);
+        return new WP_Error('invalid_payload', 'Worker 互链状态无效', array('status' => 400));
     }
     $update['last_backlink_attempt'] = $checked_at;
     if ($backlink_state === 'found' || $backlink_state === 'missing') {
@@ -511,9 +519,154 @@ function argon_friend_link_worker_result_rest($request) {
     }
 
     if (!argon_update_friend_link($job_id, $update)) {
-        return argon_friend_link_worker_rest_error('update_failed', '无法保存友链检测结果', 500);
+        return new WP_Error('update_failed', '无法保存友链检测结果', array('status' => 500));
     }
-    return new WP_REST_Response(array('success' => true), 200);
+    return array('success' => true);
+}
+
+function argon_friend_link_worker_sync_result($link_id, $force = false) {
+    if (!argon_friend_link_worker_is_configured()) {
+        return new WP_Error('worker_not_configured', '友链检测 Worker 未启用或配置不完整', array('status' => 503));
+    }
+
+    $link_id = sanitize_text_field($link_id);
+    $link = $link_id !== '' ? argon_get_friend_link($link_id) : null;
+    if (!$link) return new WP_Error('friend_link_not_found', '友链不存在', array('status' => 404));
+    $generation = isset($link['worker_generation']) ? (string)$link['worker_generation'] : '';
+    if (!preg_match('/^[A-Za-z0-9_-]{16,128}$/', $generation)) {
+        return new WP_Error('worker_generation_missing', '友链尚未提交有效的 Worker 任务', array('status' => 409));
+    }
+
+    $throttle_key = 'argon_flink_pull_' . hash('sha256', $link_id . '|' . $generation);
+    if (!$force && get_transient($throttle_key) !== false) {
+        return array('success' => true, 'status' => 'throttled');
+    }
+    set_transient($throttle_key, 1, 8);
+
+    $body = wp_json_encode(array('generation' => $generation), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    if (!is_string($body) || $body === '') {
+        return new WP_Error('result_request_encode_failed', '无法生成 Worker 结果查询', array('status' => 500));
+    }
+    $timestamp = time();
+    $nonce = argon_friend_link_worker_nonce();
+    $signature = hash_hmac(
+        'sha256',
+        $timestamp . '.' . $nonce . '.' . $body,
+        argon_friend_link_worker_submit_secret()
+    );
+    $response = wp_remote_post(
+        argon_friend_link_worker_url() . '/v1/jobs/' . rawurlencode($link_id) . '/result',
+        array(
+            'headers' => array(
+                'Content-Type' => 'application/json',
+                'X-Argon-Timestamp' => (string)$timestamp,
+                'X-Argon-Nonce' => $nonce,
+                'X-Argon-Signature' => 'sha256=' . $signature,
+            ),
+            'body' => $body,
+            'blocking' => true,
+            'timeout' => 5,
+            'redirection' => 0,
+            'data_format' => 'body',
+        )
+    );
+    if (is_wp_error($response)) {
+        argon_update_friend_link($link_id, array(
+            'worker_result_sync_error' => sanitize_text_field($response->get_error_message()),
+            'worker_last_sync_at' => time(),
+        ));
+        return $response;
+    }
+
+    $status_code = wp_remote_retrieve_response_code($response);
+    $response_body = wp_remote_retrieve_body($response);
+    $payload = json_decode($response_body, true);
+    if ($status_code === 202) {
+        argon_update_friend_link($link_id, array(
+            'worker_result_sync_error' => '',
+            'worker_last_sync_at' => time(),
+        ));
+        return array(
+            'success' => true,
+            'status' => is_array($payload) && isset($payload['status']) ? sanitize_text_field($payload['status']) : 'pending',
+        );
+    }
+    if ($status_code === 200) {
+        $applied = argon_friend_link_worker_apply_result_payload($payload, 'pull');
+        if (!is_wp_error($applied)) {
+            argon_update_friend_link($link_id, array('worker_last_sync_at' => time(), 'worker_result_sync_error' => ''));
+        }
+        return $applied;
+    }
+
+    $error_code = is_array($payload) && !empty($payload['error'])
+        ? sanitize_text_field($payload['error'])
+        : 'worker_result_http_' . intval($status_code);
+    argon_update_friend_link($link_id, array(
+        'worker_result_sync_error' => $error_code,
+        'worker_last_sync_at' => time(),
+    ));
+    return new WP_Error($error_code, 'Worker 结果查询失败', array('status' => $status_code > 0 ? $status_code : 502));
+}
+
+function argon_friend_link_worker_sync_pending($limit = 10) {
+    if (!argon_friend_link_worker_is_configured()) return array('completed' => 0, 'pending' => 0, 'failed' => 0);
+    $limit = max(1, min(20, intval($limit)));
+    $now = time();
+    $links = get_option('argon_friend_links', array());
+    if (!is_array($links)) $links = array();
+    $candidates = array_values(array_filter($links, function($link) use ($now) {
+        if (!is_array($link) || empty($link['id']) || empty($link['worker_generation'])) return false;
+        if (isset($link['status']) && $link['status'] === 'rejected') return false;
+        $worker_status = isset($link['worker_status']) ? (string)$link['worker_status'] : '';
+        if (!in_array($worker_status, array('dispatching', 'submitted'), true)) return false;
+        $submitted_at = intval(isset($link['worker_submitted_at']) ? $link['worker_submitted_at'] : 0);
+        return $submitted_at <= 0 || $submitted_at <= $now - MINUTE_IN_SECONDS;
+    }));
+    usort($candidates, function($left, $right) {
+        return intval(isset($left['worker_last_sync_at']) ? $left['worker_last_sync_at'] : 0)
+            - intval(isset($right['worker_last_sync_at']) ? $right['worker_last_sync_at'] : 0);
+    });
+
+    $summary = array('completed' => 0, 'pending' => 0, 'failed' => 0);
+    foreach (array_slice($candidates, 0, $limit) as $link) {
+        $result = argon_friend_link_worker_sync_result($link['id']);
+        if (is_wp_error($result)) {
+            $summary['failed']++;
+        } elseif (isset($result['status']) && in_array($result['status'], array('queued', 'running', 'pending', 'throttled'), true)) {
+            $summary['pending']++;
+        } else {
+            $summary['completed']++;
+        }
+    }
+    return $summary;
+}
+
+function argon_friend_link_worker_run_pending_sync() {
+    argon_friend_link_worker_sync_pending(10);
+}
+add_action('argon_friend_link_worker_sync_pending', 'argon_friend_link_worker_run_pending_sync');
+
+function argon_friend_link_worker_result_rest($request) {
+    $verified = argon_friend_link_worker_verify_callback($request);
+    if (is_wp_error($verified)) {
+        return argon_friend_link_worker_rest_error(
+            $verified->get_error_code(),
+            $verified->get_error_message(),
+            argon_friend_link_worker_error_status($verified)
+        );
+    }
+
+    $payload = json_decode($verified['body'], true);
+    $applied = argon_friend_link_worker_apply_result_payload($payload, 'callback');
+    if (is_wp_error($applied)) {
+        return argon_friend_link_worker_rest_error(
+            $applied->get_error_code(),
+            $applied->get_error_message(),
+            argon_friend_link_worker_error_status($applied)
+        );
+    }
+    return new WP_REST_Response($applied, 200);
 }
 
 function argon_register_friend_link_worker_routes() {

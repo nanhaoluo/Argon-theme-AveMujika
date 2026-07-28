@@ -38,6 +38,7 @@ $GLOBALS['argon_worker_test_transients'] = array();
 $GLOBALS['argon_worker_test_routes'] = array();
 $GLOBALS['argon_worker_test_is_admin'] = true;
 $GLOBALS['argon_worker_test_remote_posts'] = array();
+$GLOBALS['argon_worker_test_next_remote_response'] = null;
 $GLOBALS['argon_worker_test_uuid_counter'] = 0;
 
 class WP_Error {
@@ -80,6 +81,7 @@ class WP_REST_Request {
 }
 
 function add_action($hook, $callback) {}
+function add_filter($hook, $callback) {}
 function get_option($name, $default = false) { return $default; }
 function __return_true() { return true; }
 function register_rest_route($namespace, $route, $args) {
@@ -116,7 +118,18 @@ function delete_transient($key) {
 }
 function wp_remote_post($url, $args = array()) {
     $GLOBALS['argon_worker_test_remote_posts'][] = array('url' => $url, 'args' => $args);
+    if (is_array($GLOBALS['argon_worker_test_next_remote_response'])) {
+        $response = $GLOBALS['argon_worker_test_next_remote_response'];
+        $GLOBALS['argon_worker_test_next_remote_response'] = null;
+        return $response;
+    }
     return array('response' => array('code' => false));
+}
+function wp_remote_retrieve_response_code($response) {
+    return is_array($response) && isset($response['response']['code']) ? intval($response['response']['code']) : 0;
+}
+function wp_remote_retrieve_body($response) {
+    return is_array($response) && isset($response['body']) ? (string)$response['body'] : '';
 }
 function wp_next_scheduled($hook, $args = array()) { return false; }
 function wp_schedule_single_event($timestamp, $hook, $args = array()) { return true; }
@@ -400,6 +413,64 @@ argon_worker_assert(
     && $stale_data['ignored'] === 'stale_generation',
     '旧任务代际没有被安全丢弃。'
 );
+
+argon_worker_assert(
+    function_exists('argon_friend_link_worker_sync_result')
+    && function_exists('argon_friend_link_worker_apply_result_payload'),
+    'WordPress 未提供 Worker 结果主动拉取与共用落库函数。'
+);
+if (function_exists('argon_friend_link_worker_sync_result')) {
+    argon_update_friend_link('fl_contract', array(
+        'name' => '旧自动标题',
+        'name_source' => 'worker',
+        'auto_name' => true,
+        'avatar' => 'https://blog.sample-blog.dev/favicon.ico',
+        'avatar_source' => 'worker',
+        'user_avatar' => false,
+        'backlink_check_result' => 'unknown',
+        'has_backlink' => null,
+    ));
+    argon_friend_link_worker_dispatch_async('fl_contract');
+    $pull_generation = $GLOBALS['argon_worker_test_links']['fl_contract']['worker_generation'];
+    $pull_payload = $callback_payload;
+    $pull_payload['generation'] = $pull_generation;
+    $pull_payload['result']['primary'] = '主动拉取标题';
+    $pull_payload['result']['avatar'] = 'https://blog.sample-blog.dev/author.png';
+    $pull_payload['result']['backlink_state'] = 'found';
+    $GLOBALS['argon_worker_test_next_remote_response'] = array(
+        'response' => array('code' => 200),
+        'body' => json_encode($pull_payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+    );
+
+    $pull_result = argon_friend_link_worker_sync_result('fl_contract', true);
+    $pulled_link = argon_get_friend_link('fl_contract');
+    $pull_request = end($GLOBALS['argon_worker_test_remote_posts']);
+    $pull_timestamp = isset($pull_request['args']['headers']['X-Argon-Timestamp']) ? $pull_request['args']['headers']['X-Argon-Timestamp'] : '';
+    $pull_nonce = isset($pull_request['args']['headers']['X-Argon-Nonce']) ? $pull_request['args']['headers']['X-Argon-Nonce'] : '';
+    $pull_signature = isset($pull_request['args']['headers']['X-Argon-Signature']) ? $pull_request['args']['headers']['X-Argon-Signature'] : '';
+    $expected_pull_signature = 'sha256=' . hash_hmac(
+        'sha256',
+        $pull_timestamp . '.' . $pull_nonce . '.' . $pull_request['args']['body'],
+        ARGON_FRIEND_LINK_SUBMIT_HMAC_SECRET
+    );
+    argon_worker_assert(
+        !is_wp_error($pull_result)
+        && isset($pull_result['success'])
+        && $pull_result['success'] === true
+        && $pulled_link['worker_status'] === 'complete'
+        && $pulled_link['name'] === '主动拉取标题'
+        && $pulled_link['avatar'] === 'https://blog.sample-blog.dev/author.png'
+        && $pulled_link['has_backlink'] === true,
+        'Worker 回调缺失时，WordPress 主动拉取结果没有完成落库。'
+    );
+    argon_worker_assert(
+        $pull_request['url'] === 'https://worker.sample-blog.dev/v1/jobs/fl_contract/result'
+        && isset($pull_request['args']['blocking'])
+        && $pull_request['args']['blocking'] === true
+        && hash_equals($expected_pull_signature, $pull_signature),
+        'WordPress 主动拉取请求未使用固定 Worker 地址、阻塞响应或提交密钥签名。'
+    );
+}
 
 if ($failures) {
     fwrite(STDERR, "友链 Worker 桥接测试失败：\n- " . implode("\n- ", $failures) . "\n");
