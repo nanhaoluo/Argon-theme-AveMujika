@@ -636,24 +636,44 @@ $(document).on("keydown", "#navbar_search_input_mobile", function (e) {
 	searchPosts(word);
 });
 /*侧栏搜索*/
+function setLeftbarSearchOpen(isOpen) {
+	var $wrapper = $(".leftbar-search-button");
+	var $container = $("#leftbar_search_container");
+	var $input = $("#leftbar_search_input");
+	$wrapper.toggleClass("open", isOpen);
+	$container.attr("aria-expanded", isOpen ? "true" : "false");
+	$input.prop("readonly", !isOpen)
+		.attr("tabindex", isOpen ? "0" : "-1")
+		.attr("aria-hidden", isOpen ? "false" : "true");
+}
+
 $(document).on("click", "#leftbar_search_container", function () {
-	$(".leftbar-search-button").addClass("open");
-	$("#leftbar_search_input").removeAttr("readonly").focus();
-	$("#leftbar_search_input").focus();
-	$("#leftbar_search_input").select();
+	setLeftbarSearchOpen(true);
+	$("#leftbar_search_input").focus().select();
 	return false;
 });
-$(document).on("blur", "#leftbar_search_container", function () {
-	$(".leftbar-search-button").removeClass("open");
-	$("#leftbar_search_input").attr("readonly", "readonly");
+$(document).on("focusout", ".leftbar-search-button", function () {
+	var wrapper = this;
+	window.setTimeout(function () {
+		if (!wrapper.contains(document.activeElement)) {
+			setLeftbarSearchOpen(false);
+		}
+	}, 0);
 });
 $(document).on("keydown", "#leftbar_search_input", function (e) {
+	if (e.key === "Escape") {
+		e.preventDefault();
+		setLeftbarSearchOpen(false);
+		$("#leftbar_search_container").focus();
+		return;
+	}
 	if (e.keyCode != 13) {
 		return;
 	}
 	let word = $(this).val();
 	if (word == "") {
-		$("#leftbar_search_container").blur();
+		setLeftbarSearchOpen(false);
+		$("#leftbar_search_container").focus();
 		return;
 	}
 	$("html").removeClass("leftbar-opened");

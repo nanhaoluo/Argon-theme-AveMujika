@@ -22,21 +22,40 @@ function argon_emotion_search_assert($condition, $message) {
 
 argon_emotion_search_assert(
 	strpos($style, '.argon-text-input,') !== false
-	&& strpos($style, '#post_comment_content_editor,') !== false
-	&& strpos($style, '--argon-text-input-bg: var(--flinks-input-bg') !== false
+	&& strpos($style, '#post_comment_content_editor {') !== false
+	&& strpos($friendLinks, '--flinks-input-bg: rgba(var(--themecolor-rgbstr), 0.05)') !== false
+	&& strpos($style, '--argon-text-input-bg: rgba(var(--themecolor-rgbstr), 0.05)') !== false
+	&& strpos($style, 'background: var(--argon-text-input-bg) !important;') !== false
 	&& preg_match('/\.argon-text-input:focus\s*,[\s\S]*?#post_comment_content_editor:focus-visible\s*\{[^}]*border-color:\s*rgba\(var\(--themecolor-rgbstr\),\s*0\.45\)[^}]*box-shadow:\s*0 0 0 2px/s', $style) === 1,
 	'公共输入样式没有复用友链输入令牌，或缺少统一聚焦状态。'
 );
 
 argon_emotion_search_assert(
-	preg_match('/#navbar_search_input_container\.open \.argon-text-input-group\s*\{[^}]*border-radius:\s*25px\s*!important;/s', $style) === 1,
+	preg_match('/#navbar_search_input_container \.argon-text-input-group\s*,\s*#navbar_search_input_container\.open \.argon-text-input-group\s*\{[^}]*border-radius:\s*25px\s*!important;/s', $style) === 1,
 	'顶栏搜索框没有保留原有的 25px 大圆角。'
 );
 
 argon_emotion_search_assert(
 	strpos($style, '#navbar_search_input_container.open.has-text .argon-text-input-group') !== false
-	&& strpos($style, 'html.darkmode #navbar_search_input_container.open .argon-text-input-group') !== false,
-	'顶栏搜索框的有内容状态没有复用亮暗模式背景令牌。'
+	&& preg_match('/#navbar_search_input_container\.open \.argon-text-input-group\s*\{[^}]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.72\)\s*!important;[^}]*backdrop-filter:\s*blur\(18px\) saturate\(150%\)/s', $style) === 1
+	&& preg_match('/#navbar_search_input_container\.open \.argon-text-input-group:hover\s*,[\s\S]*?background:\s*rgba\(255,\s*255,\s*255,\s*0\.86\)\s*!important;/s', $style) === 1
+	&& strpos($style, '--argon-text-input-bg: rgba(255, 255, 255, 0.94)') === false
+	&& strpos($style, '--argon-text-input-bg-hover: #fff') === false,
+	'顶栏搜索框没有使用独立于 topbar 的白色半透明毛玻璃表面。'
+);
+
+argon_emotion_search_assert(
+	strpos($sidebar, 'id="leftbar_search_input"') !== false
+	&& preg_match('/id="leftbar_search_input"[^\r\n]*\breadonly\b/i', $sidebar) === 1
+	&& preg_match('/id="leftbar_search_input"[^\r\n]*tabindex="-1"[^\r\n]*aria-hidden="true"/i', $sidebar) === 1
+	&& preg_match('/<\/button>\s*<input id="leftbar_search_input"/s', $sidebar) === 1
+	&& strpos($themejs, 'function setLeftbarSearchOpen(isOpen)') !== false
+	&& strpos($themejs, '.attr("tabindex", isOpen ? "0" : "-1")') !== false
+	&& strpos($themejs, '.attr("aria-hidden", isOpen ? "false" : "true")') !== false
+	&& strpos($themejs, '$(document).on("focusout", ".leftbar-search-button"') !== false
+	&& preg_match('/\.leftbar-search-button\.open #leftbar_search_container\s*\{[^}]*border-radius:\s*var\(--m3-shape-xl,\s*25px\)\s*!important;[^}]*background:\s*transparent\s*!important;[^}]*color:\s*transparent\s*!important;/s', $style) === 1
+	&& preg_match('/\.leftbar-search-button\.open #leftbar_search_input\s*\{[^}]*border-radius:\s*var\(--m3-shape-xl,\s*25px\)\s*!important;[^}]*background:\s*var\(--argon-text-input-bg\)\s*!important;/s', $style) === 1,
+	'侧栏搜索的收起状态仍可聚焦，或展开时仍叠加显示未激活按钮表面。'
 );
 
 foreach (array(

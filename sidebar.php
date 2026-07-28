@@ -547,13 +547,13 @@ if (!class_exists('mobileToolbarMenuWalker')) {
 
 			<div class="card-body text-center leftbar-search-button">
 
-				<button id="leftbar_search_container" class="btn btn-secondary btn-lg active btn-sm btn-block border-0" role="button">
+				<button id="leftbar_search_container" class="btn btn-secondary btn-lg active btn-sm btn-block border-0" role="button" aria-expanded="false">
 
 					<i class="menu-item-icon fa fa-search mr-0"></i> <?php _e('搜索', 'argon');?>
 
-					<input id="leftbar_search_input" type="text" placeholder="<?php _e('搜索什么...', 'argon');?>" class="form-control form-control-alternative argon-text-input" autocomplete="off">
-
 				</button>
+
+				<input id="leftbar_search_input" type="text" placeholder="<?php _e('搜索什么...', 'argon');?>" class="form-control form-control-alternative argon-text-input" autocomplete="off" readonly tabindex="-1" aria-hidden="true">
 
 			</div>
 
