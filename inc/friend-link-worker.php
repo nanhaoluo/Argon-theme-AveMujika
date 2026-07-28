@@ -194,6 +194,7 @@ function argon_friend_link_worker_create_ticket($link) {
         'worker_submitted_at' => $timestamp,
         'worker_dispatch_attempts' => $dispatch_attempts,
         'worker_error' => '',
+        'worker_result_sync_error' => '',
         'next_worker_dispatch_at' => $timestamp + 10 * MINUTE_IN_SECONDS,
     ));
     if (!$saved) {
@@ -217,6 +218,35 @@ function argon_friend_link_worker_error_status($error) {
     return is_array($data) && !empty($data['status']) ? intval($data['status']) : 400;
 }
 
+function argon_friend_link_worker_has_inflight_dispatch($link, $now = null) {
+    if (!is_array($link)) return false;
+    $generation = isset($link['worker_generation']) ? (string)$link['worker_generation'] : '';
+    $status = isset($link['worker_status']) ? (string)$link['worker_status'] : '';
+    $submitted_at = intval(isset($link['worker_submitted_at']) ? $link['worker_submitted_at'] : 0);
+    $now = $now === null ? time() : intval($now);
+    return preg_match('/^[A-Za-z0-9_-]{16,128}$/', $generation)
+        && in_array($status, array('dispatching', 'submitted'), true)
+        && $submitted_at > 0
+        && $submitted_at >= $now - 30 * MINUTE_IN_SECONDS;
+}
+
+function argon_friend_link_worker_dispatch_lock_name($link_id) {
+    return 'argon_flink_dispatch_' . substr(hash('sha256', (string)$link_id), 0, 40);
+}
+
+function argon_friend_link_worker_acquire_dispatch_lock($link_id) {
+    $lock_name = argon_friend_link_worker_dispatch_lock_name($link_id);
+    $now = time();
+    if (add_option($lock_name, $now, '', 'no')) return $lock_name;
+
+    $locked_at = intval(get_option($lock_name, 0));
+    if ($locked_at > 0 && $locked_at < $now - 30) {
+        delete_option($lock_name);
+        if (add_option($lock_name, $now, '', 'no')) return $lock_name;
+    }
+    return false;
+}
+
 function argon_friend_link_worker_dispatch_async($link_id, $schedule_retry = true) {
     if (!argon_friend_link_worker_is_configured()) {
         return new WP_Error('worker_not_configured', '友链检测 Worker 未启用或配置不完整', array('status' => 503));
@@ -227,42 +257,57 @@ function argon_friend_link_worker_dispatch_async($link_id, $schedule_retry = tru
     if (!$link) {
         return new WP_Error('friend_link_not_found', '友链不存在', array('status' => 404));
     }
+    if (argon_friend_link_worker_has_inflight_dispatch($link)) return true;
 
-    $ticket = argon_friend_link_worker_create_ticket($link);
-    if (is_wp_error($ticket)) return $ticket;
+    $dispatch_lock = argon_friend_link_worker_acquire_dispatch_lock($link_id);
+    if ($dispatch_lock === false) return true;
 
-    $response = wp_remote_post($ticket['url'], array(
-        'headers' => $ticket['headers'],
-        'body' => $ticket['body'],
-        'blocking' => false,
-        'timeout' => 1,
-        'redirection' => 0,
-        'data_format' => 'body',
-    ));
-    if (is_wp_error($response)) {
-        $current = argon_get_friend_link($link_id);
-        $attempts = max(1, intval(isset($current['worker_dispatch_attempts']) ? $current['worker_dispatch_attempts'] : 1));
-        argon_update_friend_link($link_id, array(
-            'worker_status' => 'dispatch_failed',
-            'worker_error' => $response->get_error_message(),
-            'next_worker_dispatch_at' => time() + min(3600, 60 * (2 ** min($attempts, 5))),
-        ));
-        if ($schedule_retry && $attempts < 3 && function_exists('wp_schedule_single_event')) {
-            $args = array($link_id);
-            if (!function_exists('wp_next_scheduled') || !wp_next_scheduled('argon_friend_link_worker_retry_dispatch', $args)) {
-                wp_schedule_single_event(time() + min(3600, 60 * (2 ** min($attempts, 5))), 'argon_friend_link_worker_retry_dispatch', $args);
-            }
+    try {
+        // 取得跨请求锁后重新读取，避免两个并发请求都基于锁前的旧状态签发新代际。
+        $link = argon_get_friend_link($link_id);
+        if (!$link) {
+            return new WP_Error('friend_link_not_found', '友链不存在', array('status' => 404));
         }
-        return $response;
-    }
+        if (argon_friend_link_worker_has_inflight_dispatch($link)) return true;
 
-    argon_update_friend_link($link_id, array(
-        'worker_status' => 'submitted',
-        'worker_dispatched_at' => time(),
-        'worker_error' => '',
-        'next_worker_dispatch_at' => 0,
-    ));
-    return true;
+        $ticket = argon_friend_link_worker_create_ticket($link);
+        if (is_wp_error($ticket)) return $ticket;
+
+        $response = wp_remote_post($ticket['url'], array(
+            'headers' => $ticket['headers'],
+            'body' => $ticket['body'],
+            'blocking' => false,
+            'timeout' => 1,
+            'redirection' => 0,
+            'data_format' => 'body',
+        ));
+        if (is_wp_error($response)) {
+            $current = argon_get_friend_link($link_id);
+            $attempts = max(1, intval(isset($current['worker_dispatch_attempts']) ? $current['worker_dispatch_attempts'] : 1));
+            argon_update_friend_link($link_id, array(
+                'worker_status' => 'dispatch_failed',
+                'worker_error' => $response->get_error_message(),
+                'next_worker_dispatch_at' => time() + min(3600, 60 * (2 ** min($attempts, 5))),
+            ));
+            if ($schedule_retry && $attempts < 3 && function_exists('wp_schedule_single_event')) {
+                $args = array($link_id);
+                if (!function_exists('wp_next_scheduled') || !wp_next_scheduled('argon_friend_link_worker_retry_dispatch', $args)) {
+                    wp_schedule_single_event(time() + min(3600, 60 * (2 ** min($attempts, 5))), 'argon_friend_link_worker_retry_dispatch', $args);
+                }
+            }
+            return $response;
+        }
+
+        argon_update_friend_link($link_id, array(
+            'worker_status' => 'submitted',
+            'worker_dispatched_at' => time(),
+            'worker_error' => '',
+            'next_worker_dispatch_at' => 0,
+        ));
+        return true;
+    } finally {
+        delete_option($dispatch_lock);
+    }
 }
 
 function argon_friend_link_worker_retry_dispatch($link_id) {
@@ -602,6 +647,23 @@ function argon_friend_link_worker_sync_result($link_id, $force = false) {
     $error_code = is_array($payload) && !empty($payload['error'])
         ? sanitize_text_field($payload['error'])
         : 'worker_result_http_' . intval($status_code);
+    if ($error_code === 'stale_generation') {
+        // D1 与 WordPress 的代际已错位，继续拉取只会永久得到 409。
+        // 废弃本地代际并立即签发一个新任务，让双方重新收敛到同一 generation。
+        argon_update_friend_link($link_id, array(
+            'worker_generation' => '',
+            'worker_status' => 'dispatch_failed',
+            'worker_dispatch_attempts' => 0,
+            'worker_result_sync_error' => $error_code,
+            'worker_last_sync_at' => time(),
+            'next_worker_dispatch_at' => 0,
+        ));
+        $redispatched = argon_friend_link_worker_dispatch_async($link_id);
+        if (!is_wp_error($redispatched)) {
+            return array('success' => true, 'status' => 'redispatched');
+        }
+        return $redispatched;
+    }
     argon_update_friend_link($link_id, array(
         'worker_result_sync_error' => $error_code,
         'worker_last_sync_at' => time(),

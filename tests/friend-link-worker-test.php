@@ -40,6 +40,7 @@ $GLOBALS['argon_worker_test_is_admin'] = true;
 $GLOBALS['argon_worker_test_remote_posts'] = array();
 $GLOBALS['argon_worker_test_next_remote_response'] = null;
 $GLOBALS['argon_worker_test_uuid_counter'] = 0;
+$GLOBALS['argon_worker_test_options'] = array();
 
 class WP_Error {
     public $code;
@@ -82,7 +83,20 @@ class WP_REST_Request {
 
 function add_action($hook, $callback) {}
 function add_filter($hook, $callback) {}
-function get_option($name, $default = false) { return $default; }
+function get_option($name, $default = false) {
+    return array_key_exists($name, $GLOBALS['argon_worker_test_options'])
+        ? $GLOBALS['argon_worker_test_options'][$name]
+        : $default;
+}
+function add_option($name, $value = '', $deprecated = '', $autoload = null) {
+    if (array_key_exists($name, $GLOBALS['argon_worker_test_options'])) return false;
+    $GLOBALS['argon_worker_test_options'][$name] = $value;
+    return true;
+}
+function delete_option($name) {
+    unset($GLOBALS['argon_worker_test_options'][$name]);
+    return true;
+}
 function __return_true() { return true; }
 function register_rest_route($namespace, $route, $args) {
     $GLOBALS['argon_worker_test_routes'][$namespace . $route] = $args;
@@ -184,6 +198,18 @@ argon_worker_assert(
     isset($GLOBALS['argon_worker_test_links']['fl_contract']['worker_generation'])
     && $GLOBALS['argon_worker_test_links']['fl_contract']['worker_generation'] === $nonce,
     '签发后没有保存当前任务代际。'
+);
+
+$inflight_generation = $GLOBALS['argon_worker_test_links']['fl_contract']['worker_generation'];
+$inflight_attempts = $GLOBALS['argon_worker_test_links']['fl_contract']['worker_dispatch_attempts'];
+$inflight_request_count = count($GLOBALS['argon_worker_test_remote_posts']);
+$duplicate_dispatch = argon_friend_link_worker_dispatch_async('fl_contract');
+argon_worker_assert(
+    $duplicate_dispatch === true
+    && $GLOBALS['argon_worker_test_links']['fl_contract']['worker_generation'] === $inflight_generation
+    && $GLOBALS['argon_worker_test_links']['fl_contract']['worker_dispatch_attempts'] === $inflight_attempts
+    && count($GLOBALS['argon_worker_test_remote_posts']) === $inflight_request_count,
+    '在途 Worker 任务被重复派发，可能导致 WordPress 与 D1 的任务代际错位。'
 );
 
 $generation = $GLOBALS['argon_worker_test_links']['fl_contract']['worker_generation'];
@@ -469,6 +495,26 @@ if (function_exists('argon_friend_link_worker_sync_result')) {
         && $pull_request['args']['blocking'] === true
         && hash_equals($expected_pull_signature, $pull_signature),
         'WordPress 主动拉取请求未使用固定 Worker 地址、阻塞响应或提交密钥签名。'
+    );
+
+    argon_friend_link_worker_dispatch_async('fl_contract');
+    $stale_local_generation = argon_get_friend_link('fl_contract')['worker_generation'];
+    $stale_sync_request_count = count($GLOBALS['argon_worker_test_remote_posts']);
+    $GLOBALS['argon_worker_test_next_remote_response'] = array(
+        'response' => array('code' => 409),
+        'body' => json_encode(array('success' => false, 'error' => 'stale_generation')),
+    );
+    $stale_sync_result = argon_friend_link_worker_sync_result('fl_contract', true);
+    $recovered_link = argon_get_friend_link('fl_contract');
+    argon_worker_assert(
+        !is_wp_error($stale_sync_result)
+        && isset($stale_sync_result['status'])
+        && $stale_sync_result['status'] === 'redispatched'
+        && $recovered_link['worker_status'] === 'submitted'
+        && $recovered_link['worker_generation'] !== $stale_local_generation
+        && $recovered_link['worker_dispatch_attempts'] === 1
+        && count($GLOBALS['argon_worker_test_remote_posts']) === $stale_sync_request_count + 2,
+        'Worker 主动拉取发现任务代际错位后没有自动废弃旧代际并重新派发。'
     );
 }
 
