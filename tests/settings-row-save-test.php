@@ -45,6 +45,11 @@ argon_settings_row_assert(
 	'设置项目名称仍可能在单个词或中文字符中被强制换行。'
 );
 argon_settings_row_assert(
+	strpos($source, 'margin: 10px 0 0 auto;') !== false
+	&& strpos($source, 'justify-content: flex-end;') !== false,
+	'窄屏保存与撤销按钮没有在当前设置项 td 内靠右。'
+);
+argon_settings_row_assert(
 	strpos($source, 'name="argon_panic_mode_date_ranges_present"') !== false
 	&& strpos($source, 'data-argon-dynamic-container') !== false
 	&& strpos($source, 'argonInitialHtml') !== false

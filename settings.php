@@ -7278,8 +7278,15 @@ window.pjaxLoaded = function(){
 		}
 
 		#main_form > .form-table > tbody > tr > th:not(.subtitle) {
-			width: 230px;
-			min-width: 230px;
+			width: auto;
+			min-width: 0;
+			max-width: 220px;
+			padding-right: 12px;
+			text-align: right;
+		}
+
+		#main_form > .form-table > tbody > tr > td {
+			padding-left: 8px;
 		}
 
 		#main_form > .form-table > tbody > tr > th:not(.subtitle) > label,
@@ -7291,22 +7298,36 @@ window.pjaxLoaded = function(){
 		}
 
 		#main_form > .form-table > tbody > tr > th:not(.subtitle) > label {
+			display: inline-block;
 			white-space: nowrap;
 		}
 
-		#main_form > .form-table > tbody > tr.argon-setting-row > td {
-			position: relative;
-			padding-right: 166px;
-		}
+	#main_form > .form-table > tbody > tr.argon-setting-row > td {
+		position: relative;
+	}
 
-		.argon-row-actions {
-			position: absolute;
-			right: 16px;
-			top: 15px;
+	/* 响应式自适应：输入控件不超出所在 td 内容区 */
+	#main_form > .form-table > tbody > tr.argon-setting-row > td input[type="text"],
+	#main_form > .form-table > tbody > tr.argon-setting-row > td input[type="url"],
+	#main_form > .form-table > tbody > tr.argon-setting-row > td input[type="email"],
+	#main_form > .form-table > tbody > tr.argon-setting-row > td input[type="password"],
+	#main_form > .form-table > tbody > tr.argon-setting-row > td input[type="search"],
+	#main_form > .form-table > tbody > tr.argon-setting-row > td input[type="number"],
+	#main_form > .form-table > tbody > tr.argon-setting-row > td select,
+	#main_form > .form-table > tbody > tr.argon-setting-row > td textarea {
+		max-width: 100%;
+		box-sizing: border-box;
+	}
+
+	.argon-row-actions {
+			position: static;
 			display: none;
 			align-items: center;
 			gap: 6px;
-			padding-left: 10px;
+			justify-content: flex-end;
+			margin: 10px 0 0 auto;
+			width: max-content;
+			max-width: 100%;
 		}
 
 		.argon-setting-row.is-dirty > td > .argon-row-actions {
@@ -7344,21 +7365,6 @@ window.pjaxLoaded = function(){
 			.argon-settings-tools {
 				margin-right: 0;
 				flex-wrap: wrap;
-			}
-
-			#main_form > .form-table > tbody > tr > th:not(.subtitle) {
-				width: auto;
-				min-width: 0;
-			}
-
-			#main_form > .form-table > tbody > tr.argon-setting-row > td {
-				padding-right: 10px;
-			}
-
-			.argon-row-actions {
-				position: static;
-				margin-top: 10px;
-				padding-left: 0;
 			}
 
 		}
