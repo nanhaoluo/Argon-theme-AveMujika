@@ -2030,8 +2030,16 @@ function user_can_view_comment($id){
  * 可被嵌套渲染覆盖的全局状态，也不放宽后续请求或其他评论的权限。
  */
 function argon_comment_is_forced_visible($id, $args = array()) {
-	return isset($args['argon_force_visible_comment_id'])
-		&& intval($args['argon_force_visible_comment_id']) === intval($id);
+	if (!isset($args['argon_force_visible_comment_id'])
+		|| intval($args['argon_force_visible_comment_id']) !== intval($id)) {
+		return false;
+	}
+	$comment = get_comment($id);
+	if (!$comment) {
+		return false;
+	}
+	// 待审核/垃圾评论不能因为 AJAX 的即时渲染参数泄露给访客。
+	return (string)$comment->comment_approved === '1' || current_user_can('moderate_comments');
 }
 //过滤 RSS 中悄悄话
 function remove_rss_private_comment_title_and_author($str){
@@ -2339,7 +2347,8 @@ $GLOBALS['argon_comment_options']['show_comment_parent_info'] = (get_option("arg
 function argon_comment_format($comment, $args, $depth){
 	global $comment_enable_upvote, $comment_enable_pinning;
 	$GLOBALS['comment'] = $comment;
-	if (empty($comment -> placeholder) && (user_can_view_comment(get_comment_ID()) || argon_comment_is_forced_visible(get_comment_ID(), $args))){
+	$comment_public = (string)$comment->comment_approved === '1' || current_user_can('moderate_comments');
+	if (empty($comment -> placeholder) && $comment_public && (user_can_view_comment(get_comment_ID()) || argon_comment_is_forced_visible(get_comment_ID(), $args))){
 	?>
 	<li class="comment-item" id="comment-<?php comment_ID(); ?>" data-id="<?php comment_ID(); ?>" data-use-markdown="<?php echo get_comment_meta(get_comment_ID(), "use_markdown", true);?>">
 		<div class="comment-item-left-wrapper">
@@ -2423,6 +2432,9 @@ function argon_comment_format($comment, $args, $depth){
 <?php }}
 //评论样式格式化 (说说预览界面)
 function argon_comment_shuoshuo_preview_format($comment, $args, $depth){
+	if ((string)$comment->comment_approved !== '1' && !current_user_can('moderate_comments')) {
+		return;
+	}
 	$GLOBALS['comment'] = $comment;?>
 	<li class="comment-item" id="comment-<?php comment_ID(); ?>">
 		<div class="comment-item-inner " id="comment-inner-<?php comment_ID();?>">
@@ -3054,15 +3066,19 @@ function ajax_post_comment(){
 			do_action('set_comment_cookies', $_comment, $user);
 		}
 	}
-	$html = wp_list_comments(
-		array(
-			'type'      => 'comment',
-			'callback'  => 'argon_comment_format',
-			'echo'      => false,
-			'argon_force_visible_comment_id' => intval($comment -> comment_ID)
-		),
-		array($comment)
-	);
+	$is_pending = (string)$comment->comment_approved !== '1';
+	$html = '';
+	if (!$is_pending || current_user_can('moderate_comments')) {
+		$html = wp_list_comments(
+			array(
+				'type'      => 'comment',
+				'callback'  => 'argon_comment_format',
+				'echo'      => false,
+				'argon_force_visible_comment_id' => intval($comment -> comment_ID)
+			),
+			array($comment)
+		);
+	}
 	$newCaptchaSeed = get_comment_captcha_seed(true);
 	$newCaptcha = get_comment_captcha($newCaptchaSeed);
 	if (current_user_can('moderate_comments')){
@@ -3073,6 +3089,7 @@ function ajax_post_comment(){
 	exit(json_encode(array(
 		'status' => 'success',
 		'html' => $html,
+		'isPending' => $is_pending,
 		'id' => $comment -> comment_ID,
 		'parentID' => $comment -> comment_parent,
 		'commentOrder' => (get_option("comment_order") == "" ? "desc" : get_option("comment_order")),
@@ -3878,13 +3895,9 @@ function argon_get_comments(){
 		'orderby'        => 'comment_date_gmt',
 		'status'         => 'approve'
 	);
-	if (is_user_logged_in()){
-		$args['include_unapproved'] = array(get_current_user_id());
-	} else {
-		$unapproved_email = wp_get_unapproved_comment_author_email();
-		if ($unapproved_email) {
-			$args['include_unapproved'] = array($unapproved_email);
-		}
+	// 前台只给访客返回已审核评论；管理员保留查看待审核评论的能力。
+	if (current_user_can('moderate_comments')) {
+		$args['status'] = 'all';
 	}
 
 	$comment_query = new WP_Comment_Query;
@@ -7392,6 +7405,53 @@ function argon_normalize_ai_provider($provider) {
 	return 'openai_compatible';
 }
 
+/**
+ * 将 OpenAI 兼容服务的地址归一化为 chat/completions 完整端点。
+ * 兼容用户填写域名、/v1、/api/v3、/responses 或带尾斜杠的地址。
+ */
+function argon_normalize_ai_chat_endpoint($endpoint, $provider = 'openai_compatible') {
+	$endpoint = trim((string)$endpoint);
+	if ($endpoint === '') {
+		$endpoint = argon_get_default_ai_endpoint($provider);
+	}
+	if ($endpoint === '') {
+		return '';
+	}
+	if (!preg_match('#^https?://#i', $endpoint)) {
+		$endpoint = 'https://' . ltrim($endpoint, '/');
+	}
+
+	$parts = wp_parse_url($endpoint);
+	if (!is_array($parts) || empty($parts['host'])) {
+		return rtrim($endpoint, '/') . '/chat/completions';
+	}
+
+	$path = isset($parts['path']) ? rtrim((string)$parts['path'], '/') : '';
+	if (preg_match('#/(?:responses|models)$#i', $path)) {
+		$path = preg_replace('#/(?:responses|models)$#i', '/chat/completions', $path);
+	} elseif (!preg_match('#/chat/completions$#i', $path)) {
+		$path = ($path === '' || $path === '/') ? '/v1/chat/completions' : $path . '/chat/completions';
+	}
+
+	$normalized = (isset($parts['scheme']) ? $parts['scheme'] : 'https') . '://' . $parts['host'];
+	if (!empty($parts['port'])) {
+		$normalized .= ':' . intval($parts['port']);
+	}
+	$normalized .= $path;
+	if (isset($parts['query']) && $parts['query'] !== '') {
+		$normalized .= '?' . $parts['query'];
+	}
+	return $normalized;
+}
+
+function argon_get_ai_models_endpoint($endpoint, $provider = 'openai_compatible') {
+	$chat_endpoint = argon_normalize_ai_chat_endpoint($endpoint, $provider);
+	if ($chat_endpoint === '') {
+		return '';
+	}
+	return preg_replace('#/chat/completions(?:\?.*)?$#i', '/models', $chat_endpoint);
+}
+
 function argon_get_ai_provider_label($provider) {
 	return argon_normalize_ai_provider($provider) === 'anthropic_compatible'
 		? __('Anthropic 兼容', 'argon')
@@ -7431,6 +7491,12 @@ function argon_normalize_xiaomi_model_name($model, $endpoint) {
 
 function argon_get_default_ai_model($provider, $endpoint = '') {
 	$provider = strtolower(trim((string)$provider));
+	if ($provider === 'openai_compatible' && $endpoint !== '') {
+		$endpoint_host = wp_parse_url($endpoint, PHP_URL_HOST);
+		if (is_string($endpoint_host) && stripos($endpoint_host, 'deepseek') !== false) {
+			return 'deepseek-chat';
+		}
+	}
 	$models = [
 		'openai' => 'gpt-4o-mini',
 		'openai_compatible' => 'gpt-4o-mini',
@@ -7460,6 +7526,9 @@ function argon_normalize_ai_api_config($api) {
 	$endpoint = isset($api['api_endpoint']) ? trim((string)$api['api_endpoint']) : '';
 	if ($endpoint === '') {
 		$endpoint = argon_get_default_ai_endpoint($original_provider);
+	}
+	if ($provider === 'openai_compatible') {
+		$endpoint = argon_normalize_ai_chat_endpoint($endpoint, $provider);
 	}
 	$model = isset($api['model']) ? trim((string)$api['model']) : '';
 	if ($model === '') {
@@ -7720,8 +7789,10 @@ function argon_render_ai_summary_markdown($summary) {
 }
 
 function argon_get_openai_compatible_models($api_key, $custom_endpoint = '') {
-	$endpoint = !empty($custom_endpoint) ? $custom_endpoint : argon_get_default_ai_endpoint('openai_compatible');
-	$endpoint = preg_replace('#/chat/completions$#', '/models', $endpoint);
+	$endpoint = argon_get_ai_models_endpoint(
+		!empty($custom_endpoint) ? $custom_endpoint : argon_get_default_ai_endpoint('openai_compatible'),
+		'openai_compatible'
+	);
 	$fallback = [
 		['id' => 'gpt-4o-mini', 'name' => 'gpt-4o-mini'],
 		['id' => 'gpt-4o', 'name' => 'gpt-4o'],
@@ -7736,7 +7807,7 @@ function argon_get_openai_compatible_models($api_key, $custom_endpoint = '') {
 		'timeout' => 15,
 		'sslverify' => true
 	]);
-	if (is_wp_error($response)) {
+	if (is_wp_error($response) || wp_remote_retrieve_response_code($response) < 200 || wp_remote_retrieve_response_code($response) >= 300) {
 		return $fallback;
 	}
 	$body = json_decode(wp_remote_retrieve_body($response), true);
@@ -7954,15 +8025,19 @@ function argon_ai_query($scenario, $prompt, $content, $context = []) {
 	if (empty($endpoint)) {
 		$endpoint = argon_get_default_ai_endpoint($provider);
 	}
+	if ($provider === 'openai_compatible') {
+		$endpoint = argon_normalize_ai_chat_endpoint($endpoint, $provider);
+	}
 	if (empty($model)) {
 		$model = argon_get_default_ai_model($provider, $endpoint);
 	}
+	$use_stream = $scenario === 'summary' && (!array_key_exists('stream', $context) || $context['stream'] !== false);
 
 	try {
 		if ($provider === 'anthropic_compatible') {
 			$result = argon_call_anthropic_api($api_key, $prompt, $content, $post_id, $model, $endpoint);
 		} else {
-			$result = argon_call_openai_api($api_key, $prompt, $content, $post_id, $model, $endpoint);
+			$result = argon_call_openai_api($api_key, $prompt, $content, $post_id, $model, $endpoint, $use_stream);
 		}
 	} catch (Exception $e) {
 		$error_message = $e->getMessage();
@@ -8598,12 +8673,16 @@ function argon_add_api($config) {
 	$api_id = 'api_' . time() . '_' . wp_rand(1000, 9999);
 	
 	// 添加新配置
+	$api_endpoint = isset($config['api_endpoint']) ? esc_url_raw($config['api_endpoint']) : '';
+	if (argon_normalize_ai_provider(isset($config['provider']) ? $config['provider'] : 'openai_compatible') === 'openai_compatible' && $api_endpoint !== '') {
+		$api_endpoint = argon_normalize_ai_chat_endpoint($api_endpoint, 'openai_compatible');
+	}
 	$new_api = [
 		'id' => $api_id,
 		'name' => sanitize_text_field($config['name']),
 		'provider' => argon_normalize_ai_provider(isset($config['provider']) ? $config['provider'] : 'openai_compatible'),
 		'api_key' => sanitize_text_field($config['api_key']),
-		'api_endpoint' => esc_url_raw($config['api_endpoint']),
+		'api_endpoint' => $api_endpoint,
 		'model' => sanitize_text_field($config['model']),
 		'is_active' => false,
 		'created_at' => time()
@@ -8627,10 +8706,14 @@ function argon_update_api($api_id, $config) {
 	
 	foreach ($apis as &$api) {
 		if ($api['id'] === $api_id) {
+			$api_endpoint = isset($config['api_endpoint']) ? esc_url_raw($config['api_endpoint']) : '';
+			if (argon_normalize_ai_provider(isset($config['provider']) ? $config['provider'] : 'openai_compatible') === 'openai_compatible' && $api_endpoint !== '') {
+				$api_endpoint = argon_normalize_ai_chat_endpoint($api_endpoint, 'openai_compatible');
+			}
 			$api['name'] = sanitize_text_field($config['name']);
 			$api['provider'] = argon_normalize_ai_provider(isset($config['provider']) ? $config['provider'] : 'openai_compatible');
 			$api['api_key'] = sanitize_text_field($config['api_key']);
-			$api['api_endpoint'] = esc_url_raw($config['api_endpoint']);
+			$api['api_endpoint'] = $api_endpoint;
 			$api['model'] = sanitize_text_field($config['model']);
 			$found = true;
 			break;
@@ -8887,13 +8970,14 @@ function argon_generate_ai_summary($post, $ai_context = []) {
 /**
  * 调用 OpenAI API
  */
-function argon_call_openai_api($api_key, $prompt, $content, $post_id = 0, $model = '', $endpoint = '') {
+function argon_call_openai_api($api_key, $prompt, $content, $post_id = 0, $model = '', $endpoint = '', $stream = false) {
 	$provider = 'openai';
 	$config = argon_get_ai_provider_config($provider);
 	
 	if (empty($endpoint)) {
 		$endpoint = !empty($config['api_endpoint']) ? $config['api_endpoint'] : 'https://api.openai.com/v1/chat/completions';
 	}
+	$endpoint = argon_normalize_ai_chat_endpoint($endpoint, 'openai_compatible');
 	if (empty($model)) {
 		$model = !empty($config['model']) ? $config['model'] : 'gpt-4o-mini';
 	}
@@ -8906,17 +8990,19 @@ function argon_call_openai_api($api_key, $prompt, $content, $post_id = 0, $model
 		],
 		'temperature' => 0.7,
 		'max_tokens' => 1000,
-		'stream' => false
+		'stream' => (bool)$stream
 	];
 
-	$response = wp_remote_post($endpoint, [
+	$request_args = [
 		'headers' => [
 			'Content-Type' => 'application/json',
-			'Authorization' => 'Bearer ' . $api_key
+			'Authorization' => 'Bearer ' . $api_key,
+			'Accept' => $stream ? 'text/event-stream, application/json' : 'application/json'
 		],
-		'body' => json_encode($data),
-		'timeout' => 30
-	]);
+		'body' => json_encode($data, JSON_UNESCAPED_UNICODE),
+		'timeout' => $stream ? 60 : 30
+	];
+	$response = wp_remote_post($endpoint, $request_args);
 
 	if (is_wp_error($response)) {
 		argon_log_ai_error('OpenAI', '网络错误', $response->get_error_message(), $post_id, [
@@ -8926,7 +9012,26 @@ function argon_call_openai_api($api_key, $prompt, $content, $post_id = 0, $model
 	}
 
 	$status_code = wp_remote_retrieve_response_code($response);
-	$body = json_decode(wp_remote_retrieve_body($response), true);
+	$raw_body = wp_remote_retrieve_body($response);
+	$body = json_decode($raw_body, true);
+	if (!is_array($body) && $stream && is_string($raw_body) && stripos($raw_body, 'data:') !== false) {
+		$body = ['choices' => [['message' => ['content' => '']]]];
+	}
+
+	// 某些兼容服务不接受 stream=true，摘要自动回退到普通 JSON 请求。
+	if ($stream && ($status_code < 200 || $status_code >= 300 || (is_array($body) && isset($body['error'])))) {
+		$data['stream'] = false;
+		$request_args['headers']['Accept'] = 'application/json';
+		$request_args['body'] = json_encode($data, JSON_UNESCAPED_UNICODE);
+		$request_args['timeout'] = 30;
+		$response = wp_remote_post($endpoint, $request_args);
+		if (is_wp_error($response)) {
+			return false;
+		}
+		$status_code = wp_remote_retrieve_response_code($response);
+		$raw_body = wp_remote_retrieve_body($response);
+		$body = json_decode($raw_body, true);
+	}
 	
 	// 检查 HTTP 状态码
 	if ($status_code !== 200) {
@@ -8949,7 +9054,39 @@ function argon_call_openai_api($api_key, $prompt, $content, $post_id = 0, $model
 		return false;
 	}
 
-	$summary = argon_extract_ai_response_text($body);
+	$summary = '';
+	if ($stream && is_string($raw_body) && stripos($raw_body, 'data:') !== false) {
+		$stream_parts = [];
+		foreach (preg_split('/\r\n|\r|\n/', $raw_body) as $line) {
+			$line = trim($line);
+			if (stripos($line, 'data:') !== 0) {
+				continue;
+			}
+			$payload = trim(substr($line, 5));
+			if ($payload === '' || $payload === '[DONE]') {
+				continue;
+			}
+			$chunk = json_decode($payload, true);
+			if (!is_array($chunk) || empty($chunk['choices']) || !is_array($chunk['choices'])) {
+				continue;
+			}
+			foreach ($chunk['choices'] as $choice) {
+				if (!is_array($choice)) {
+					continue;
+				}
+				$delta = isset($choice['delta']) && is_array($choice['delta']) ? $choice['delta'] : (isset($choice['message']) && is_array($choice['message']) ? $choice['message'] : []);
+				if (isset($delta['content']) && is_string($delta['content'])) {
+					$stream_parts[] = $delta['content'];
+				} elseif (isset($choice['text']) && is_string($choice['text'])) {
+					$stream_parts[] = $choice['text'];
+				}
+			}
+		}
+		$summary = argon_clean_ai_summary_output(implode('', $stream_parts));
+	}
+	if ($summary === '' && is_array($body)) {
+		$summary = argon_extract_ai_response_text($body);
+	}
 	if ($summary === '' && !isset($body['choices'][0]['message'])) {
 		argon_log_ai_error('OpenAI', '响应格式错误', '未找到预期的响应字段', $post_id, [
 			'response_keys' => array_keys($body),
@@ -10177,6 +10314,9 @@ function argon_test_api_connection() {
 	try {
 		if (empty($api_endpoint)) {
 			$api_endpoint = argon_get_default_ai_endpoint($provider);
+		}
+		if ($provider === 'openai_compatible') {
+			$api_endpoint = argon_normalize_ai_chat_endpoint($api_endpoint, $provider);
 		}
 		if (empty($model)) {
 			$model = argon_get_default_ai_model($provider, $api_endpoint);
@@ -12187,8 +12327,13 @@ function argon_auto_detect_spam_on_comment($comment_id, $comment_approved) {
 	if ($check_reason === 'keyword') {
 		argon_async_spam_detection_handler($comment_id);
 	} else {
-		// 其他情况异步检测（延迟 1 秒执行，让评论元数据先保存）
-		wp_schedule_single_event(time() + 1, 'argon_async_spam_detection', [$comment_id]);
+		// 其他情况异步检测；立即触发一次 WP-Cron，避免站点未产生后续请求时任务一直排队。
+		$scheduled = wp_schedule_single_event(time(), 'argon_async_spam_detection', [$comment_id]);
+		if ($scheduled === false || (defined('DISABLE_WP_CRON') && DISABLE_WP_CRON)) {
+			argon_async_spam_detection_handler($comment_id);
+		} elseif (function_exists('spawn_cron')) {
+			spawn_cron(time());
+		}
 	}
 }
 add_action('comment_post', 'argon_auto_detect_spam_on_comment', 10, 2);

@@ -2791,6 +2791,9 @@ const ARGON_FABTN_INIT_MAX_ATTEMPTS = 40;
 
 				// 插入新评论
 				try {
+					if (result.isPending === true || result.isPending === "1") {
+						return;
+					}
 					result.html = String(result.html || "").replace(/<\/?noscript\b[^>]*>/gi, "");
 					var commentsRoot = document.getElementById("comments");
 					var commentsBeforeInsert = commentsRoot
