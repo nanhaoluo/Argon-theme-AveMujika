@@ -14,6 +14,7 @@ function queuedJob(overrides: Partial<FriendLinkJob> = {}): FriendLinkJob {
     url: 'https://sample-blog.dev/',
     hostname: 'sample-blog.dev',
     linksPage: 'https://sample-blog.dev/friends',
+    checkedUrl: '',
     status: 'queued',
     accessible: false,
     readable: false,
@@ -34,7 +35,8 @@ function queuedJob(overrides: Partial<FriendLinkJob> = {}): FriendLinkJob {
     callbackLastError: '',
     createdAt: NOW,
     updatedAt: NOW,
-    ...overrides
+    ...overrides,
+    diagnostics: overrides.diagnostics ?? []
   };
 }
 
@@ -85,10 +87,19 @@ describe('D1 job store', () => {
         description: '站点介绍',
         avatar: 'https://blog.sample-blog.dev/favicon.ico',
         linksPage: 'https://blog.sample-blog.dev/friends/',
-        source: 'wordpress',
+        source: 'html',
         attempts: []
       },
       backlinkState: 'found',
+      checkedUrl: 'https://blog.sample-blog.dev/friends/',
+      diagnostics: [{
+        phase: 'html',
+        url: 'https://blog.sample-blog.dev/',
+        code: 'ok',
+        reachable: true,
+        httpStatus: 0,
+        durationMs: 42
+      }],
       checkedAt: NOW + 2,
       nextCheckAt: NOW + 86_400,
       error: ''
@@ -99,8 +110,10 @@ describe('D1 job store', () => {
       primary: '编程小记',
       linksPage: 'https://blog.sample-blog.dev/friends/',
       backlinkState: 'found',
+      checkedUrl: 'https://blog.sample-blog.dev/friends/',
       callbackStatus: 'pending',
-      attempts: 1
+      attempts: 1,
+      diagnostics: [expect.objectContaining({ phase: 'html', code: 'ok', durationMs: 42 })]
     });
   });
 
@@ -115,6 +128,8 @@ describe('D1 job store', () => {
         source: 'html', attempts: []
       },
       backlinkState: 'unknown',
+      checkedUrl: job.linksPage,
+      diagnostics: [],
       checkedAt: NOW,
       nextCheckAt: NOW + 86_400,
       error: ''
@@ -134,6 +149,39 @@ describe('D1 job store', () => {
     });
   });
 
+  it('increments the failure count when metadata succeeds but backlink detection fails', async () => {
+    const job = queuedJob();
+    await store.acceptSubmission(job, 'nonce-backlink-fail', NOW + 300);
+
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      await store.claimQueuedJob(job.id, job.generation, NOW + attempt);
+      await store.saveDetection(job.id, job.generation, {
+        site: {
+          state: 'ok', accessible: true, readable: true, detectedUrl: job.url,
+          primary: 'Sample Blog', subtitle: '', description: '', avatar: '', linksPage: job.linksPage,
+          source: 'html', attempts: []
+        },
+        backlinkState: 'unknown',
+        checkedUrl: job.linksPage,
+        diagnostics: [],
+        checkedAt: NOW + attempt,
+        nextCheckAt: NOW + 21_600,
+        error: 'links_page_unreadable'
+      });
+
+      await expect(store.getJob(job.id)).resolves.toMatchObject({
+        status: 'complete',
+        failureCount: attempt,
+        lastError: 'links_page_unreadable'
+      });
+
+      if (attempt === 1) {
+        await store.markCallbackDelivered(job.id, job.generation, NOW + attempt);
+        await store.markJobsQueued([{ jobId: job.id, generation: job.generation }], NOW + attempt);
+      }
+    }
+  });
+
   it('rejects a reused submission nonce transactionally', async () => {
     await store.acceptSubmission(queuedJob(), 'nonce-1234567890', NOW + 300);
 
@@ -141,6 +189,13 @@ describe('D1 job store', () => {
       store.acceptSubmission(queuedJob({ id: 'link_456' }), 'nonce-1234567890', NOW + 300)
     ).rejects.toThrow('submission_replayed');
     await expect(store.getJob('link_456')).resolves.toBeNull();
+  });
+
+  it('consumes a standalone probe nonce exactly once', async () => {
+    await store.consumeNonce('probe-nonce-123456', NOW + 300);
+
+    await expect(store.consumeNonce('probe-nonce-123456', NOW + 300))
+      .rejects.toThrow('submission_replayed');
   });
 
   it('returns due jobs and pending callbacks while leaving future completed jobs alone', async () => {
@@ -153,6 +208,8 @@ describe('D1 job store', () => {
         primary: '示例博客', subtitle: '', description: '', avatar: '', linksPage: '', source: 'html', attempts: []
       },
       backlinkState: 'unknown',
+      checkedUrl: '',
+      diagnostics: [],
       checkedAt: NOW,
       nextCheckAt: NOW + 3_600,
       error: ''
@@ -198,6 +255,8 @@ describe('D1 job store', () => {
           primary: '示例博客', subtitle: '', description: '', avatar: '', linksPage: '', source: 'html', attempts: []
         },
         backlinkState: 'unknown',
+        checkedUrl: '',
+        diagnostics: [],
         checkedAt: NOW,
         nextCheckAt: NOW + 86_400,
         error: ''
@@ -213,5 +272,48 @@ describe('D1 job store', () => {
 
     expect(scheduled.filter((job) => job.callbackStatus === 'pending')).toHaveLength(10);
     expect(scheduled).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'due_check' })]));
+  });
+
+  it('returns aggregate status, recent jobs and the latest runtime state', async () => {
+    await store.acceptSubmission(
+      queuedJob({ id: 'status_job', nextCheckAt: NOW - 1 }),
+      'nonce-status-job-1234',
+      NOW + 300
+    );
+    await store.setRuntimeState({
+      kind: 'cron',
+      status: 'ok',
+      startedAt: NOW - 2,
+      finishedAt: NOW - 1,
+      jobId: '',
+      generation: '',
+      detail: { due_count: 1, enqueued_count: 1 },
+      updatedAt: NOW - 1
+    });
+    await store.setRuntimeState({
+      kind: 'probe',
+      status: 'ok',
+      startedAt: NOW - 1,
+      finishedAt: NOW,
+      jobId: '',
+      generation: '',
+      detail: { result_state: 'complete', backlink_state: 'found', error: '' },
+      updatedAt: NOW
+    });
+
+    const snapshot = await store.getStatusSnapshot(NOW, 25);
+
+    expect(snapshot.aggregate).toMatchObject({ total: 1, queued: 1, dueChecks: 1 });
+    expect(snapshot.recentJobs).toEqual([
+      expect.objectContaining({ id: 'status_job', diagnostics: [] })
+    ]);
+    expect(snapshot.runtime.cron).toMatchObject({
+      status: 'ok',
+      detail: { due_count: 1, enqueued_count: 1 }
+    });
+    expect(snapshot.runtime.probe).toMatchObject({
+      status: 'ok',
+      detail: { result_state: 'complete', backlink_state: 'found', error: '' }
+    });
   });
 });

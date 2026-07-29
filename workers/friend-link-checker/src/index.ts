@@ -10,6 +10,7 @@ import { handleFetch, type RuntimeServices } from './app';
 import { D1JobStore } from './d1-store';
 import { createPublicDnsResolver } from './detector';
 import { handleScheduled, processQueueMessage } from './processor';
+import { randomQueueDelaySeconds, randomRecheckDelaySeconds } from './schedule';
 import type { QueueMessage } from './types';
 
 interface WorkerSecrets {
@@ -21,11 +22,6 @@ interface WorkerSecrets {
 type RuntimeEnv = Omit<WorkerBindings, 'CHECK_QUEUE'> & WorkerSecrets & {
   CHECK_QUEUE: Queue<QueueMessage>;
 };
-
-function randomQueueDelaySeconds(): number {
-  const random = crypto.getRandomValues(new Uint16Array(1))[0];
-  return 30 + (random % 151);
-}
 
 function createServices(env: RuntimeEnv): RuntimeServices {
   const fetcher = (input: string, init?: RequestInit) => fetch(input, init);
@@ -43,14 +39,24 @@ function createServices(env: RuntimeEnv): RuntimeServices {
       async send(message, options) {
         await env.CHECK_QUEUE.send(message, options);
       },
-      async sendBatch(messages, options) {
-        await env.CHECK_QUEUE.sendBatch(messages.map((body) => ({ body, ...options })));
+      async sendBatch(messages) {
+        await env.CHECK_QUEUE.sendBatch(messages);
+      },
+      async metrics() {
+        const metrics = await env.CHECK_QUEUE.metrics();
+        const oldest = metrics.oldestMessageTimestamp;
+        return {
+          backlogCount: metrics.backlogCount,
+          backlogBytes: metrics.backlogBytes,
+          oldestMessageTimestamp: oldest instanceof Date ? oldest.getTime() : Number(oldest || 0)
+        };
       }
     },
     fetcher,
     resolver: createPublicDnsResolver(fetcher),
     now: () => Math.floor(Date.now() / 1000),
-    queueDelaySeconds: randomQueueDelaySeconds
+    queueDelaySeconds: randomQueueDelaySeconds,
+    recheckDelaySeconds: randomRecheckDelaySeconds
   };
 }
 
@@ -95,8 +101,11 @@ const worker = {
     }
   },
 
-  async scheduled(_controller, env) {
-    await handleScheduled(createServices(env));
+  async scheduled(controller, env) {
+    await handleScheduled(createServices(env), {
+      cron: controller.cron,
+      scheduledTimeMs: controller.scheduledTime
+    });
   }
 } satisfies ExportedHandler<RuntimeEnv, QueueMessage>;
 

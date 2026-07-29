@@ -7,14 +7,35 @@ import {
   normalizeComparableHostname,
   splitTitle
 } from './domain';
+import type { DetectionDiagnostic } from './types';
 
 const SITE_RESPONSE_LIMIT = 384 * 1024;
-const WORDPRESS_RESPONSE_LIMIT = 128 * 1024;
+const WORDPRESS_RESPONSE_LIMIT = 256 * 1024;
 const BACKLINK_RESPONSE_LIMIT = 512 * 1024;
 const DNS_RESPONSE_LIMIT = 64 * 1024;
 const MAX_REDIRECTS = 2;
 const DNS_QUERY_TIMEOUT_MS = 2_000;
 const CANDIDATE_CONCURRENCY = 3;
+const FRIEND_LINK_DISCOVERY_LIMIT = 8;
+const FRIEND_LINK_DISCOVERY_PATHS = ['/links/', '/friends/', '/friend-links/', '/flinks/', '/blogroll/'] as const;
+const REQUEST_USER_AGENT = 'Mozilla/5.0 (compatible; ArgonFriendLinkChecker/1.0; +https://github.com/nanhaoluo/Argon-theme-AveMujika)';
+const DNS_PROVIDER_GROUPS = [
+  ['cloudflare', 'google'],
+  ['alidns', 'tencent']
+] as const;
+const SAFE_DIAGNOSTIC_CODES = new Set([
+  'unsafe_or_unresolved_dns',
+  'redirect_without_location',
+  'too_many_redirects',
+  'cross_site_redirect',
+  'response_too_large',
+  'timeout',
+  'network_error',
+  'invalid_json',
+  'invalid_wordpress_response',
+  'challenge_or_invalid_html',
+  'links_page_not_confirmed'
+]);
 
 export type WorkerFetcher = (input: string, init?: RequestInit) => Promise<Response>;
 export type HostResolver = (hostname: string, signal?: AbortSignal) => Promise<string[]>;
@@ -25,6 +46,11 @@ export interface DetectionOptions {
   fetcher?: WorkerFetcher;
   resolver?: HostResolver;
   timeoutMs?: number;
+  signal?: AbortSignal;
+}
+
+export interface BacklinkDiscoveryOptions extends DetectionOptions {
+  wordpressApiUrl?: string;
 }
 
 export interface SiteDetection {
@@ -37,24 +63,104 @@ export interface SiteDetection {
   description: string;
   avatar: string;
   linksPage: string;
-  source: 'wordpress' | 'html' | 'unknown';
-  attempts: Array<{ url: string; accessible: boolean; readable: boolean }>;
+  wordpressApiUrl?: string;
+  source: 'argon' | 'wordpress' | 'html' | 'unknown';
+  attempts: Array<{
+    url: string;
+    accessible: boolean;
+    readable: boolean;
+    diagnostics: DetectionDiagnostic[];
+  }>;
 }
 
 export interface BacklinkDetection {
   state: BacklinkState;
   checkedUrl: string;
+  diagnostics: DetectionDiagnostic[];
+}
+
+export interface DiscoveredBacklinkDetection extends BacklinkDetection {
+  linksPage: string;
 }
 
 interface CandidateResult extends Omit<SiteDetection, 'state' | 'attempts'> {
   score: number;
   avatarTier?: number;
+  nameTier?: number;
+  diagnostics?: DetectionDiagnostic[];
 }
 
 class FetchProblem extends Error {
-  constructor(message: string, readonly reachable: boolean) {
-    super(message);
+  constructor(
+    readonly code: string,
+    readonly reachable: boolean,
+    readonly httpStatus = 0
+  ) {
+    super(code);
   }
+}
+
+function abortError(signal: AbortSignal): Error {
+  if (signal.reason instanceof Error) return signal.reason;
+  return new Error(typeof signal.reason === 'string' && signal.reason ? signal.reason : 'operation_aborted');
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw abortError(signal);
+}
+
+async function waitForBatch<T>(promises: Array<Promise<T>>): Promise<T[]> {
+  const settled = await Promise.allSettled(promises);
+  const values: T[] = [];
+  for (const result of settled) {
+    if (result.status === 'rejected') throw result.reason;
+    values.push(result.value);
+  }
+  return values;
+}
+
+function safeDiagnosticCode(error: unknown, fallback = 'network_error'): string {
+  const raw = error instanceof FetchProblem
+    ? error.code
+    : (error instanceof Error ? error.message : '');
+  const normalized = String(raw || '').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
+  if (!normalized || normalized.length > 80) return fallback;
+  if (/^(?:http_\d{3}|(?:cloudflare|google|alidns|tencent)_dns_(?:http_\d{3}|timeout|network_error|invalid_response|response_too_large|no_public_address)|dns_[a-z0-9_]+)$/.test(normalized)) {
+    return normalized;
+  }
+  if (SAFE_DIAGNOSTIC_CODES.has(normalized)) return normalized;
+  return fallback;
+}
+
+function safeDiagnosticUrl(value: string): string {
+  try {
+    const url = assertSafePublicUrl(value);
+    url.username = '';
+    url.password = '';
+    url.search = '';
+    url.hash = '';
+    return url.toString().slice(0, 2_048);
+  } catch {
+    return '';
+  }
+}
+
+function diagnostic(
+  phase: DetectionDiagnostic['phase'],
+  url: string,
+  code: string,
+  startedAt: number,
+  error?: unknown
+): DetectionDiagnostic {
+  const problem = error instanceof FetchProblem ? error : null;
+  return {
+    phase,
+    url: safeDiagnosticUrl(url),
+    code: safeDiagnosticCode(error ?? code, code),
+    reachable: error ? Boolean(problem?.reachable) : true,
+    httpStatus: problem?.httpStatus ?? 0,
+    durationMs: Math.max(0, Date.now() - startedAt)
+  };
 }
 
 function resolveFetcher(options: DetectionOptions): WorkerFetcher {
@@ -80,8 +186,16 @@ async function fetchWithSafeRedirects(
   let currentUrl = assertSafePublicUrl(initialUrl).toString();
 
   for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {
+    throwIfAborted(options.signal);
     const current = assertSafePublicUrl(currentUrl);
-    const addresses = await (options.resolver ?? createPublicDnsResolver(fetcher))(current.hostname, signal);
+    let addresses: string[];
+    try {
+      addresses = await (options.resolver ?? createPublicDnsResolver(fetcher))(current.hostname, signal);
+    } catch (error) {
+      throwIfAborted(options.signal);
+      throw new FetchProblem(signal.aborted ? 'timeout' : safeDiagnosticCode(error, 'dns_error'), false);
+    }
+    throwIfAborted(options.signal);
     if (!addresses.length || addresses.some((address) => !isPublicIpAddress(address))) {
       throw new FetchProblem('unsafe_or_unresolved_dns', false);
     }
@@ -91,10 +205,19 @@ async function fetchWithSafeRedirects(
         method: 'GET',
         redirect: 'manual',
         signal,
-        headers: { Accept: accept }
+        headers: {
+          Accept: accept,
+          'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.7',
+          'User-Agent': REQUEST_USER_AGENT
+        }
       });
     } catch (error) {
-      throw new FetchProblem(error instanceof Error ? error.message : 'network_error', false);
+      throwIfAborted(options.signal);
+      throw new FetchProblem(signal.aborted ? 'timeout' : safeDiagnosticCode(error), false);
+    }
+    if (options.signal?.aborted) {
+      await cancelBody(response);
+      throw abortError(options.signal);
     }
 
     if (response.status < 300 || response.status >= 400) return { response, finalUrl: currentUrl };
@@ -114,7 +237,10 @@ async function fetchWithSafeRedirects(
 
 async function readTextLimited(response: Response, maxBytes: number): Promise<string> {
   const declaredLength = Number(response.headers.get('content-length') || 0);
-  if (declaredLength > maxBytes) throw new FetchProblem('response_too_large', true);
+  if (declaredLength > maxBytes) {
+    await cancelBody(response);
+    throw new FetchProblem('response_too_large', true);
+  }
   if (!response.body) return '';
 
   const reader = response.body.getReader();
@@ -144,16 +270,32 @@ async function fetchReadableText(
 ): Promise<{ text: string; finalUrl: string }> {
   const timeoutMs = Math.max(500, options.timeoutMs ?? 6_000);
   const controller = new AbortController();
+  const parentSignal = options.signal;
+  const abortFromParent = () => controller.abort(parentSignal?.reason || 'operation_aborted');
+  if (parentSignal?.aborted) abortFromParent();
+  else parentSignal?.addEventListener('abort', abortFromParent, { once: true });
   const timer = setTimeout(() => controller.abort('timeout'), timeoutMs);
   try {
+    throwIfAborted(parentSignal);
     const { response, finalUrl } = await fetchWithSafeRedirects(url, accept, options, controller.signal);
+    if (parentSignal?.aborted) {
+      await cancelBody(response);
+      throw abortError(parentSignal);
+    }
     if (!response.ok) {
       await cancelBody(response);
-      throw new FetchProblem(`http_${response.status}`, true);
+      throw new FetchProblem(`http_${response.status}`, true, response.status);
     }
-    return { text: await readTextLimited(response, maxBytes), finalUrl };
+    const text = await readTextLimited(response, maxBytes);
+    throwIfAborted(parentSignal);
+    return { text, finalUrl };
+  } catch (error) {
+    throwIfAborted(parentSignal);
+    if (controller.signal.aborted) throw new FetchProblem('timeout', false);
+    throw error;
   } finally {
     clearTimeout(timer);
+    parentSignal?.removeEventListener('abort', abortFromParent);
   }
 }
 
@@ -162,18 +304,24 @@ export function createPublicDnsResolver(fetcher: WorkerFetcher): HostResolver {
 
   const queryProvider = async (
     hostname: string,
-    provider: 'cloudflare' | 'google',
+    provider: 'cloudflare' | 'google' | 'alidns' | 'tencent',
     parentSignal?: AbortSignal
   ): Promise<string[]> => {
+    throwIfAborted(parentSignal);
     const query = async (type: 'A' | 'AAAA'): Promise<string[]> => {
       const controller = new AbortController();
       const abortFromParent = () => controller.abort(parentSignal?.reason || 'dns_parent_aborted');
       if (parentSignal?.aborted) abortFromParent();
       else parentSignal?.addEventListener('abort', abortFromParent, { once: true });
       const timer = setTimeout(() => controller.abort('dns_timeout'), DNS_QUERY_TIMEOUT_MS);
+      const queryString = `name=${encodeURIComponent(hostname)}&type=${type}`;
       const url = provider === 'cloudflare'
-        ? `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(hostname)}&type=${type}`
-        : `https://dns.google/resolve?name=${encodeURIComponent(hostname)}&type=${type}`;
+        ? `https://cloudflare-dns.com/dns-query?${queryString}`
+        : provider === 'google'
+          ? `https://dns.google/resolve?${queryString}`
+          : provider === 'alidns'
+            ? `https://dns.alidns.com/resolve?${queryString}`
+            : `https://doh.pub/dns-query?${queryString}`;
       try {
         const response = await fetcher(url, {
           method: 'GET',
@@ -194,6 +342,16 @@ export function createPublicDnsResolver(fetcher: WorkerFetcher): HostResolver {
         return (data.Answer ?? [])
           .filter((answer) => answer.type === wantedType && typeof answer.data === 'string')
           .map((answer) => String(answer.data));
+      } catch (error) {
+        throwIfAborted(parentSignal);
+        const message = error instanceof Error ? error.message : '';
+        if (new RegExp(`^${provider}_dns_http_\\d{3}$`).test(message)) throw error;
+        if (controller.signal.aborted) throw new Error(`${provider}_dns_timeout`);
+        if (error instanceof FetchProblem && error.code === 'response_too_large') {
+          throw new Error(`${provider}_dns_response_too_large`);
+        }
+        if (error instanceof SyntaxError) throw new Error(`${provider}_dns_invalid_response`);
+        throw new Error(`${provider}_dns_network_error`);
       } finally {
         clearTimeout(timer);
         parentSignal?.removeEventListener('abort', abortFromParent);
@@ -201,30 +359,37 @@ export function createPublicDnsResolver(fetcher: WorkerFetcher): HostResolver {
     };
 
     const results = await Promise.allSettled([query('A'), query('AAAA')]);
+    throwIfAborted(parentSignal);
     const addresses = results.flatMap((result) => result.status === 'fulfilled' ? result.value : []);
     if (addresses.some((address) => !isPublicIpAddress(address))) throw new Error('dns_private_address');
     if (addresses.length) return [...new Set(addresses)];
 
     const rejected = results.find((result): result is PromiseRejectedResult => result.status === 'rejected');
     if (rejected) throw rejected.reason;
-    throw new Error('dns_no_public_address');
+    throw new Error(`${provider}_dns_no_public_address`);
   };
 
   return async (hostname: string, signal?: AbortSignal): Promise<string[]> => {
+    throwIfAborted(signal);
     const normalized = hostname.toLowerCase().replace(/\.$/, '').replace(/^\[|\]$/g, '');
     if (isPublicIpAddress(normalized)) return [normalized];
     const cached = cache.get(normalized);
     if (cached) return cached;
 
     const lookup = (async () => {
-      let lastError: unknown = new Error('dns_no_public_address');
-      for (const provider of ['cloudflare', 'google'] as const) {
-        try {
-          return await queryProvider(normalized, provider, signal);
-        } catch (error) {
-          if (error instanceof Error && error.message === 'dns_private_address') throw error;
-          lastError = error;
-        }
+      let lastError: unknown = new Error('dns_all_providers_failed');
+      for (const group of DNS_PROVIDER_GROUPS) {
+        throwIfAborted(signal);
+        const results = await Promise.allSettled(group.map((provider) => queryProvider(normalized, provider, signal)));
+        throwIfAborted(signal);
+        const privateResult = results.find((result): result is PromiseRejectedResult =>
+          result.status === 'rejected' && result.reason instanceof Error && result.reason.message === 'dns_private_address'
+        );
+        if (privateResult) throw privateResult.reason;
+        const addresses = results.flatMap((result) => result.status === 'fulfilled' ? result.value : []);
+        if (addresses.length) return [...new Set(addresses)];
+        const rejected = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected');
+        if (rejected.length) lastError = rejected[rejected.length - 1].reason;
       }
       throw lastError;
     })();
@@ -359,7 +524,7 @@ function addAvatarCandidate(candidates: AvatarCandidate[], value: unknown, baseU
   if (!url) return;
   const existing = candidates.find((candidate) => candidate.url === url);
   const weightedScore = score + avatarUrlBonus(url);
-  const tier = avatarTierFromScore(score);
+  const tier = /favicon\.ico(?:[?#]|$)/i.test(url) ? 0 : avatarTierFromScore(score);
   if (existing) {
     existing.score = Math.max(existing.score, weightedScore);
     existing.tier = Math.max(existing.tier, tier);
@@ -477,17 +642,8 @@ function findBestAvatar(html: string, baseUrl: string): AvatarCandidate {
     if (score > 0) addAvatarCandidate(candidates, href, baseUrl, score + (/(?:128|144|152|180|192|256|512)/.test(sizes) ? 15 : 0));
   }
 
-  addAvatarCandidate(candidates, '/favicon.ico', baseUrl, 1);
   candidates.sort((left, right) => right.tier - left.tier || right.score - left.score);
   return candidates[0] || { url: '', score: 0, tier: 0 };
-}
-
-function preferAvatar(primary: string, primaryTier: number, secondary: string, secondaryTier: number): AvatarCandidate {
-  if (!primary) return { url: secondary, score: 0, tier: secondaryTier };
-  if (!secondary) return { url: primary, score: 0, tier: primaryTier };
-  return secondaryTier >= primaryTier
-    ? { url: secondary, score: 0, tier: secondaryTier }
-    : { url: primary, score: 0, tier: primaryTier };
 }
 
 function friendLinksPageScore(url: string, label: string, baseUrl: string): number {
@@ -520,6 +676,66 @@ function findFriendLinksPage(html: string, baseUrl: string): string {
   return bestUrl;
 }
 
+function findElementTextByClass(html: string, classNames: string[]): string {
+  for (const match of html.matchAll(/<([a-z][\w:-]*)\b[^>]*>/gi)) {
+    const openingTag = match[0];
+    const classes = getTagAttribute(openingTag, 'class').split(/\s+/).filter(Boolean);
+    if (!classNames.some((className) => classes.includes(className))) continue;
+    const dataText = cleanText(getTagAttribute(openingTag, 'data-text'));
+    if (dataText) return dataText;
+    const contentStart = (match.index || 0) + openingTag.length;
+    const closing = new RegExp(`</${match[1]}\\s*>`, 'i').exec(html.slice(contentStart));
+    if (!closing) continue;
+    const content = cleanText(html.slice(contentStart, contentStart + closing.index));
+    if (content) return content;
+  }
+  return '';
+}
+
+function findArgonBackgroundAvatar(html: string, baseUrl: string): string {
+  for (const match of html.matchAll(/<[a-z][\w:-]*\b[^>]*>/gi)) {
+    const tag = match[0];
+    const identity = `${getTagAttribute(tag, 'id')} ${getTagAttribute(tag, 'class')}`;
+    if (!/leftbar_overview_author_image|leftbar-(?:mobile-)?avatar/i.test(identity)) continue;
+    const style = getTagAttribute(tag, 'style');
+    const background = style.match(/background(?:-image)?\s*:\s*url\(\s*(['"]?)(.*?)\1\s*\)/i)?.[2] || '';
+    const direct = getTagAttribute(tag, 'src') || getTagAttribute(tag, 'data-src');
+    const avatar = absoluteUrl(background || direct, baseUrl);
+    if (avatar) return avatar;
+  }
+  return '';
+}
+
+function extractArgonInfo(html: string, baseUrl: string): {
+  detected: boolean;
+  primary: string;
+  subtitle: string;
+  avatar: string;
+} {
+  const primary = findElementTextByClass(html, ['leftbar-banner-title', 'banner-title-inner']);
+  const subtitle = findElementTextByClass(html, ['leftbar-banner-subtitle', 'banner-subtitle']);
+  const avatar = findArgonBackgroundAvatar(html, baseUrl);
+  const detected = Boolean(
+    primary || subtitle || avatar
+    || /wp-content\/themes\/argon(?:\/|[-_.])/i.test(html)
+    || /class\s*=\s*["'][^"']*leftbar-banner/i.test(html)
+  );
+  return { detected, primary, subtitle, avatar };
+}
+
+function findWordPressApiRoot(html: string, baseUrl: string): string {
+  for (const tag of html.match(/<link\b[^>]*>/gi) ?? []) {
+    const rel = getTagAttribute(tag, 'rel');
+    if (!/api\.w\.org/i.test(rel)) continue;
+    const href = absoluteUrl(getTagAttribute(tag, 'href'), baseUrl);
+    if (href && isSameCandidateSite(href, baseUrl)) return href;
+  }
+  const hasWordPressEvidence = /<meta\b[^>]*\bcontent\s*=\s*["'][^"']*wordpress/i.test(html)
+    || /\bwp-(?:content|includes)\//i.test(html)
+    || /wp-content\/themes\/argon(?:\/|[-_.])/i.test(html);
+  return hasWordPressEvidence ? new URL('/wp-json/', baseUrl).toString() : '';
+}
+
 function extractHtmlInfo(html: string, baseUrl: string): {
   title: string;
   siteName: string;
@@ -528,6 +744,8 @@ function extractHtmlInfo(html: string, baseUrl: string): {
   avatarTier: number;
   canonicalUrl: string;
   linksPage: string;
+  argon: ReturnType<typeof extractArgonInfo>;
+  wordpressApiUrl: string;
 } {
   const titleMatch = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i);
   const avatar = findBestAvatar(html, baseUrl);
@@ -538,43 +756,9 @@ function extractHtmlInfo(html: string, baseUrl: string): {
     avatar: avatar.url,
     avatarTier: avatar.tier,
     canonicalUrl: findLinkByRel(html, 'canonical', baseUrl),
-    linksPage: findFriendLinksPage(html, baseUrl)
-  };
-}
-
-async function inspectWordPress(candidate: string, options: DetectionOptions): Promise<CandidateResult> {
-  const restUrl = new URL('/wp-json/', candidate).toString();
-  const { text, finalUrl } = await fetchReadableText(
-    restUrl,
-    'application/json',
-    WORDPRESS_RESPONSE_LIMIT,
-    options
-  );
-  let data: Record<string, unknown>;
-  try {
-    data = JSON.parse(text) as Record<string, unknown>;
-  } catch {
-    throw new FetchProblem('invalid_json', true);
-  }
-
-  const name = cleanText(data.name);
-  if (!name) throw new FetchProblem('invalid_wordpress_response', true);
-  const description = cleanText(data.description);
-  const names = splitTitle(name, '');
-  const reportedUrl = absoluteUrl(data.home || data.url, finalUrl);
-  const wordpressAvatar = absoluteUrl(data.site_icon_url, candidate);
-  return {
-    score: 120,
-    accessible: true,
-    readable: true,
-    detectedUrl: reportedUrl && isSameCandidateSite(candidate, reportedUrl) ? reportedUrl : candidate,
-    primary: names.primary,
-    subtitle: names.subtitle,
-    description,
-    avatar: wordpressAvatar,
-    avatarTier: wordpressAvatar && !/favicon\.ico(?:[?#]|$)/i.test(wordpressAvatar) ? 3 : 0,
-    linksPage: '',
-    source: 'wordpress'
+    linksPage: findFriendLinksPage(html, baseUrl),
+    argon: extractArgonInfo(html, baseUrl),
+    wordpressApiUrl: findWordPressApiRoot(html, baseUrl)
   };
 }
 
@@ -587,59 +771,118 @@ async function inspectHtml(candidate: string, options: DetectionOptions): Promis
   );
   if (!isConfirmableHtmlPage(text)) throw new FetchProblem('challenge_or_invalid_html', true);
   const info = extractHtmlInfo(text, finalUrl);
-  const names = splitTitle(info.title, info.siteName);
+  const names = info.argon.primary
+    ? { primary: info.argon.primary, subtitle: info.argon.subtitle }
+    : splitTitle(info.title, info.siteName);
   const canonicalUrl = info.canonicalUrl && isSameCandidateSite(candidate, info.canonicalUrl)
     ? info.canonicalUrl
     : finalUrl;
+  const avatar = info.argon.avatar || info.avatar;
+  const avatarTier = info.argon.avatar ? 5 : info.avatarTier;
+  const nameTier = info.argon.primary ? 4 : (info.siteName ? 3 : (info.title ? 2 : 0));
   return {
-    score: names.primary ? 100 : 60,
+    score: 60 + (nameTier > 0 ? 40 : 0) + avatarTier * 2
+      + (info.description ? 5 : 0) + (info.linksPage ? 5 : 0) + (info.argon.detected ? 10 : 0),
     accessible: true,
     readable: true,
     detectedUrl: canonicalUrl,
     primary: names.primary || fallbackSiteName(finalUrl),
     subtitle: names.subtitle,
     description: info.description,
-    avatar: info.avatar,
-    avatarTier: info.avatarTier,
+    avatar,
+    avatarTier,
+    nameTier,
     linksPage: info.linksPage,
-    source: 'html'
+    source: info.argon.detected ? 'argon' : 'html',
+    wordpressApiUrl: info.wordpressApiUrl
   };
 }
 
-async function inspectCandidate(candidate: string, options: DetectionOptions): Promise<CandidateResult> {
-  let accessible = false;
+async function inspectWordPressApi(
+  candidate: string,
+  apiUrl: string,
+  options: DetectionOptions
+): Promise<CandidateResult> {
+  const { text, finalUrl } = await fetchReadableText(
+    apiUrl,
+    'application/json',
+    WORDPRESS_RESPONSE_LIMIT,
+    options
+  );
+  let data: Record<string, unknown>;
   try {
-    const wordpress = await inspectWordPress(candidate, options);
-    try {
-      const html = await inspectHtml(wordpress.detectedUrl || candidate, options);
-      const preferredAvatar = preferAvatar(
-        wordpress.avatar,
-        wordpress.avatarTier || 0,
-        html.avatar,
-        html.avatarTier || 0
-      );
-      return {
-        ...wordpress,
-        description: wordpress.description || html.description,
-        avatar: preferredAvatar.url,
-        avatarTier: preferredAvatar.tier,
-        linksPage: html.linksPage
-      };
-    } catch {
-      const avatar = wordpress.avatar || absoluteUrl('/favicon.ico', wordpress.detectedUrl || candidate);
-      return {
-        ...wordpress,
-        avatar,
-        avatarTier: wordpress.avatar ? (wordpress.avatarTier || 0) : 0
-      };
-    }
-  } catch (error) {
-    accessible ||= error instanceof FetchProblem && error.reachable;
+    data = JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    throw new FetchProblem('invalid_json', true);
   }
+  const name = cleanText(data.name);
+  const description = cleanText(data.description);
+  const avatar = absoluteUrl(data.site_icon_url, candidate);
+  if (!name && !description && !avatar) throw new FetchProblem('invalid_wordpress_response', true);
+  const names = splitTitle(name, '');
+  const reportedUrl = absoluteUrl(data.home || data.url, finalUrl);
+  const detectedUrl = reportedUrl && isSameCandidateSite(candidate, reportedUrl)
+    ? reportedUrl
+    : candidate;
+  const avatarTier = avatar ? (/favicon\.ico(?:[?#]|$)/i.test(avatar) ? 0 : 3) : 0;
+  return {
+    score: 105 + avatarTier * 2 + (description ? 5 : 0),
+    accessible: true,
+    readable: true,
+    detectedUrl,
+    primary: names.primary || fallbackSiteName(detectedUrl),
+    subtitle: names.subtitle,
+    description,
+    avatar,
+    avatarTier,
+    nameTier: name ? 3 : 0,
+    linksPage: '',
+    wordpressApiUrl: apiUrl,
+    source: 'wordpress'
+  };
+}
+
+function needsWordPressFallback(result: CandidateResult): boolean {
+  return (result.nameTier || 0) === 0
+    || (!result.description && (result.avatarTier || 0) < 2);
+}
+
+function mergeCandidateResults(html: CandidateResult, wordpress: CandidateResult): CandidateResult {
+  const useWordPressName = (wordpress.nameTier || 0) > (html.nameTier || 0);
+  const useWordPressAvatar = Boolean(wordpress.avatar)
+    && (!html.avatar || (wordpress.avatarTier || 0) > (html.avatarTier || 0));
+  const useWordPressDescription = !html.description && Boolean(wordpress.description);
+  return {
+    ...html,
+    score: Math.max(html.score, wordpress.score)
+      + (useWordPressName ? 5 : 0)
+      + (useWordPressAvatar ? 3 : 0)
+      + (useWordPressDescription ? 2 : 0),
+    detectedUrl: html.detectedUrl || wordpress.detectedUrl,
+    primary: useWordPressName ? wordpress.primary : html.primary,
+    subtitle: useWordPressName ? (wordpress.subtitle || html.subtitle) : html.subtitle,
+    description: useWordPressDescription ? wordpress.description : html.description,
+    avatar: useWordPressAvatar ? wordpress.avatar : html.avatar,
+    avatarTier: useWordPressAvatar ? wordpress.avatarTier : html.avatarTier,
+    nameTier: Math.max(html.nameTier || 0, wordpress.nameTier || 0),
+    source: html.source === 'argon'
+      ? 'argon'
+      : (useWordPressName || useWordPressAvatar || useWordPressDescription ? 'wordpress' : html.source)
+  };
+}
+
+async function inspectCandidateHtml(candidate: string, options: DetectionOptions): Promise<CandidateResult> {
+  let accessible = false;
+  const diagnostics: DetectionDiagnostic[] = [];
+  const htmlStartedAt = Date.now();
   try {
-    return await inspectHtml(candidate, options);
+    const html = await inspectHtml(candidate, options);
+    diagnostics.push(diagnostic('html', candidate, 'ok', htmlStartedAt));
+    return { ...html, diagnostics };
   } catch (error) {
+    throwIfAborted(options.signal);
     accessible ||= error instanceof FetchProblem && error.reachable;
+    diagnostics.push(diagnostic('html', candidate, 'html_unreadable', htmlStartedAt, error));
   }
   return {
     score: 0,
@@ -651,11 +894,42 @@ async function inspectCandidate(candidate: string, options: DetectionOptions): P
     description: '',
     avatar: '',
     linksPage: '',
-    source: 'unknown'
+    wordpressApiUrl: '',
+    source: 'unknown',
+    diagnostics
   };
 }
 
+async function enrichCandidateWithWordPress(
+  candidate: string,
+  result: CandidateResult,
+  options: DetectionOptions
+): Promise<CandidateResult> {
+  const wordpressApiUrl = result.wordpressApiUrl;
+  if (!wordpressApiUrl || (result.readable && !needsWordPressFallback(result))) return result;
+
+  const diagnostics = [...(result.diagnostics ?? [])];
+  const wordpressStartedAt = Date.now();
+  try {
+    const wordpress = await inspectWordPressApi(candidate, wordpressApiUrl, options);
+    diagnostics.push(diagnostic('wordpress', wordpressApiUrl, 'ok', wordpressStartedAt));
+    return {
+      ...(result.readable ? mergeCandidateResults(result, wordpress) : wordpress),
+      diagnostics
+    };
+  } catch (error) {
+    throwIfAborted(options.signal);
+    diagnostics.push(diagnostic('wordpress', wordpressApiUrl, 'wordpress_unreadable', wordpressStartedAt, error));
+    return {
+      ...result,
+      accessible: result.accessible || (error instanceof FetchProblem && error.reachable),
+      diagnostics
+    };
+  }
+}
+
 export async function detectSite(value: string, options: DetectionOptions = {}): Promise<SiteDetection> {
+  throwIfAborted(options.signal);
   const candidates = buildCandidates(value);
   const fetcher = resolveFetcher(options);
   const resolvedOptions = {
@@ -663,22 +937,39 @@ export async function detectSite(value: string, options: DetectionOptions = {}):
     fetcher,
     resolver: options.resolver ?? createPublicDnsResolver(fetcher)
   };
-  const attempts: SiteDetection['attempts'] = [];
-  const readable: CandidateResult[] = [];
-  let anyAccessible = false;
+  let evaluated: CandidateResult[] = [];
 
   for (let offset = 0; offset < candidates.length; offset += CANDIDATE_CONCURRENCY) {
+    throwIfAborted(options.signal);
     const batch = candidates.slice(offset, offset + CANDIDATE_CONCURRENCY);
-    const results = await Promise.all(batch.map((candidate) => inspectCandidate(candidate, resolvedOptions)));
-    results.forEach((result, index) => {
-      const candidate = batch[index];
-      anyAccessible ||= result.accessible;
-      attempts.push({ url: candidate, accessible: result.accessible, readable: result.readable });
-      if (result.readable) readable.push(result);
-    });
+    evaluated.push(...await waitForBatch(batch.map((candidate) => inspectCandidateHtml(candidate, resolvedOptions))));
   }
 
-  readable.sort((left, right) => right.score - left.score);
+  const hasSufficientHtml = evaluated.some((result) => result.readable && !needsWordPressFallback(result));
+  if (!hasSufficientHtml) {
+    const enriched: CandidateResult[] = [];
+    for (let offset = 0; offset < candidates.length; offset += CANDIDATE_CONCURRENCY) {
+      throwIfAborted(options.signal);
+      const batchCandidates = candidates.slice(offset, offset + CANDIDATE_CONCURRENCY);
+      const batchResults = evaluated.slice(offset, offset + CANDIDATE_CONCURRENCY);
+      enriched.push(...await waitForBatch(batchResults.map((result, index) =>
+        enrichCandidateWithWordPress(batchCandidates[index], result, resolvedOptions)
+      )));
+    }
+    evaluated = enriched;
+  }
+
+  const attempts: SiteDetection['attempts'] = evaluated.map((result, index) => ({
+    url: candidates[index],
+    accessible: result.accessible,
+    readable: result.readable,
+    diagnostics: result.diagnostics ?? []
+  }));
+  const anyAccessible = evaluated.some((result) => result.accessible);
+  const readable = evaluated.filter((result) => result.readable);
+  readable.sort((left, right) =>
+    right.score - left.score || (right.avatarTier || 0) - (left.avatarTier || 0)
+  );
   const best = readable[0];
   if (!best) {
     return {
@@ -691,11 +982,18 @@ export async function detectSite(value: string, options: DetectionOptions = {}):
       description: '',
       avatar: '',
       linksPage: '',
+      wordpressApiUrl: '',
       source: 'unknown',
       attempts
     };
   }
-  return { state: 'ok', ...best, attempts };
+  const bestAvatar = readable.reduce((selected, candidate) => {
+    if (!candidate.avatar) return selected;
+    if (!selected.avatar) return candidate;
+    return (candidate.avatarTier || 0) > (selected.avatarTier || 0) ? candidate : selected;
+  }, best);
+  const wordpressApiUrl = readable.find((candidate) => candidate.wordpressApiUrl)?.wordpressApiUrl || '';
+  return { state: 'ok', ...best, avatar: bestAvatar.avatar, wordpressApiUrl, attempts };
 }
 
 function extractLinks(html: string, baseUrl: string): string[] {
@@ -717,11 +1015,36 @@ export async function checkBacklink(
   try {
     page = assertSafePublicUrl(linksPage);
     assertSafePublicUrl(localSiteUrl);
-    if (!isSameCandidateSite(targetSiteUrl, page.toString())) return { state: 'unknown', checkedUrl: '' };
+    if (!isSameCandidateSite(targetSiteUrl, page.toString())) {
+      return {
+        state: 'unknown',
+        checkedUrl: '',
+        diagnostics: [{
+          phase: 'backlink',
+          url: safeDiagnosticUrl(linksPage),
+          code: 'links_page_site_mismatch',
+          reachable: false,
+          httpStatus: 0,
+          durationMs: 0
+        }]
+      };
+    }
   } catch {
-    return { state: 'unknown', checkedUrl: '' };
+    return {
+      state: 'unknown',
+      checkedUrl: '',
+      diagnostics: [{
+        phase: 'backlink',
+        url: safeDiagnosticUrl(linksPage),
+        code: 'invalid_links_page',
+        reachable: false,
+        httpStatus: 0,
+        durationMs: 0
+      }]
+    };
   }
 
+  const startedAt = Date.now();
   try {
     const fetcher = resolveFetcher(options);
     const resolvedOptions = {
@@ -735,15 +1058,195 @@ export async function checkBacklink(
       BACKLINK_RESPONSE_LIMIT,
       resolvedOptions
     );
-    if (!isConfirmableHtmlPage(text)) return { state: 'unknown', checkedUrl: finalUrl };
+    if (!isConfirmableHtmlPage(text)) {
+      return {
+        state: 'unknown',
+        checkedUrl: '',
+        diagnostics: [diagnostic('backlink', finalUrl, 'challenge_or_invalid_html', startedAt)]
+      };
+    }
     const localHost = normalizeComparableHostname(localSiteUrl);
     const found = extractLinks(text, finalUrl).some((url) =>
       normalizeComparableHostname(url) === localHost || isSameCandidateSite(url, localSiteUrl)
     );
-    return { state: found ? 'found' : 'missing', checkedUrl: finalUrl };
-  } catch {
-    return { state: 'unknown', checkedUrl: page.toString() };
+    return {
+      state: found ? 'found' : 'missing',
+      checkedUrl: finalUrl,
+      diagnostics: [diagnostic('backlink', finalUrl, found ? 'backlink_found' : 'backlink_missing', startedAt)]
+    };
+  } catch (error) {
+    throwIfAborted(options.signal);
+    return {
+      state: 'unknown',
+      checkedUrl: '',
+      diagnostics: [diagnostic('backlink', page.toString(), 'links_page_unreadable', startedAt, error)]
+    };
   }
+}
+
+function isConfirmedFriendLinksPage(html: string, finalUrl: string): boolean {
+  if (!isConfirmableHtmlPage(html)) return false;
+  const identity = [
+    cleanText(html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || ''),
+    ...Array.from(html.matchAll(/<h[1-3]\b[^>]*>([\s\S]*?)<\/h[1-3]>/gi), (match) => cleanText(match[1]))
+  ].filter(Boolean).join(' ');
+  const semanticMarkup = /(?:class|id)\s*=\s*["'][^"']*(?:friend[-_ ]?links?|flinks?|blogroll)[^"']*["']/i.test(html);
+  return semanticMarkup || friendLinksPageScore(finalUrl, identity, finalUrl) >= 80;
+}
+
+async function discoverWordPressPageCandidates(
+  targetSiteUrl: string,
+  wordpressApiRoot: string,
+  options: DetectionOptions
+): Promise<{ urls: string[]; diagnostics: DetectionDiagnostic[] }> {
+  let apiUrl: URL;
+  try {
+    const apiRoot = assertSafePublicUrl(wordpressApiRoot);
+    if (!isSameCandidateSite(apiRoot.toString(), targetSiteUrl)) {
+      return { urls: [], diagnostics: [] };
+    }
+    if (apiRoot.searchParams.has('rest_route')) {
+      apiRoot.searchParams.set('rest_route', '/wp/v2/pages');
+      apiUrl = apiRoot;
+    } else {
+      if (!apiRoot.pathname.endsWith('/')) apiRoot.pathname += '/';
+      apiRoot.search = '';
+      apiRoot.hash = '';
+      apiUrl = new URL('wp/v2/pages', apiRoot);
+    }
+  } catch {
+    return { urls: [], diagnostics: [] };
+  }
+  apiUrl.searchParams.set('per_page', '20');
+  apiUrl.searchParams.set('_fields', 'link,slug,title');
+  const startedAt = Date.now();
+  try {
+    const { text, finalUrl } = await fetchReadableText(
+      apiUrl.toString(),
+      'application/json',
+      WORDPRESS_RESPONSE_LIMIT,
+      options
+    );
+    const parsed = JSON.parse(text) as unknown;
+    if (!Array.isArray(parsed)) throw new FetchProblem('invalid_wordpress_response', true);
+    const scored: Array<{ url: string; score: number }> = [];
+    for (const value of parsed.slice(0, 20)) {
+      if (!value || typeof value !== 'object') continue;
+      const page = value as Record<string, unknown>;
+      const titleValue = page.title && typeof page.title === 'object'
+        ? (page.title as Record<string, unknown>).rendered
+        : page.title;
+      const title = cleanText(titleValue);
+      const slug = cleanText(page.slug);
+      const pageUrl = absoluteUrl(page.link || (slug ? `/${slug}/` : ''), targetSiteUrl);
+      if (!pageUrl || !isSameCandidateSite(pageUrl, targetSiteUrl)) continue;
+      const score = friendLinksPageScore(pageUrl, `${title} ${slug}`, targetSiteUrl);
+      if (score >= 80) scored.push({ url: pageUrl, score });
+    }
+    scored.sort((left, right) => right.score - left.score);
+    return {
+      urls: [...new Set(scored.map((candidate) => candidate.url))].slice(0, 3),
+      diagnostics: [diagnostic('wordpress', finalUrl, 'ok', startedAt)]
+    };
+  } catch (error) {
+    throwIfAborted(options.signal);
+    return {
+      urls: [],
+      diagnostics: [diagnostic('wordpress', apiUrl.toString(), 'wordpress_unreadable', startedAt, error)]
+    };
+  }
+}
+
+async function inspectDiscoveredBacklinkCandidate(
+  pageUrl: string,
+  localSiteUrl: string,
+  options: DetectionOptions
+): Promise<DiscoveredBacklinkDetection> {
+  const startedAt = Date.now();
+  try {
+    const { text, finalUrl } = await fetchReadableText(
+      pageUrl,
+      'text/html,application/xhtml+xml',
+      BACKLINK_RESPONSE_LIMIT,
+      options
+    );
+    if (!isConfirmedFriendLinksPage(text, finalUrl)) {
+      return {
+        state: 'unknown',
+        linksPage: '',
+        checkedUrl: '',
+        diagnostics: [diagnostic('backlink', finalUrl, 'links_page_not_confirmed', startedAt)]
+      };
+    }
+    const localHost = normalizeComparableHostname(localSiteUrl);
+    const found = extractLinks(text, finalUrl).some((url) =>
+      normalizeComparableHostname(url) === localHost || isSameCandidateSite(url, localSiteUrl)
+    );
+    return {
+      state: found ? 'found' : 'missing',
+      linksPage: finalUrl,
+      checkedUrl: finalUrl,
+      diagnostics: [diagnostic('backlink', finalUrl, found ? 'backlink_found' : 'backlink_missing', startedAt)]
+    };
+  } catch (error) {
+    throwIfAborted(options.signal);
+    return {
+      state: 'unknown',
+      linksPage: '',
+      checkedUrl: '',
+      diagnostics: [diagnostic('backlink', pageUrl, 'links_page_unreadable', startedAt, error)]
+    };
+  }
+}
+
+export async function discoverAndCheckBacklink(
+  targetSiteUrl: string,
+  localSiteUrl: string,
+  options: BacklinkDiscoveryOptions = {}
+): Promise<DiscoveredBacklinkDetection> {
+  throwIfAborted(options.signal);
+  let target: URL;
+  try {
+    target = assertSafePublicUrl(targetSiteUrl);
+    assertSafePublicUrl(localSiteUrl);
+  } catch {
+    return { state: 'unknown', linksPage: '', checkedUrl: '', diagnostics: [] };
+  }
+  const fetcher = resolveFetcher(options);
+  const resolvedOptions = {
+    ...options,
+    timeoutMs: Math.min(options.timeoutMs ?? 6_000, 4_000),
+    fetcher,
+    resolver: options.resolver ?? createPublicDnsResolver(fetcher)
+  };
+  const wordpress = options.wordpressApiUrl
+    ? await discoverWordPressPageCandidates(target.toString(), options.wordpressApiUrl, resolvedOptions)
+    : { urls: [], diagnostics: [] };
+  throwIfAborted(options.signal);
+  const common = FRIEND_LINK_DISCOVERY_PATHS.map((path) => new URL(path, target).toString());
+  const candidates = [...new Set([...wordpress.urls, ...common])]
+    .filter((url) => isSameCandidateSite(url, target.toString()))
+    .slice(0, FRIEND_LINK_DISCOVERY_LIMIT);
+  const diagnostics = [...wordpress.diagnostics];
+  let missing: DiscoveredBacklinkDetection | null = null;
+
+  for (let offset = 0; offset < candidates.length; offset += CANDIDATE_CONCURRENCY) {
+    throwIfAborted(options.signal);
+    const batch = candidates.slice(offset, offset + CANDIDATE_CONCURRENCY);
+    const results = await waitForBatch(batch.map((url) =>
+      inspectDiscoveredBacklinkCandidate(url, localSiteUrl, resolvedOptions)
+    ));
+    for (const result of results) {
+      diagnostics.push(...result.diagnostics);
+      if (result.state === 'found') {
+        return { ...result, diagnostics: diagnostics.slice(0, 64) };
+      }
+      if (!missing && result.state === 'missing') missing = result;
+    }
+  }
+
+  if (missing) return { ...missing, diagnostics: diagnostics.slice(0, 64) };
+  return { state: 'unknown', linksPage: '', checkedUrl: '', diagnostics: diagnostics.slice(0, 64) };
 }
 
 function isConfirmableHtmlPage(html: string): boolean {

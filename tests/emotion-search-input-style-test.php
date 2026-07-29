@@ -13,6 +13,7 @@ $template = file_get_contents($root . '/template-parts/emotion-keyboard.php');
 $header = file_get_contents($root . '/header.php');
 $sidebar = file_get_contents($root . '/sidebar.php');
 $friendLinks = file_get_contents($root . '/friend-links.php');
+$specialPageSurface = file_get_contents($root . '/inc/special-page-surface.php');
 $failures = array();
 
 function argon_emotion_search_assert($condition, $message) {
@@ -23,7 +24,7 @@ function argon_emotion_search_assert($condition, $message) {
 argon_emotion_search_assert(
 	strpos($style, '.argon-text-input,') !== false
 	&& strpos($style, '#post_comment_content_editor {') !== false
-	&& strpos($friendLinks, '--flinks-input-bg: rgba(var(--themecolor-rgbstr), 0.05)') !== false
+	&& strpos($specialPageSurface, '--flinks-input-bg: rgba(var(--themecolor-rgbstr), 0.05)') !== false
 	&& strpos($style, '--argon-text-input-bg: rgba(var(--themecolor-rgbstr), 0.05)') !== false
 	&& strpos($style, 'background: var(--argon-text-input-bg) !important;') !== false
 	&& preg_match('/\.argon-text-input:focus\s*,[\s\S]*?#post_comment_content_editor:focus-visible\s*\{[^}]*border-color:\s*rgba\(var\(--themecolor-rgbstr\),\s*0\.45\)[^}]*box-shadow:\s*0 0 0 2px/s', $style) === 1,

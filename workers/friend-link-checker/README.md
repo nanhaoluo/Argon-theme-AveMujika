@@ -1,6 +1,6 @@
 # Argon 友链检测 Worker
 
-这个 Worker 将友链抓取从 WordPress 源站移到 Cloudflare Queue 消费者，自动识别网站主标题、副标题、描述、头像、对方友链页、可访问性和反链状态，同时避免由博客服务器直接访问目标网站。检测不限于 WordPress，也支持自建框架、纯静态站、宣传页和论坛等普通 HTML 页面；头像按作者头像、网站 Logo、声明图片、有效内容图和站点图标依次降级。
+这个 Worker 将友链抓取从 WordPress 源站移到 Cloudflare Queue 消费者，自动识别网站主标题、副标题、描述、头像、对方友链页、可访问性和反链状态，同时避免由博客服务器直接访问目标网站。站点信息检测先并行读取候选首页 HTML；只要任一首页已经提供充分信息，整次检测就不会请求 WordPress API。所有首页信息都不足、且可读首页明确暴露 REST discovery、WordPress 资源或 Argon 标记时，才会受限读取对应的 WordPress REST 根接口补全站名、描述或站点图标；首页不可读或没有 WordPress 证据时不会猜测 `/wp-json/`。若首页没有友链入口，互链模式会尝试 `/links/`、`/friends/` 等常见同站 HTML 路径，并且只在上述首页证据存在时查询 WordPress Pages；因此同样支持自建框架、纯静态站、宣传页和论坛，而不会向这些站点无条件发送 WordPress API 请求。Worker 不下载图片资源，头像按首页声明的作者头像、网站 Logo、声明图片、有效内容图和站点图标依次降级，并在不同候选域名间确保真实 Logo/头像不会被 `favicon.ico` 覆盖。
 
 ```text
 WordPress 服务端非阻塞 POST /v1/jobs -> D1 + Queue
@@ -82,7 +82,7 @@ npx wrangler d1 create friend-links
 npm run db:migrate:remote
 ```
 
-默认 Cron 是 `17 * * * *`，即每个 UTC 小时的第 17 分钟投递到期复检任务。
+默认 Cron 是 `*/5 * * * *`，即每 5 分钟（UTC）扫描一次到期任务。每个到期任务都会独立增加 30～180 秒 Queue 延迟，避免同批友链同时探测。成功任务的下次复检时间随机分布在 20～28 小时；失败任务在指数退避基础上增加 ±20% 有界抖动，最长不超过 7 天。
 
 ## 三、创建三个不同的 Secret
 
@@ -113,9 +113,13 @@ npx wrangler secret put ADMIN_READ_TOKEN
 ## 四、检查并部署
 
 ```powershell
+npm run db:migrate:remote
 npm run check
 npm run deploy
 ```
+
+升级已有 Worker 时也必须先应用 D1 migration 再部署新代码；本版本依赖 `0003_runtime_status.sql` 中的诊断列、实际互链检查 URL 列和 `runtime_state` 表（含 `probe` 运行态）。
+已有的本地 `wrangler.jsonc` 不会被 Git 自动更新，还应同步把 Cron 改为 `*/5 * * * *`，并在 `compatibility_flags` 中加入 `global_fetch_strictly_public`。
 
 Wrangler 会在成功信息中给出 `https://<worker-name>.<account-subdomain>.workers.dev`。这就是默认 Worker 基础 URL。检查健康状态：
 
@@ -134,6 +138,34 @@ curl "https://<worker-name>.<account-subdomain>.workers.dev/health"
 ```json
 {"ok":true,"service":"friend-link-checker"}
 ```
+
+管理员运行状态使用签名接口读取，不在浏览器中保存长期密钥：
+
+```http
+POST /v1/status
+Content-Type: application/json
+X-Argon-Timestamp: <Unix 秒>
+X-Argon-Nonce: <16～128 位随机值>
+X-Argon-Signature: sha256=<HMAC-SHA256>
+
+{"action":"status","site_url":"https://blog.example.com/"}
+```
+
+签名原文仍是 `<timestamp>.<nonce>.<原始 JSON>`，密钥复用 `SUBMIT_HMAC_SECRET`。`site_url` 必须与 `SITE_URL` 同源。推荐由 WordPress 管理端服务端代理这个请求，再把结果返回给已通过权限和 nonce 校验的管理员浏览器；不要把提交密钥或 `ADMIN_READ_TOKEN` 写入 JavaScript。响应始终带 `Cache-Control: no-store`，包含 Worker 配置就绪状态、实时 Queue backlog、D1 作业聚合、最近 50 个作业的安全字段与具体诊断码、最近 Cron/Queue/Probe 运行态和当前随机调度策略。Queue 或 D1 指标暂不可用时接口仍返回 HTTP 200，并用 `service.status=degraded` 与对应的 `available=false` 明确标注。
+
+管理员手动同步探测使用同一套提交 HMAC，不入 Queue、不写 `jobs`：
+
+```http
+POST /v1/probe
+Content-Type: application/json
+X-Argon-Timestamp: <Unix 秒>
+X-Argon-Nonce: <16～128 位随机值>
+X-Argon-Signature: sha256=<HMAC-SHA256>
+
+{"action":"probe","mode":"backlink","site_url":"https://blog.example.com/","url":"https://friend.example/","links_page":"https://friend.example/links/"}
+```
+
+`mode` 必填：`info` 只更新网站信息，不读取友链页；`backlink` 同时检测互链。`links_page` 可省略；Worker 会先从候选首页 HTML 中识别，未找到时继续尝试常见同站 HTML 路径，只有可读首页明确提供 WordPress/REST/Argon 证据时才查询 WordPress Pages。每个已验签 nonce 会在抓取前消费，同一请求重放会返回 `409 probe_replayed`。成功响应沿用任务回调的 `result` 字段结构，额外包含 `result.detection_source`（检测成功时为 `html`、`wordpress` 或 `argon`，目标不可读时为 `unknown`）以及实际读取完成的 `result.checked_url`；只有确认读取友链页并得出 `found` / `missing` 时，`checked_url` 才是该页面的最终 URL，结论未知时为空。本次同步运行态会写入 `runtime_state(kind=probe)`，供管理员状态页读取。
 
 ## 五、在 Argon 主题中连接 Worker
 
@@ -205,11 +237,16 @@ npm test
 ## API 与安全边界
 
 - `POST /v1/jobs`：校验 WordPress 的 HMAC、5 分钟时间窗和随机数防重放，只写 D1/Queue，返回 `202`。
-- `POST /v1/jobs/<job_id>/result`：WordPress 使用提交 HMAC 和当前 `generation` 主动读取结果；任务未完成返回 `202`，完成返回与回调相同的结果载荷。该接口用于主机 WAF 拦截 Worker 回调时的服务端兜底，不向浏览器暴露密钥。
+- `POST /v1/jobs/<job_id>/result`：WordPress 使用提交 HMAC 和当前 `generation` 主动读取结果；任务未完成返回 `202`，完成返回与回调相同的结果载荷。`result.checked_url` 是实际读取完成的互链页最终 URL（未执行互链读取时为空），用于接收端将 `found` / `missing` 结论绑定到真正检查过的同站页面。该接口用于主机 WAF 拦截 Worker 回调时的服务端兜底，不向浏览器暴露密钥。
+- `POST /v1/probe`：WordPress 管理端使用提交 HMAC 同步执行一次 `mode=info|backlink` 探测；校验签名和 nonce 防重放、`site_url` 同源以及 `url` / `links_page` 的公网和同站边界，不入 Queue、不改 `jobs`，返回通用 `result`、检测来源与有界诊断。网站信息遵循“首页 HTML 优先，且只有首页明确证明为 WordPress/Argon 时才使用 REST”的策略；互链页缺失时会继续执行受限 HTML 候选发现，并在同一证据边界内选择性查询 WordPress Pages。
+- `POST /v1/status`：WordPress 使用提交 HMAC 和本站 URL 读取管理员运行态；不会返回任何 Secret，目标 URL 与诊断 URL 会移除查询串和片段。
 - `GET /v1/jobs/<job_id>`：需要 `Authorization: Bearer <ADMIN_READ_TOKEN>`，不要从公开页面调用。
 - `POST CALLBACK_URL`：Worker 使用独立回调 HMAC；WordPress 校验签名、时间窗、随机数和任务代际。
 - WordPress 管理窗口仅在检测轮询时按 8 秒节流主动同步，普通打开编辑窗口不会等待 Worker；无人打开后台时由 5 分钟 WP-Cron 继续同步。
 - Queue 消费者会检查目标及每次重定向的 DNS 结果，拒绝私网、回环、保留和不可解析地址，避免 SSRF。
+- DNS 预检先并行尝试 Cloudflare/Google DoH，再并行回退到 AliDNS/Tencent DoH；每个请求最多 2 秒，整次目标读取仍受 6 秒总超时限制。任一解析器返回私网地址都会立即拒绝目标，不会因另一解析器返回公网地址而放行。
+- `global_fetch_strictly_public` 确保 Worker 的实际目标请求从公共互联网入口路由，不绕过目标 Zone 的 Cloudflare 安全策略。
+- 最近一次检测会在 D1 中保存有界诊断码，例如 `dns_timeout`、`timeout`、`http_403`、`response_too_large` 和 `challenge_or_invalid_html`；不会保存响应正文、请求头、Secret、URL 查询串或任意异常堆栈。
 - `backlink_state=unknown` 表示超时、地区限制、真实验证页或内容不可读，不会被当成“确认未上链”；普通页面仅加载验证码脚本不会触发该状态。
 - 相同友链重新提交时会生成新 `generation`，旧 Queue 消息和旧回调不能覆盖新结果。
 
@@ -220,6 +257,7 @@ npm test
 - WordPress 显示“已启用但配置不完整”：检查 Worker URL 和两把 HMAC；`ADMIN_READ_TOKEN` 不算 WordPress 配置项。
 - 手工从浏览器调用 Worker 返回 `403 origin_not_allowed`：`ALLOWED_ORIGIN` 必须与地址栏的协议、域名和端口完全一致；主题的正常服务端派发不依赖浏览器 Origin。
 - Worker 返回签名错误：确认两端使用对应的同一把密钥，并检查 WordPress 与 Cloudflare 的时间差。
+- 状态页显示 `degraded`：检查响应中的 `queue.error` 或 `database.error`；该状态表示指标读取降级，不等同于 Worker 完全离线。
 - Queue 或 D1 binding 不存在：确认创建的资源名称与 `wrangler.jsonc` 一致，并已填写正确 `database_id`。
 - 自定义域名打不开：检查它是否作为 Worker Custom Domain 添加；不要只创建普通 DNS 记录或只创建一条没有绑定脚本的 Route。
 - 国外访问目标站缓慢或被屏蔽：结果会保持 `unknown` 并退避重试，不会误判为缺失反链。若站点长期限制 Cloudflare 出口，只能人工确认或增加部署在目标地区的独立探测节点。

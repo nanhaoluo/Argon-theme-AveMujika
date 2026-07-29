@@ -5244,6 +5244,22 @@ function argon_friend_links_rewrite() {
     add_rewrite_rule('^friends/?$', 'index.php?argon_friend_links=1', 'top');
 }
 
+// Worker 实时状态页 URL 重写
+add_action('init', 'argon_worker_status_rewrite');
+function argon_worker_status_rewrite() {
+    add_rewrite_rule('^worker/?$', 'index.php?argon_worker_status=1', 'top');
+}
+
+// 兼容直接覆盖主题文件的部署方式：仅在规则版本变化后刷新一次。
+add_action('init', 'argon_worker_status_maybe_flush_rewrite_rules', 99);
+function argon_worker_status_maybe_flush_rewrite_rules() {
+    $rewrite_version = '1';
+    if (get_option('argon_worker_status_rewrite_version') === $rewrite_version) return;
+
+    flush_rewrite_rules(false);
+    update_option('argon_worker_status_rewrite_version', $rewrite_version, false);
+}
+
 // 反馈页面 URL 重写
 add_action('init', 'argon_feedback_rewrite');
 function argon_feedback_rewrite() {
@@ -5262,6 +5278,7 @@ add_action('after_switch_theme', 'argon_flush_rewrite_rules');
 add_action('upgrader_process_complete', 'argon_flush_rewrite_rules');
 function argon_flush_rewrite_rules() {
     argon_friend_links_rewrite();
+    argon_worker_status_rewrite();
     argon_feedback_rewrite();
     argon_ai_query_rewrite();
     flush_rewrite_rules();
@@ -5270,6 +5287,7 @@ function argon_flush_rewrite_rules() {
 add_filter('query_vars', 'argon_friend_links_query_vars');
 function argon_friend_links_query_vars($vars) {
     $vars[] = 'argon_friend_links';
+    $vars[] = 'argon_worker_status';
     $vars[] = 'argon_feedback_view';
     $vars[] = 'argon_ai_query';
     $vars[] = 'code';
@@ -5282,6 +5300,34 @@ function argon_friend_links_template() {
         include(get_template_directory() . '/friend-links.php');
         exit;
     }
+}
+
+// Worker 实时状态页仅允许站点管理员访问。
+add_action('template_redirect', 'argon_worker_status_template');
+function argon_worker_status_template() {
+    if (!get_query_var('argon_worker_status')) return;
+
+    if (!is_user_logged_in()) {
+        auth_redirect();
+        exit;
+    }
+
+    nocache_headers();
+    if (!headers_sent()) {
+        header('X-Robots-Tag: noindex, nofollow', true);
+    }
+
+    if (!current_user_can('manage_options')) {
+        status_header(403);
+        wp_die(
+            esc_html__('您没有权限查看 Worker 状态。', 'argon'),
+            esc_html__('访问被拒绝', 'argon'),
+            array('response' => 403)
+        );
+    }
+
+    include(get_template_directory() . '/worker.php');
+    exit;
 }
 
 // 反馈页面路由

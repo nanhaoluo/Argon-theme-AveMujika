@@ -585,59 +585,15 @@ if ($is_auth_view && $auth_view_id) {
 	$single_feedback = argon_get_feedback($auth_view_id);
 }
 
+require_once get_template_directory() . '/inc/special-page-surface.php';
 get_header();
 
 $type_labels = ['bug' => __('Bug', 'argon'), 'suggestion' => __('建议', 'argon'), 'question' => __('问题', 'argon'), 'other' => __('其他', 'argon')];
 $status_labels = ['pending' => __('未查看', 'argon'), 'viewed' => __('已查看', 'argon'), 'processing' => __('进行中', 'argon'), 'resolved' => __('已完成', 'argon'), 'closed' => __('已关闭', 'argon')];
-?>
-
-<div class="page-information-card-container"></div>
-<?php get_sidebar(); ?>
-
-<div id="primary" class="content-area">
-
-
-<?php
-// 获取全局毛玻璃设置
-$feedback_card_blur = intval(get_option('argon_card_blur', '20'));
-$feedback_card_saturate = intval(get_option('argon_card_saturate', '180'));
-$feedback_card_opacity = get_option('argon_post_background_opacity', '0.7');
-if ($feedback_card_opacity == '') {
-	$feedback_card_opacity = '0.7';
-}
+argon_special_page_surface_open('feedback-page');
 ?>
 
 <style id="feedback-page-style">
-/* 页面布局 */
-@media screen and (min-width: 901px) {
-	body.feedback-page #leftbar_part, body.feedback-page #leftbar { display: none !important; }
-}
-@media screen and (max-width: 900px) {
-	body.feedback-page #leftbar {
-		display: block; position: fixed; background: var(--color-foreground);
-		top: 0; left: -300px; height: 100vh; width: 280px; padding: 0;
-		overflow-y: auto; z-index: 1002;
-		box-shadow: 0 15px 35px rgba(50, 50, 93, 0.1), 0 5px 15px rgba(0, 0, 0, 0.07) !important;
-		transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-	}
-	html.leftbar-opened body.feedback-page #leftbar { left: 0px; }
-}
-body.feedback-page #primary { width: 100% !important; max-width: var(--argon-special-page-width, 1040px) !important; margin: 0 auto !important; float: none !important; }
-body.feedback-page #content { margin-top: -50vh !important; }
-body.feedback-page #main { max-width: var(--argon-special-page-width, 1040px) !important; margin: 0 auto !important; }
-
-/* 头部卡片 */
-.feedback-header-card { text-align: center; padding: 40px 24px 32px; background: transparent !important; box-shadow: none !important; border: none !important; }
-.feedback-header-icon { width: 64px; height: 64px; margin: 0 auto 20px; background: var(--themecolor-gradient); border-radius: var(--card-radius); display: flex; align-items: center; justify-content: center; font-size: 28px; color: #fff; box-shadow: 0 4px 12px rgba(var(--themecolor-rgbstr), 0.2); transition: transform var(--animation-fast) var(--ease-standard); }
-.feedback-header-icon:hover { transform: translateY(-2px); }
-.feedback-title { font-size: 24px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper); background: none !important; }
-.feedback-title::before, .feedback-title::after { display: none !important; }
-.feedback-subtitle { font-size: 14px; color: #888; margin: 0 0 20px; line-height: 1.6; }
-.feedback-stats { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
-.feedback-stat { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: rgba(var(--themecolor-rgbstr), 0.08); border-radius: var(--card-radius-sm); font-size: 13px; font-weight: 500; color: var(--themecolor); transition: all var(--animation-fast) var(--ease-standard); }
-.feedback-stat:hover { background: rgba(var(--themecolor-rgbstr), 0.12); }
-html.darkmode .feedback-subtitle { color: #aaa; }
-
 /* 管理员统计 */
 .feedback-admin-stats { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
 .feedback-admin-stat { flex: 1; min-width: 120px; padding: 20px; background-color: rgba(255, 255, 255, var(--card-opacity)); backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate)); -webkit-backdrop-filter: blur(var(--card-blur)) saturate(var(--card-saturate)); border-radius: var(--card-radius); text-align: center; border: 1px solid var(--color-border); transition: all var(--animation-fast) var(--ease-standard); }
@@ -807,9 +763,6 @@ html.darkmode .feedback-admin-stat .stat-label { color: #aaa; }
 .feedback-item-reply:hover { background: rgba(var(--themecolor-rgbstr), 0.08); }
 .feedback-item-reply-header { font-size: 13px; font-weight: 600; color: var(--themecolor); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
 .feedback-item-reply-content { font-size: 14px; color: #555; line-height: 1.7; white-space: pre-wrap; }
-.feedback-empty { padding: 60px 24px; text-align: center; }
-.feedback-empty i { font-size: 56px; color: var(--color-border); margin-bottom: 20px; display: block; opacity: 0.5; }
-.feedback-empty p { font-size: 15px; color: #666; margin: 0; line-height: 1.6; }
 .feedback-empty-filter { display: none; padding: 36px 16px; text-align: center; color: #666; border: 1px dashed var(--color-border); border-radius: var(--card-radius-sm); margin-top: 12px; }
 .feedback-empty-filter.show { display: block; }
 .feedback-empty-filter i { display: block; margin-bottom: 10px; font-size: 28px; color: var(--themecolor); opacity: 0.72; }
@@ -921,7 +874,6 @@ body.feedback-viewer-open { overflow: hidden !important; }
 @media (max-width: 420px) {
 	.feedback-form-card { padding: 20px 18px; }
 	.feedback-type-selector { grid-template-columns: 1fr; }
-	.feedback-header-card { padding-left: 12px; padding-right: 12px; }
 }
 
 /* 夜间模式 */
@@ -949,14 +901,12 @@ html.darkmode .feedback-badge.status-viewed { background: rgba(99, 102, 241, 0.2
 html.darkmode .feedback-badge.status-processing { background: rgba(37, 99, 235, 0.2); }
 html.darkmode .feedback-badge.status-resolved { background: rgba(5, 150, 105, 0.2); }
 html.darkmode .feedback-badge.status-closed { background: rgba(107, 114, 128, 0.2); }
-html.darkmode .feedback-subtitle { color: #aaa; }
 html.darkmode .feedback-admin-stat .stat-label { color: #aaa; }
 html.darkmode .feedback-form .char-count { color: #aaa; }
 html.darkmode .feedback-public-option .hint { color: #aaa; }
 html.darkmode .feedback-item-time { color: #aaa; }
 html.darkmode .feedback-item-content { color: #bbb; }
 html.darkmode .feedback-item-reply-content { color: #bbb; }
-html.darkmode .feedback-empty p { color: #aaa; }
 html.darkmode .feedback-detail-label { color: #aaa; }
 html.darkmode .feedback-detail-meta-item .label { color: #aaa; }
 html.darkmode .feedback-modal-close { color: #aaa; }
@@ -974,35 +924,17 @@ html.darkmode .feedback-image-viewer { --feedback-viewer-glass: rgba(16, 19, 29,
 }
 </style>
 
-<script data-pjax>
-(function() {
-	document.body.classList.add('feedback-page');
-	if (typeof jQuery !== 'undefined') {
-		let $ = jQuery;
-		$(document).off('pjax:complete.feedback pjax:end.feedback');
-		$(document).on('pjax:complete.feedback pjax:end.feedback', function() {
-			if (document.getElementById('feedback-page-style')) {
-				document.body.classList.add('feedback-page');
-			} else {
-				document.body.classList.remove('feedback-page');
-				$(document).off('pjax:complete.feedback pjax:end.feedback');
-			}
-		});
-	}
-})();
-</script>
-
-<main id="main" class="site-main" role="main">
-
 <?php if ($is_auth_view && $single_feedback) : ?>
 <!-- 授权链接查看单个反馈 -->
-<div class="feedback-header-card" style="margin-bottom: 16px;">
-	<div class="feedback-header-icon"><i class="fa fa-commenting"></i></div>
-	<h1 class="feedback-title"><?php _e('反馈详情', 'argon'); ?></h1>
-	<p class="feedback-subtitle"><?php _e('您可以在此查看反馈的详细信息和回复', 'argon'); ?></p>
-</div>
+<?php
+argon_special_page_surface_header(array(
+	'icon' => 'commenting',
+	'title' => __('反馈详情', 'argon'),
+	'subtitle' => __('您可以在此查看反馈的详细信息和回复', 'argon'),
+));
+?>
 
-<article class="post card shadow-sm bg-white border-0 feedback-auth-view" style="margin-bottom: 16px;">
+<article class="post card shadow-sm bg-white border-0 flinks-surface-card feedback-auth-view">
 	<div class="feedback-auth-notice">
 		<i class="fa fa-lock"></i>
 		<?php _e('这是您的专属链接，请妥善保管', 'argon'); ?>
@@ -1023,8 +955,8 @@ html.darkmode .feedback-image-viewer { --feedback-viewer-glass: rgba(16, 19, 29,
 					<span class="feedback-item-time"><?php echo date('Y-m-d H:i', $single_feedback['created_at']); ?></span>
 				</div>
 				<div class="feedback-item-badges">
-					<span class="feedback-badge type-<?php echo $type; ?>"><?php echo $type_labels[$type] ?? $type; ?></span>
-					<span class="feedback-badge status-<?php echo $status; ?>"><?php echo $status_labels[$status] ?? $status; ?></span>
+					<span class="feedback-badge flinks-badge type-<?php echo $type; ?>"><?php echo $type_labels[$type] ?? $type; ?></span>
+					<span class="feedback-badge flinks-badge status-<?php echo $status; ?>"><?php echo $status_labels[$status] ?? $status; ?></span>
 				</div>
 			</div>
 		</div>
@@ -1080,17 +1012,27 @@ html.darkmode .feedback-image-viewer { --feedback-viewer-glass: rgba(16, 19, 29,
 <?php else : ?>
 
 <!-- 正常反馈页面 -->
-<div class="feedback-header-card" style="margin-bottom: 16px;">
-	<div class="feedback-header-icon"><i class="fa fa-commenting"></i></div>
-	<h1 class="feedback-title"><?php _e('问题反馈', 'argon'); ?></h1>
-	<p class="feedback-subtitle"><?php _e('有任何建议或问题？欢迎告诉我！', 'argon'); ?></p>
-	<div class="feedback-stats">
-		<div class="feedback-stat"><i class="fa fa-comments"></i><span><?php echo count($public_feedbacks); ?> <?php _e('条公开反馈', 'argon'); ?></span></div>
-		<?php if ($is_admin && $stats['pending'] > 0) : ?>
-		<div class="feedback-stat" style="background:rgba(245,54,92,0.1);color:#f5365c;"><i class="fa fa-clock-o"></i><span><?php echo $stats['pending']; ?> <?php _e('条待处理', 'argon'); ?></span></div>
-		<?php endif; ?>
-	</div>
-</div>
+<?php
+$feedback_header_stats = array(
+	array(
+		'icon' => 'comments',
+		'text' => sprintf(__('%d 条公开反馈', 'argon'), count($public_feedbacks)),
+	),
+);
+if ($is_admin && $stats['pending'] > 0) {
+	$feedback_header_stats[] = array(
+		'icon' => 'clock-o',
+		'text' => sprintf(__('%d 条待处理', 'argon'), $stats['pending']),
+		'class' => 'flinks-badge is-warning',
+	);
+}
+argon_special_page_surface_header(array(
+	'icon' => 'commenting',
+	'title' => __('问题反馈', 'argon'),
+	'subtitle' => __('有任何建议或问题？欢迎告诉我！', 'argon'),
+	'stats' => $feedback_header_stats,
+));
+?>
 
 <?php if ($is_admin) : ?>
 <div class="feedback-admin-stats">
@@ -1115,7 +1057,7 @@ html.darkmode .feedback-image-viewer { --feedback-viewer-glass: rgba(16, 19, 29,
 
 <?php if (!$is_admin) : ?>
 <!-- 访客提交反馈表单 -->
-<article class="post card shadow-sm bg-white border-0 feedback-form-card" style="margin-bottom: 0;">
+<article class="post card shadow-sm bg-white border-0 flinks-surface-card feedback-form-card" style="margin-bottom: 0;">
 	<div class="feedback-card-heading">
 		<div>
 			<p class="feedback-kicker"><?php _e('Feedback', 'argon'); ?></p>
@@ -1244,7 +1186,7 @@ html.darkmode .feedback-image-viewer { --feedback-viewer-glass: rgba(16, 19, 29,
 <?php endif; ?>
 
 <!-- 公开反馈列表 -->
-<article class="post card shadow-sm bg-white border-0 feedback-form-card" style="margin-bottom: 16px;">
+<article class="post card shadow-sm bg-white border-0 flinks-surface-card feedback-form-card" style="margin-bottom: 16px;">
 	<div class="feedback-card-heading">
 		<h2 class="feedback-list-title"><i class="fa fa-comments-o"></i><?php _e('公开反馈', 'argon'); ?><span class="count" id="feedback-visible-count"><?php echo count($public_feedbacks); ?></span></h2>
 	</div>
@@ -1314,8 +1256,8 @@ html.darkmode .feedback-image-viewer { --feedback-viewer-glass: rgba(16, 19, 29,
 						<span class="feedback-item-time"><?php echo date('Y-m-d H:i', $fb['created_at']); ?></span>
 					</div>
 					<div class="feedback-item-badges">
-						<span class="feedback-badge type-<?php echo $type; ?>"><?php echo $type_labels[$type] ?? $type; ?></span>
-						<span class="feedback-badge status-<?php echo $status; ?>"><?php echo $status_labels[$status] ?? $status; ?></span>
+						<span class="feedback-badge flinks-badge type-<?php echo $type; ?>"><?php echo $type_labels[$type] ?? $type; ?></span>
+						<span class="feedback-badge flinks-badge status-<?php echo $status; ?>"><?php echo $status_labels[$status] ?? $status; ?></span>
 					</div>
 				</div>
 			</div>
@@ -1367,7 +1309,7 @@ html.darkmode .feedback-image-viewer { --feedback-viewer-glass: rgba(16, 19, 29,
 			<?php _e('没有符合筛选条件的公开反馈', 'argon'); ?>
 		</div>
 	<?php else : ?>
-		<div class="feedback-empty">
+		<div class="feedback-empty flinks-empty">
 			<i class="fa fa-inbox"></i>
 			<p><?php _e('暂无公开反馈', 'argon'); ?></p>
 		</div>
@@ -1379,7 +1321,7 @@ html.darkmode .feedback-image-viewer { --feedback-viewer-glass: rgba(16, 19, 29,
 	if (!empty($private_feedbacks)) :
 ?>
 <!-- 管理员：私密反馈 -->
-<article class="post card shadow-sm bg-white border-0 feedback-admin-card" style="margin-bottom: 16px;">
+<article class="post card shadow-sm bg-white border-0 flinks-surface-card feedback-admin-card" style="margin-bottom: 16px;">
 	<h3 class="feedback-admin-title"><i class="fa fa-lock"></i><?php _e('私密反馈', 'argon'); ?> (<?php echo count($private_feedbacks); ?>)</h3>
 	<?php foreach ($private_feedbacks as $fb) : 
 		$type = $fb['type'] ?? 'other';
@@ -1397,8 +1339,8 @@ html.darkmode .feedback-image-viewer { --feedback-viewer-glass: rgba(16, 19, 29,
 					<span class="feedback-item-time"><?php echo date('Y-m-d H:i', $fb['created_at']); ?></span>
 				</div>
 				<div class="feedback-item-badges">
-					<span class="feedback-badge type-<?php echo $type; ?>"><?php echo $type_labels[$type] ?? $type; ?></span>
-					<span class="feedback-badge status-<?php echo $status; ?>"><?php echo $status_labels[$status] ?? $status; ?></span>
+					<span class="feedback-badge flinks-badge type-<?php echo $type; ?>"><?php echo $type_labels[$type] ?? $type; ?></span>
+					<span class="feedback-badge flinks-badge status-<?php echo $status; ?>"><?php echo $status_labels[$status] ?? $status; ?></span>
 				</div>
 			</div>
 		</div>
@@ -2645,11 +2587,11 @@ function renderFeedbackDetail(data) {
 	// 基本信息
 	html += '<div class="feedback-detail-section">';
 	html += '<div class="feedback-item-badges" style="margin-bottom:12px;">';
-	html += '<span class="feedback-badge type-' + data.type + '">' + (typeLabels[data.type] || data.type) + '</span>';
-	html += '<span class="feedback-badge status-' + data.status + '">' + (statusLabels[data.status] || data.status) + '</span>';
-	if (data.is_public) html += '<span class="feedback-badge" style="background:#d1fae5;color:#059669;"><?php _e('公开', 'argon'); ?></span>';
-	else html += '<span class="feedback-badge" style="background:#e5e7eb;color:#6b7280;"><?php _e('私密', 'argon'); ?></span>';
-	if (isArchived) html += '<span class="feedback-badge" style="background:#fef3c7;color:#d97706;"><?php _e('已存档', 'argon'); ?></span>';
+	html += '<span class="feedback-badge flinks-badge type-' + data.type + '">' + (typeLabels[data.type] || data.type) + '</span>';
+	html += '<span class="feedback-badge flinks-badge status-' + data.status + '">' + (statusLabels[data.status] || data.status) + '</span>';
+	if (data.is_public) html += '<span class="feedback-badge flinks-badge" style="background:#d1fae5;color:#059669;"><?php _e('公开', 'argon'); ?></span>';
+	else html += '<span class="feedback-badge flinks-badge" style="background:#e5e7eb;color:#6b7280;"><?php _e('私密', 'argon'); ?></span>';
+	if (isArchived) html += '<span class="feedback-badge flinks-badge" style="background:#fef3c7;color:#d97706;"><?php _e('已存档', 'argon'); ?></span>';
 	html += '</div>';
 	html += '</div>';
 	
@@ -2871,4 +2813,7 @@ function deleteFromDetail() {
 <?php endif; ?>
 </script>
 
-<?php get_footer(); ?>
+<?php
+argon_special_page_surface_close();
+get_footer();
+?>

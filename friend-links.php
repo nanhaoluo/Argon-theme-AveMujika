@@ -375,110 +375,19 @@ if ($flink_captcha_setting === 'global' || $flink_captcha_setting === 'same') {
 }
 $captcha_type = get_option('argon_captcha_type', 'math');
 
+require_once get_template_directory() . '/inc/special-page-surface.php';
 get_header();
+argon_special_page_surface_open('flinks-page');
 ?>
 
-<div class="page-information-card-container"></div>
-<?php get_sidebar(); ?>
-
-<div id="primary" class="content-area">
-
 <style id="flinks-page-style">
-/* 桌面端隐藏侧边栏 */
-@media screen and (min-width: 901px) {
-    body.flinks-page #leftbar_part, body.flinks-page #leftbar { display: none !important; }
-}
-/* 移动端侧边栏支持 - 使用全局样式 */
-@media screen and (max-width: 900px) {
-    body.flinks-page #leftbar {
-        display: block;
-        position: fixed;
-        background: var(--color-foreground);
-        top: 0;
-        left: -300px;
-        height: 100vh;
-        width: 280px;
-        padding: 0;
-        overflow-y: auto;
-        overflow-x: hidden;
-        z-index: 1002;
-        box-shadow: 0 15px 35px rgba(50, 50, 93, 0.1), 0 5px 15px rgba(0, 0, 0, 0.07) !important;
-        transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    html.leftbar-opened body.flinks-page #leftbar { left: 0px; }
-    body.flinks-page .leftbar-mobile-nav { display: flex; flex-direction: column; min-height: 100%; }
-    body.flinks-page .leftbar-desktop-content { display: none !important; }
-    
-    /* 底部操作区固定在底部 */
-    body.flinks-page .leftbar-mobile-footer {
-        margin-top: auto;
-        position: sticky;
-        bottom: 0;
-        background: var(--color-foreground);
-        z-index: 10;
-    }
-}
-body.flinks-page #primary { width: 100% !important; max-width: var(--argon-special-page-width, 1040px) !important; margin: 0 auto !important; float: none !important; }
-body.flinks-page #content { margin-top: -50vh !important; }
-body.flinks-page #main { max-width: var(--argon-special-page-width, 1040px) !important; margin: 0 auto !important; }
-body.flinks-page {
-    --flinks-text-main: var(--color-text-deeper);
-    --flinks-text-muted: #677181;
-    --flinks-text-soft: #8a93a3;
-    --flinks-text-faint: #a4adba;
-    --flinks-surface-soft: rgba(var(--themecolor-rgbstr), 0.05);
-    --flinks-surface-hover: rgba(var(--themecolor-rgbstr), 0.08);
-    --flinks-input-bg: rgba(var(--themecolor-rgbstr), 0.05);
-    --flinks-input-text: var(--color-text-deeper);
-    --flinks-placeholder: #99a2b1;
-    --flinks-success-bg: rgba(34, 197, 94, 0.12);
-    --flinks-success-text: #15803d;
-    --flinks-danger-bg: rgba(239, 68, 68, 0.12);
-    --flinks-danger-text: #dc2626;
-    --flinks-warning-bg: rgba(245, 158, 11, 0.14);
-    --flinks-warning-text: #b45309;
-}
-html.darkmode body.flinks-page {
-    --flinks-text-muted: #c5c9d1;
-    --flinks-text-soft: #a4aab5;
-    --flinks-text-faint: #878e9b;
-    --flinks-surface-soft: rgba(255, 255, 255, 0.05);
-    --flinks-surface-hover: rgba(255, 255, 255, 0.08);
-    --flinks-input-bg: rgba(255, 255, 255, 0.06);
-    --flinks-placeholder: #858c99;
-    --flinks-success-bg: rgba(74, 222, 128, 0.13);
-    --flinks-success-text: #86efac;
-    --flinks-danger-bg: rgba(248, 113, 113, 0.14);
-    --flinks-danger-text: #fca5a5;
-    --flinks-warning-bg: rgba(251, 191, 36, 0.14);
-    --flinks-warning-text: #facc15;
-}
-
-.flinks-header-card { text-align: center; padding: 40px 24px 30px; background: transparent !important; box-shadow: none !important; }
 .flinks-detect-status { display: block; min-height: 18px; margin-top: 5px; color: var(--flinks-text-soft); font-size: 11px; line-height: 1.45; }
-.flinks-header-icon { width: 64px; height: 64px; margin: 0 auto 20px; background: var(--themecolor-gradient); border-radius: var(--card-radius); display: flex; align-items: center; justify-content: center; font-size: 28px; color: #fff; box-shadow: 0 4px 12px rgba(var(--themecolor-rgbstr), 0.2); transition: transform var(--animation-fast) var(--ease-standard); }
-.flinks-header-icon:hover { transform: translateY(-2px); }
-.flinks-title { font-size: 24px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper); background: none !important; }
-.flinks-title::before, .flinks-title::after { display: none !important; }
-.flinks-subtitle { font-size: 14px; color: var(--flinks-text-muted); margin: 0 0 20px; line-height: 1.6; }
-.flinks-stats { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
-.flinks-stat { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: rgba(var(--themecolor-rgbstr), 0.08); border-radius: var(--card-radius-sm); font-size: 13px; font-weight: 500; color: var(--themecolor); transition: all var(--animation-fast) var(--ease-standard); }
-.flinks-stat:hover { background: rgba(var(--themecolor-rgbstr), 0.12); }
 .flinks-apply-header:focus { outline: none; box-shadow: none; }
 .flinks-apply-header:focus-visible, .flink-card:focus-visible { outline: 2px solid rgba(var(--themecolor-rgbstr), 0.28); outline-offset: 2px; }
 .flink-modal input::placeholder { color: var(--flinks-placeholder); }
 
 .flinks-welcome-text { font-size: 14px; color: var(--flinks-text-muted); line-height: 1.6; margin-bottom: 16px; padding: 12px 16px; background: var(--flinks-surface-soft); border-radius: var(--card-radius-sm); border-left: 3px solid var(--themecolor); }
 
-.flinks-list { display: flex; flex-direction: column; gap: 16px; margin-bottom: 16px; }
-.flinks-category-card { padding: 0; overflow: hidden; }
-.flinks-category-header { display: flex; align-items: center; gap: 12px; padding: 18px 24px; margin-bottom: 0; border-bottom: 1px solid var(--color-border-on-foreground); background: var(--flinks-surface-soft); }
-.flinks-category-title { font-size: 17px; font-weight: 600; margin: 0; color: var(--color-text-deeper); display: flex; align-items: center; gap: 8px; background: none !important; }
-.flinks-category-title::before, .flinks-category-title::after { display: none !important; }
-.flinks-category-title i { color: var(--themecolor); font-size: 16px; }
-.flinks-category-count { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--themecolor); background: rgba(var(--themecolor-rgbstr), 0.1); padding: 5px 12px; border-radius: var(--card-radius-sm); white-space: nowrap; }
-
-.flinks-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 4px; padding: 14px; }
 .flink-card { display: flex; align-items: flex-start; gap: 14px; padding: 14px; background: transparent; border-radius: var(--card-radius-sm); text-decoration: none !important; color: inherit; border: 1px solid transparent; transition: all var(--animation-fast) var(--ease-standard); min-height: 88px; position: relative; }
 .flink-card:hover { 
 	transform: translateY(-2px); 
@@ -521,10 +430,6 @@ html.darkmode body.flinks-page {
 .flink-url-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .flink-open-icon { flex-shrink: 0; opacity: 0; transform: translateX(-3px); transition: all var(--animation-fast) var(--ease-standard); color: var(--themecolor); }
 .flink-card:hover .flink-open-icon { opacity: 0.85; transform: translateX(0); }
-
-.flinks-empty { padding: 60px 24px; text-align: center; }
-.flinks-empty i { font-size: 48px; color: var(--color-border); margin-bottom: 16px; display: block; }
-.flinks-empty p { font-size: 15px; color: var(--flinks-text-muted); margin: 0; }
 
 /* 申请区域 */
 .flinks-apply-card { padding: 0; overflow: hidden; }
@@ -639,11 +544,6 @@ html.darkmode body.flinks-page {
 .flink-copy-tip.is-visible { opacity: 1; transform: translate(-50%, -50%) scale(1); transition-timing-function: var(--motion-ease-enter); }
 
 @media (max-width: 768px) {
-    .flinks-header-card { padding: 30px 16px 24px; }
-    .flinks-list { gap: 12px; }
-    .flinks-category-header { padding: 15px 16px; }
-    .flinks-category-title { font-size: 16px; min-width: 0; }
-    .flinks-grid { grid-template-columns: 1fr; }
     .flinks-mysite-grid { grid-template-columns: 1fr; }
     .flinks-add-form .form-row { grid-template-columns: 1fr; }
     .flink-card { min-height: auto; }
@@ -703,69 +603,35 @@ html.darkmode .flinks-add-form input { background: var(--color-background); }
 			if (img.complete && img.naturalWidth > 0) img.onload();
 		});
 	};
-
-    // 先清理可能残留的状态（处理后退情况）
-    // 如果当前不是友链页面但有残留 class，清理它
-    if (!document.getElementById('flinks-page-style')) {
-        document.body.classList.remove('flinks-page');
-    }
-    
-    // 添加页面标识 class
-    document.body.classList.add('flinks-page');
-    
-    // PJAX 离开时清理
-    if (typeof jQuery !== 'undefined') {
-        var $ = jQuery;
-        $(document).off('pjax:complete.flinks pjax:end.flinks pjax:popstate.flinks');
-        
-        // PJAX 完成后再判断是否仍在友链页，避免切换前提前移除当前页样式
-        $(document).on('pjax:complete.flinks pjax:end.flinks', function() {
-            if (document.getElementById('flinks-page-style')) {
-                document.body.classList.add('flinks-page');
-				window.argonInitFriendLinkAvatars(document);
-            } else {
-                document.body.classList.remove('flinks-page');
-                $(document).off('pjax:complete.flinks pjax:end.flinks pjax:popstate.flinks');
-            }
-        });
-        
-        // 浏览器后退/前进
-        $(document).on('pjax:popstate.flinks', function() {
-            // 延迟检查，等 PJAX 完成内容替换
-            setTimeout(function() {
-                if (!document.getElementById('flinks-page-style')) {
-                    document.body.classList.remove('flinks-page');
-                }
-            }, 50);
-        });
-    }
-
 	requestAnimationFrame(function() {
 		window.argonInitFriendLinkAvatars(document);
 	});
 })();
 </script>
 
-<main id="main" class="site-main" role="main">
-
 <?php
 // 获取自定义标语
 $flink_slogan = get_option('argon_friend_link_slogan', __('海内存知己，天涯若比邻', 'argon'));
 $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换友链！如果您的网站已添加本站链接，填写友链页面地址可自动通过审核。', 'argon'));
+$flink_header_stats = array(
+    array(
+        'icon' => 'heart',
+        'text' => sprintf(__('%d 位朋友', 'argon'), $total_links),
+    ),
+);
+if (count($links) > 1) {
+    $flink_header_stats[] = array(
+        'icon' => 'folder-open',
+        'text' => sprintf(__('%d 个分类', 'argon'), count($links)),
+    );
+}
+argon_special_page_surface_header(array(
+    'icon' => 'link',
+    'title' => __('友情链接', 'argon'),
+    'subtitle' => $flink_slogan,
+    'stats' => $flink_header_stats,
+));
 ?>
-
-<!-- 头部卡片 -->
-<div class="flinks-header-card" style="margin-bottom: 16px;">
-    <div class="flinks-header-icon"><i class="fa fa-link"></i></div>
-    <h1 class="flinks-title"><?php _e('友情链接', 'argon'); ?></h1>
-    <p class="flinks-subtitle"><?php echo esc_html($flink_slogan); ?></p>
-    <div class="flinks-stats">
-        <div class="flinks-stat"><i class="fa fa-heart"></i><span><?php echo $total_links; ?> <?php _e('位朋友', 'argon'); ?></span></div>
-        <?php if (count($links) > 1) : ?>
-        <div class="flinks-stat"><i class="fa fa-folder-open"></i><span><?php echo count($links); ?> <?php _e('个分类', 'argon'); ?></span></div>
-        <?php endif; ?>
-    </div>
-</div>
 
 <!-- 管理面板（仅管理员可见） -->
 <?php if ($is_admin) : ?>
@@ -834,7 +700,7 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
 <?php if (!empty($links)) : ?>
 <div class="flinks-list">
     <?php $color_index = 0; foreach ($links as $category => $category_links) : ?>
-    <article class="post card shadow-sm bg-white border-0 flinks-category-card" data-category="<?php echo esc_attr($category); ?>">
+    <article class="post card shadow-sm bg-white border-0 flinks-surface-card flinks-category-card" data-category="<?php echo esc_attr($category); ?>">
         <div class="flinks-category-header">
             <h2 class="flinks-category-title">
                 <i class="fa fa-<?php echo empty($category) ? 'star' : 'folder-open'; ?>"></i>
@@ -898,10 +764,7 @@ $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换�
     <?php endforeach; ?>
 </div>
 <?php else : ?>
-<article class="post card shadow-sm bg-white border-0 flinks-empty" style="margin-bottom: 16px;">
-    <i class="fa fa-inbox"></i>
-    <p><?php _e('暂无友情链接', 'argon'); ?></p>
-</article>
+<?php argon_special_page_surface_empty(__('暂无友情链接', 'argon')); ?>
 <?php endif; ?>
 
 <!-- 申请友链 -->
@@ -2127,4 +1990,7 @@ if (typeof initGeetest4 === 'function') {
 <?php endif; ?>
 </script>
 
-<?php get_footer(); ?>
+<?php
+argon_special_page_surface_close();
+get_footer();
+?>
