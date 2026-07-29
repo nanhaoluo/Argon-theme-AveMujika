@@ -417,6 +417,55 @@ describe('Queue consumer', () => {
     });
   });
 
+  it('uses WordPress OPML fallback for automatic queue checks when the page is unreadable', async () => {
+    const baseFetcher = services.fetcher;
+    const requestedUrls: string[] = [];
+    services.fetcher = vi.fn(async (input: string, init?: RequestInit) => {
+      const url = String(input);
+      requestedUrls.push(url);
+      if (url === 'https://blog.friend-site.top/') {
+        return new Response(`
+          <!doctype html><html><head>
+            <title>WordPress Friend</title>
+            <meta name="description" content="A complete homepage">
+            <link rel="https://api.w.org/" href="https://blog.friend-site.top/wp-json/">
+          </head><body></body></html>
+        `, { status: 200, headers: { 'content-type': 'text/html' } });
+      }
+      if (url === 'https://friend-site.top/friends' || url === 'https://blog.friend-site.top/friends') {
+        return new Response('temporarily blocked', { status: 403 });
+      }
+      if (url.startsWith('https://blog.friend-site.top/wp-json/wp/v2/pages?')) {
+        return new Response(JSON.stringify([{
+          link: 'https://blog.friend-site.top/friends',
+          slug: 'friends',
+          title: { rendered: '友情链接' },
+          content: { rendered: '<p>Friend links are rendered by the theme.</p>' }
+        }]), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (url === 'https://blog.friend-site.top/wp-links-opml.php') {
+        return new Response(`<?xml version="1.0"?>
+          <opml version="1.0"><body>
+            <outline text="Local site" type="link" htmlUrl="https://blog.sample-blog.dev/" />
+          </body></opml>`, { status: 200, headers: { 'content-type': 'text/xml' } });
+      }
+      return baseFetcher(input, init);
+    });
+
+    await processQueueMessage({ jobId: 'link_123', generation: 'generation-123456' }, services);
+
+    expect(store.jobs.get('link_123')).toMatchObject({
+      status: 'complete',
+      checkedUrl: 'https://blog.friend-site.top/wp-links-opml.php',
+      backlinkState: 'found',
+      lastError: '',
+      callbackStatus: 'delivered',
+      nextCheckAt: NOW + 86_400
+    });
+    expect(requestedUrls.some((url) => url.includes('/wp-json/wp/v2/pages?'))).toBe(true);
+    expect(requestedUrls).toContain('https://blog.friend-site.top/wp-links-opml.php');
+  });
+
   it('keeps blocked targets unknown and never reports a missing backlink from failure', async () => {
     const requestedUrls: string[] = [];
     services.fetcher = vi.fn(async (input: string, init?: RequestInit) => {

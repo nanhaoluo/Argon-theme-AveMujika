@@ -11,7 +11,7 @@ import type {
   WorkerConfiguration
 } from './types';
 import {
-  checkBacklink,
+  checkBacklinkWithWordPressFallbacks,
   detectSite,
   discoverAndCheckBacklink,
   type HostResolver,
@@ -503,11 +503,11 @@ async function handleProbe(request: Request, services: RuntimeServices): Promise
     linksPage ||= site.linksPage;
     const backlink = mode === 'backlink'
       ? (linksPage
-          ? await checkBacklink(
+          ? await checkBacklinkWithWordPressFallbacks(
               linksPage,
               site.detectedUrl || targetUrl.toString(),
               services.config.siteUrl,
-              detectionOptions
+              { ...detectionOptions, wordpressApiUrl: site.wordpressApiUrl }
             )
           : await discoverAndCheckBacklink(
               site.detectedUrl || targetUrl.toString(),

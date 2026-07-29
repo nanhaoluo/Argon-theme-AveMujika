@@ -470,6 +470,237 @@ describe('Worker HTTP API', () => {
     });
   });
 
+  it('starts the backlink check as soon as a sufficient HTTPS candidate batch succeeds', async () => {
+    const requestedUrls: string[] = [];
+    let releaseSlowFallbacks: (() => void) | undefined;
+    const slowFallbacks = new Promise<void>((resolve) => {
+      releaseSlowFallbacks = resolve;
+    });
+    services.fetcher = vi.fn(async (input) => {
+      const url = String(input);
+      requestedUrls.push(url);
+      if (url === 'https://www.sample-blog.dev/') {
+        return new Response(`
+          <!doctype html><html><head>
+            <title>Sample Friend</title>
+            <meta name="description" content="A complete homepage">
+            <link rel="icon" href="/avatar.png">
+          </head><body><a href="/friends/">Friend links</a></body></html>
+        `, { status: 200, headers: { 'content-type': 'text/html' } });
+      }
+      if (url === 'https://www.sample-blog.dev/friends/') {
+        return new Response('<a href="https://blog.sample-blog.dev/">Local site</a>', {
+          status: 200,
+          headers: { 'content-type': 'text/html' }
+        });
+      }
+      if (url.startsWith('http://')) {
+        await slowFallbacks;
+      }
+      return new Response('not found', { status: 404 });
+    });
+
+    let responseSettled = false;
+    const responsePromise = handleFetch(
+      await signedProbe({
+        action: 'probe',
+        mode: 'backlink',
+        site_url: 'https://blog.sample-blog.dev',
+        url: 'https://www.sample-blog.dev/'
+      }, 'probe-fast-https-batch-1'),
+      services
+    );
+    void responsePromise.then(() => { responseSettled = true; });
+
+    const realSetTimeout = globalThis.setTimeout;
+    for (let attempt = 0; attempt < 20 && !responseSettled && !requestedUrls.some((url) => url.startsWith('http://')); attempt += 1) {
+      await new Promise<void>((resolve) => realSetTimeout(resolve, 0));
+    }
+    const reachedBacklinkBeforeSlowFallbacks = requestedUrls.includes('https://www.sample-blog.dev/friends/');
+    const requestedSlowFallbackBeforeBacklink = requestedUrls.some((url) => url.startsWith('http://'));
+    releaseSlowFallbacks?.();
+
+    const response = await responsePromise;
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      success: true,
+      result: {
+        state: 'complete',
+        avatar: 'https://www.sample-blog.dev/avatar.png',
+        links_page: 'https://www.sample-blog.dev/friends/',
+        checked_url: 'https://www.sample-blog.dev/friends/',
+        backlink_state: 'found',
+        error: ''
+      }
+    });
+    expect(reachedBacklinkBeforeSlowFallbacks).toBe(true);
+    expect(requestedSlowFallbackBeforeBacklink).toBe(false);
+  });
+
+  it('uses WordPress page and OPML fallbacks when a known friend-links page is unreadable', async () => {
+    const requestedUrls: string[] = [];
+    services.fetcher = vi.fn(async (input) => {
+      const url = String(input);
+      requestedUrls.push(url);
+      if (url === 'https://www.sample-blog.dev/') {
+        return new Response(`
+          <!doctype html><html><head>
+            <title>WordPress Friend</title>
+            <meta name="description" content="A complete homepage">
+            <link rel="https://api.w.org/" href="https://www.sample-blog.dev/wp-json/">
+            <link rel="icon" href="/avatar.png">
+          </head><body><a href="/links/">友情链接</a></body></html>
+        `, { status: 200, headers: { 'content-type': 'text/html' } });
+      }
+      if (url === 'https://www.sample-blog.dev/links/') {
+        return new Response('temporarily blocked', { status: 403 });
+      }
+      if (url.startsWith('https://www.sample-blog.dev/wp-json/wp/v2/pages?')) {
+        return new Response(JSON.stringify([{
+          link: 'https://www.sample-blog.dev/links/',
+          slug: 'links',
+          title: { rendered: '友情链接' },
+          content: { rendered: '<p>以下友链由主题动态输出，申请规则见 <a href="https://link-rules.top/">说明</a>。</p>' }
+        }]), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (url === 'https://www.sample-blog.dev/wp-links-opml.php') {
+        return new Response(`<?xml version="1.0"?>
+          <opml version="1.0"><body>
+            <outline text="Another friend" type="link" htmlUrl="https://another-friend.top/" />
+          </body></opml>`, { status: 200, headers: { 'content-type': 'text/xml' } });
+      }
+      return new Response('not found', { status: 404 });
+    });
+
+    const response = await handleFetch(
+      await signedProbe({
+        action: 'probe',
+        mode: 'backlink',
+        site_url: 'https://blog.sample-blog.dev',
+        url: 'https://www.sample-blog.dev/'
+      }, 'probe-wordpress-opml-fallback-1'),
+      services
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      success: true,
+      result: {
+        state: 'complete',
+        avatar: 'https://www.sample-blog.dev/avatar.png',
+        links_page: 'https://www.sample-blog.dev/links/',
+        checked_url: '',
+        backlink_state: 'unknown',
+        error: 'links_page_unreadable'
+      }
+    });
+    expect(requestedUrls.some((url) => url.includes('/wp-json/wp/v2/pages?'))).toBe(true);
+    expect(requestedUrls).toContain('https://www.sample-blog.dev/wp-links-opml.php');
+  });
+
+  it('finishes the slow WordPress fallback path within the synchronous probe budget', async () => {
+    const request = await signedProbe({
+      action: 'probe',
+      mode: 'backlink',
+      site_url: 'https://blog.sample-blog.dev',
+      url: 'https://www.sample-blog.dev/'
+    }, 'probe-wordpress-budget-1');
+    const realSetTimeout = globalThis.setTimeout;
+    vi.useFakeTimers();
+    const requestedUrls: string[] = [];
+    const delayedResponse = (
+      delayMs: number,
+      response: Response,
+      signal?: AbortSignal | null
+    ): Promise<Response> => new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = (callback: () => void) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        signal?.removeEventListener('abort', abort);
+        callback();
+      };
+      const abort = () => finish(() => reject(
+        signal?.reason instanceof Error ? signal.reason : new Error('request_aborted')
+      ));
+      const timer = setTimeout(() => finish(() => resolve(response)), delayMs);
+      if (signal?.aborted) abort();
+      else signal?.addEventListener('abort', abort, { once: true });
+    });
+    services.fetcher = vi.fn(async (input, init) => {
+      const url = String(input);
+      requestedUrls.push(url);
+      if (url === 'https://www.sample-blog.dev/') {
+        return delayedResponse(5_500, new Response(`
+          <!doctype html><html><head>
+            <title>Budgeted WordPress Friend</title>
+            <meta name="description" content="A complete homepage">
+            <link rel="https://api.w.org/" href="https://www.sample-blog.dev/wp-json/">
+            <link rel="icon" href="/avatar.png">
+          </head><body><a href="/links/">Friend links</a></body></html>
+        `, { headers: { 'content-type': 'text/html' } }), init?.signal);
+      }
+      if (url === 'https://www.sample-blog.dev/links/') {
+        return delayedResponse(5_500, new Response('temporarily blocked', { status: 403 }), init?.signal);
+      }
+      if (url.startsWith('https://www.sample-blog.dev/wp-json/wp/v2/pages?')) {
+        return delayedResponse(1_900, new Response('[]', {
+          headers: { 'content-type': 'application/json' }
+        }), init?.signal);
+      }
+      if (url === 'https://www.sample-blog.dev/wp-links-opml.php') {
+        return delayedResponse(1_900, new Response('<opml version="1.0"><body><outline htmlUrl="https://blog.sample-blog.dev/" /></body></opml>', {
+          headers: { 'content-type': 'text/xml' }
+        }), init?.signal);
+      }
+      return new Response('not found', { status: 404 });
+    });
+
+    let responseSettled = false;
+    const responsePromise = handleFetch(request, services);
+    void responsePromise.then(() => { responseSettled = true; });
+    const waitFor = async (condition: () => boolean) => {
+      for (let attempt = 0; attempt < 50 && !condition(); attempt += 1) {
+        await new Promise<void>((resolve) => realSetTimeout(resolve, 0));
+      }
+      return condition();
+    };
+
+    expect(await waitFor(() => requestedUrls.includes('https://www.sample-blog.dev/'))).toBe(true);
+    await vi.advanceTimersByTimeAsync(5_500);
+    expect(await waitFor(() => requestedUrls.includes('https://www.sample-blog.dev/links/'))).toBe(true);
+    await vi.advanceTimersByTimeAsync(5_500);
+    expect(await waitFor(() => requestedUrls.some((url) => url.includes('/wp-json/wp/v2/pages?')))).toBe(true);
+    const fallbacksStartedTogether = requestedUrls.includes('https://www.sample-blog.dev/wp-links-opml.php');
+    await vi.advanceTimersByTimeAsync(1_900);
+    await waitFor(() => responseSettled);
+    const settledWithinBudget = responseSettled;
+    if (!responseSettled) {
+      await waitFor(() => requestedUrls.includes('https://www.sample-blog.dev/wp-links-opml.php'));
+      await vi.advanceTimersByTimeAsync(2_000);
+      await waitFor(() => responseSettled);
+    }
+    const response = await responsePromise;
+
+    expect(fallbacksStartedTogether).toBe(true);
+    expect(settledWithinBudget).toBe(true);
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      success: true,
+      result: {
+        state: 'complete',
+        avatar: 'https://www.sample-blog.dev/avatar.png',
+        links_page: 'https://www.sample-blog.dev/links/',
+        checked_url: 'https://www.sample-blog.dev/wp-links-opml.php',
+        backlink_state: 'found',
+        error: ''
+      }
+    });
+    expect(requestedUrls.some((url) => url.includes('/wp-json/wp/v2/pages?'))).toBe(true);
+    expect(requestedUrls).toContain('https://www.sample-blog.dev/wp-links-opml.php');
+  });
+
   it('discovers and returns the checked links page for a backlink probe without homepage navigation', async () => {
     const requestedUrls: string[] = [];
     services.fetcher = vi.fn(async (input) => {

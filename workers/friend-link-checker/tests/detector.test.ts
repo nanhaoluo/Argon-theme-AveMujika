@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   checkBacklink,
+  checkBacklinkWithWordPressFallbacks,
   createPublicDnsResolver,
   detectSite,
   discoverAndCheckBacklink,
@@ -37,16 +38,62 @@ describe('public DNS resolution', () => {
     await expect(createPublicDnsResolver(fetcher)('sample-blog.dev')).resolves.toEqual(['93.184.216.34']);
   });
 
-  it('accepts a public AAAA result when the A query fails', async () => {
+  it('accepts a public AAAA result when the A family has a definitive empty answer', async () => {
     const fetcher: WorkerFetcher = vi.fn(async (input) => {
       const url = String(input);
-      if (url.includes('type=A&') || /[?&]type=A$/.test(url)) throw new Error('a_lookup_failed');
+      if (url.includes('type=A&') || /[?&]type=A$/.test(url)) {
+        return jsonResponse({ Status: 0, Answer: [] }, url);
+      }
       return jsonResponse({ Status: 0, Answer: [{ type: 28, data: '2606:2800:220:1:248:1893:25c8:1946' }] }, url);
     });
 
     await expect(createPublicDnsResolver(fetcher)('sample-blog.dev')).resolves.toEqual([
       '2606:2800:220:1:248:1893:25c8:1946'
     ]);
+  });
+
+  it('does not trust one public DNS family when the other family transport fails', async () => {
+    const fetcher: WorkerFetcher = vi.fn(async (input) => {
+      const url = String(input);
+      if (url.includes('type=AAAA')) throw new Error('aaaa_lookup_failed');
+      return jsonResponse({ Status: 0, Answer: [{ type: 1, data: '93.184.216.34' }] }, url);
+    });
+
+    await expect(createPublicDnsResolver(fetcher)('sample-blog.dev'))
+      .rejects.toThrow(/dns_network_error$/);
+  });
+
+  it.each([2, 5])('does not treat DNS failure status %i as an authoritative empty family', async (status) => {
+    const fetcher: WorkerFetcher = vi.fn(async (input) => {
+      const url = String(input);
+      if (url.includes('type=AAAA')) return jsonResponse({ Status: status }, url);
+      return jsonResponse({ Status: 0, Answer: [{ type: 1, data: '93.184.216.34' }] }, url);
+    });
+
+    await expect(createPublicDnsResolver(fetcher)('sample-blog.dev'))
+      .rejects.toThrow(`tencent_dns_status_${status}`);
+  });
+
+  it.each([
+    { Answer: [{ type: 1, data: '93.184.216.34' }] },
+    { Status: '0', Answer: [{ type: 1, data: '93.184.216.34' }] },
+    { Status: 0, Answer: { type: 1, data: '93.184.216.34' } }
+  ])('rejects malformed DNS JSON instead of trusting public-looking answers', async (payload) => {
+    const fetcher: WorkerFetcher = vi.fn(async (input) => jsonResponse(payload, String(input)));
+
+    await expect(createPublicDnsResolver(fetcher)('sample-blog.dev'))
+      .rejects.toThrow('tencent_dns_invalid_response');
+  });
+
+  it('accepts an NXDOMAIN family response as an explicit empty result', async () => {
+    const fetcher: WorkerFetcher = vi.fn(async (input) => {
+      const url = String(input);
+      if (url.includes('type=AAAA')) return jsonResponse({ Status: 3 }, url);
+      return jsonResponse({ Status: 0, Answer: [{ type: 1, data: '93.184.216.34' }] }, url);
+    });
+
+    await expect(createPublicDnsResolver(fetcher)('sample-blog.dev'))
+      .resolves.toEqual(['93.184.216.34']);
   });
 
   it('does not fall back past a private DNS answer', async () => {
@@ -80,7 +127,60 @@ describe('public DNS resolution', () => {
 
     await expect(createPublicDnsResolver(fetcher)('sample-blog.dev')).resolves.toEqual(['93.184.216.34']);
     expect(fetcher).toHaveBeenCalledWith(expect.stringContaining('dns.alidns.com'), expect.anything());
-    expect(fetcher).toHaveBeenCalledWith(expect.stringContaining('doh.pub'), expect.anything());
+    expect(fetcher).not.toHaveBeenCalledWith(expect.stringContaining('doh.pub'), expect.anything());
+  });
+
+  it('reaches Tencent DNS and the target page after three providers time out', async () => {
+    vi.useFakeTimers();
+    let active = 0;
+    let maxActive = 0;
+    const requestedUrls: string[] = [];
+    const fetcher: WorkerFetcher = vi.fn(async (input, init) => {
+      const url = String(input);
+      requestedUrls.push(url);
+      active += 1;
+      maxActive = Math.max(maxActive, active);
+      try {
+        if (/cloudflare-dns|dns\.google|dns\.alidns/.test(url)) {
+          const signal = init?.signal;
+          await new Promise<void>((_resolve, reject) => {
+            if (signal?.aborted) reject(new Error('dns_aborted'));
+            else signal?.addEventListener('abort', () => reject(new Error('dns_aborted')), { once: true });
+          });
+        }
+        if (url.startsWith('https://doh.pub/') && url.includes('type=A')) {
+          return jsonResponse({ Status: 0, Answer: [{ type: 1, data: '93.184.216.34' }] }, url);
+        }
+        if (url.startsWith('https://doh.pub/')) return jsonResponse({ Status: 0, Answer: [] }, url);
+        if (url === 'https://www.sample-blog.dev/') {
+          await new Promise<void>((resolve, reject) => {
+            const timer = setTimeout(resolve, 1_500);
+            init?.signal?.addEventListener('abort', () => {
+              clearTimeout(timer);
+              reject(new Error('target_aborted'));
+            }, { once: true });
+          });
+          return htmlResponse('<!doctype html><html><head><title>Recovered Blog</title><meta name="description" content="Recovered through the final DNS provider"></head><body></body></html>');
+        }
+        return htmlResponse('not found', 404);
+      } finally {
+        active -= 1;
+      }
+    });
+    try {
+      const detection = detectSite('https://www.sample-blog.dev/', { fetcher, timeoutMs: 6_000 });
+      await vi.advanceTimersByTimeAsync(20_000);
+      const result = await detection;
+
+      expect(result.state).toBe('ok');
+      expect(result.primary).toBe('Recovered Blog');
+      expect(requestedUrls.some((url) => url.startsWith('https://doh.pub/'))).toBe(true);
+      expect(requestedUrls).toContain('https://www.sample-blog.dev/');
+      expect(maxActive).toBeLessThanOrEqual(6);
+      expect(active).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('keeps the final provider failure as a bounded diagnostic code', async () => {
@@ -90,6 +190,23 @@ describe('public DNS resolution', () => {
 
     await expect(createPublicDnsResolver(fetcher)('sample-blog.dev'))
       .rejects.toThrow('tencent_dns_network_error');
+  });
+
+  it('keeps a definitive no-public-address DNS answer closed instead of fetching the target', async () => {
+    const requestedUrls: string[] = [];
+    const fetcher: WorkerFetcher = vi.fn(async (input) => {
+      const url = String(input);
+      requestedUrls.push(url);
+      if (/cloudflare-dns|dns\.google|dns\.alidns|doh\.pub/.test(url)) {
+        return jsonResponse({ Status: 0, Answer: [] }, url);
+      }
+      return htmlResponse('<!doctype html><html><head><title>Must not load</title></head></html>');
+    });
+
+    const result = await detectSite('https://assets.sample-blog.dev/', { fetcher, timeoutMs: 100 });
+
+    expect(result.state).toBe('unknown');
+    expect(requestedUrls).not.toContain('https://assets.sample-blog.dev/');
   });
 });
 
@@ -581,6 +698,362 @@ describe('site detection', () => {
 });
 
 describe('backlink checks', () => {
+  it('does not query WordPress fallbacks after the direct page proves found', async () => {
+    const requestedUrls: string[] = [];
+    const fetcher: WorkerFetcher = vi.fn(async (input) => {
+      const url = String(input);
+      requestedUrls.push(url);
+      return htmlResponse('<a href="https://my-blog.top/">My blog</a>');
+    });
+
+    const result = await checkBacklinkWithWordPressFallbacks(
+      'https://sample-blog.dev/friends/',
+      'https://sample-blog.dev/',
+      'https://my-blog.top/',
+      {
+        fetcher,
+        resolver: publicResolver,
+        timeoutMs: 100,
+        wordpressApiUrl: 'https://sample-blog.dev/wp-json/'
+      }
+    );
+
+    expect(result.state).toBe('found');
+    expect(requestedUrls).toEqual(['https://sample-blog.dev/friends/']);
+  });
+
+  it('uses rendered WordPress page content before OPML when the public page is unreadable', async () => {
+    const requestedUrls: string[] = [];
+    const fetcher: WorkerFetcher = vi.fn(async (input) => {
+      const url = String(input);
+      requestedUrls.push(url);
+      if (url === 'https://sample-blog.dev/friends/') {
+        return htmlResponse('blocked', 403);
+      }
+      if (url.startsWith('https://sample-blog.dev/wp-json/wp/v2/pages?')) {
+        return jsonResponse([{
+          link: 'https://sample-blog.dev/friends/',
+          slug: 'friends',
+          title: { rendered: 'Friend links' },
+          content: { rendered: '<a href="https://my-blog.top/">My blog</a>' }
+        }], url);
+      }
+      return htmlResponse('not found', 404);
+    });
+
+    const result = await checkBacklinkWithWordPressFallbacks(
+      'https://sample-blog.dev/friends/',
+      'https://sample-blog.dev/',
+      'https://my-blog.top/',
+      {
+        fetcher,
+        resolver: publicResolver,
+        timeoutMs: 100,
+        wordpressApiUrl: 'https://sample-blog.dev/wp-json/'
+      }
+    );
+
+    expect(result).toMatchObject({
+      state: 'found',
+      checkedUrl: 'https://sample-blog.dev/friends/'
+    });
+    expect(requestedUrls).toContain('https://sample-blog.dev/wp-links-opml.php');
+  });
+
+  it('lets a WordPress source prove found after the readable page reports missing', async () => {
+    const requestedUrls: string[] = [];
+    const fetcher: WorkerFetcher = vi.fn(async (input) => {
+      const url = String(input);
+      requestedUrls.push(url);
+      if (url === 'https://sample-blog.dev/friends/') {
+        return htmlResponse('<a href="https://other.top/">Other</a>');
+      }
+      if (url.startsWith('https://sample-blog.dev/wp-json/wp/v2/pages?')) {
+        return jsonResponse([{
+          link: 'https://sample-blog.dev/friends/',
+          slug: 'friends',
+          content: { rendered: '<a href="https://my-blog.top/">My blog</a>' }
+        }], url);
+      }
+      return htmlResponse('not found', 404);
+    });
+
+    const result = await checkBacklinkWithWordPressFallbacks(
+      'https://sample-blog.dev/friends/',
+      'https://sample-blog.dev/',
+      'https://my-blog.top/',
+      {
+        fetcher,
+        resolver: publicResolver,
+        timeoutMs: 100,
+        wordpressApiUrl: 'https://sample-blog.dev/wp-json/'
+      }
+    );
+
+    expect(result).toMatchObject({
+      state: 'found',
+      checkedUrl: 'https://sample-blog.dev/friends/'
+    });
+    expect(requestedUrls.some((url) => url.includes('/wp-json/wp/v2/pages?'))).toBe(true);
+  });
+
+  it('lets OPML prove found after the readable page reports missing', async () => {
+    const fetcher: WorkerFetcher = vi.fn(async (input) => {
+      const url = String(input);
+      if (url === 'https://sample-blog.dev/friends/') {
+        return htmlResponse('<a href="https://other.top/">Other</a>');
+      }
+      if (url.startsWith('https://sample-blog.dev/wp-json/wp/v2/pages?')) return jsonResponse([], url);
+      if (url === 'https://sample-blog.dev/wp-links-opml.php') {
+        return new Response('<opml version="1.0"><body><outline htmlUrl="https://my-blog.top/" /></body></opml>', {
+          headers: { 'content-type': 'text/xml' }
+        });
+      }
+      return htmlResponse('not found', 404);
+    });
+
+    const result = await checkBacklinkWithWordPressFallbacks(
+      'https://sample-blog.dev/friends/',
+      'https://sample-blog.dev/',
+      'https://my-blog.top/',
+      {
+        fetcher,
+        resolver: publicResolver,
+        timeoutMs: 100,
+        wordpressApiUrl: 'https://sample-blog.dev/wp-json/'
+      }
+    );
+
+    expect(result).toMatchObject({
+      state: 'found',
+      checkedUrl: 'https://sample-blog.dev/wp-links-opml.php'
+    });
+  });
+
+  it('preserves a readable direct missing result when WordPress sources are inconclusive', async () => {
+    const fetcher: WorkerFetcher = vi.fn(async (input) => {
+      const url = String(input);
+      if (url === 'https://sample-blog.dev/friends/') {
+        return htmlResponse('<a href="https://other.top/">Other</a>');
+      }
+      if (url.startsWith('https://sample-blog.dev/wp-json/wp/v2/pages?')) {
+        return jsonResponse([{
+          link: 'https://sample-blog.dev/friends/',
+          slug: 'friends',
+          content: { rendered: '<a href="https://one.top/">One</a><a href="https://two.top/">Two</a>' }
+        }], url);
+      }
+      if (url === 'https://sample-blog.dev/wp-links-opml.php') return htmlResponse('blocked', 403);
+      return htmlResponse('not found', 404);
+    });
+
+    const result = await checkBacklinkWithWordPressFallbacks(
+      'https://sample-blog.dev/friends/',
+      'https://sample-blog.dev/',
+      'https://my-blog.top/',
+      {
+        fetcher,
+        resolver: publicResolver,
+        timeoutMs: 100,
+        wordpressApiUrl: 'https://sample-blog.dev/wp-json/'
+      }
+    );
+
+    expect(result).toMatchObject({
+      state: 'missing',
+      checkedUrl: 'https://sample-blog.dev/friends/'
+    });
+    expect(result.diagnostics.some((entry) => entry.code === 'wordpress_page_missing')).toBe(false);
+  });
+
+  it('does not accept a same-slug WordPress page at a different canonical path', async () => {
+    const fetcher: WorkerFetcher = vi.fn(async (input) => {
+      const url = String(input);
+      if (url === 'https://sample-blog.dev/friends/') return htmlResponse('blocked', 403);
+      if (url.startsWith('https://sample-blog.dev/wp-json/wp/v2/pages?')) {
+        return jsonResponse([{
+          link: 'https://sample-blog.dev/archive/friends/',
+          slug: 'friends',
+          content: { rendered: '<a href="https://my-blog.top/">My blog</a>' }
+        }], url);
+      }
+      if (url === 'https://sample-blog.dev/wp-links-opml.php') {
+        return new Response('<opml version="1.0"><body /></opml>', {
+          headers: { 'content-type': 'text/xml' }
+        });
+      }
+      return htmlResponse('not found', 404);
+    });
+
+    const result = await checkBacklinkWithWordPressFallbacks(
+      'https://sample-blog.dev/friends/',
+      'https://sample-blog.dev/',
+      'https://my-blog.top/',
+      {
+        fetcher,
+        resolver: publicResolver,
+        timeoutMs: 100,
+        wordpressApiUrl: 'https://sample-blog.dev/wp-json/'
+      }
+    );
+
+    expect(result.state).toBe('unknown');
+    expect(result.checkedUrl).toBe('');
+  });
+
+  it('keeps unrelated WordPress REST and OPML links inconclusive', async () => {
+    const fetcher: WorkerFetcher = vi.fn(async (input) => {
+      const url = String(input);
+      if (url === 'https://sample-blog.dev/friends/') return htmlResponse('blocked', 403);
+      if (url.startsWith('https://sample-blog.dev/wp-json/wp/v2/pages?')) {
+        return jsonResponse([{
+          link: 'https://sample-blog.dev/friends/',
+          slug: 'friends',
+          content: { rendered: '<a href="https://one.top/">One</a><a href="https://two.top/">Two</a>' }
+        }], url);
+      }
+      if (url === 'https://sample-blog.dev/wp-links-opml.php') {
+        return new Response('<opml version="1.0"><body><outline htmlUrl="https://three.top/" /></body></opml>', {
+          headers: { 'content-type': 'text/xml' }
+        });
+      }
+      return htmlResponse('not found', 404);
+    });
+
+    const result = await checkBacklinkWithWordPressFallbacks(
+      'https://sample-blog.dev/friends/',
+      'https://sample-blog.dev/',
+      'https://my-blog.top/',
+      {
+        fetcher,
+        resolver: publicResolver,
+        timeoutMs: 100,
+        wordpressApiUrl: 'https://sample-blog.dev/wp-json/'
+      }
+    );
+
+    expect(result.state).toBe('unknown');
+    expect(result.checkedUrl).toBe('');
+  });
+
+  it('starts WordPress REST and OPML fallbacks in parallel', async () => {
+    const requestedUrls: string[] = [];
+    let releaseFallbacks: (() => void) | undefined;
+    const fallbackGate = new Promise<void>((resolve) => { releaseFallbacks = resolve; });
+    const fetcher: WorkerFetcher = vi.fn(async (input) => {
+      const url = String(input);
+      requestedUrls.push(url);
+      if (url === 'https://sample-blog.dev/friends/') return htmlResponse('blocked', 403);
+      if (url.startsWith('https://sample-blog.dev/wp-json/wp/v2/pages?')) {
+        await fallbackGate;
+        return jsonResponse([], url);
+      }
+      if (url === 'https://sample-blog.dev/wp-links-opml.php') {
+        await fallbackGate;
+        return new Response('<opml version="1.0"><body /></opml>', {
+          headers: { 'content-type': 'text/xml' }
+        });
+      }
+      return htmlResponse('not found', 404);
+    });
+
+    const resultPromise = checkBacklinkWithWordPressFallbacks(
+      'https://sample-blog.dev/friends/',
+      'https://sample-blog.dev/',
+      'https://my-blog.top/',
+      {
+        fetcher,
+        resolver: publicResolver,
+        timeoutMs: 100,
+        wordpressApiUrl: 'https://sample-blog.dev/wp-json/'
+      }
+    );
+    for (let attempt = 0; attempt < 20 && requestedUrls.length < 3; attempt += 1) {
+      await Promise.resolve();
+    }
+    const startedTogether = requestedUrls.some((url) => url.includes('/wp-json/wp/v2/pages?'))
+      && requestedUrls.includes('https://sample-blog.dev/wp-links-opml.php');
+    releaseFallbacks?.();
+    await resultPromise;
+
+    expect(startedTogether).toBe(true);
+  });
+
+  it('waits for both WordPress fallbacks to finish abort cleanup before rejecting', async () => {
+    const realSetTimeout = globalThis.setTimeout;
+    vi.useFakeTimers();
+    try {
+      const controller = new AbortController();
+      let activeRequests = 0;
+      const fetcher: WorkerFetcher = vi.fn(async (input, init) => {
+        const url = String(input);
+        if (url === 'https://sample-blog.dev/friends/') return htmlResponse('blocked', 403);
+        if (
+          url.startsWith('https://sample-blog.dev/wp-json/wp/v2/pages?')
+          || url === 'https://sample-blog.dev/wp-links-opml.php'
+        ) {
+          const cleanupDelay = url.includes('/wp-json/') ? 25 : 100;
+          return new Promise<Response>((_resolve, reject) => {
+            const signal = init?.signal;
+            if (!signal) {
+              reject(new Error('missing_abort_signal'));
+              return;
+            }
+            activeRequests += 1;
+            const finishAbort = () => {
+              setTimeout(() => {
+                activeRequests -= 1;
+                reject(signal.reason instanceof Error ? signal.reason : new Error('request_aborted'));
+              }, cleanupDelay);
+            };
+            if (signal.aborted) finishAbort();
+            else signal.addEventListener('abort', finishAbort, { once: true });
+          });
+        }
+        return htmlResponse('not found', 404);
+      });
+
+      let resultSettled = false;
+      const resultPromise = checkBacklinkWithWordPressFallbacks(
+        'https://sample-blog.dev/friends/',
+        'https://sample-blog.dev/',
+        'https://my-blog.top/',
+        {
+          fetcher,
+          resolver: publicResolver,
+          timeoutMs: 500,
+          signal: controller.signal,
+          wordpressApiUrl: 'https://sample-blog.dev/wp-json/'
+        }
+      );
+      const outcomePromise = resultPromise.then(
+        (value) => ({ value, error: null as Error | null }),
+        (error: unknown) => ({ value: null, error: error instanceof Error ? error : new Error(String(error)) })
+      );
+      void outcomePromise.then(() => { resultSettled = true; });
+      for (let attempt = 0; attempt < 50 && activeRequests < 2; attempt += 1) {
+        await new Promise<void>((resolve) => realSetTimeout(resolve, 0));
+      }
+      expect(activeRequests).toBe(2);
+
+      controller.abort(new Error('probe_timeout'));
+      await vi.advanceTimersByTimeAsync(25);
+      await new Promise<void>((resolve) => realSetTimeout(resolve, 0));
+      const settledAfterFirstCleanup = resultSettled;
+      const activeAfterFirstCleanup = activeRequests;
+      await vi.advanceTimersByTimeAsync(75);
+      const outcome = await outcomePromise;
+
+      expect(settledAfterFirstCleanup).toBe(false);
+      expect(activeAfterFirstCleanup).toBe(1);
+      expect(activeRequests).toBe(0);
+      expect(outcome.value).toBeNull();
+      expect(outcome.error?.message).toBe('probe_timeout');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('prefers a discovered candidate that contains the backlink over an earlier missing candidate', async () => {
     const requestedUrls: string[] = [];
     const fetcher: WorkerFetcher = vi.fn(async (input) => {

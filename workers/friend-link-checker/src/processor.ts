@@ -1,6 +1,6 @@
 import type { RuntimeServices } from './app';
 import { assertSafePublicUrl } from './domain';
-import { checkBacklink, detectSite, discoverAndCheckBacklink } from './detector';
+import { checkBacklinkWithWordPressFallbacks, detectSite, discoverAndCheckBacklink } from './detector';
 import { signHmac } from './security';
 import { toQueueMessages } from './app';
 import { isTerminalJob, jobResultPayload } from './result';
@@ -103,11 +103,11 @@ async function processQueueMessageCore(
   let linksPage = claimed.linksPage || site.linksPage;
   const detectionOptions = { fetcher: services.fetcher, resolver: services.resolver };
   const backlink = linksPage
-    ? await checkBacklink(
+    ? await checkBacklinkWithWordPressFallbacks(
         linksPage,
         site.detectedUrl || claimed.url,
         services.config.siteUrl,
-        detectionOptions
+        { ...detectionOptions, wordpressApiUrl: site.wordpressApiUrl }
       )
     : await discoverAndCheckBacklink(
         site.detectedUrl || claimed.url,

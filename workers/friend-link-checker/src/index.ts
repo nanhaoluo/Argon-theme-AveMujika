@@ -25,6 +25,7 @@ type RuntimeEnv = Omit<WorkerBindings, 'CHECK_QUEUE'> & WorkerSecrets & {
 
 function createServices(env: RuntimeEnv): RuntimeServices {
   const fetcher = (input: string, init?: RequestInit) => fetch(input, init);
+  const publicDnsFallback = createPublicDnsResolver(fetcher);
   return {
     config: {
       allowedOrigin: env.ALLOWED_ORIGIN,
@@ -53,7 +54,7 @@ function createServices(env: RuntimeEnv): RuntimeServices {
       }
     },
     fetcher,
-    resolver: createPublicDnsResolver(fetcher),
+    resolver: publicDnsFallback,
     now: () => Math.floor(Date.now() / 1000),
     queueDelaySeconds: randomQueueDelaySeconds,
     recheckDelaySeconds: randomRecheckDelaySeconds

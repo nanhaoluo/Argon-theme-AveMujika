@@ -14,14 +14,16 @@ const WORDPRESS_RESPONSE_LIMIT = 256 * 1024;
 const BACKLINK_RESPONSE_LIMIT = 512 * 1024;
 const DNS_RESPONSE_LIMIT = 64 * 1024;
 const MAX_REDIRECTS = 2;
-const DNS_QUERY_TIMEOUT_MS = 2_000;
+const DNS_QUERY_TIMEOUT_MS = 1_250;
 const CANDIDATE_CONCURRENCY = 3;
 const FRIEND_LINK_DISCOVERY_LIMIT = 8;
 const FRIEND_LINK_DISCOVERY_PATHS = ['/links/', '/friends/', '/friend-links/', '/flinks/', '/blogroll/'] as const;
 const REQUEST_USER_AGENT = 'Mozilla/5.0 (compatible; ArgonFriendLinkChecker/1.0; +https://github.com/nanhaoluo/Argon-theme-AveMujika)';
 const DNS_PROVIDER_GROUPS = [
-  ['cloudflare', 'google'],
-  ['alidns', 'tencent']
+  ['cloudflare'],
+  ['google'],
+  ['alidns'],
+  ['tencent']
 ] as const;
 const SAFE_DIAGNOSTIC_CODES = new Set([
   'unsafe_or_unresolved_dns',
@@ -125,7 +127,7 @@ function safeDiagnosticCode(error: unknown, fallback = 'network_error'): string 
     : (error instanceof Error ? error.message : '');
   const normalized = String(raw || '').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
   if (!normalized || normalized.length > 80) return fallback;
-  if (/^(?:http_\d{3}|(?:cloudflare|google|alidns|tencent)_dns_(?:http_\d{3}|timeout|network_error|invalid_response|response_too_large|no_public_address)|dns_[a-z0-9_]+)$/.test(normalized)) {
+  if (/^(?:http_\d{3}|(?:cloudflare|google|alidns|tencent)_dns_(?:http_\d{3}|status_\d{1,3}|timeout|network_error|invalid_response|response_too_large|no_public_address)|dns_[a-z0-9_]+)$/.test(normalized)) {
     return normalized;
   }
   if (SAFE_DIAGNOSTIC_CODES.has(normalized)) return normalized;
@@ -333,19 +335,27 @@ export function createPublicDnsResolver(fetcher: WorkerFetcher): HostResolver {
           await cancelBody(response);
           throw new Error(`${provider}_dns_http_${response.status}`);
         }
-        const data = JSON.parse(await readTextLimited(response, DNS_RESPONSE_LIMIT)) as {
-          Status?: number;
-          Answer?: Array<{ type?: number; data?: string }>;
-        };
-        if (data.Status !== 0 && data.Status !== undefined) return [];
+        const parsed = JSON.parse(await readTextLimited(response, DNS_RESPONSE_LIMIT)) as unknown;
+        if (!parsed || typeof parsed !== 'object') throw new Error(`${provider}_dns_invalid_response`);
+        const data = parsed as { Status?: unknown; Answer?: unknown };
+        if (typeof data.Status !== 'number' || !Number.isInteger(data.Status) || data.Status < 0) {
+          throw new Error(`${provider}_dns_invalid_response`);
+        }
+        if (data.Status === 3) return [];
+        if (data.Status !== 0) throw new Error(`${provider}_dns_status_${data.Status}`);
+        if (data.Answer !== undefined && !Array.isArray(data.Answer)) {
+          throw new Error(`${provider}_dns_invalid_response`);
+        }
         const wantedType = type === 'A' ? 1 : 28;
-        return (data.Answer ?? [])
-          .filter((answer) => answer.type === wantedType && typeof answer.data === 'string')
-          .map((answer) => String(answer.data));
+        return (data.Answer ?? []).flatMap((answer) => {
+          if (!answer || typeof answer !== 'object') return [];
+          const record = answer as { type?: unknown; data?: unknown };
+          return record.type === wantedType && typeof record.data === 'string' ? [record.data] : [];
+        });
       } catch (error) {
         throwIfAborted(parentSignal);
         const message = error instanceof Error ? error.message : '';
-        if (new RegExp(`^${provider}_dns_http_\\d{3}$`).test(message)) throw error;
+        if (new RegExp(`^${provider}_dns_(?:http_\\d{3}|status_\\d{1,3}|invalid_response)$`).test(message)) throw error;
         if (controller.signal.aborted) throw new Error(`${provider}_dns_timeout`);
         if (error instanceof FetchProblem && error.code === 'response_too_large') {
           throw new Error(`${provider}_dns_response_too_large`);
@@ -362,10 +372,9 @@ export function createPublicDnsResolver(fetcher: WorkerFetcher): HostResolver {
     throwIfAborted(parentSignal);
     const addresses = results.flatMap((result) => result.status === 'fulfilled' ? result.value : []);
     if (addresses.some((address) => !isPublicIpAddress(address))) throw new Error('dns_private_address');
-    if (addresses.length) return [...new Set(addresses)];
-
     const rejected = results.find((result): result is PromiseRejectedResult => result.status === 'rejected');
     if (rejected) throw rejected.reason;
+    if (addresses.length) return [...new Set(addresses)];
     throw new Error(`${provider}_dns_no_public_address`);
   };
 
@@ -943,6 +952,10 @@ export async function detectSite(value: string, options: DetectionOptions = {}):
     throwIfAborted(options.signal);
     const batch = candidates.slice(offset, offset + CANDIDATE_CONCURRENCY);
     evaluated.push(...await waitForBatch(batch.map((candidate) => inspectCandidateHtml(candidate, resolvedOptions))));
+    // Candidates are ordered by preferred protocol. Once a complete batch has
+    // yielded sufficient HTML, slower protocol fallbacks cannot improve the
+    // required metadata enough to justify delaying the backlink check.
+    if (evaluated.some((result) => result.readable && !needsWordPressFallback(result))) break;
   }
 
   const hasSufficientHtml = evaluated.some((result) => result.readable && !needsWordPressFallback(result));
@@ -1084,6 +1097,204 @@ export async function checkBacklink(
   }
 }
 
+function buildWordPressPagesApiUrl(targetSiteUrl: string, wordpressApiRoot: string): URL | null {
+  try {
+    const apiRoot = assertSafePublicUrl(wordpressApiRoot);
+    if (!isSameCandidateSite(apiRoot.toString(), targetSiteUrl)) return null;
+    if (apiRoot.searchParams.has('rest_route')) {
+      apiRoot.searchParams.set('rest_route', '/wp/v2/pages');
+      return apiRoot;
+    }
+    if (!apiRoot.pathname.endsWith('/')) apiRoot.pathname += '/';
+    apiRoot.search = '';
+    apiRoot.hash = '';
+    return new URL('wp/v2/pages', apiRoot);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeComparablePagePath(value: string): string {
+  try {
+    let pathname = assertSafePublicUrl(value).pathname.replace(/\/{2,}/g, '/');
+    try {
+      pathname = decodeURIComponent(pathname);
+    } catch {
+      // Keep the encoded path when it is not valid percent-encoding.
+    }
+    return pathname === '/' ? '/' : pathname.replace(/\/+$/, '');
+  } catch {
+    return '';
+  }
+}
+
+function isSameCanonicalPage(left: string, right: string): boolean {
+  const leftPath = normalizeComparablePagePath(left);
+  const rightPath = normalizeComparablePagePath(right);
+  return Boolean(leftPath && rightPath && leftPath === rightPath && isSameCandidateSite(left, right));
+}
+
+function backlinkFromExtractedUrls(
+  urls: string[],
+  localSiteUrl: string,
+  checkedUrl: string,
+  phase: DetectionDiagnostic['phase'],
+  codePrefix: string,
+  startedAt: number
+): BacklinkDetection | null {
+  const localHost = normalizeComparableHostname(localSiteUrl);
+  const found = urls.some((url) =>
+    normalizeComparableHostname(url) === localHost || isSameCandidateSite(url, localSiteUrl)
+  );
+  if (!found) return null;
+  return {
+    state: 'found',
+    checkedUrl,
+    diagnostics: [diagnostic(phase, checkedUrl, `${codePrefix}_found`, startedAt)]
+  };
+}
+
+async function checkWordPressPageContent(
+  linksPage: string,
+  targetSiteUrl: string,
+  localSiteUrl: string,
+  wordpressApiRoot: string,
+  options: DetectionOptions
+): Promise<BacklinkDetection> {
+  const apiUrl = buildWordPressPagesApiUrl(targetSiteUrl, wordpressApiRoot);
+  if (!apiUrl) return { state: 'unknown', checkedUrl: '', diagnostics: [] };
+  let slug = '';
+  try {
+    const segments = assertSafePublicUrl(linksPage).pathname.split('/').filter(Boolean);
+    slug = decodeURIComponent(segments[segments.length - 1] || '');
+  } catch {
+    return { state: 'unknown', checkedUrl: '', diagnostics: [] };
+  }
+  if (!slug) return { state: 'unknown', checkedUrl: '', diagnostics: [] };
+  apiUrl.searchParams.set('slug', slug);
+  apiUrl.searchParams.set('per_page', '3');
+  apiUrl.searchParams.set('_fields', 'link,slug,title,content');
+  const startedAt = Date.now();
+  try {
+    const { text, finalUrl } = await fetchReadableText(
+      apiUrl.toString(),
+      'application/json',
+      WORDPRESS_RESPONSE_LIMIT,
+      options
+    );
+    const parsed = JSON.parse(text) as unknown;
+    if (!Array.isArray(parsed)) throw new FetchProblem('invalid_wordpress_response', true);
+    for (const value of parsed.slice(0, 3)) {
+      if (!value || typeof value !== 'object') continue;
+      const page = value as Record<string, unknown>;
+      const pageUrl = typeof page.link === 'string' ? absoluteUrl(page.link, targetSiteUrl) : '';
+      if (!pageUrl || !isSameCanonicalPage(pageUrl, linksPage)) continue;
+      const contentValue = page.content && typeof page.content === 'object'
+        ? (page.content as Record<string, unknown>).rendered
+        : page.content;
+      const content = typeof contentValue === 'string' ? contentValue : '';
+      const result = backlinkFromExtractedUrls(
+        extractLinks(content, pageUrl),
+        localSiteUrl,
+        pageUrl,
+        'wordpress',
+        'wordpress_page',
+        startedAt
+      );
+      if (result) return result;
+    }
+    return {
+      state: 'unknown',
+      checkedUrl: '',
+      diagnostics: [diagnostic('wordpress', finalUrl, 'wordpress_page_inconclusive', startedAt)]
+    };
+  } catch (error) {
+    throwIfAborted(options.signal);
+    return {
+      state: 'unknown',
+      checkedUrl: '',
+      diagnostics: [diagnostic('wordpress', apiUrl.toString(), 'wordpress_unreadable', startedAt, error)]
+    };
+  }
+}
+
+async function checkWordPressOpml(
+  targetSiteUrl: string,
+  localSiteUrl: string,
+  options: DetectionOptions
+): Promise<BacklinkDetection> {
+  let opmlUrl = '';
+  try {
+    opmlUrl = new URL('/wp-links-opml.php', assertSafePublicUrl(targetSiteUrl)).toString();
+  } catch {
+    return { state: 'unknown', checkedUrl: '', diagnostics: [] };
+  }
+  const startedAt = Date.now();
+  try {
+    const { text, finalUrl } = await fetchReadableText(
+      opmlUrl,
+      'application/xml,text/xml;q=0.9,*/*;q=0.5',
+      WORDPRESS_RESPONSE_LIMIT,
+      options
+    );
+    if (!/<opml\b/i.test(text)) throw new FetchProblem('invalid_wordpress_response', true);
+    const urls = (text.match(/<outline\b[^>]*>/gi) ?? [])
+      .map((tag) => absoluteUrl(getTagAttribute(tag, 'htmlUrl'), targetSiteUrl))
+      .filter(Boolean);
+    const result = backlinkFromExtractedUrls(
+      urls,
+      localSiteUrl,
+      finalUrl,
+      'wordpress',
+      'wordpress_opml',
+      startedAt
+    );
+    if (result) return result;
+    return {
+      state: 'unknown',
+      checkedUrl: '',
+      diagnostics: [diagnostic('wordpress', finalUrl, 'wordpress_opml_inconclusive', startedAt)]
+    };
+  } catch (error) {
+    throwIfAborted(options.signal);
+    return {
+      state: 'unknown',
+      checkedUrl: '',
+      diagnostics: [diagnostic('wordpress', opmlUrl, 'wordpress_unreadable', startedAt, error)]
+    };
+  }
+}
+
+export async function checkBacklinkWithWordPressFallbacks(
+  linksPage: string,
+  targetSiteUrl: string,
+  localSiteUrl: string,
+  options: BacklinkDiscoveryOptions = {}
+): Promise<BacklinkDetection> {
+  const direct = await checkBacklink(linksPage, targetSiteUrl, localSiteUrl, options);
+  if (direct.state === 'found' || !options.wordpressApiUrl) return direct;
+
+  const fallbackOptions = {
+    ...options,
+    timeoutMs: Math.min(options.timeoutMs ?? 6_000, 2_000)
+  };
+  const [page, opml] = await waitForBatch([
+    checkWordPressPageContent(
+      linksPage,
+      targetSiteUrl,
+      localSiteUrl,
+      options.wordpressApiUrl,
+      fallbackOptions
+    ),
+    checkWordPressOpml(targetSiteUrl, localSiteUrl, fallbackOptions)
+  ]);
+  const diagnostics = [...direct.diagnostics, ...page.diagnostics, ...opml.diagnostics].slice(0, 64);
+  const found = [page, opml].find((result) => result.state === 'found');
+  if (found) return { ...found, diagnostics };
+  if (direct.state === 'missing') return { ...direct, diagnostics };
+  return { state: 'unknown', checkedUrl: '', diagnostics };
+}
+
 function isConfirmedFriendLinksPage(html: string, finalUrl: string): boolean {
   if (!isConfirmableHtmlPage(html)) return false;
   const identity = [
@@ -1099,24 +1310,8 @@ async function discoverWordPressPageCandidates(
   wordpressApiRoot: string,
   options: DetectionOptions
 ): Promise<{ urls: string[]; diagnostics: DetectionDiagnostic[] }> {
-  let apiUrl: URL;
-  try {
-    const apiRoot = assertSafePublicUrl(wordpressApiRoot);
-    if (!isSameCandidateSite(apiRoot.toString(), targetSiteUrl)) {
-      return { urls: [], diagnostics: [] };
-    }
-    if (apiRoot.searchParams.has('rest_route')) {
-      apiRoot.searchParams.set('rest_route', '/wp/v2/pages');
-      apiUrl = apiRoot;
-    } else {
-      if (!apiRoot.pathname.endsWith('/')) apiRoot.pathname += '/';
-      apiRoot.search = '';
-      apiRoot.hash = '';
-      apiUrl = new URL('wp/v2/pages', apiRoot);
-    }
-  } catch {
-    return { urls: [], diagnostics: [] };
-  }
+  const apiUrl = buildWordPressPagesApiUrl(targetSiteUrl, wordpressApiRoot);
+  if (!apiUrl) return { urls: [], diagnostics: [] };
   apiUrl.searchParams.set('per_page', '20');
   apiUrl.searchParams.set('_fields', 'link,slug,title');
   const startedAt = Date.now();

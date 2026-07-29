@@ -238,13 +238,13 @@ npm test
 
 - `POST /v1/jobs`：校验 WordPress 的 HMAC、5 分钟时间窗和随机数防重放，只写 D1/Queue，返回 `202`。
 - `POST /v1/jobs/<job_id>/result`：WordPress 使用提交 HMAC 和当前 `generation` 主动读取结果；任务未完成返回 `202`，完成返回与回调相同的结果载荷。`result.checked_url` 是实际读取完成的互链页最终 URL（未执行互链读取时为空），用于接收端将 `found` / `missing` 结论绑定到真正检查过的同站页面。该接口用于主机 WAF 拦截 Worker 回调时的服务端兜底，不向浏览器暴露密钥。
-- `POST /v1/probe`：WordPress 管理端使用提交 HMAC 同步执行一次 `mode=info|backlink` 探测；校验签名和 nonce 防重放、`site_url` 同源以及 `url` / `links_page` 的公网和同站边界，不入 Queue、不改 `jobs`，返回通用 `result`、检测来源与有界诊断。网站信息遵循“首页 HTML 优先，且只有首页明确证明为 WordPress/Argon 时才使用 REST”的策略；互链页缺失时会继续执行受限 HTML 候选发现，并在同一证据边界内选择性查询 WordPress Pages。
+- `POST /v1/probe`：WordPress 管理端使用提交 HMAC 同步执行一次 `mode=info|backlink` 探测；校验签名和 nonce 防重放、`site_url` 同源以及 `url` / `links_page` 的公网和同站边界，不入 Queue、不改 `jobs`，返回通用 `result`、检测来源与有界诊断。网站信息遵循“首页 HTML 优先，且只有首页明确证明为 WordPress/Argon 时才使用 REST”的策略；互链页缺失时会继续执行受限 HTML 候选发现。已知互链页返回未命中或暂时不可读、且首页提供 WordPress REST 证据时，会并行检查规范路径匹配的 Pages 内容和公开 `wp-links-opml.php`；两个来源只用于补强 `found`，未命中不会单独证明 `missing`。
 - `POST /v1/status`：WordPress 使用提交 HMAC 和本站 URL 读取管理员运行态；不会返回任何 Secret，目标 URL 与诊断 URL 会移除查询串和片段。
 - `GET /v1/jobs/<job_id>`：需要 `Authorization: Bearer <ADMIN_READ_TOKEN>`，不要从公开页面调用。
 - `POST CALLBACK_URL`：Worker 使用独立回调 HMAC；WordPress 校验签名、时间窗、随机数和任务代际。
 - WordPress 管理窗口仅在检测轮询时按 8 秒节流主动同步，普通打开编辑窗口不会等待 Worker；无人打开后台时由 5 分钟 WP-Cron 继续同步。
 - Queue 消费者会检查目标及每次重定向的 DNS 结果，拒绝私网、回环、保留和不可解析地址，避免 SSRF。
-- DNS 预检先并行尝试 Cloudflare/Google DoH，再并行回退到 AliDNS/Tencent DoH；每个请求最多 2 秒，整次目标读取仍受 6 秒总超时限制。任一解析器返回私网地址都会立即拒绝目标，不会因另一解析器返回公网地址而放行。
+- DNS 预检按 Cloudflare、Google、AliDNS、Tencent 的顺序逐家尝试，每家仅并行查询 A/AAAA；首批三个候选因此最多占用六个等待响应头连接，不超过 Workers 单次调用的连接上限。每家查询最多 1.25 秒且失败后完成清理再尝试下一家，使第四家服务商和目标页面都能落在同一目标读取的 6 秒总预算内。A/AAAA 两族都必须成功或明确无记录后才接受结果；任一解析器返回私网地址都会立即拒绝目标，不会因另一族或另一解析器返回公网地址而放行。
 - `global_fetch_strictly_public` 确保 Worker 的实际目标请求从公共互联网入口路由，不绕过目标 Zone 的 Cloudflare 安全策略。
 - 最近一次检测会在 D1 中保存有界诊断码，例如 `dns_timeout`、`timeout`、`http_403`、`response_too_large` 和 `challenge_or_invalid_html`；不会保存响应正文、请求头、Secret、URL 查询串或任意异常堆栈。
 - `backlink_state=unknown` 表示超时、地区限制、真实验证页或内容不可读，不会被当成“确认未上链”；普通页面仅加载验证码脚本不会触发该状态。
