@@ -327,7 +327,7 @@ export function createPublicDnsResolver(fetcher: WorkerFetcher): HostResolver {
       try {
         const response = await fetcher(url, {
           method: 'GET',
-          redirect: 'error',
+          redirect: 'manual',
           signal: controller.signal,
           headers: { Accept: 'application/dns-json' }
         });

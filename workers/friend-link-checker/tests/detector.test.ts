@@ -36,6 +36,9 @@ describe('public DNS resolution', () => {
     });
 
     await expect(createPublicDnsResolver(fetcher)('sample-blog.dev')).resolves.toEqual(['93.184.216.34']);
+    for (const call of vi.mocked(fetcher).mock.calls) {
+      expect(call[1]?.redirect).toBe('manual');
+    }
   });
 
   it('accepts a public AAAA result when the A family has a definitive empty answer', async () => {
