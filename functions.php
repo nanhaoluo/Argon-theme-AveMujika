@@ -12,6 +12,7 @@
 // 引入彩蛋系统
 require_once get_template_directory() . '/easter-eggs.php';
 require_once get_template_directory() . '/inc/ai-spam-prompts.php';
+require_once get_template_directory() . '/inc/ai-summary-prompt.php';
 require_once get_template_directory() . '/inc/friend-link-algorithms.php';
 
 // 禁止移动端浏览器缓存 HTML 页面
@@ -7617,54 +7618,6 @@ function argon_normalize_ai_confidence_value($value, $default = 0.0) {
 	return max(0, min(1, $confidence));
 }
 
-function argon_get_default_ai_summary_prompt() {
-	return "## 角色\n\n你是一位拥有 10 年经验的资深媒体编辑与内容摘要专家。你的核心能力是：将一篇完整文章压缩为一段独立、可流通的内容摘要——读者仅凭这段摘要，无需阅读原文，即可准确理解文章的核心论点、关键证据和最终结论。\n\n---\n\n## 任务\n\n请阅读用户提供的文章，撰写一份完全自洽的内容摘要。\n\n---\n\n## 要求\n\n### 1. 内容独立性（最高优先级）\n\n- 用自己的语言重新组织，禁止大段复制或微调原文语句；\n- 摘要必须脱离原文独立成立：任何不补充上下文就无法理解的指代（如“这一结果”“上述观点”）都不允许出现；\n- 如文章涉及专有名词、缩略语或特定概念，摘要中须在首次出现时给出简短括号释义或自然语境解释，确保非专业读者也能读懂。\n\n### 2. 核心内容提取\n\n- 准确提炼文章的核心观点（What）与核心逻辑/因果链（Why / How）；\n- 不得遗漏关键数据、核心结论或主张、创新亮点或独特贡献；\n- 若文章包含多个并列观点，按重要性排序，优先保留前三项，其余用一句话概括。\n\n### 3. 字数控制\n\n- 正文摘要严格控制在 120–260 字；\n- 如原文信息密度极高，上限可放宽至 320 字，但必须输出完整句子。\n\n### 4. 语言风格\n\n- 使用通俗易懂、简洁干练的现代汉语；\n- 避免晦涩的专业术语；若必须使用术语，紧跟一句白话解释；\n- 每句话只表达一个意思，拒绝嵌套从句和长定语。\n\n### 5. 语气与立场\n\n- 严格客观中立：不加入个人评价、情感倾向或价值判断；\n- 不做过度推演：只陈述文章已明确表达的观点，不引申、不预测、不类比到文章未涉及的领域。\n\n### 6. 输出结构\n\n输出 2–3 个自然段，每段之间空一行：\n\n1. 第一段概括文章核心观点；\n2. 第二段概括主要事实、案例、数据或推理链条；\n3. 如有必要，第三段用完整句子收束文章结论。\n\n---\n\n## 禁止事项（负面清单）\n\n| 禁止行为 | 说明 |\n|---|---|\n| 输出标题 | 不得输出【摘要标题】、Markdown 标题或任何独立标题行 |\n| 半句结尾 | 最后一段必须以完整句子结束，不能以逗号、顿号、分号、冒号或连接词结尾 |\n| 大段照搬原文 | 即使改了几个字，连续 8 字以上与原文相同即视为照搬 |\n| 使用模糊指代 | “这”“该”“上述”等词若脱离原文无法定位所指，则不允许出现 |\n| 添加主观评价 | “意义重大”“令人振奋”“值得关注”等评价性语言一律禁止 |\n| 补充原文未提及的信息 | 摘要中不得出现原文中不存在的事实、数据或观点 |\n| 使用模板化开头 | 禁止以“本文介绍了”“本文主要讲述了”等万能句式开头 |\n\n---\n\n## 输出格式\n\n只输出正文摘要，不要标题、编号、列表、前言、结语、代码块或表格。";
-}
-
-function argon_get_ai_summary_prompt() {
-	$prompt = get_option('argon_ai_summary_prompt', '');
-	$previous_default = '你是一个专业的内容摘要助手。请仔细阅读以下文章内容，用简洁、准确的语言总结文章的核心观点和主要内容。要求：1) 控制在 100-150 字以内；2) 突出文章的关键信息和亮点；3) 使用通俗易懂的语言；4) 保持客观中立的语气。';
-	$strict_default = '你是一个严格的文章摘要助手。请只基于用户提供的文章正文生成摘要，不得引入正文没有出现的信息、推测、评价或建议。输出要求：1) 使用中文；2) 支持 Markdown，但只允许使用普通段落或最多 3 条无序列表；3) 不要输出标题、前言、结语、代码块、引用块、表格；4) 不要使用“以下是”“总结如下”“本文”等套话开头；5) 总长度控制在 120-180 个中文字符以内；6) 如果正文信息不足，只概括已有信息，不要补充外部知识。';
-	if (trim($prompt) === '' || trim($prompt) === $previous_default || trim($prompt) === $strict_default) {
-		return argon_get_default_ai_summary_prompt();
-	}
-	return $prompt;
-}
-
-function argon_clean_ai_summary_output($summary, $max_chars = 620) {
-	$summary = trim((string)$summary);
-	$summary = preg_replace('/<think\b[^>]*>[\s\S]*?<\/think>/iu', '', $summary);
-	$summary = preg_replace('/<thinking\b[^>]*>[\s\S]*?<\/thinking>/iu', '', $summary);
-	$summary = preg_replace('/<reasoning\b[^>]*>[\s\S]*?<\/reasoning>/iu', '', $summary);
-	$summary = preg_replace('/^\s*(?:思考过程|推理过程|思维链|Chain\s*of\s*Thought|Reasoning)[:：][\s\S]*?(?=\n\s*(?:【|#|正文摘要|核心观点)|$)/iu', '', $summary);
-	$summary = preg_replace('/^```(?:markdown|md|text)?\s*/iu', '', $summary);
-	$summary = preg_replace('/\s*```$/u', '', $summary);
-	$summary = preg_replace('/^---[\s\S]*?---\s*/u', '', $summary);
-	$summary = preg_replace('/^\s*(?:#{1,6}\s*)?(?:【[^\n】]{1,30}】|[^\n]{1,30})\s*\n{2,}/u', '', $summary);
-	$summary = preg_replace('/^(?:以下是|下面是|总结如下|摘要如下|文章摘要|AI\s*摘要)[:：\s]*/iu', '', $summary);
-	$summary = preg_replace('/\n*自检清单[\s\S]*$/u', '', $summary);
-	$summary = preg_replace('/\n{3,}/u', "\n\n", $summary);
-	$summary = trim($summary);
-
-	if (function_exists('mb_strlen') && mb_strlen(wp_strip_all_tags($summary), 'UTF-8') > $max_chars) {
-		$plain = wp_strip_all_tags($summary);
-		$truncated = mb_substr($plain, 0, $max_chars, 'UTF-8');
-		$last_sentence_end = max(
-			mb_strrpos($truncated, '。', 0, 'UTF-8') ?: -1,
-			mb_strrpos($truncated, '！', 0, 'UTF-8') ?: -1,
-			mb_strrpos($truncated, '？', 0, 'UTF-8') ?: -1,
-			mb_strrpos($truncated, '.', 0, 'UTF-8') ?: -1
-		);
-		if ($last_sentence_end >= 120) {
-			$summary = mb_substr($truncated, 0, $last_sentence_end + 1, 'UTF-8');
-		} else {
-			$summary = preg_replace('/[，、；：,.\s]+$/u', '', $truncated) . '。';
-		}
-	}
-
-	return trim($summary);
-}
-
 function argon_get_ai_summary_thinking_mode() {
 	$mode = get_option('argon_ai_summary_thinking_mode', 'disabled');
 	return in_array($mode, ['disabled', 'auto', 'enabled'], true) ? $mode : 'disabled';
@@ -8927,7 +8880,6 @@ function argon_generate_ai_summary($post, $ai_context = []) {
 	// 准备文章内容
 	$content = wp_strip_all_tags($post->post_content);
 	$content = preg_replace('/\s+/', ' ', $content);
-	$content = mb_substr($content, 0, 8000); // 限制长度
 	
 	// 错误检查：文章内容
 	if (empty($content) || mb_strlen($content) < 50) {
@@ -8942,7 +8894,7 @@ function argon_generate_ai_summary($post, $ai_context = []) {
 	
 	// 获取提示词
 	$prompt = argon_get_ai_summary_prompt();
-	$prompt = trim($prompt) . "\n\n硬性边界：摘要必须严格来自正文，不得补充正文之外的人物、时间、结论、背景、链接或行动建议；只输出正文摘要，不输出标题、编号、列表、自检清单、解释说明、代码块或表格；正文摘要优先控制在 120–260 字，信息密度极高时允许到 320 字；最后一句必须完整收束，不得以逗号、顿号、分号、冒号或连接词结尾。";
+	$prompt = argon_apply_ai_summary_hard_boundary($prompt, $content);
 	$prompt = argon_apply_ai_summary_thinking_mode($prompt);
 	
 	// 使用统一的 AI 查询接口
@@ -8959,7 +8911,25 @@ function argon_generate_ai_summary($post, $ai_context = []) {
 			argon_log_ai_error('AI', '摘要生成失败', 'AI 查询没有返回有效摘要，请检查当前 API 的 endpoint、模型名和余额/权限', $post->ID);
 		}
 	} else {
-		$result = argon_clean_ai_summary_output($result);
+		$length_result = argon_normalize_ai_summary_to_profile($result, $content);
+		$result = $length_result['summary'];
+		if ($length_result['was_truncated']) {
+			error_log(sprintf(
+				'Argon AI Summary: 程序已将摘要从 %d 字规范到 %d 字（目标区间 %d–%d 字，文章ID: %d）',
+				$length_result['original_length'],
+				$length_result['normalized_length'],
+				$length_result['target_min'],
+				$length_result['target_max'],
+				$post->ID
+			));
+		} elseif ($length_result['is_below_target']) {
+			error_log(sprintf(
+				'Argon AI Summary: 摘要为 %d 字，低于程序目标下限 %d 字；为避免无依据补写，保留模型原始内容（文章ID: %d）',
+				$length_result['normalized_length'],
+				$length_result['target_min'],
+				$post->ID
+			));
+		}
 		delete_post_meta($post->ID, '_argon_ai_summary_error');
 		delete_post_meta($post->ID, '_argon_ai_summary_error_time');
 	}
