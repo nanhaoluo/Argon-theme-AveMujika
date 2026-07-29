@@ -529,4 +529,28 @@ function resetGeetestCaptcha() {
 		</div>
 	</div>
 </div>
+<?php if (current_user_can('moderate_comments')) { ?>
+<div id="comment_ai_train_dialog" class="modal fade" tabindex="-1" role="dialog" aria-modal="true">
+	<div class="modal-dialog modal-lg">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h4 class="modal-title" style="font-size: 20px;"><?php _e('提交 AI 训练', 'argon'); ?></h4>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+			</div>
+			<div class="modal-body">
+				<p style="margin-bottom: 10px; color: #8898aa;">
+					<?php _e('AI 会结合整条评论、文章语境和博客内已有训练样本，重点复核长篇无意义文本与新型网络用词。说明可留空，仅作为训练线索。', 'argon'); ?>
+				</p>
+				<div class="comment-ai-train-preview" style="max-height: 180px; overflow: auto; padding: 10px; background: rgba(0,0,0,.03); border-radius: 4px; word-break: break-word;"></div>
+				<label for="comment_ai_train_reason" style="display: block; margin-top: 14px;"><?php _e('管理员说明（可选）', 'argon'); ?></label>
+				<textarea id="comment_ai_train_reason" class="form-control" rows="4" maxlength="500" placeholder="<?php esc_attr_e('例如：这是一种新网络用词，实际含义是定向辱骂；或：长文与文章无关，疑似机器灌水。', 'argon'); ?>"></textarea>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal"><?php _e('取消', 'argon'); ?></button>
+				<button type="button" class="btn btn-primary comment-ai-train-submit"><?php _e('提交并训练', 'argon'); ?></button>
+			</div>
+		</div>
+	</div>
+</div>
+<?php } ?>
 <?php } ?>

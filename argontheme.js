@@ -2161,6 +2161,7 @@ const ARGON_FABTN_INIT_MAX_ATTEMPTS = 40;
 	});
 	//编辑评论
 	let editing = false, editID = 0;
+	let aiTrainingCommentID = 0, aiTrainingNonce = '';
 	function edit(commentID) {
 		cancelReply();
 		editing = true;
@@ -2218,6 +2219,63 @@ const ARGON_FABTN_INIT_MAX_ATTEMPTS = 40;
 	});
 	$(document).on("click", ".comment-delete", function () {
 		deleteComment(this.getAttribute("data-id"));
+	});
+	$(document).on("click", ".comment-ai-train", function () {
+		aiTrainingCommentID = parseInt(this.getAttribute("data-id"), 10) || 0;
+		aiTrainingNonce = this.getAttribute("data-nonce") || '';
+		var commentText = $("#comment-" + aiTrainingCommentID + " .comment-item-source").text();
+		if (!commentText) {
+			commentText = $("#comment-" + aiTrainingCommentID + " .comment-item-text").text();
+		}
+		$("#comment_ai_train_dialog .comment-ai-train-preview").text(commentText || __("未读取到评论正文"));
+		$("#comment_ai_train_reason").val('');
+		$("#comment_ai_train_dialog .comment-ai-train-submit").prop("disabled", false).text(__("提交并训练"));
+		$("#comment_ai_train_dialog").modal(null);
+	});
+	$(document).on("click", ".comment-ai-train-submit", function () {
+		var $submit = $(this);
+		if (!aiTrainingCommentID || !aiTrainingNonce || $submit.prop("disabled")) {
+			return;
+		}
+		$submit.prop("disabled", true).html('<i class="fa fa-spinner fa-spin" aria-hidden="true"></i> ' + __("AI 审核中…"));
+		$.ajax({
+			type: "POST",
+			url: argonConfig.wp_path + "wp-admin/admin-ajax.php",
+			dataType: "json",
+			data: {
+				action: "argon_train_comment_with_ai",
+				comment_id: aiTrainingCommentID,
+				nonce: aiTrainingNonce,
+				admin_note: $("#comment_ai_train_reason").val() || ''
+			},
+			success: function (result) {
+				if (!result || result.success !== true) {
+					var errorMessage = result && result.data && result.data.message ? result.data.message : __("AI 训练失败");
+					iziToast.error({ title: __("训练失败"), message: errorMessage, position: "topRight" });
+					return;
+				}
+				var data = result.data || {};
+				var $button = $("#comment-" + aiTrainingCommentID + " .comment-ai-train");
+				$button.attr("data-trained", "true").text(__("更新训练样本"));
+				if ($button.length && $("#comment-" + aiTrainingCommentID + " .badge-ai-trained").length === 0) {
+					$("#comment-" + aiTrainingCommentID + " .comment-name").append('<span class="badge badge-info badge-ai-trained"><i class="fa fa-graduation-cap" aria-hidden="true"></i> ' + __("已训练") + '</span>');
+				}
+				var detail = data.reason || __("已保存博客内训练样本");
+				if (Array.isArray(data.keywords) && data.keywords.length) {
+					detail += " · " + __("原文关键词") + ": " + data.keywords.join("、");
+				}
+				var detailNode = document.createElement("span");
+				detailNode.textContent = detail;
+				iziToast.success({ title: data.message || __("训练完成"), message: detailNode.outerHTML, position: "topRight" });
+				$("#comment_ai_train_dialog").modal("hide");
+			},
+			error: function () {
+				iziToast.error({ title: __("训练失败"), message: __("网络或服务器错误，请稍后重试"), position: "topRight" });
+			},
+			complete: function () {
+				$submit.prop("disabled", false).text(__("提交并训练"));
+			}
+		});
 	});
 	$(document).on("mouseenter", ".comment-parent-info", function () {
 		$("#comment-" + this.getAttribute("data-parent-id")).addClass("highlight");
@@ -2488,6 +2546,34 @@ const ARGON_FABTN_INIT_MAX_ATTEMPTS = 40;
 		}
 	}
 
+	function triggerAsyncCommentReview(result) {
+		if (!result || !result.reviewPending || !result.reviewToken || !result.id) {
+			return;
+		}
+		var endpoint = argonConfig.wp_path + "wp-admin/admin-ajax.php";
+		var body = "action=argon_process_comment_review"
+			+ "&comment_id=" + encodeURIComponent(result.id)
+			+ "&review_token=" + encodeURIComponent(result.reviewToken);
+		if (typeof window.fetch === "function") {
+			fetch(endpoint, {
+				method: "POST",
+				headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
+				credentials: "same-origin",
+				keepalive: true,
+				body: body
+			}).catch(function (error) {
+				ArgonDebug.warn("Async comment review request failed:", error);
+			});
+			return;
+		}
+		$.ajax({
+			type: "POST",
+			url: endpoint,
+			data: body,
+			global: false
+		});
+	}
+
 	//发送评论
 	window.postComment = function postComment() {
 		argonSyncEditorToTextarea();
@@ -2714,6 +2800,7 @@ const ARGON_FABTN_INIT_MAX_ATTEMPTS = 40;
 			dataType: "json",
 			data: ajaxData,
 			success: function (result) {
+				triggerAsyncCommentReview(result);
 				restoreCommentSubmitControls(result.isAdmin);
 				$("#post_comment").removeClass("show-extra-input post-comment-force-privatemode-on post-comment-force-privatemode-off");
 

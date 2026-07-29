@@ -3936,13 +3936,13 @@ function themeoptions_page(){
 					<td>
 						<select name="argon_comment_spam_detection_prompt_mode">
 							<?php $argon_comment_spam_detection_prompt_mode = get_option('argon_comment_spam_detection_prompt_mode', 'standard'); ?>
-							<option value="minimal" <?php if ($argon_comment_spam_detection_prompt_mode=='minimal'){echo 'selected';} ?>><?php _e('极简模式（低成本）', 'argon');?></option>
-							<option value="standard" <?php if ($argon_comment_spam_detection_prompt_mode=='standard'){echo 'selected';} ?>><?php _e('标准模式（均衡，推荐）', 'argon');?></option>
-							<option value="enhanced" <?php if ($argon_comment_spam_detection_prompt_mode=='enhanced'){echo 'selected';} ?>><?php _e('增强模式（深度识别）', 'argon');?></option>
+							<option value="minimal" <?php if ($argon_comment_spam_detection_prompt_mode=='minimal'){echo 'selected';} ?>><?php _e('极简模式（约 1k 内，最低开销）', 'argon');?></option>
+							<option value="standard" <?php if ($argon_comment_spam_detection_prompt_mode=='standard'){echo 'selected';} ?>><?php _e('标准模式（约 2–3k，推荐）', 'argon');?></option>
+							<option value="enhanced" <?php if ($argon_comment_spam_detection_prompt_mode=='enhanced'){echo 'selected';} ?>><?php _e('增强模式（约 4–6k，深度核验）', 'argon');?></option>
 							<option value="custom" <?php if ($argon_comment_spam_detection_prompt_mode=='custom'){echo 'selected';} ?>><?php _e('自定义 Prompt', 'argon');?></option>
 						</select>
 						<p class="description">
-							<?php _e('三个预设均包含结构化输出、变体识别、提示词注入防护和引用场景误判保护；增强模式会增加深度核验。', 'argon');?>
+							<?php _e('三档均可独立完成审核，但指令深度和开销明显递增；长度为参考值，会因批量输出协议略有浮动。AI 只返回风险参考值，最终置信度由服务器计算。', 'argon');?>
 						</p>
 					</td>
 				</tr>
@@ -3952,7 +3952,7 @@ function themeoptions_page(){
 					<td>
 						<textarea name="argon_comment_spam_detection_custom_prompt" rows="8" cols="70" style="font-family: monospace;"><?php echo esc_textarea(get_option('argon_comment_spam_detection_custom_prompt', '')); ?></textarea>
 						<p class="description">
-							<?php _e('自定义检测规则。系统仍会强制追加不可信数据边界和 JSON 输出契约，评论内容不会获得指令权限。', 'argon');?>
+							<?php _e('这里填写额外的业务规则。系统会在其后强制追加完整审核边界、语境判断流程、违规原文关键词、AI 风险参考值和 JSON 输出契约；自定义内容与评论都不能覆盖这些规则。', 'argon');?>
 						</p>
 					</td>
 				</tr>
@@ -3993,25 +3993,31 @@ function themeoptions_page(){
 								<table class="wp-list-table widefat fixed striped" style="font-size: 12px;">
 									<thead>
 										<tr>
-											<th style="width: 30%;"><?php _e('关键词', 'argon'); ?></th>
-											<th style="width: 15%;"><?php _e('置信度', 'argon'); ?></th>
+											<th style="width: 25%;"><?php _e('评论原文关键词', 'argon'); ?></th>
+											<th style="width: 15%;"><?php _e('服务端置信度', 'argon'); ?></th>
+											<th style="width: 15%;"><?php _e('AI 参考均值', 'argon'); ?></th>
 											<th style="width: 15%;"><?php _e('垃圾次数', 'argon'); ?></th>
 											<th style="width: 15%;"><?php _e('正常次数', 'argon'); ?></th>
-											<th style="width: 25%;"><?php _e('操作', 'argon'); ?></th>
+											<th style="width: 15%;"><?php _e('操作', 'argon'); ?></th>
 										</tr>
 									</thead>
 									<tbody>
 										<?php 
 										$sorted_keywords = $learned_keywords;
 										uasort($sorted_keywords, function($a, $b) {
-											$conf_a = isset($a['confidence']) ? $a['confidence'] : 0;
-											$conf_b = isset($b['confidence']) ? $b['confidence'] : 0;
+											$conf_a = argon_calculate_keyword_confidence($a);
+											$conf_b = argon_calculate_keyword_confidence($b);
 											return $conf_b <=> $conf_a;
 										});
 										foreach ($sorted_keywords as $keyword => $stats): 
-											$confidence = isset($stats['confidence']) ? round($stats['confidence'] * 100, 1) : 0;
+											$confidence = round(argon_calculate_keyword_confidence($stats) * 100, 1);
 											$spam_count = isset($stats['spam_count']) ? $stats['spam_count'] : 0;
 											$normal_count = isset($stats['normal_count']) ? $stats['normal_count'] : 0;
+											$reference_count = isset($stats['reference_count']) ? intval($stats['reference_count']) : 0;
+											$reference_sum = isset($stats['reference_sum']) ? floatval($stats['reference_sum']) : 0;
+											$reference_average = $reference_count > 0
+												? round(($reference_sum / $reference_count) * 100, 1)
+												: null;
 											$is_high = argon_is_learned_spam_rule_ready($stats);
 										?>
 										<tr>
@@ -4026,10 +4032,11 @@ function themeoptions_page(){
 													<?php echo $confidence; ?>%
 												</span>
 											</td>
+											<td><?php echo $reference_average === null ? '—' : esc_html($reference_average . '%'); ?></td>
 											<td><?php echo intval($spam_count); ?></td>
 											<td><?php echo intval($normal_count); ?></td>
 											<td>
-												<button type="button" class="button button-small edit-keyword-btn" data-keyword="<?php echo esc_attr($keyword); ?>" data-confidence="<?php echo esc_attr($confidence/100); ?>" data-spam="<?php echo esc_attr($spam_count); ?>" data-normal="<?php echo esc_attr($normal_count); ?>">
+												<button type="button" class="button button-small edit-keyword-btn" data-keyword="<?php echo esc_attr($keyword); ?>" data-spam="<?php echo esc_attr($spam_count); ?>" data-normal="<?php echo esc_attr($normal_count); ?>">
 													<?php _e('编辑', 'argon'); ?>
 												</button>
 												<button type="button" class="button button-small delete-keyword-btn" data-keyword="<?php echo esc_attr($keyword); ?>" style="color: #dc3232;">
@@ -4050,7 +4057,7 @@ function themeoptions_page(){
 							<?php endif; ?>
 							
 						<p class="description" style="margin-top: 10px;">
-							<?php _e('系统从高置信度 AI 结果中学习候选特征。只有多次命中、置信度高于 92% 且没有正常样本的规则才会本地快速拦截；学习规则不会进入手动黑名单。', 'argon');?>
+							<?php _e('AI 只提交评论正文中的违规原文片段和风险参考值。服务端结合垃圾次数、正常次数与历史参考均值计算置信度；短词、变体和证据不足的命中始终回送 AI，只有充分验证的完整短语才可本地快速处理。', 'argon');?>
 						</p>
 						
 						<!-- 关键词编辑模态框 -->
@@ -4067,10 +4074,6 @@ function themeoptions_page(){
 										<td><input type="text" id="edit-keyword-text" class="regular-text" value=""></td>
 									</tr>
 									<tr>
-										<th style="padding: 5px 10px 5px 0;"><?php _e('置信度', 'argon'); ?></th>
-										<td><input type="number" id="edit-keyword-confidence" min="0" max="100" step="0.1" value=""> %</td>
-									</tr>
-									<tr>
 										<th style="padding: 5px 10px 5px 0;"><?php _e('垃圾次数', 'argon'); ?></th>
 										<td><input type="number" id="edit-keyword-spam" min="0" value=""></td>
 									</tr>
@@ -4080,7 +4083,7 @@ function themeoptions_page(){
 									</tr>
 								</table>
 								<p class="description" style="margin: 10px 0;">
-									<?php _e('修改后系统将记录为"管理员干预"。', 'argon'); ?>
+									<?php _e('修改关键词或样本次数后，服务端会重新计算置信度并记录为“管理员干预”。', 'argon'); ?>
 								</p>
 								<div style="margin-top: 15px; display: flex; gap: 10px;">
 									<button type="button" class="button button-primary" id="save-keyword-edit">
@@ -4606,6 +4609,11 @@ function themeoptions_page(){
 									html += '<strong><?php _e('原因:', 'argon'); ?></strong> ' + comment.reason;
 									html += '</div>';
 								}
+								if (Array.isArray(comment.violation_keywords) && comment.violation_keywords.length) {
+									html += '<div style="margin-top: 6px; color: #999; font-size: 12px;">';
+									html += '<strong><?php _e('AI 识别的违规原文:', 'argon'); ?></strong> ' + comment.violation_keywords.join('、');
+									html += '</div>';
+								}
 								html += '<div style="margin-top: 10px;">';
 								html += '<a href="' + comment.edit_link + '" target="_blank" class="button button-small"><?php _e('查看', 'argon'); ?></a>';
 								html += '</div>';
@@ -4677,13 +4685,11 @@ function themeoptions_page(){
 					// 打开编辑关键词模态框
 					$(document).on('click', '.edit-keyword-btn', function() {
 						let keyword = $(this).data('keyword');
-						let confidence = $(this).data('confidence');
 						let spam = $(this).data('spam');
 						let normal = $(this).data('normal');
 						
 						$('#edit-keyword-original').val(keyword);
 						$('#edit-keyword-text').val(keyword);
-						$('#edit-keyword-confidence').val(confidence * 100);
 						$('#edit-keyword-spam').val(spam);
 						$('#edit-keyword-normal').val(normal);
 						
@@ -4702,7 +4708,6 @@ function themeoptions_page(){
 						let $btn = $(this);
 						let original = $('#edit-keyword-original').val();
 						let keyword = $('#edit-keyword-text').val().trim();
-						let confidence = parseFloat($('#edit-keyword-confidence').val()) / 100;
 						let spam = parseInt($('#edit-keyword-spam').val()) || 0;
 						let normal = parseInt($('#edit-keyword-normal').val()) || 0;
 						
@@ -4718,7 +4723,6 @@ function themeoptions_page(){
 							nonce: '<?php echo wp_create_nonce('argon_manage_unified_apis'); ?>',
 							original: original,
 							keyword: keyword,
-							confidence: confidence,
 							spam_count: spam,
 							normal_count: normal
 						}, function(response) {
