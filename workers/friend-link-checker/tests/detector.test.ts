@@ -866,7 +866,7 @@ describe('backlink checks', () => {
       state: 'missing',
       checkedUrl: 'https://sample-blog.dev/friends/'
     });
-    expect(result.diagnostics.some((entry) => entry.code === 'wordpress_page_missing')).toBe(false);
+    expect(result.diagnostics.some((entry) => entry.code === 'wordpress_page_missing')).toBe(true);
   });
 
   it('does not accept a same-slug WordPress page at a different canonical path', async () => {
@@ -904,7 +904,7 @@ describe('backlink checks', () => {
     expect(result.checkedUrl).toBe('');
   });
 
-  it('keeps unrelated WordPress REST and OPML links inconclusive', async () => {
+  it('lets canonical WordPress content and a populated OPML export corroborate missing', async () => {
     const fetcher: WorkerFetcher = vi.fn(async (input) => {
       const url = String(input);
       if (url === 'https://sample-blog.dev/friends/') return htmlResponse('blocked', 403);
@@ -935,8 +935,10 @@ describe('backlink checks', () => {
       }
     );
 
-    expect(result.state).toBe('unknown');
-    expect(result.checkedUrl).toBe('');
+    expect(result.state).toBe('missing');
+    expect(result.checkedUrl).toBe('https://sample-blog.dev/friends/');
+    expect(result.diagnostics.some((entry) => entry.code === 'wordpress_page_missing')).toBe(true);
+    expect(result.diagnostics.some((entry) => entry.code === 'wordpress_opml_missing')).toBe(true);
   });
 
   it('starts WordPress REST and OPML fallbacks in parallel', async () => {

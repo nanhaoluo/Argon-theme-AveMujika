@@ -589,9 +589,9 @@ describe('Worker HTTP API', () => {
         state: 'complete',
         avatar: 'https://www.sample-blog.dev/avatar.png',
         links_page: 'https://www.sample-blog.dev/links/',
-        checked_url: '',
-        backlink_state: 'unknown',
-        error: 'links_page_unreadable'
+        checked_url: 'https://www.sample-blog.dev/links/',
+        backlink_state: 'missing',
+        error: ''
       }
     });
     expect(requestedUrls.some((url) => url.includes('/wp-json/wp/v2/pages?'))).toBe(true);

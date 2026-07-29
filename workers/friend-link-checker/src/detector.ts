@@ -1184,6 +1184,7 @@ async function checkWordPressPageContent(
     );
     const parsed = JSON.parse(text) as unknown;
     if (!Array.isArray(parsed)) throw new FetchProblem('invalid_wordpress_response', true);
+    let matchedPageUrl = '';
     for (const value of parsed.slice(0, 3)) {
       if (!value || typeof value !== 'object') continue;
       const page = value as Record<string, unknown>;
@@ -1193,6 +1194,7 @@ async function checkWordPressPageContent(
         ? (page.content as Record<string, unknown>).rendered
         : page.content;
       const content = typeof contentValue === 'string' ? contentValue : '';
+      if (content.trim()) matchedPageUrl = pageUrl;
       const result = backlinkFromExtractedUrls(
         extractLinks(content, pageUrl),
         localSiteUrl,
@@ -1202,6 +1204,13 @@ async function checkWordPressPageContent(
         startedAt
       );
       if (result) return result;
+    }
+    if (matchedPageUrl) {
+      return {
+        state: 'missing',
+        checkedUrl: matchedPageUrl,
+        diagnostics: [diagnostic('wordpress', matchedPageUrl, 'wordpress_page_missing', startedAt)]
+      };
     }
     return {
       state: 'unknown',
@@ -1250,6 +1259,13 @@ async function checkWordPressOpml(
       startedAt
     );
     if (result) return result;
+    if (urls.length) {
+      return {
+        state: 'missing',
+        checkedUrl: finalUrl,
+        diagnostics: [diagnostic('wordpress', finalUrl, 'wordpress_opml_missing', startedAt)]
+      };
+    }
     return {
       state: 'unknown',
       checkedUrl: '',
@@ -1291,6 +1307,9 @@ export async function checkBacklinkWithWordPressFallbacks(
   const diagnostics = [...direct.diagnostics, ...page.diagnostics, ...opml.diagnostics].slice(0, 64);
   const found = [page, opml].find((result) => result.state === 'found');
   if (found) return { ...found, diagnostics };
+  if (page.state === 'missing' && opml.state === 'missing') {
+    return { state: 'missing', checkedUrl: page.checkedUrl || linksPage, diagnostics };
+  }
   if (direct.state === 'missing') return { ...direct, diagnostics };
   return { state: 'unknown', checkedUrl: '', diagnostics };
 }
