@@ -10,7 +10,8 @@
         'com.hk': true, 'com.tw': true, 'co.jp': true, 'co.kr': true, 'co.uk': true,
         'org.uk': true, 'com.au': true, 'net.au': true, 'co.nz': true
     };
-
+    var HTML_RESPONSE_LIMIT = 1024 * 1024;
+    var WORDPRESS_RESPONSE_LIMIT = 256 * 1024;
     function decodeNumericEntity(match, value, radix) {
         var codePoint = parseInt(value, radix);
         return codePoint >= 0 && codePoint <= 0x10FFFF ? String.fromCodePoint(codePoint) : match;
@@ -235,6 +236,10 @@
         return score;
     }
 
+    function isGenericFaviconUrl(url) {
+        return /\/favicon\.ico(?:[?#]|$)/i.test(String(url || ''));
+    }
+
     function avatarTierFromScore(score) {
         if (score >= 380) return 5;
         if (score >= 280) return 4;
@@ -248,7 +253,7 @@
         var url = absoluteUrl(value, baseUrl);
         if (!url) return;
         var weightedScore = score + avatarUrlBonus(url);
-        var tier = avatarTierFromScore(score);
+        var tier = isGenericFaviconUrl(url) ? 0 : avatarTierFromScore(score);
         for (var i = 0; i < candidates.length; i++) {
             if (candidates[i].url === url) {
                 candidates[i].score = Math.max(candidates[i].score, weightedScore);
@@ -361,17 +366,8 @@
             else if (/(?:^|\s)(?:shortcut\s+)?icon(?:\s|$)/.test(rel)) score = 52;
             if (score > 0) addAvatarCandidate(candidates, href, baseUrl, score + (/(?:128|144|152|180|192|256|512)/.test(sizes) ? 15 : 0));
         });
-        addAvatarCandidate(candidates, '/favicon.ico', baseUrl, 1);
         candidates.sort(function(left, right) { return right.tier - left.tier || right.score - left.score; });
         return candidates.length ? candidates[0] : { url: '', score: 0, tier: 0 };
-    }
-
-    function preferAvatar(primary, primaryTier, secondary, secondaryTier) {
-        if (!primary) return { url: secondary, tier: secondaryTier || 0 };
-        if (!secondary) return { url: primary, tier: primaryTier || 0 };
-        return (secondaryTier || 0) >= (primaryTier || 0)
-            ? { url: secondary, tier: secondaryTier || 0 }
-            : { url: primary, tier: primaryTier || 0 };
     }
 
     function friendLinksPageScore(url, label, baseUrl) {
@@ -448,7 +444,189 @@
         return result;
     }
 
-    function fetchWithTimeout(fetchImpl, url, options, timeout) {
+    function findElementByAttribute(html, attribute, value) {
+        var source = String(html || '');
+        var matcher = /<([a-z][\w:-]*)\b[^>]*>/gi;
+        var match;
+        while ((match = matcher.exec(source)) !== null) {
+            var openingTag = match[0];
+            var attributeValue = getHtmlTagAttribute(openingTag, attribute);
+            var matches = attribute === 'class'
+                ? attributeValue.split(/\s+/).indexOf(value) !== -1
+                : attributeValue === value;
+            if (!matches) continue;
+            var tail = source.slice(matcher.lastIndex);
+            var closingMatch = tail.match(new RegExp('<\\/' + match[1] + '\\s*>', 'i'));
+            var content = closingMatch ? tail.slice(0, closingMatch.index) : '';
+            var text = cleanText(content) || cleanText(getHtmlTagAttribute(openingTag, 'data-text'));
+            return { openingTag: openingTag, content: content, text: text };
+        }
+        return null;
+    }
+
+    function findImageUrlInElement(element, baseUrl) {
+        if (!element) return '';
+        var imageTag = (String(element.content || '').match(/<img\b[^>]*>/i) || [])[0];
+        if (!imageTag) return '';
+        var srcset = getHtmlTagAttribute(imageTag, 'data-srcset') || getHtmlTagAttribute(imageTag, 'srcset');
+        return absoluteUrl(
+            getHtmlTagAttribute(imageTag, 'data-src')
+                || getHtmlTagAttribute(imageTag, 'data-original')
+                || getHtmlTagAttribute(imageTag, 'data-lazy-src')
+                || getHtmlTagAttribute(imageTag, 'src')
+                || (srcset ? srcset.split(',')[0].trim().split(/\s+/)[0] : ''),
+            baseUrl
+        );
+    }
+
+    function cssBackgroundImageUrl(style, baseUrl) {
+        var match = String(style || '').match(/background(?:-image)?\s*:\s*url\(\s*(["']?)(.*?)\1\s*\)/i);
+        return absoluteUrl(match ? match[2] : '', baseUrl);
+    }
+
+    function isArgonHomepage(html) {
+        return /(?:\bid=["']argon_pjax_state["']|\bvar\s+argonConfig\s*=|argon[_-]css[_-]merged|\/assets\/js\/argon(?:\.min)?\.js|\bname=["']argon-enable-)/i.test(String(html || ''));
+    }
+
+    function extractArgonInfo(html, baseUrl) {
+        if (!isArgonHomepage(html)) return null;
+        var bannerTitle = findElementByAttribute(html, 'class', 'banner-title-inner');
+        var sidebarTitle = findElementByAttribute(html, 'class', 'leftbar-banner-title');
+        var authorName = findElementByAttribute(html, 'id', 'leftbar_overview_author_name');
+        var bannerSubtitle = findElementByAttribute(html, 'class', 'banner-subtitle');
+        var sidebarSubtitle = findElementByAttribute(html, 'class', 'leftbar-banner-subtitle');
+        var authorDescription = findElementByAttribute(html, 'id', 'leftbar_overview_author_description');
+        var primary = cleanText(
+            (bannerTitle && bannerTitle.text)
+                || (sidebarTitle && sidebarTitle.text)
+                || (authorName && authorName.text)
+        );
+        var subtitle = cleanText(
+            (bannerSubtitle && bannerSubtitle.text)
+                || (sidebarSubtitle && sidebarSubtitle.text)
+        );
+        var description = cleanText(authorDescription && authorDescription.text);
+        var avatarCandidates = [];
+        var overviewAvatar = findElementByAttribute(html, 'id', 'leftbar_overview_author_image');
+        if (overviewAvatar) {
+            addAvatarCandidate(
+                avatarCandidates,
+                cssBackgroundImageUrl(getHtmlTagAttribute(overviewAvatar.openingTag, 'style'), baseUrl),
+                baseUrl,
+                420
+            );
+        }
+        addAvatarCandidate(
+            avatarCandidates,
+            findImageUrlInElement(findElementByAttribute(html, 'class', 'leftbar-mobile-avatar'), baseUrl),
+            baseUrl,
+            410
+        );
+        avatarCandidates.sort(function(left, right) { return right.tier - left.tier || right.score - left.score; });
+        var avatar = avatarCandidates.length ? avatarCandidates[0] : { url: '', tier: 0 };
+        return {
+            primary: primary,
+            subtitle: subtitle,
+            description: description,
+            avatar: avatar.url,
+            avatarTier: avatar.tier,
+            linksPage: '',
+            nameTier: primary ? ((bannerTitle || sidebarTitle) ? 5 : 4) : 0,
+            subtitleTier: subtitle ? 5 : 0,
+            descriptionTier: description ? 5 : 0,
+            linksPageTier: 0,
+            source: 'argon'
+        };
+    }
+
+    function findWordPressRestUrl(html, baseUrl) {
+        var tags = String(html || '').match(/<link\b[^>]*>/gi) || [];
+        for (var i = 0; i < tags.length; i++) {
+            var rel = getHtmlTagAttribute(tags[i], 'rel').toLowerCase();
+            var type = getHtmlTagAttribute(tags[i], 'type').toLowerCase();
+            var href = getHtmlTagAttribute(tags[i], 'href');
+            var isRestDiscovery = /(?:^|\s)https?:\/\/api\.w\.org\/?(?:\s|$)/.test(rel)
+                || (/application\/json/.test(type) && /\/wp-json(?:\/|$)/i.test(href));
+            if (!isRestDiscovery) continue;
+            var restUrl = absoluteUrl(href, baseUrl);
+            if (restUrl && isSameCandidateSiteUrl(baseUrl, restUrl)) return restUrl;
+        }
+        return '';
+    }
+
+    function mergeInfoCandidates(candidates) {
+        var fields = {
+            primary: { value: '', tier: -1, source: 'html' },
+            subtitle: { value: '', tier: -1, source: 'html' },
+            description: { value: '', tier: -1, source: 'html' },
+            avatar: { value: '', tier: -1, source: 'html' },
+            linksPage: { value: '', tier: -1, source: 'html' }
+        };
+        var tierFields = {
+            primary: 'nameTier',
+            subtitle: 'subtitleTier',
+            description: 'descriptionTier',
+            avatar: 'avatarTier',
+            linksPage: 'linksPageTier'
+        };
+        candidates.forEach(function(candidate) {
+            if (!candidate) return;
+            Object.keys(fields).forEach(function(field) {
+                var value = candidate[field] || '';
+                if (!value) return;
+                var tier = Math.max(0, Number(candidate[tierFields[field]]) || 0);
+                if (!fields[field].value || tier > fields[field].tier) {
+                    fields[field] = { value: value, tier: tier, source: candidate.source || 'html' };
+                }
+            });
+        });
+
+        var sourceScores = { html: 0, wordpress: 0, argon: 0 };
+        var fieldWeights = { primary: 4, subtitle: 1, description: 2, avatar: 4, linksPage: 1 };
+        Object.keys(fields).forEach(function(field) {
+            var source = fields[field].source;
+            if (Object.prototype.hasOwnProperty.call(sourceScores, source) && fields[field].value) {
+                sourceScores[source] += fieldWeights[field];
+            }
+        });
+        var source = 'html';
+        ['wordpress', 'argon'].forEach(function(candidateSource) {
+            if (sourceScores[candidateSource] > sourceScores[source]) source = candidateSource;
+        });
+        return {
+            primary: fields.primary.value,
+            subtitle: fields.subtitle.value,
+            description: fields.description.value,
+            avatar: fields.avatar.value,
+            avatarTier: Math.max(0, fields.avatar.tier),
+            linksPage: fields.linksPage.value,
+            nameTier: Math.max(0, fields.primary.tier),
+            subtitleTier: Math.max(0, fields.subtitle.tier),
+            descriptionTier: Math.max(0, fields.description.tier),
+            linksPageTier: Math.max(0, fields.linksPage.tier),
+            source: source
+        };
+    }
+
+    function needsWordPressFallback(info) {
+        return !info
+            || !info.primary
+            || (Number(info.nameTier) || 0) <= 0
+            || !info.description
+            || !info.avatar
+            || (Number(info.avatarTier) || 0) <= 0;
+    }
+
+    function mergedInfoScore(info) {
+        return 40
+            + (Number(info.nameTier) || 0) * 14
+            + (Number(info.avatarTier) || 0) * 10
+            + (info.description ? 10 : 0)
+            + (info.subtitle ? 4 : 0)
+            + (info.linksPage ? 8 : 0);
+    }
+
+    function fetchWithTimeout(fetchImpl, url, options, timeout, consumeResponse) {
         var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
         var requestOptions = Object.assign({}, options || {});
         if (controller) requestOptions.signal = controller.signal;
@@ -459,7 +637,15 @@
                 reject(new Error('timeout'));
             }, timeout);
         });
-        return Promise.race([fetchImpl(url, requestOptions), timeoutPromise]).then(function(response) {
+        var requestPromise = Promise.resolve().then(function() {
+            return fetchImpl(url, requestOptions);
+        }).then(function(response) {
+            if (typeof consumeResponse !== 'function') return response;
+            return Promise.resolve(consumeResponse(response)).then(function(body) {
+                return { response: response, body: body };
+            });
+        });
+        return Promise.race([requestPromise, timeoutPromise]).then(function(response) {
             clearTimeout(timer);
             return response;
         }, function(error) {
@@ -468,54 +654,135 @@
         });
     }
 
-    function inspectWordPress(candidate, fetchImpl, timeout) {
-        var restUrl = absoluteUrl('wp-json/', candidate);
+    function declaredResponseLength(response) {
+        if (!response || !response.headers || typeof response.headers.get !== 'function') return 0;
+        var value = Number(response.headers.get('content-length') || 0);
+        return isFinite(value) && value > 0 ? value : 0;
+    }
+
+    function textByteLength(text) {
+        if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(String(text || '')).byteLength;
+        return unescape(encodeURIComponent(String(text || ''))).length;
+    }
+
+    function readResponseTextLimited(response, maxBytes) {
+        if (declaredResponseLength(response) > maxBytes) {
+            var cancellation = response && response.body && typeof response.body.cancel === 'function'
+                ? Promise.resolve(response.body.cancel('response_too_large')).catch(function() {})
+                : Promise.resolve();
+            return cancellation.then(function() { throw new Error('response_too_large'); });
+        }
+        if (response && response.body && typeof response.body.getReader === 'function' && typeof TextDecoder !== 'undefined') {
+            var reader = response.body.getReader();
+            var decoder = new TextDecoder();
+            var received = 0;
+            var text = '';
+            var pump = function() {
+                return reader.read().then(function(part) {
+                    if (part.done) return text + decoder.decode();
+                    received += part.value.byteLength;
+                    if (received > maxBytes) throw new Error('response_too_large');
+                    text += decoder.decode(part.value, { stream: true });
+                    return pump();
+                });
+            };
+            return pump().then(function(result) {
+                reader.releaseLock();
+                return result;
+            }, function(error) {
+                var cancellation = typeof reader.cancel === 'function'
+                    ? Promise.resolve(reader.cancel(error && error.message ? error.message : 'read_failed')).catch(function() {})
+                    : Promise.resolve();
+                return cancellation.then(function() {
+                    reader.releaseLock();
+                    throw error;
+                });
+            });
+        }
+        if (!response || typeof response.text !== 'function') return Promise.reject(new Error('unreadable_response'));
+        return Promise.resolve(response.text()).then(function(text) {
+            if (textByteLength(text) > maxBytes) throw new Error('response_too_large');
+            return text;
+        });
+    }
+
+    function readResponseJsonLimited(response, maxBytes) {
+        if (declaredResponseLength(response) > maxBytes) return Promise.reject(new Error('response_too_large'));
+        if (response && (response.body || typeof response.text === 'function')) {
+            return readResponseTextLimited(response, maxBytes).then(function(text) {
+                try {
+                    return JSON.parse(text);
+                } catch (error) {
+                    throw new Error('invalid_wordpress_response');
+                }
+            });
+        }
+        if (!response || typeof response.json !== 'function') return Promise.reject(new Error('invalid_wordpress_response'));
+        return Promise.resolve(response.json());
+    }
+
+    function inspectWordPressRest(restUrl, candidate, fetchImpl, timeout) {
         return fetchWithTimeout(fetchImpl, restUrl, {
             method: 'GET', mode: 'cors', credentials: 'omit', redirect: 'follow',
             cache: 'no-store', referrerPolicy: 'no-referrer',
             headers: { 'Accept': 'application/json' }
-        }, timeout).then(function(response) {
-            if (!response || !response.ok) throw new Error('not_wordpress');
-            return response.json();
-        }).then(function(data) {
-            if (!data || typeof data !== 'object' || !cleanText(data.name)) throw new Error('invalid_wordpress');
-            var names = splitTitle(data.name, '');
+        }, timeout, function(response) {
+            if (!response || !response.ok) throw new Error('invalid_wordpress_response');
+            if (response.url && !isSameCandidateSiteUrl(candidate, response.url)) throw new Error('cross_site_redirect');
+            return readResponseJsonLimited(response, WORDPRESS_RESPONSE_LIMIT);
+        }).then(function(consumed) {
+            var data = consumed.body;
+            if (!data || typeof data !== 'object') throw new Error('invalid_wordpress_response');
+            var name = cleanText(data.name);
             var description = cleanText(data.description);
-            var reportedUrl = absoluteUrl(data.home || data.url || candidate, candidate) || candidate;
-            var wordpressAvatar = absoluteUrl(data.site_icon_url || '', candidate);
-            var wordpressResult = {
-                success: true,
-                readable: true,
-                score: 120,
-                url: isSameCandidateSiteUrl(candidate, reportedUrl) ? reportedUrl : candidate,
-                info: {
-                    primary: names.primary,
-                    subtitle: names.subtitle,
-                    description: description,
-                    avatar: wordpressAvatar,
-                    avatarTier: wordpressAvatar && !/favicon\.ico(?:[?#]|$)/i.test(wordpressAvatar) ? 3 : 0,
-                    linksPage: '',
-                    source: 'wordpress'
-                }
+            var avatar = absoluteUrl(data.site_icon_url || '', candidate);
+            if (!name && !description && !avatar) throw new Error('invalid_wordpress_response');
+            var names = splitTitle(name, '');
+            return {
+                primary: names.primary,
+                subtitle: names.subtitle,
+                description: description,
+                avatar: avatar,
+                avatarTier: avatar ? (isGenericFaviconUrl(avatar) ? 0 : 3) : 0,
+                linksPage: '',
+                nameTier: names.primary ? 3 : 0,
+                subtitleTier: names.subtitle ? 3 : 0,
+                descriptionTier: description ? 3 : 0,
+                linksPageTier: 0,
+                source: 'wordpress'
             };
-            return inspectHtml(wordpressResult.url, fetchImpl, timeout).then(function(htmlResult) {
-                wordpressResult.info.description = wordpressResult.info.description || htmlResult.info.description;
-                var preferredAvatar = preferAvatar(
-                    wordpressResult.info.avatar,
-                    wordpressResult.info.avatarTier,
-                    htmlResult.info.avatar,
-                    htmlResult.info.avatarTier
-                );
-                wordpressResult.info.avatar = preferredAvatar.url;
-                wordpressResult.info.avatarTier = preferredAvatar.tier;
-                wordpressResult.info.linksPage = htmlResult.info.linksPage || '';
-                return wordpressResult;
-            }).catch(function() {
-                wordpressResult.info.avatar = wordpressResult.info.avatar || absoluteUrl('/favicon.ico', wordpressResult.url);
-                if (!wordpressResult.info.avatarTier) wordpressResult.info.avatarTier = 0;
-                return wordpressResult;
-            });
         });
+    }
+
+    function isConfirmableHtmlPage(html) {
+        var raw = String(html || '');
+        var rawLower = raw.toLowerCase();
+        var normalized = cleanText(raw).toLowerCase();
+        var hasDocumentStructure = /(?:<!doctype\s+html|<html\b|<body\b|<a\b)/i.test(raw);
+        var hasMeaningfulContent = Boolean(normalized)
+            || /<img\b[^>]*(?:src|srcset|data-src|alt)\s*=/i.test(raw)
+            || /<meta\b[^>]*content\s*=/i.test(raw);
+        if (!hasDocumentStructure || !hasMeaningfulContent) return false;
+
+        var hardChallenge = [
+            'just a moment',
+            'checking your browser',
+            'attention required',
+            'cloudflare ray id',
+            'cf-chl-',
+            'enable javascript and cookies'
+        ].some(function(marker) {
+            return normalized.indexOf(marker) !== -1 || rawLower.indexOf(marker) !== -1;
+        });
+        if (hardChallenge) return false;
+
+        var titleMatch = raw.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i);
+        var headingMatch = raw.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i);
+        var isVerificationHeading = function(value) {
+            return /^(?:captcha|人机验证|访问验证|安全验证|请完成验证|验证码)(?:\s*[-–—|:：]\s*[^-–—|:：]{1,80})?$/i.test(cleanText(value));
+        };
+        return !isVerificationHeading(titleMatch ? titleMatch[1] : '')
+            && !isVerificationHeading(headingMatch ? headingMatch[1] : '');
     }
 
     function inspectHtml(candidate, fetchImpl, timeout) {
@@ -523,52 +790,78 @@
             method: 'GET', mode: 'cors', credentials: 'omit', redirect: 'follow',
             cache: 'no-store', referrerPolicy: 'no-referrer',
             headers: { 'Accept': 'text/html,application/xhtml+xml' }
-        }, timeout).then(function(response) {
+        }, timeout, function(response) {
             if (!response || !response.ok) throw new Error('unreadable_html');
-            return response.text().then(function(html) {
-                var responseUrl = response.url || candidate;
-                var info = extractHtmlInfo(html, responseUrl);
-                var names = splitTitle(info.title, info.siteName);
-                var reportedUrl = info.canonicalUrl || responseUrl;
-                return {
-                    success: true,
-                    readable: true,
-                    score: names.primary ? 100 : 60,
-                    url: isSameCandidateSiteUrl(candidate, reportedUrl) ? reportedUrl : candidate,
-                    info: {
-                        primary: names.primary || fallbackSiteName(responseUrl),
-                        subtitle: names.subtitle,
-                        description: info.description,
-                        avatar: info.avatar,
-                        avatarTier: info.avatarTier,
-                        linksPage: info.linksPage,
-                        source: 'html'
-                    }
-                };
-            });
-        });
-    }
-
-    function probeOpaque(candidate, fetchImpl, timeout) {
-        return fetchWithTimeout(fetchImpl, candidate, {
-            method: 'GET', mode: 'no-cors', credentials: 'omit', redirect: 'follow',
-            cache: 'no-store', referrerPolicy: 'no-referrer'
-        }, timeout).then(function() {
+            return readResponseTextLimited(response, HTML_RESPONSE_LIMIT);
+        }).then(function(consumed) {
+            var response = consumed.response;
+            var html = consumed.body;
+            var responseUrl = response.url || candidate;
+            if (!isSameCandidateSiteUrl(candidate, responseUrl)) throw new Error('cross_site_redirect');
+            if (!isConfirmableHtmlPage(html)) throw new Error('challenge_or_invalid_html');
+            var info = extractHtmlInfo(html, responseUrl);
+            var names = splitTitle(info.title, info.siteName);
+            var reportedUrl = info.canonicalUrl || responseUrl;
             return {
                 success: true,
-                readable: false,
-                score: 10,
-                url: candidate,
-                info: { primary: fallbackSiteName(candidate), subtitle: '', description: '', avatar: '', linksPage: '', source: 'opaque' }
+                readable: true,
+                partial: false,
+                score: names.primary ? 100 : 60,
+                url: isSameCandidateSiteUrl(candidate, reportedUrl) ? reportedUrl : candidate,
+                html: html,
+                responseUrl: responseUrl,
+                restUrl: findWordPressRestUrl(html, responseUrl),
+                info: {
+                    primary: names.primary || fallbackSiteName(responseUrl),
+                    subtitle: names.subtitle,
+                    description: info.description,
+                    avatar: info.avatar,
+                    avatarTier: info.avatarTier,
+                    linksPage: info.linksPage,
+                    nameTier: names.primary ? (info.siteName ? 4 : 2) : 0,
+                    subtitleTier: names.subtitle ? 2 : 0,
+                    descriptionTier: info.description ? 4 : 0,
+                    linksPageTier: info.linksPage ? 4 : 0,
+                    source: 'html'
+                }
             };
         });
     }
 
     function inspectCandidate(candidate, fetchImpl, timeout) {
-        return inspectWordPress(candidate, fetchImpl, timeout)
-            .catch(function() { return inspectHtml(candidate, fetchImpl, timeout); })
-            .catch(function() { return probeOpaque(candidate, fetchImpl, timeout); })
-            .catch(function() { return { success: false, readable: false, score: 0, url: candidate, info: {} }; });
+        return inspectHtml(candidate, fetchImpl, timeout).then(function(htmlResult) {
+            var candidates = [htmlResult.info];
+            var argonInfo = extractArgonInfo(htmlResult.html, htmlResult.responseUrl || candidate);
+            if (argonInfo) candidates.push(argonInfo);
+            var merged = mergeInfoCandidates(candidates);
+            var finish = function() {
+                htmlResult.info = merged;
+                htmlResult.score = mergedInfoScore(merged);
+                htmlResult.partial = needsWordPressFallback(merged);
+                delete htmlResult.html;
+                delete htmlResult.responseUrl;
+                delete htmlResult.restUrl;
+                return htmlResult;
+            };
+            if (!htmlResult.restUrl || !needsWordPressFallback(merged)) return finish();
+            return inspectWordPressRest(htmlResult.restUrl, candidate, fetchImpl, timeout).then(function(wordpressInfo) {
+                candidates.push(wordpressInfo);
+                merged = mergeInfoCandidates(candidates);
+                return finish();
+            }).catch(function() {
+                return finish();
+            });
+        }).catch(function(error) {
+            return {
+                success: false,
+                readable: false,
+                needsProxy: true,
+                score: 0,
+                url: candidate,
+                error: error && error.message ? error.message : 'html_unreadable',
+                info: {}
+            };
+        });
     }
 
     function detectSite(value, options) {
@@ -576,7 +869,9 @@
         var opts = options || {};
         var fetchImpl = opts.fetch || (typeof fetch === 'function' ? fetch.bind(typeof window !== 'undefined' ? window : null) : null);
         var timeout = Math.max(500, Number(opts.timeout) || 4500);
-        if (!fetchImpl || !candidates.length) return Promise.resolve({ success: false, candidates: candidates, info: {} });
+        if (!fetchImpl || !candidates.length) {
+            return Promise.resolve({ success: false, needsProxy: Boolean(fetchImpl && candidates.length), candidates: candidates, info: {} });
+        }
 
         return Promise.all(candidates.map(function(candidate, index) {
             return inspectCandidate(candidate, fetchImpl, timeout).then(function(result) {
@@ -586,11 +881,15 @@
         })).then(function(results) {
             var available = results.filter(function(result) { return result.success; });
             available.sort(function(a, b) { return b.score - a.score || a.index - b.index; });
-            if (!available.length) return { success: false, candidates: candidates, attempts: results, info: {} };
+            if (!available.length) {
+                return { success: false, readable: false, needsProxy: true, candidates: candidates, attempts: results, info: {} };
+            }
             var best = available[0];
             return {
                 success: true,
-                readable: best.readable,
+                readable: true,
+                partial: Boolean(best.partial),
+                needsProxy: false,
                 url: best.url,
                 info: best.info,
                 candidates: candidates,
@@ -619,30 +918,64 @@
         return links;
     }
 
-    function checkBacklink(linksPage, localSiteUrl, options) {
+    function htmlContainsSite(html, baseUrl, localSiteUrl) {
+        var hostname = normalizeHostname(localSiteUrl);
+        var links = extractLinks(html, baseUrl);
+        for (var i = 0; i < links.length; i++) {
+            if (normalizeHostname(links[i]) === hostname || isSameCandidateSiteUrl(links[i], localSiteUrl)) return true;
+        }
+        return false;
+    }
+
+    function checkBacklinkDetailed(linksPage, localSiteUrl, options) {
         var page = parseInput(linksPage);
         var localHost = normalizeHostname(localSiteUrl);
         var opts = options || {};
         var fetchImpl = opts.fetch || (typeof fetch === 'function' ? fetch.bind(typeof window !== 'undefined' ? window : null) : null);
         var timeout = Math.max(500, Number(opts.timeout) || 6000);
-        if (!page || !localHost || !fetchImpl) return Promise.resolve(null);
+        if (!page || !localHost || !fetchImpl) {
+            return Promise.resolve({
+                state: 'unknown',
+                checkedUrl: '',
+                needsProxy: false,
+                error: 'invalid_backlink_request'
+            });
+        }
 
         return fetchWithTimeout(fetchImpl, page.toString(), {
             method: 'GET', mode: 'cors', credentials: 'omit', redirect: 'follow',
             cache: 'no-store', referrerPolicy: 'no-referrer',
             headers: { 'Accept': 'text/html,application/xhtml+xml' }
-        }, timeout).then(function(response) {
-            if (!response || !response.ok) return null;
-            return response.text().then(function(html) {
-                var baseUrl = response.url || page.toString();
-                var links = extractLinks(html, baseUrl);
-                for (var i = 0; i < links.length; i++) {
-                    if (normalizeHostname(links[i]) === localHost) return true;
-                }
-                return false;
-            });
-        }).catch(function() {
-            return null;
+        }, timeout, function(response) {
+            if (!response || !response.ok) throw new Error('unreadable_html');
+            return readResponseTextLimited(response, HTML_RESPONSE_LIMIT);
+        }).then(function(consumed) {
+            var response = consumed.response;
+            var html = consumed.body;
+            var baseUrl = response.url || page.toString();
+            if (!isSameCandidateSiteUrl(page.toString(), baseUrl)) {
+                return { state: 'unknown', checkedUrl: '', needsProxy: false, error: 'cross_site_redirect' };
+            }
+            if (!isConfirmableHtmlPage(html)) throw new Error('challenge_or_invalid_html');
+            return {
+                state: htmlContainsSite(html, baseUrl, localSiteUrl) ? 'found' : 'missing',
+                checkedUrl: baseUrl,
+                needsProxy: false,
+                error: ''
+            };
+        }).catch(function(error) {
+            return {
+                state: 'unknown',
+                checkedUrl: page.toString(),
+                needsProxy: true,
+                error: error && error.message ? error.message : 'html_unreadable'
+            };
+        });
+    }
+
+    function checkBacklink(linksPage, localSiteUrl, options) {
+        return checkBacklinkDetailed(linksPage, localSiteUrl, options).then(function(result) {
+            return result.state === 'found' ? true : (result.state === 'missing' ? false : null);
         });
     }
 
@@ -657,6 +990,7 @@
         extractHtmlInfo: extractHtmlInfo,
         findFriendLinksPage: findFriendLinksPage,
         detectSite: detectSite,
+        checkBacklinkDetailed: checkBacklinkDetailed,
         checkBacklink: checkBacklink
     };
 });

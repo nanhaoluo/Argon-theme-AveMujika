@@ -47,14 +47,17 @@ argon_flink_test_assert(
 $edit_check_start = strpos($page, "var editCheckBtn = document.getElementById('edit-check-btn');");
 $edit_check_end = strpos($page, '// 保存编辑', $edit_check_start);
 $edit_check_section = substr($page, $edit_check_start, $edit_check_end - $edit_check_start);
+$worker_poll_start = strpos($page, 'function pollWorkerDetection(');
+$worker_poll_end = strpos($page, 'function normalizeUrlInput(', $worker_poll_start);
+$worker_poll_section = substr($page, $worker_poll_start, $worker_poll_end - $worker_poll_start);
 argon_flink_test_assert(
-    strpos($edit_check_section, "flinkAction('update'") !== false
-    && strpos($edit_check_section, "flinkAction('dispatch_worker'") !== false
-    && strpos($edit_check_section, 'submitWorkerDetection({ success: true, worker_dispatched: false })') !== false
-    && strpos($edit_check_section, 'pollWorkerDetection(id, contextSequence, backlinkSequence') !== false
-    && strpos($edit_check_section, '请先填写对方的友链页面地址') === false
-    && strpos($edit_check_section, 'detector.checkBacklink') === false,
-    '编辑窗口没有在已填写时先保存友链页、未填写时交给 Worker 自动识别并轮询结果。'
+    strpos($edit_check_section, 'detector.checkBacklink') !== false
+    && strpos($edit_check_section, "flinkAction('browser_result'") !== false
+    && strpos($edit_check_section, "backlink_state: backlinkState") !== false
+    && strpos($edit_check_section, "backlinkState === 'unknown'") !== false
+    && strpos($edit_check_section, "flinkAction('dispatch_worker'") === false
+    && strpos($edit_check_section, 'pollWorkerDetection(') === false,
+    '管理员手动互链检测没有在浏览器执行并保存，或仍错误派发 Worker。'
 );
 argon_flink_test_assert(
     strpos($page, 'function pollWorkerDetection(') !== false
@@ -76,7 +79,7 @@ argon_flink_test_assert(
 argon_flink_test_assert(
     strpos($page, 'Date.now() - startedAt >= 300000') !== false
     && strpos($page, '30～180 秒') !== false
-    && strpos($edit_check_section, "document.getElementById('edit-save-btn').disabled = true") === false,
+    && strpos($worker_poll_section, "document.getElementById('edit-save-btn').disabled = true") === false,
     '状态轮询没有覆盖 Queue 的随机延迟，或检测期间仍无必要地锁住保存按钮。'
 );
 argon_flink_test_assert(
@@ -102,7 +105,7 @@ argon_flink_test_assert(
     strpos($worker_bridge, 'function argon_friend_link_worker_is_configured()') !== false
     && strpos($worker_bridge, 'if (!argon_friend_link_worker_is_configured())') !== false
     && strpos($page, 'var argonFriendLinkWorkerReady =') !== false
-    && strpos($page, 'if (!argonFriendLinkWorkerReady)') !== false,
+    && strpos($page, 'res.worker_refresh_required && !argonFriendLinkWorkerReady') !== false,
     'Worker 未配置时仍可能创建任务或从管理操作派发。'
 );
 argon_flink_test_assert(
@@ -172,11 +175,16 @@ argon_flink_test_assert(
     '编辑窗口仍使用迟缓的层级动画时长。'
 );
 argon_flink_test_assert(
-    strpos($page, "case 'browser_sync':") === false
+    strpos($page, "case 'browser_result':") !== false
+    && strpos($page, 'argon_friend_link_apply_browser_result($id, $_POST)') !== false
+    && strpos($worker_bridge, "\$update['check_source'] = 'admin_browser';") !== false
+    && strpos($worker_bridge, "\$update['browser_backlink_result'] = \$backlink_state;") !== false
+    && strpos($worker_bridge, "in_array(\$backlink_state, array('found', 'missing'), true)") !== false
+    && strpos($worker_bridge, "\$detection_source !== 'opaque'") !== false
     && strpos($page, "case 'check_all':") !== false
     && strpos($page, "case 'dispatch_worker':") !== false
     && strpos($page, 'browserBatchLinks') === false,
-    '浏览器检测结果仍被当作正式检测结论，或管理页仍承担自动派发。'
+    '管理员浏览器结果没有独立落库，或批量自动检测边界被破坏。'
 );
 $apply_detect_start = strpos($page, 'function detectApplicationSite()');
 $apply_detect_end = strpos($page, "urlInput.addEventListener('input'", $apply_detect_start);
@@ -198,12 +206,47 @@ argon_flink_test_assert(
     '保存编辑仍会用异步检测前的旧表单覆盖 Worker 已回写的资料。'
 );
 argon_flink_test_assert(
-    strpos($page, '跨域不可读，状态未知') === false
-    && strpos($page, '受跨域限制，无法确认页面状态') === false
+    strpos($worker_bridge, '不得覆盖此前已经确认的 found/missing 结论') !== false
     && strpos($apply_detect_section, '提交后将由 Worker 异步检测并补全资料') !== false
-    && strpos($add_detect_section, '保存后将由 Worker 异步检测并补全资料') !== false
-    && strpos($edit_detect_section, '正式检测请点击“检测互链”交由 Worker 执行') !== false,
-    '浏览器预填提示仍被误写成 Worker 的跨域检测结论，或与实际派发时机不符。'
+    && strpos($page, "case 'browser_probe_preview':") !== false
+    && strpos($worker_bridge, 'function argon_friend_link_worker_probe($payload)') !== false
+    && strpos($add_detect_section, "flinkAction('browser_probe_preview'") !== false
+    && strpos($add_detect_section, 'if (result && result.success && result.readable) return result;') !== false
+    && strpos($add_detect_section, 'return requestWorkerPreview();') !== false
+    && strpos($add_detect_section, 'Worker 已自动识别站点资料') !== false
+    && strpos($edit_detect_section, "flinkAction('browser_result'") !== false
+    && strpos($edit_detect_section, "flinkAction('browser_probe'") !== false
+    && strpos($edit_detect_section, '浏览器已直接读取首页并保存站点资料') !== false
+    && strpos($edit_detect_section, 'Worker 已直接抓取首页并保存资料') !== false,
+    '管理员新增/更新未按“浏览器直读优先、Worker 同步回退”执行，或未知结果会覆盖既有结论。'
+);
+argon_flink_test_assert(
+    strpos($edit_detect_section, 'target_url: url') !== false
+    && strpos($edit_check_section, 'target_url: siteUrl') !== false
+    && strpos($worker_bridge, 'hash_equals($current_target_url, $target_url)') !== false,
+    '管理员浏览器结果没有精确绑定检测开始时的友链地址。'
+);
+argon_flink_test_assert(
+    strpos($edit_check_section, 'if (!target.confirmedPage)') !== false
+    && strpos($edit_check_section, 'useProxy: true') !== false
+    && strpos($edit_check_section, "linksPage: ''") !== false
+    && strpos($edit_check_section, "flinkAction('browser_probe'") !== false
+    && strpos($edit_check_section, 'probeUrl: detectedLinksPage || siteUrl') === false
+    && strpos($edit_check_section, "'links_page_not_found'") !== false,
+    '首页未暴露友链入口时没有交给 Worker 发现常见路径或 WordPress Pages。'
+);
+argon_flink_test_assert(
+    strpos($edit_check_section, 'else if (!confirmedPage)') !== false
+    && strpos($edit_check_section, '未发现可确认的友链页面，已保留此前互链结论') !== false
+    && strpos($edit_check_section, '对方页面暂时不可读，已保留此前互链结论') !== false,
+    '管理员手动检测未发现友链页面时仍错误提示为 CORS 不可读。'
+);
+argon_flink_test_assert(
+    strpos($page, 'function beginEditBrowserOperation(') !== false
+    && strpos($page, "document.getElementById('edit-url').readOnly = true") !== false
+    && strpos($page, "document.getElementById('edit-links-page').readOnly = true") !== false
+    && strpos($page, "document.getElementById('edit-save-btn').disabled = true") !== false,
+    '管理员浏览器检测期间仍可修改目标或并发保存，旧结果可能写入新地址。'
 );
 $unknown_status_pos = strpos($page, "link.backlink_check_result === 'unknown'");
 $missing_links_page_pos = strrpos(substr($page, 0, $unknown_status_pos), 'if (!link.links_page)');

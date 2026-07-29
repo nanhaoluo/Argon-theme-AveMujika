@@ -494,7 +494,6 @@ function argon_friend_link_worker_apply_result_payload($payload, $delivery = 'ca
         'worker_dispatch_attempts' => 0,
         'worker_error' => isset($result['error']) ? sanitize_text_field($result['error']) : '',
         'worker_result_sync_error' => '',
-        'check_source' => 'cloudflare_worker',
         'last_check' => $checked_at,
         'next_worker_dispatch_at' => 0,
     );
@@ -550,8 +549,20 @@ function argon_friend_link_worker_apply_result_payload($payload, $delivery = 'ca
     if (!in_array($backlink_state, array('found', 'missing', 'unknown'), true)) {
         return new WP_Error('invalid_payload', 'Worker 互链状态无效', array('status' => 400));
     }
-    $update['last_backlink_attempt'] = $checked_at;
+    $checked_url = isset($result['checked_url']) ? esc_url_raw($result['checked_url']) : '';
+    $checked_url_allowed = $checked_url !== '' && argon_friend_link_worker_detected_url_allowed($link, $checked_url);
     if ($backlink_state === 'found' || $backlink_state === 'missing') {
+        if (!$checked_url_allowed) {
+            return new WP_Error('invalid_worker_checked_url', 'Worker 实际检查页不属于当前目标站点', array('status' => 400));
+        }
+        if ($links_page === '' || !argon_friend_link_worker_detected_url_allowed($link, $links_page)) {
+            return new WP_Error('invalid_worker_links_page', 'Worker 友链页面不属于当前目标站点', array('status' => 400));
+        }
+    }
+    $update['last_backlink_attempt'] = $checked_at;
+    if ($checked_url_allowed) $update['worker_backlink_checked_url'] = $checked_url;
+    if ($backlink_state === 'found' || $backlink_state === 'missing') {
+        $update['check_source'] = 'cloudflare_worker';
         $update['backlink_check_result'] = $backlink_state;
         $update['has_backlink'] = $backlink_state === 'found';
         $update['verified'] = $backlink_state === 'found';
@@ -567,6 +578,325 @@ function argon_friend_link_worker_apply_result_payload($payload, $delivery = 'ca
         return new WP_Error('update_failed', '无法保存友链检测结果', array('status' => 500));
     }
     return array('success' => true);
+}
+
+/**
+ * 保存管理员浏览器执行的站点资料或互链检测结果。
+ *
+ * 浏览器结果与 Worker 运行状态分开记录。跨域导致的 unknown 只记录尝试，
+ * 不得覆盖此前已经确认的 found/missing 结论。
+ */
+function argon_friend_link_apply_browser_result($link_id, $payload) {
+    $link_id = sanitize_text_field((string)$link_id);
+    $payload = is_array($payload) ? $payload : array();
+    $link = $link_id !== '' ? argon_get_friend_link($link_id) : null;
+    if (!$link) {
+        return new WP_Error('friend_link_not_found', '友链不存在', array('status' => 404));
+    }
+
+    $mode = isset($payload['mode']) ? sanitize_text_field($payload['mode']) : '';
+    if (!in_array($mode, array('info', 'backlink'), true)) {
+        return new WP_Error('invalid_browser_result', '浏览器检测结果类型无效', array('status' => 400));
+    }
+
+    $target_url = isset($payload['target_url']) ? esc_url_raw(wp_unslash($payload['target_url'])) : '';
+    $current_target_url = isset($link['url']) ? esc_url_raw($link['url']) : '';
+    if ($target_url === '' || $current_target_url === '' || !hash_equals($current_target_url, $target_url)) {
+        return new WP_Error('stale_browser_target', '友链地址已变化，请重新打开窗口后检测', array('status' => 409));
+    }
+
+    $checked_at = time();
+    $browser_readable = !empty($payload['readable']);
+    $update = array(
+        'last_browser_check' => $checked_at,
+        'browser_readable' => $browser_readable,
+        'browser_detection_state' => $browser_readable ? 'readable' : 'partial',
+        'browser_error' => isset($payload['browser_error']) ? sanitize_text_field($payload['browser_error']) : '',
+        'browser_transport' => isset($payload['browser_transport']) && $payload['browser_transport'] === 'worker_sync'
+            ? 'worker_sync'
+            : 'direct',
+    );
+    if (!empty($payload['accessible'])) {
+        // REST 或 HTML 至少有一种可读时，只提升可访问状态，不因浏览器跨域失败降级。
+        $update['accessible'] = true;
+    }
+
+    $detected_url = isset($payload['detected_url']) ? esc_url_raw(wp_unslash($payload['detected_url'])) : '';
+    if ($detected_url !== '' && argon_friend_link_worker_detected_url_allowed($link, $detected_url)) {
+        $update['browser_detected_url'] = $detected_url;
+    }
+
+    $links_page = isset($payload['links_page']) ? esc_url_raw(wp_unslash($payload['links_page'])) : '';
+    $links_page_source = isset($payload['links_page_source']) && $payload['links_page_source'] === 'admin'
+        ? 'admin'
+        : 'worker';
+    if ($mode === 'backlink' && $links_page !== '' && !argon_friend_link_worker_detected_url_allowed($link, $links_page)) {
+        return new WP_Error('invalid_browser_links_page', '友链页面不属于当前目标站点', array('status' => 400));
+    }
+    if (
+        $links_page !== ''
+        && argon_friend_link_worker_detected_url_allowed($link, $links_page)
+        && ($links_page_source === 'admin' || argon_friend_link_worker_can_update_field($link, 'links_page'))
+    ) {
+        $update['links_page'] = $links_page;
+        $update['links_page_source'] = $links_page_source;
+    }
+
+    if ($mode === 'info') {
+        $detection_source = isset($payload['detection_source']) ? sanitize_text_field($payload['detection_source']) : 'opaque';
+        if (!in_array($detection_source, array('html', 'wordpress', 'argon', 'opaque'), true)) {
+            $detection_source = 'opaque';
+        }
+        $primary = isset($payload['primary']) ? sanitize_text_field(wp_unslash($payload['primary'])) : '';
+        $subtitle = isset($payload['subtitle']) ? sanitize_text_field(wp_unslash($payload['subtitle'])) : '';
+        $description = isset($payload['description']) ? sanitize_text_field(wp_unslash($payload['description'])) : '';
+        $avatar = isset($payload['avatar']) ? esc_url_raw(wp_unslash($payload['avatar'])) : '';
+        if ($detection_source !== 'opaque' && $primary !== '' && argon_friend_link_worker_can_update_field($link, 'name')) {
+            $update['name'] = $primary;
+            $update['name_source'] = 'worker';
+            $update['auto_name'] = true;
+        }
+        if ($detection_source !== 'opaque' && $subtitle !== '' && argon_friend_link_worker_can_update_field($link, 'display_name')) {
+            $update['display_name'] = $subtitle;
+            $update['display_name_source'] = 'worker';
+            $update['user_display_name'] = false;
+        }
+        if ($detection_source !== 'opaque' && $description !== '' && argon_friend_link_worker_can_update_field($link, 'description')) {
+            $update['auto_description'] = $description;
+            $update['description_source'] = 'worker';
+        }
+        if (
+            $detection_source !== 'opaque'
+            && $avatar !== ''
+            && argon_friend_link_worker_can_update_field($link, 'avatar')
+            && argon_friend_link_worker_avatar_is_better(isset($link['avatar']) ? $link['avatar'] : '', $avatar)
+        ) {
+            $update['avatar'] = $avatar;
+            $update['avatar_source'] = 'worker';
+            $update['user_avatar'] = false;
+        }
+        if ($detection_source !== 'opaque') $update['last_info_update'] = $checked_at;
+        $update['browser_info_source'] = 'admin_browser';
+        $update['browser_info_detection_source'] = $detection_source;
+    } else {
+        $checked_url = isset($payload['checked_url']) ? esc_url_raw(wp_unslash($payload['checked_url'])) : '';
+        $backlink_state = isset($payload['backlink_state']) ? sanitize_text_field($payload['backlink_state']) : 'unknown';
+        if (!in_array($backlink_state, array('found', 'missing', 'unknown'), true)) {
+            return new WP_Error('invalid_browser_backlink', '浏览器互链状态无效', array('status' => 400));
+        }
+        $checked_url_allowed = $checked_url !== '' && argon_friend_link_worker_detected_url_allowed($link, $checked_url);
+        if ($checked_url !== '' && !$checked_url_allowed) {
+            return new WP_Error('invalid_browser_checked_url', '浏览器实际检查页不属于当前目标站点', array('status' => 400));
+        }
+        if (in_array($backlink_state, array('found', 'missing'), true) && $links_page === '') {
+            return new WP_Error('browser_links_page_missing', '浏览器未确认友链页面，不能保存确定性结论', array('status' => 400));
+        }
+        if (in_array($backlink_state, array('found', 'missing'), true) && !$checked_url_allowed) {
+            return new WP_Error('invalid_browser_checked_url', '浏览器缺少有效的实际检查页', array('status' => 400));
+        }
+        $update['last_backlink_attempt'] = $checked_at;
+        if ($checked_url_allowed) $update['browser_checked_url'] = $checked_url;
+        $update['browser_backlink_result'] = $backlink_state;
+        $update['browser_backlink_source'] = 'admin_browser';
+        if (in_array($backlink_state, array('found', 'missing'), true)) {
+            $update['check_source'] = 'admin_browser';
+            $update['backlink_check_result'] = $backlink_state;
+            $update['has_backlink'] = $backlink_state === 'found';
+            $update['verified'] = $backlink_state === 'found';
+            $update['last_backlink_check'] = $checked_at;
+        }
+    }
+
+    if (!argon_update_friend_link($link_id, $update)) {
+        return new WP_Error('browser_result_update_failed', '浏览器检测结果保存失败', array('status' => 500));
+    }
+    return array('success' => true, 'data' => argon_get_friend_link($link_id));
+}
+
+/**
+ * 执行一次管理员触发的同步 Worker 探测，不创建 Queue 任务。
+ *
+ * 既供已有友链即时更新，也供新增友链在浏览器受 CORS 限制时预览资料。
+ */
+function argon_friend_link_worker_probe($payload) {
+    if (!argon_friend_link_worker_is_configured()) {
+        return new WP_Error('worker_not_configured', '友链检测 Worker 未启用或配置不完整', array('status' => 503));
+    }
+
+    $payload = is_array($payload) ? $payload : array();
+    $mode = isset($payload['mode']) ? sanitize_text_field($payload['mode']) : '';
+    if (!in_array($mode, array('info', 'backlink'), true)) {
+        return new WP_Error('invalid_browser_probe', '浏览器同步探测类型无效', array('status' => 400));
+    }
+
+    $target_url = isset($payload['target_url']) ? esc_url_raw(wp_unslash($payload['target_url'])) : '';
+    $target_scheme = strtolower((string)wp_parse_url($target_url, PHP_URL_SCHEME));
+    if ($target_url === '' || !in_array($target_scheme, array('http', 'https'), true)) {
+        return new WP_Error('invalid_browser_target', '目标网站地址无效', array('status' => 400));
+    }
+
+    $requested_links_page = isset($payload['links_page']) ? esc_url_raw(wp_unslash($payload['links_page'])) : '';
+    $target_link = array('url' => $target_url);
+    if ($requested_links_page !== '' && !argon_friend_link_worker_detected_url_allowed($target_link, $requested_links_page)) {
+        return new WP_Error('invalid_browser_links_page', '友链页面不属于当前目标站点', array('status' => 400));
+    }
+
+    $probe_payload = array(
+        'action' => 'probe',
+        'mode' => $mode,
+        'site_url' => home_url('/'),
+        'url' => $target_url,
+    );
+    if ($mode === 'backlink' && $requested_links_page !== '') {
+        $probe_payload['links_page'] = $requested_links_page;
+    }
+    $body = wp_json_encode($probe_payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    if (!is_string($body) || $body === '') {
+        return new WP_Error('worker_probe_encode_failed', '无法生成浏览器同步探测请求', array('status' => 500));
+    }
+
+    $timestamp = time();
+    $nonce = argon_friend_link_worker_nonce();
+    $signature = hash_hmac(
+        'sha256',
+        $timestamp . '.' . $nonce . '.' . $body,
+        argon_friend_link_worker_submit_secret()
+    );
+    $response = wp_remote_post(
+        argon_friend_link_worker_url() . '/v1/probe',
+        array(
+            'headers' => array(
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
+                'X-Argon-Timestamp' => (string)$timestamp,
+                'X-Argon-Nonce' => $nonce,
+                'X-Argon-Signature' => 'sha256=' . $signature,
+            ),
+            'body' => $body,
+            'blocking' => true,
+            'timeout' => 20,
+            'redirection' => 0,
+            'limit_response_size' => 512 * 1024,
+            'data_format' => 'body',
+        )
+    );
+    if (is_wp_error($response)) {
+        return new WP_Error('worker_probe_unreachable', '无法连接友链检测 Worker', array('status' => 502));
+    }
+
+    $status_code = intval(wp_remote_retrieve_response_code($response));
+    $response_body = (string)wp_remote_retrieve_body($response);
+    if ($response_body === '' || strlen($response_body) > 512 * 1024) {
+        return new WP_Error('worker_probe_invalid_body', 'Worker 同步探测响应无效', array('status' => 502));
+    }
+    $decoded = json_decode($response_body, true);
+    if (!is_array($decoded)) {
+        return new WP_Error('worker_probe_invalid_json', 'Worker 同步探测响应不是有效 JSON', array('status' => 502));
+    }
+    if ($status_code !== 200 || empty($decoded['success'])) {
+        $upstream_error = !empty($decoded['error'])
+            ? sanitize_text_field($decoded['error'])
+            : 'worker_probe_http_' . $status_code;
+        $upstream_message = !empty($decoded['message'])
+            ? sanitize_text_field($decoded['message'])
+            : 'Worker 同步探测失败';
+        return new WP_Error($upstream_error, $upstream_message, array('status' => $status_code === 503 ? 503 : 502));
+    }
+
+    $result = isset($decoded['result']) && is_array($decoded['result']) ? $decoded['result'] : null;
+    if (intval(isset($decoded['version']) ? $decoded['version'] : 0) !== 1 || !$result) {
+        return new WP_Error('worker_probe_invalid_payload', 'Worker 同步探测结果结构无效', array('status' => 502));
+    }
+    return $decoded;
+}
+
+/**
+ * 由管理员浏览器发起一次同步 Worker 探测并直接保存结果。
+ *
+ * 该路径不创建 Queue 任务、不修改 worker_status。Worker 以候选首页 HTML
+ * 为首选，仅在信息不足且站点明确公开 REST discovery 时使用框架候选。
+ */
+function argon_friend_link_worker_probe_and_apply($link_id, $payload) {
+    if (!argon_friend_link_worker_is_configured()) {
+        return new WP_Error('worker_not_configured', '友链检测 Worker 未启用或配置不完整', array('status' => 503));
+    }
+
+    $link_id = sanitize_text_field((string)$link_id);
+    $payload = is_array($payload) ? $payload : array();
+    $link = $link_id !== '' ? argon_get_friend_link($link_id) : null;
+    if (!$link) {
+        return new WP_Error('friend_link_not_found', '友链不存在', array('status' => 404));
+    }
+
+    $mode = isset($payload['mode']) ? sanitize_text_field($payload['mode']) : '';
+    if (!in_array($mode, array('info', 'backlink'), true)) {
+        return new WP_Error('invalid_browser_probe', '浏览器同步探测类型无效', array('status' => 400));
+    }
+
+    $target_url = isset($payload['target_url']) ? esc_url_raw(wp_unslash($payload['target_url'])) : '';
+    $current_target_url = isset($link['url']) ? esc_url_raw($link['url']) : '';
+    if ($target_url === '' || $current_target_url === '' || !hash_equals($current_target_url, $target_url)) {
+        return new WP_Error('stale_browser_target', '友链地址已变化，请重新打开窗口后检测', array('status' => 409));
+    }
+
+    $requested_links_page = isset($payload['links_page']) ? esc_url_raw(wp_unslash($payload['links_page'])) : '';
+    if ($requested_links_page !== '' && !argon_friend_link_worker_detected_url_allowed($link, $requested_links_page)) {
+        return new WP_Error('invalid_browser_links_page', '友链页面不属于当前目标站点', array('status' => 400));
+    }
+
+    $decoded = argon_friend_link_worker_probe(array(
+        'mode' => $mode,
+        'target_url' => $current_target_url,
+        'links_page' => $requested_links_page,
+    ));
+    if (is_wp_error($decoded)) return $decoded;
+    $result = $decoded['result'];
+
+    $resolved_links_page = isset($result['links_page']) ? esc_url_raw($result['links_page']) : '';
+    if ($resolved_links_page !== '' && !argon_friend_link_worker_detected_url_allowed($link, $resolved_links_page)) {
+        return new WP_Error('invalid_worker_links_page', 'Worker 返回的友链页面不属于当前目标站点', array('status' => 502));
+    }
+    $links_page = $requested_links_page !== '' ? $requested_links_page : $resolved_links_page;
+    $links_page_source = $requested_links_page !== ''
+        && isset($payload['links_page_source'])
+        && $payload['links_page_source'] === 'admin'
+        ? 'admin'
+        : 'worker';
+
+    $apply_payload = array(
+        'mode' => $mode,
+        'target_url' => $current_target_url,
+        'accessible' => !empty($result['accessible']) ? '1' : '0',
+        'readable' => !empty($result['readable']) ? '1' : '0',
+        'detected_url' => isset($result['detected_url']) ? $result['detected_url'] : '',
+        'links_page' => $links_page,
+        'links_page_source' => $links_page_source,
+        'browser_error' => isset($result['error']) ? $result['error'] : '',
+        'browser_transport' => 'worker_sync',
+    );
+    if ($mode === 'info') {
+        $apply_payload['primary'] = isset($result['primary']) ? $result['primary'] : '';
+        $apply_payload['subtitle'] = isset($result['subtitle']) ? $result['subtitle'] : '';
+        $apply_payload['description'] = isset($result['description']) ? $result['description'] : '';
+        $apply_payload['avatar'] = isset($result['avatar']) ? $result['avatar'] : '';
+        $detection_source = isset($result['detection_source'])
+            ? sanitize_text_field($result['detection_source'])
+            : '';
+        if (!in_array($detection_source, array('html', 'wordpress', 'argon'), true)) {
+            $detection_source = !empty($result['readable']) ? 'html' : 'opaque';
+        }
+        $apply_payload['detection_source'] = $detection_source;
+    } else {
+        $apply_payload['checked_url'] = isset($result['checked_url']) ? $result['checked_url'] : '';
+        $apply_payload['backlink_state'] = isset($result['backlink_state']) ? $result['backlink_state'] : 'unknown';
+    }
+
+    $applied = argon_friend_link_apply_browser_result($link_id, $apply_payload);
+    if (is_wp_error($applied)) return $applied;
+    $applied['probe_transport'] = 'cloudflare_worker_sync';
+    $applied['probe_readable'] = !empty($result['readable']);
+    $applied['probe_error'] = isset($result['error']) ? sanitize_text_field($result['error']) : '';
+    return $applied;
 }
 
 function argon_friend_link_worker_sync_result($link_id, $force = false) {
@@ -612,6 +942,7 @@ function argon_friend_link_worker_sync_result($link_id, $force = false) {
             'blocking' => true,
             'timeout' => 5,
             'redirection' => 0,
+            'limit_response_size' => 512 * 1024,
             'data_format' => 'body',
         )
     );
@@ -731,11 +1062,134 @@ function argon_friend_link_worker_result_rest($request) {
     return new WP_REST_Response($applied, 200);
 }
 
+/**
+ * 从 WordPress 服务端签名读取 Worker 实时状态。
+ *
+ * 提交密钥只参与服务端 HMAC，不会返回给浏览器。状态接口沿用任务提交的
+ * 时间戳、随机数和签名约定，便于 Worker 复用同一套防重放校验。
+ */
+function argon_friend_link_worker_fetch_status() {
+    if (!argon_friend_link_worker_is_configured()) {
+        return new WP_Error('worker_not_configured', '友链检测 Worker 未启用或配置不完整', array('status' => 503));
+    }
+
+    $payload = array(
+        'action' => 'status',
+        'site_url' => home_url('/'),
+    );
+    $body = wp_json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    if (!is_string($body) || $body === '') {
+        return new WP_Error('worker_status_encode_failed', '无法生成 Worker 状态请求', array('status' => 500));
+    }
+
+    $timestamp = time();
+    $nonce = argon_friend_link_worker_nonce();
+    $signature = hash_hmac(
+        'sha256',
+        $timestamp . '.' . $nonce . '.' . $body,
+        argon_friend_link_worker_submit_secret()
+    );
+    $response = wp_remote_post(
+        argon_friend_link_worker_url() . '/v1/status',
+        array(
+            'headers' => array(
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
+                'X-Argon-Timestamp' => (string)$timestamp,
+                'X-Argon-Nonce' => $nonce,
+                'X-Argon-Signature' => 'sha256=' . $signature,
+            ),
+            'body' => $body,
+            'blocking' => true,
+            'timeout' => 5,
+            'redirection' => 0,
+            'limit_response_size' => 512 * 1024,
+            'data_format' => 'body',
+        )
+    );
+    if (is_wp_error($response)) {
+        return new WP_Error(
+            'worker_status_unreachable',
+            '无法连接友链检测 Worker',
+            array('status' => 502)
+        );
+    }
+
+    $status_code = intval(wp_remote_retrieve_response_code($response));
+    $response_body = (string)wp_remote_retrieve_body($response);
+    if ($response_body === '' || strlen($response_body) > 512 * 1024) {
+        return new WP_Error('worker_status_invalid_body', 'Worker 状态响应无效', array('status' => 502));
+    }
+
+    $decoded = json_decode($response_body, true);
+    if (!is_array($decoded)) {
+        return new WP_Error('worker_status_invalid_json', 'Worker 状态响应不是有效 JSON', array('status' => 502));
+    }
+    if ($status_code !== 200) {
+        $upstream_error = !empty($decoded['error'])
+            ? sanitize_text_field($decoded['error'])
+            : 'worker_status_http_' . $status_code;
+        $upstream_message = !empty($decoded['message'])
+            ? sanitize_text_field($decoded['message'])
+            : 'Worker 状态查询失败';
+        return new WP_Error($upstream_error, $upstream_message, array('status' => 502));
+    }
+
+    return $decoded;
+}
+
+function argon_friend_link_worker_status_permission() {
+    return current_user_can('manage_options');
+}
+
+function argon_friend_link_worker_redact_status($value) {
+    if (!is_array($value)) return $value;
+
+    $redacted = array();
+    foreach ($value as $key => $item) {
+        $key_name = strtolower((string)$key);
+        if (preg_match('/secret|token|signature|authorization|password|credential|hmac/i', $key_name)) {
+            continue;
+        }
+        $redacted[$key] = is_array($item) ? argon_friend_link_worker_redact_status($item) : $item;
+    }
+    return $redacted;
+}
+
+function argon_friend_link_worker_status_rest($request) {
+    $status = argon_friend_link_worker_fetch_status();
+    if (is_wp_error($status)) {
+        return argon_friend_link_worker_rest_error(
+            $status->get_error_code(),
+            $status->get_error_message(),
+            argon_friend_link_worker_error_status($status)
+        );
+    }
+
+    return new WP_REST_Response(
+        array(
+            'success' => true,
+            'fetched_at' => time(),
+            'worker' => argon_friend_link_worker_redact_status($status),
+        ),
+        200,
+        array(
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'X-Content-Type-Options' => 'nosniff',
+        )
+    );
+}
+
 function argon_register_friend_link_worker_routes() {
     register_rest_route('argon/v1', '/friend-link-result', array(
         'methods' => 'POST',
         'callback' => 'argon_friend_link_worker_result_rest',
         'permission_callback' => '__return_true',
+    ));
+    register_rest_route('argon/v1', '/friend-link-worker-status', array(
+        'methods' => 'GET',
+        'callback' => 'argon_friend_link_worker_status_rest',
+        'permission_callback' => 'argon_friend_link_worker_status_permission',
     ));
 }
 add_action('rest_api_init', 'argon_register_friend_link_worker_routes');

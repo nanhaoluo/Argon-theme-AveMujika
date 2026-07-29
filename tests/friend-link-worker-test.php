@@ -103,6 +103,7 @@ function register_rest_route($namespace, $route, $args) {
 }
 function is_wp_error($value) { return $value instanceof WP_Error; }
 function rest_url($path = '') { return 'https://blog.sample-blog.dev/wp-json/' . ltrim($path, '/'); }
+function home_url($path = '') { return 'https://blog.sample-blog.dev/' . ltrim($path, '/'); }
 function current_user_can($capability) { return !empty($GLOBALS['argon_worker_test_is_admin']); }
 function wp_verify_nonce($nonce, $action) { return $nonce === 'valid-admin-nonce' && $action === 'argon_friend_link_worker_ticket'; }
 function wp_parse_url($url, $component = -1) { return parse_url($url, $component); }
@@ -171,6 +172,325 @@ argon_worker_assert(
     '浏览器 ticket 路由仍存在，或 Worker 回调路由未注册。'
 );
 
+$GLOBALS['argon_worker_test_links']['fl_browser'] = array(
+    'id' => 'fl_browser',
+    'name' => '管理员标题',
+    'name_source' => 'admin',
+    'auto_name' => false,
+    'display_name' => '',
+    'display_name_source' => 'worker',
+    'user_display_name' => false,
+    'url' => 'https://www.wgzdy.top/',
+    'links_page' => 'https://www.wgzdy.top/links/',
+    'links_page_source' => 'admin',
+    'avatar' => 'https://www.wgzdy.top/assets/site-logo.png',
+    'avatar_source' => 'worker',
+    'user_avatar' => false,
+    'description' => '',
+    'auto_description' => '',
+    'description_source' => 'worker',
+    'has_backlink' => true,
+    'backlink_check_result' => 'found',
+    'worker_status' => 'complete',
+    'check_source' => 'cloudflare_worker',
+);
+$browser_unknown_result = argon_friend_link_apply_browser_result('fl_browser', array(
+    'mode' => 'backlink',
+    'target_url' => 'https://www.wgzdy.top/',
+    'checked_url' => 'https://www.wgzdy.top/links/',
+    'readable' => false,
+    'accessible' => false,
+    'links_page' => 'https://www.wgzdy.top/links/',
+    'links_page_source' => 'admin',
+    'backlink_state' => 'unknown',
+    'browser_error' => 'cors_unreadable',
+));
+$browser_unknown_link = argon_get_friend_link('fl_browser');
+argon_worker_assert(
+    !is_wp_error($browser_unknown_result)
+    && $browser_unknown_link['has_backlink'] === true
+    && $browser_unknown_link['backlink_check_result'] === 'found'
+    && $browser_unknown_link['browser_backlink_result'] === 'unknown'
+    && $browser_unknown_link['links_page'] === 'https://www.wgzdy.top/links/'
+    && $browser_unknown_link['worker_status'] === 'complete'
+    && $browser_unknown_link['check_source'] === 'cloudflare_worker'
+    && $browser_unknown_link['browser_backlink_source'] === 'admin_browser',
+    '浏览器跨域 unknown 覆盖了已有互链结论/来源、接受了跨站页面，或伪造了 Worker 状态。'
+);
+
+$stale_browser_target = argon_friend_link_apply_browser_result('fl_browser', array(
+    'mode' => 'info',
+    'target_url' => 'https://www.wgzdy.top/new-home/',
+    'readable' => true,
+    'accessible' => true,
+    'detection_source' => 'html',
+    'primary' => '错误站点标题',
+));
+argon_worker_assert(
+    is_wp_error($stale_browser_target)
+    && $stale_browser_target->get_error_code() === 'stale_browser_target'
+    && argon_get_friend_link('fl_browser')['name'] === '管理员标题',
+    '浏览器检测结果没有精确绑定检测开始时的友链地址。'
+);
+
+$cross_site_browser_result = argon_friend_link_apply_browser_result('fl_browser', array(
+    'mode' => 'backlink',
+    'target_url' => 'https://www.wgzdy.top/',
+    'checked_url' => 'https://attacker.example/links/',
+    'readable' => true,
+    'accessible' => true,
+    'links_page' => 'https://www.wgzdy.top/links/',
+    'links_page_source' => 'admin',
+    'backlink_state' => 'missing',
+));
+argon_worker_assert(
+    is_wp_error($cross_site_browser_result)
+    && $cross_site_browser_result->get_error_code() === 'invalid_browser_checked_url'
+    && argon_get_friend_link('fl_browser')['has_backlink'] === true,
+    '浏览器跨站实际检查页仍能覆盖当前友链的互链结论。'
+);
+
+$missing_links_page_result = argon_friend_link_apply_browser_result('fl_browser', array(
+    'mode' => 'backlink',
+    'target_url' => 'https://www.wgzdy.top/',
+    'checked_url' => 'https://www.wgzdy.top/',
+    'readable' => true,
+    'accessible' => true,
+    'links_page' => '',
+    'links_page_source' => 'worker',
+    'backlink_state' => 'missing',
+));
+argon_worker_assert(
+    is_wp_error($missing_links_page_result)
+    && $missing_links_page_result->get_error_code() === 'browser_links_page_missing'
+    && argon_get_friend_link('fl_browser')['has_backlink'] === true,
+    '浏览器未发现友链页时仍能用首页的结果落库 missing。'
+);
+
+$missing_links_page_unknown = argon_friend_link_apply_browser_result('fl_browser', array(
+    'mode' => 'backlink',
+    'target_url' => 'https://www.wgzdy.top/',
+    'checked_url' => '',
+    'readable' => false,
+    'accessible' => false,
+    'links_page' => '',
+    'links_page_source' => 'worker',
+    'backlink_state' => 'unknown',
+    'browser_error' => 'links_page_not_found',
+));
+argon_worker_assert(
+    !is_wp_error($missing_links_page_unknown)
+    && argon_get_friend_link('fl_browser')['has_backlink'] === true
+    && argon_get_friend_link('fl_browser')['check_source'] === 'cloudflare_worker',
+    '浏览器未发现友链页时无法记录 unknown 尝试，或污染了既有结论来源。'
+);
+
+$browser_info_result = argon_friend_link_apply_browser_result('fl_browser', array(
+    'mode' => 'info',
+    'target_url' => 'https://www.wgzdy.top/',
+    'readable' => false,
+    'accessible' => true,
+    'detected_url' => 'https://www.wgzdy.top/',
+    'detection_source' => 'wordpress',
+    'primary' => '浏览器自动标题',
+    'subtitle' => '浏览器副标题',
+    'description' => '浏览器公开接口描述',
+    'avatar' => 'https://www.wgzdy.top/favicon.ico',
+    'links_page' => 'https://www.wgzdy.top/new-links/',
+    'links_page_source' => 'worker',
+));
+$browser_info_link = argon_get_friend_link('fl_browser');
+argon_worker_assert(
+    !is_wp_error($browser_info_result)
+    && $browser_info_link['name'] === '管理员标题'
+    && $browser_info_link['display_name'] === '浏览器副标题'
+    && $browser_info_link['avatar'] === 'https://www.wgzdy.top/assets/site-logo.png'
+    && $browser_info_link['links_page'] === 'https://www.wgzdy.top/links/'
+    && $browser_info_link['auto_description'] === '浏览器公开接口描述'
+    && $browser_info_link['browser_info_source'] === 'admin_browser'
+    && $browser_info_link['browser_info_detection_source'] === 'wordpress'
+    && $browser_info_link['check_source'] === 'cloudflare_worker',
+    '浏览器资料更新覆盖了管理员字段、用 favicon 降级头像、覆盖手填友链页或改写互链来源。'
+);
+
+$GLOBALS['argon_worker_test_links']['fl_browser_media'] = array(
+    'id' => 'fl_browser_media',
+    'name' => '高质量自动标题',
+    'name_source' => 'worker',
+    'auto_name' => true,
+    'display_name' => '',
+    'display_name_source' => 'worker',
+    'user_display_name' => false,
+    'url' => 'https://www.wgzdy.top/',
+    'links_page' => '',
+    'links_page_source' => 'worker',
+    'avatar' => 'https://www.wgzdy.top/favicon.ico',
+    'avatar_source' => 'worker',
+    'user_avatar' => false,
+    'description' => '',
+    'auto_description' => '',
+    'description_source' => 'worker',
+    'has_backlink' => null,
+    'backlink_check_result' => 'unknown',
+    'worker_status' => 'unknown',
+    'check_source' => 'cloudflare_worker',
+);
+argon_friend_link_apply_browser_result('fl_browser_media', array(
+    'mode' => 'info',
+    'target_url' => 'https://www.wgzdy.top/',
+    'readable' => true,
+    'accessible' => true,
+    'detection_source' => 'html',
+    'primary' => 'HTML 首页标题',
+));
+$browser_html_link = argon_get_friend_link('fl_browser_media');
+argon_worker_assert(
+    $browser_html_link['name'] === 'HTML 首页标题'
+    && $browser_html_link['browser_info_detection_source'] === 'html',
+    '浏览器 HTML 首选来源未按多策略契约保存。'
+);
+argon_friend_link_apply_browser_result('fl_browser_media', array(
+    'mode' => 'info',
+    'target_url' => 'https://www.wgzdy.top/',
+    'readable' => false,
+    'accessible' => true,
+    'detection_source' => 'opaque',
+    'primary' => 'wgzdy.top',
+));
+$browser_opaque_link = argon_get_friend_link('fl_browser_media');
+argon_worker_assert(
+    $browser_opaque_link['name'] === 'HTML 首页标题'
+    && $browser_opaque_link['browser_info_detection_source'] === 'opaque',
+    '浏览器 opaque 主机名回退覆盖了已有自动资料。'
+);
+argon_friend_link_apply_browser_result('fl_browser_media', array(
+    'mode' => 'info',
+    'target_url' => 'https://www.wgzdy.top/',
+    'readable' => false,
+    'accessible' => true,
+    'primary' => 'wgzdy.top',
+));
+$browser_legacy_partial_link = argon_get_friend_link('fl_browser_media');
+argon_worker_assert(
+    $browser_legacy_partial_link['name'] === 'HTML 首页标题'
+    && $browser_legacy_partial_link['browser_info_detection_source'] === 'opaque',
+    '缺少质量来源的旧浏览器结果仍会覆盖已有自动资料。'
+);
+argon_friend_link_apply_browser_result('fl_browser_media', array(
+    'mode' => 'info',
+    'target_url' => 'https://www.wgzdy.top/',
+    'readable' => false,
+    'accessible' => true,
+    'detection_source' => 'argon',
+    'avatar' => 'https://vercel.cdn.wgzdy.top/avater.webp',
+    'links_page' => 'https://www.wgzdy.top/links/',
+    'links_page_source' => 'worker',
+));
+$browser_media_link = argon_get_friend_link('fl_browser_media');
+argon_worker_assert(
+    $browser_media_link['avatar'] === 'https://vercel.cdn.wgzdy.top/avater.webp'
+    && $browser_media_link['links_page'] === 'https://www.wgzdy.top/links/'
+    && $browser_media_link['browser_info_detection_source'] === 'argon'
+    && $browser_media_link['worker_status'] === 'unknown'
+    && $browser_media_link['check_source'] === 'cloudflare_worker',
+    '浏览器媒体发现结果没有替换 favicon，或手动资料更新伪造了 Worker 状态。'
+);
+
+$GLOBALS['argon_worker_test_links']['fl_browser_probe'] = array(
+    'id' => 'fl_browser_probe',
+    'name' => '同步探测旧标题',
+    'name_source' => 'worker',
+    'auto_name' => true,
+    'display_name' => '',
+    'display_name_source' => 'worker',
+    'user_display_name' => false,
+    'url' => 'https://www.wgzdy.top/',
+    'links_page' => '',
+    'links_page_source' => 'worker',
+    'avatar' => 'https://www.wgzdy.top/favicon.ico',
+    'avatar_source' => 'worker',
+    'user_avatar' => false,
+    'description' => '',
+    'auto_description' => '',
+    'description_source' => 'worker',
+    'has_backlink' => null,
+    'backlink_check_result' => 'unknown',
+    'worker_status' => 'complete',
+    'check_source' => 'cloudflare_worker',
+);
+$GLOBALS['argon_worker_test_next_remote_response'] = array(
+    'response' => array('code' => 200),
+    'body' => json_encode(array(
+        'success' => true,
+        'version' => 1,
+        'checked_at' => time(),
+        'result' => array(
+            'state' => 'complete',
+            'accessible' => true,
+            'readable' => true,
+            'detected_url' => 'https://www.wgzdy.top/',
+            'primary' => '同步 Argon 标题',
+            'subtitle' => '同步副标题',
+            'description' => '同步探测描述',
+            'avatar' => 'https://www.wgzdy.top/wp-content/uploads/avater.webp',
+            'links_page' => 'https://www.wgzdy.top/links/',
+            'checked_url' => '',
+            'backlink_state' => 'unknown',
+            'source' => 'cloudflare_worker',
+            'detection_source' => 'argon',
+            'attempts' => 1,
+            'error' => '',
+        ),
+    ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+);
+$browser_probe_result = argon_friend_link_worker_probe_and_apply('fl_browser_probe', array(
+    'mode' => 'info',
+    'target_url' => 'https://www.wgzdy.top/',
+));
+$browser_probe_request = end($GLOBALS['argon_worker_test_remote_posts']);
+$browser_probe_link = argon_get_friend_link('fl_browser_probe');
+$browser_probe_timestamp = isset($browser_probe_request['args']['headers']['X-Argon-Timestamp'])
+    ? $browser_probe_request['args']['headers']['X-Argon-Timestamp']
+    : '';
+$browser_probe_nonce = isset($browser_probe_request['args']['headers']['X-Argon-Nonce'])
+    ? $browser_probe_request['args']['headers']['X-Argon-Nonce']
+    : '';
+$browser_probe_signature = isset($browser_probe_request['args']['headers']['X-Argon-Signature'])
+    ? $browser_probe_request['args']['headers']['X-Argon-Signature']
+    : '';
+$expected_browser_probe_signature = 'sha256=' . hash_hmac(
+    'sha256',
+    $browser_probe_timestamp . '.' . $browser_probe_nonce . '.' . $browser_probe_request['args']['body'],
+    ARGON_FRIEND_LINK_SUBMIT_HMAC_SECRET
+);
+$browser_probe_body = json_decode($browser_probe_request['args']['body'], true);
+argon_worker_assert(
+    !is_wp_error($browser_probe_result)
+    && $browser_probe_link['name'] === '同步 Argon 标题'
+    && $browser_probe_link['display_name'] === '同步副标题'
+    && $browser_probe_link['auto_description'] === '同步探测描述'
+    && $browser_probe_link['avatar'] === 'https://www.wgzdy.top/wp-content/uploads/avater.webp'
+    && $browser_probe_link['links_page'] === 'https://www.wgzdy.top/links/'
+    && $browser_probe_link['browser_info_detection_source'] === 'argon'
+    && $browser_probe_link['browser_transport'] === 'worker_sync'
+    && $browser_probe_link['worker_status'] === 'complete'
+    && $browser_probe_link['check_source'] === 'cloudflare_worker',
+    '浏览器同步 Worker 探测结果未按来源契约落库，或污染了自动 Worker 状态。'
+);
+argon_worker_assert(
+    $browser_probe_request['url'] === 'https://worker.sample-blog.dev/v1/probe'
+    && isset($browser_probe_request['args']['blocking'])
+    && $browser_probe_request['args']['blocking'] === true
+    && isset($browser_probe_request['args']['limit_response_size'])
+    && $browser_probe_request['args']['limit_response_size'] === 512 * 1024
+    && isset($browser_probe_body['action'])
+    && $browser_probe_body['action'] === 'probe'
+    && $browser_probe_body['mode'] === 'info'
+    && $browser_probe_body['site_url'] === 'https://blog.sample-blog.dev/'
+    && hash_equals($expected_browser_probe_signature, $browser_probe_signature),
+    '浏览器同步探测未调用固定 /v1/probe、未阻塞等待结果或未使用提交密钥签名。'
+);
+
 $dispatched = argon_friend_link_worker_dispatch_async('fl_contract');
 $remote_post = !empty($GLOBALS['argon_worker_test_remote_posts']) ? end($GLOBALS['argon_worker_test_remote_posts']) : array();
 $ticket = array(
@@ -228,6 +548,7 @@ $callback_payload = array(
         'description' => '自动识别描述',
         'avatar' => 'https://blog.sample-blog.dev/favicon.ico',
         'links_page' => 'https://blog.sample-blog.dev/friends/',
+        'checked_url' => 'https://blog.sample-blog.dev/friends/',
         'backlink_state' => 'found',
         'source' => 'cloudflare_worker',
         'attempts' => 1,
@@ -264,6 +585,17 @@ argon_worker_assert(
     && $updated_link['has_backlink'] === true
     && $updated_link['check_source'] === 'cloudflare_worker',
     '合法 Worker 回调没有更新自动字段和互链状态。'
+);
+
+$cross_site_worker_payload = $callback_payload;
+$cross_site_worker_payload['result']['checked_url'] = 'https://attacker.example/links/';
+$cross_site_worker_payload['result']['backlink_state'] = 'missing';
+$cross_site_worker_result = argon_friend_link_worker_apply_result_payload($cross_site_worker_payload);
+argon_worker_assert(
+    is_wp_error($cross_site_worker_result)
+    && $cross_site_worker_result->get_error_code() === 'invalid_worker_checked_url'
+    && argon_get_friend_link('fl_contract')['has_backlink'] === true,
+    'Worker 跨站实际检查页仍能覆盖当前友链的互链结论。'
 );
 
 argon_update_friend_link('fl_contract', array('avatar' => '', 'avatar_source' => 'worker'));
@@ -394,6 +726,8 @@ $unknown_payload['result']['state'] = 'unknown';
 $unknown_payload['result']['accessible'] = false;
 $unknown_payload['result']['readable'] = false;
 $unknown_payload['result']['error'] = 'target_unreadable';
+$unknown_payload['result']['checked_url'] = '';
+$GLOBALS['argon_worker_test_links']['fl_contract']['check_source'] = 'admin_browser';
 $unknown_body = json_encode($unknown_payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 $unknown_nonce = 'callback_nonce_unknown_12345';
 $unknown_signature = 'sha256=' . hash_hmac(
@@ -413,6 +747,7 @@ argon_worker_assert(
     && $unknown_updated_link['accessible'] === true
     && $unknown_updated_link['has_backlink'] === true
     && $unknown_updated_link['backlink_check_result'] === 'found'
+    && $unknown_updated_link['check_source'] === 'admin_browser'
     && $unknown_updated_link['worker_error'] === 'target_unreadable',
     'unknown 回调覆盖了已有互链结论。'
 );
