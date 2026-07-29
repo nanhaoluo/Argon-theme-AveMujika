@@ -302,15 +302,17 @@ $browser_info_result = argon_friend_link_apply_browser_result('fl_browser', arra
 $browser_info_link = argon_get_friend_link('fl_browser');
 argon_worker_assert(
     !is_wp_error($browser_info_result)
-    && $browser_info_link['name'] === '管理员标题'
+    && $browser_info_link['name'] === '浏览器自动标题'
+    && $browser_info_link['name_source'] === 'worker'
     && $browser_info_link['display_name'] === '浏览器副标题'
     && $browser_info_link['avatar'] === 'https://www.wgzdy.top/assets/site-logo.png'
-    && $browser_info_link['links_page'] === 'https://www.wgzdy.top/links/'
+    && $browser_info_link['links_page'] === 'https://www.wgzdy.top/new-links/'
+    && $browser_info_link['links_page_source'] === 'worker'
     && $browser_info_link['auto_description'] === '浏览器公开接口描述'
     && $browser_info_link['browser_info_source'] === 'admin_browser'
     && $browser_info_link['browser_info_detection_source'] === 'wordpress'
     && $browser_info_link['check_source'] === 'cloudflare_worker',
-    '浏览器资料更新覆盖了管理员字段、用 favicon 降级头像、覆盖手填友链页或改写互链来源。'
+    '管理员主动更新未接管旧字段，或用 favicon 降级了现有高质量头像。'
 );
 
 $GLOBALS['argon_worker_test_links']['fl_browser_media'] = array(
@@ -686,7 +688,7 @@ argon_update_friend_link('fl_contract', array(
     'name_source' => 'admin',
     'display_name' => '管理员副标题',
     'display_name_source' => 'admin',
-    'avatar' => 'https://sample-blog.dev/admin.png',
+    'avatar' => 'https://sample-blog.dev/favicon.ico',
     'avatar_source' => 'admin',
     'description' => '管理员描述',
     'description_source' => 'admin',
@@ -696,6 +698,7 @@ argon_update_friend_link('fl_contract', array(
 argon_friend_link_worker_dispatch_async('fl_contract');
 $admin_payload = $callback_payload;
 $admin_payload['generation'] = $GLOBALS['argon_worker_test_links']['fl_contract']['worker_generation'];
+$admin_payload['result']['avatar'] = 'https://sample-blog.dev/worker-confirmed.webp';
 $admin_body = json_encode($admin_payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 $admin_nonce = 'callback_nonce_admin_123456';
 $admin_signature = 'sha256=' . hash_hmac('sha256', $callback_timestamp . '.' . $admin_nonce . '.' . $admin_body, ARGON_FRIEND_LINK_CALLBACK_HMAC_SECRET);
@@ -710,10 +713,11 @@ argon_worker_assert(
     && $admin_priority_response->get_status() === 200
     && $admin_link['name'] === '管理员名称'
     && $admin_link['display_name'] === '管理员副标题'
-    && $admin_link['avatar'] === 'https://sample-blog.dev/admin.png'
+    && $admin_link['avatar'] === 'https://sample-blog.dev/worker-confirmed.webp'
+    && $admin_link['avatar_source'] === 'worker'
     && $admin_link['description'] === '管理员描述'
     && $admin_link['links_page'] === 'https://sample-blog.dev/admin-links/',
-    'Worker 自动结果覆盖了管理员字段。'
+    'Worker 自动结果覆盖了有效管理员字段，或未升级管理员保存的通用 favicon。'
 );
 
 $replay_response = argon_friend_link_worker_result_rest($callback_request);

@@ -1308,27 +1308,33 @@ if (typeof initGeetest4 === 'function') {
         document.getElementById('edit-status-info').innerHTML = statusHtml || '<?php _e('暂无检测记录', 'argon'); ?>';
     }
 
-    function applyWorkerSnapshot(link) {
+    function applyWorkerSnapshot(link, forceDetectedFields) {
         if (!link) return;
-        if (editNameSource === 'worker' && link.name_source === 'worker' && link.name) {
+        var acceptDetectedFields = forceDetectedFields === true;
+        if ((acceptDetectedFields || editNameSource === 'worker') && link.name_source === 'worker' && link.name) {
             document.getElementById('edit-name').value = link.name;
             editFieldSnapshots.name = link.name;
+            if (acceptDetectedFields) editNameSource = 'worker';
         }
-        if (editDisplayNameSource === 'worker' && link.display_name_source === 'worker') {
+        if ((acceptDetectedFields || editDisplayNameSource === 'worker') && link.display_name_source === 'worker') {
             document.getElementById('edit-display-name').value = link.display_name || '';
             editFieldSnapshots.display_name = link.display_name || '';
+            if (acceptDetectedFields) editDisplayNameSource = 'worker';
         }
-        if (editAvatarSource === 'worker' && link.avatar_source === 'worker') {
+        if ((acceptDetectedFields || editAvatarSource === 'worker') && link.avatar_source === 'worker') {
             document.getElementById('edit-avatar').value = link.avatar || '';
             editFieldSnapshots.avatar = link.avatar || '';
+            if (acceptDetectedFields) editAvatarSource = 'worker';
         }
-        if (editDescriptionSource === 'worker' && link.description_source === 'worker') {
+        if ((acceptDetectedFields || editDescriptionSource === 'worker') && link.description_source === 'worker') {
             document.getElementById('edit-desc').value = link.description || link.auto_description || '';
             editFieldSnapshots.description = link.description || link.auto_description || '';
+            if (acceptDetectedFields) editDescriptionSource = 'worker';
         }
-        if (editLinksPageSource === 'worker' && link.links_page_source === 'worker') {
+        if ((acceptDetectedFields || editLinksPageSource === 'worker') && link.links_page_source === 'worker') {
             document.getElementById('edit-links-page').value = link.links_page || '';
             editFieldSnapshots.links_page = link.links_page || '';
+            if (acceptDetectedFields) editLinksPageSource = 'worker';
         }
     }
 
@@ -1720,7 +1726,7 @@ if (typeof initGeetest4 === 'function') {
                     return;
                 }
                 if (saveResponse.data) {
-                    applyWorkerSnapshot(saveResponse.data);
+                    applyWorkerSnapshot(saveResponse.data, true);
                     renderEditWorkerStatus(saveResponse.data);
                     rememberEditFieldSnapshots();
                 }

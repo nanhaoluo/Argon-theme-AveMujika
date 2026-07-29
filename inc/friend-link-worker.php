@@ -139,12 +139,24 @@ if (!function_exists('argon_friend_link_field_source')) {
     }
 }
 
-function argon_friend_link_worker_can_update_field($link, $field) {
-    if (argon_friend_link_field_source($link, $field) === 'worker') return true;
-    if ($field === 'description') {
-        return empty($link['description']) && empty($link['auto_description']);
+function argon_friend_link_worker_can_update_field($link, $field, $context = 'automatic', $candidate = '') {
+    $source = argon_friend_link_field_source($link, $field);
+    $current = $field === 'description'
+        ? (!empty($link['description']) ? $link['description'] : (isset($link['auto_description']) ? $link['auto_description'] : ''))
+        : (isset($link[$field]) ? $link[$field] : '');
+
+    // 管理员主动点击“更新信息”即授权使用本次已确认的检测结果接管非空字段。
+    // 后台自动巡检仍保护管理员/访客手填内容，避免定时任务静默改写人工资料。
+    if ($context === 'admin_refresh') return (string)$candidate !== '';
+    if ($source === 'worker' || (string)$current === '') return true;
+
+    // 质量升级不受来源标签一刀切限制：任何来源的通用 favicon 都可被真实头像替换。
+    if ($field === 'avatar') {
+        $current_is_generic = preg_match('/\/favicon\.ico(?:[?#]|$)/i', (string)$current) === 1;
+        $candidate_is_generic = preg_match('/\/favicon\.ico(?:[?#]|$)/i', (string)$candidate) === 1;
+        return $current_is_generic && (string)$candidate !== '' && !$candidate_is_generic;
     }
-    return empty($link[$field]);
+    return false;
 }
 
 function argon_friend_link_worker_avatar_is_better($current, $candidate) {
@@ -509,26 +521,27 @@ function argon_friend_link_worker_apply_result_payload($payload, $delivery = 'ca
         $update['browser_detected_url'] = $detected_url;
     }
     $primary = isset($result['primary']) ? sanitize_text_field($result['primary']) : '';
-    if ($primary !== '' && argon_friend_link_worker_can_update_field($link, 'name')) {
+    if ($primary !== '' && argon_friend_link_worker_can_update_field($link, 'name', 'automatic', $primary)) {
         $update['name'] = $primary;
         $update['name_source'] = 'worker';
         $update['auto_name'] = true;
     }
     $subtitle = isset($result['subtitle']) ? sanitize_text_field($result['subtitle']) : '';
-    if ($subtitle !== '' && argon_friend_link_worker_can_update_field($link, 'display_name')) {
+    if ($subtitle !== '' && argon_friend_link_worker_can_update_field($link, 'display_name', 'automatic', $subtitle)) {
         $update['display_name'] = $subtitle;
         $update['display_name_source'] = 'worker';
         $update['user_display_name'] = false;
     }
     $description = isset($result['description']) ? sanitize_text_field($result['description']) : '';
-    if ($description !== '' && argon_friend_link_worker_can_update_field($link, 'description')) {
+    if ($description !== '' && argon_friend_link_worker_can_update_field($link, 'description', 'automatic', $description)) {
+        $update['description'] = '';
         $update['auto_description'] = $description;
         $update['description_source'] = 'worker';
     }
     $avatar = isset($result['avatar']) ? esc_url_raw($result['avatar']) : '';
     if (
         $avatar !== ''
-        && argon_friend_link_worker_can_update_field($link, 'avatar')
+        && argon_friend_link_worker_can_update_field($link, 'avatar', 'automatic', $avatar)
         && argon_friend_link_worker_avatar_is_better(isset($link['avatar']) ? $link['avatar'] : '', $avatar)
     ) {
         $update['avatar'] = $avatar;
@@ -538,7 +551,7 @@ function argon_friend_link_worker_apply_result_payload($payload, $delivery = 'ca
     $links_page = isset($result['links_page']) ? esc_url_raw($result['links_page']) : '';
     if (
         $links_page !== ''
-        && argon_friend_link_worker_can_update_field($link, 'links_page')
+        && argon_friend_link_worker_can_update_field($link, 'links_page', 'automatic', $links_page)
         && argon_friend_link_worker_detected_url_allowed($link, $links_page)
     ) {
         $update['links_page'] = $links_page;
@@ -636,7 +649,7 @@ function argon_friend_link_apply_browser_result($link_id, $payload) {
     if (
         $links_page !== ''
         && argon_friend_link_worker_detected_url_allowed($link, $links_page)
-        && ($links_page_source === 'admin' || argon_friend_link_worker_can_update_field($link, 'links_page'))
+        && ($links_page_source === 'admin' || argon_friend_link_worker_can_update_field($link, 'links_page', 'admin_refresh', $links_page))
     ) {
         $update['links_page'] = $links_page;
         $update['links_page_source'] = $links_page_source;
@@ -651,24 +664,25 @@ function argon_friend_link_apply_browser_result($link_id, $payload) {
         $subtitle = isset($payload['subtitle']) ? sanitize_text_field(wp_unslash($payload['subtitle'])) : '';
         $description = isset($payload['description']) ? sanitize_text_field(wp_unslash($payload['description'])) : '';
         $avatar = isset($payload['avatar']) ? esc_url_raw(wp_unslash($payload['avatar'])) : '';
-        if ($detection_source !== 'opaque' && $primary !== '' && argon_friend_link_worker_can_update_field($link, 'name')) {
+        if ($detection_source !== 'opaque' && $primary !== '' && argon_friend_link_worker_can_update_field($link, 'name', 'admin_refresh', $primary)) {
             $update['name'] = $primary;
             $update['name_source'] = 'worker';
             $update['auto_name'] = true;
         }
-        if ($detection_source !== 'opaque' && $subtitle !== '' && argon_friend_link_worker_can_update_field($link, 'display_name')) {
+        if ($detection_source !== 'opaque' && $subtitle !== '' && argon_friend_link_worker_can_update_field($link, 'display_name', 'admin_refresh', $subtitle)) {
             $update['display_name'] = $subtitle;
             $update['display_name_source'] = 'worker';
             $update['user_display_name'] = false;
         }
-        if ($detection_source !== 'opaque' && $description !== '' && argon_friend_link_worker_can_update_field($link, 'description')) {
+        if ($detection_source !== 'opaque' && $description !== '' && argon_friend_link_worker_can_update_field($link, 'description', 'admin_refresh', $description)) {
+            $update['description'] = '';
             $update['auto_description'] = $description;
             $update['description_source'] = 'worker';
         }
         if (
             $detection_source !== 'opaque'
             && $avatar !== ''
-            && argon_friend_link_worker_can_update_field($link, 'avatar')
+            && argon_friend_link_worker_can_update_field($link, 'avatar', 'admin_refresh', $avatar)
             && argon_friend_link_worker_avatar_is_better(isset($link['avatar']) ? $link['avatar'] : '', $avatar)
         ) {
             $update['avatar'] = $avatar;
