@@ -40,6 +40,11 @@ argon_worker_public_assert(
     'Wrangler 示例没有完全使用通用域名，或默认绑定了自定义域。'
 );
 argon_worker_public_assert(
+    strpos($example, '"nodejs_compat"') !== false
+    && strpos($example, '"global_fetch_strictly_public"') !== false,
+    'Wrangler 示例缺少原生 DNS 和严格公网 fetch 所需的兼容标志。'
+);
+argon_worker_public_assert(
     preg_match('/^wrangler\.jsonc$/m', trim($gitignore)) === 1,
     '本地生产 wrangler.jsonc 没有被忽略。'
 );

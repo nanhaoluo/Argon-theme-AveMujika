@@ -5302,28 +5302,37 @@ function argon_friend_links_template() {
     }
 }
 
-// Worker 实时状态页仅允许站点管理员访问。
-add_action('template_redirect', 'argon_worker_status_template');
+// Worker 实时状态页对无权限访问统一返回标准 404，避免暴露管理入口。
+function argon_worker_status_render_404() {
+    global $wp_query;
+
+    if (is_object($wp_query) && method_exists($wp_query, 'set_404')) {
+        $wp_query->set_404();
+    }
+    status_header(404);
+    nocache_headers();
+    if (!headers_sent()) {
+        header('X-Robots-Tag: noindex, nofollow', true);
+    }
+
+    $template = get_404_template();
+    if ($template) {
+        include $template;
+    }
+}
+
+add_action('template_redirect', 'argon_worker_status_template', 0);
 function argon_worker_status_template() {
     if (!get_query_var('argon_worker_status')) return;
 
-    if (!is_user_logged_in()) {
-        auth_redirect();
+    if (!is_user_logged_in() || !current_user_can('manage_options')) {
+        argon_worker_status_render_404();
         exit;
     }
 
     nocache_headers();
     if (!headers_sent()) {
         header('X-Robots-Tag: noindex, nofollow', true);
-    }
-
-    if (!current_user_can('manage_options')) {
-        status_header(403);
-        wp_die(
-            esc_html__('您没有权限查看 Worker 状态。', 'argon'),
-            esc_html__('访问被拒绝', 'argon'),
-            array('response' => 403)
-        );
     }
 
     include(get_template_directory() . '/worker.php');

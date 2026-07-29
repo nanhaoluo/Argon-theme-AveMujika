@@ -17,6 +17,22 @@ $surface_source = is_file($root . '/inc/special-page-surface.php')
 $page_source = is_file($root . '/worker.php') ? file_get_contents($root . '/worker.php') : false;
 $failures = array();
 
+$worker_404_source = false;
+$worker_route_source = false;
+if ($functions_source !== false) {
+    $worker_404_start = strpos($functions_source, 'function argon_worker_status_render_404()');
+    $worker_route_hook = strpos($functions_source, "add_action('template_redirect', 'argon_worker_status_template'");
+    if ($worker_404_start !== false && $worker_route_hook !== false && $worker_route_hook > $worker_404_start) {
+        $worker_404_source = substr($functions_source, $worker_404_start, $worker_route_hook - $worker_404_start);
+    }
+
+    $worker_route_start = strpos($functions_source, 'function argon_worker_status_template()');
+    $feedback_route_hook = strpos($functions_source, "add_action('template_redirect', 'argon_feedback_template')");
+    if ($worker_route_start !== false && $feedback_route_hook !== false && $feedback_route_hook > $worker_route_start) {
+        $worker_route_source = substr($functions_source, $worker_route_start, $feedback_route_hook - $worker_route_start);
+    }
+}
+
 function argon_worker_status_assert($condition, $message) {
     global $failures;
     if (!$condition) $failures[] = $message;
@@ -39,13 +55,32 @@ argon_worker_status_assert(
     '直接覆盖主题文件后，/worker rewrite 没有一次性刷新机制。'
 );
 argon_worker_status_assert(
+    $worker_404_source !== false
+    && strpos($worker_404_source, 'global $wp_query;') !== false
+    && strpos($worker_404_source, '$wp_query->set_404();') !== false
+    && strpos($worker_404_source, 'status_header(404);') !== false
+    && strpos($worker_404_source, 'nocache_headers();') !== false
+    && strpos($worker_404_source, 'get_404_template();') !== false
+    && strpos($worker_404_source, 'include $template;') !== false,
+    '/worker 无权限响应没有使用 WordPress 404 查询状态和标准 404 模板。'
+);
+argon_worker_status_assert(
     $functions_source !== false
-    && strpos($functions_source, "auth_redirect();") !== false
-    && strpos($functions_source, "current_user_can('manage_options')") !== false
-    && strpos($functions_source, 'status_header(403)') !== false
-    && strpos($functions_source, 'nocache_headers()') !== false
-    && strpos($functions_source, "header('X-Robots-Tag: noindex, nofollow'") !== false,
-    '/worker 模板入口没有落实匿名登录跳转、管理员权限、403、禁缓存或 noindex。'
+    && strpos($functions_source, "add_action('template_redirect', 'argon_worker_status_template', 0);") !== false,
+    '/worker 权限处理没有早于 redirect_canonical，匿名无斜杠请求仍可能先被重定向。'
+);
+argon_worker_status_assert(
+    $worker_route_source !== false
+    && preg_match(
+        "~if\\s*\\(\\s*!is_user_logged_in\\(\\)\\s*\\|\\|\\s*!current_user_can\\(\\s*'manage_options'\\s*\\)\\s*\\)\\s*\\{\\s*argon_worker_status_render_404\\(\\);\\s*exit;\\s*\\}~s",
+        $worker_route_source
+    ) === 1
+    && strpos($worker_route_source, 'auth_redirect(') === false
+    && strpos($worker_route_source, 'status_header(403)') === false
+    && strpos($worker_route_source, 'wp_die(') === false
+    && strpos($worker_route_source, 'nocache_headers()') !== false
+    && strpos($worker_route_source, "header('X-Robots-Tag: noindex, nofollow'") !== false,
+    '/worker 模板入口没有让匿名与无 manage_options 权限请求统一返回 404，或仍会登录跳转/返回 403。'
 );
 argon_worker_status_assert(
     $bridge_source !== false
@@ -105,6 +140,18 @@ if ($page_source !== false) {
         && strpos($page_source, 'flinks-') === false,
         '/worker 没有实际使用三个自定义功能页共享的卡片、徽章、表格或空状态组件。'
     );
+    $worker_header_position = strpos($page_source, 'argon_special_page_surface_header(array(');
+    $worker_list_position = strpos($page_source, '<div id="argon-worker-status-page" class="argon-special-page-list">');
+    argon_worker_status_assert(
+        $worker_header_position !== false
+        && $worker_list_position !== false
+        && $worker_header_position < $worker_list_position
+        && preg_match(
+            '~<article class="[^"]*argon-special-page-card argon-special-page-section"[^>]*aria-labelledby="argon-worker-summary-title">.*?<div class="argon-special-page-section-header">.*?<section class="argon-special-page-grid" id="argon-worker-summary"~s',
+            $page_source
+        ) === 1,
+        '/worker 页头仍嵌套在列表中，或状态汇总没有复用三页共享的分区卡片结构。'
+    );
     argon_worker_status_assert(
         strpos($feedback_page_source, 'argon-special-page-card') !== false
         && strpos($feedback_page_source, 'argon-special-page-badge') !== false
@@ -135,12 +182,16 @@ if ($page_source !== false) {
         '/worker 仍残留独立的 header、panel 或 card 视觉体系。'
     );
     argon_worker_status_assert(
-        strpos($page_source, "is_user_logged_in()") !== false
-        && strpos($page_source, "current_user_can('manage_options')") !== false
-        && strpos($page_source, 'status_header(403)') !== false
+        preg_match(
+            "~if\\s*\\(\\s*!is_user_logged_in\\(\\)\\s*\\|\\|\\s*!current_user_can\\(\\s*'manage_options'\\s*\\)\\s*\\)\\s*\\{\\s*argon_worker_status_render_404\\(\\);\\s*return;\\s*\\}~s",
+            $page_source
+        ) === 1
+        && strpos($page_source, 'auth_redirect(') === false
+        && strpos($page_source, 'status_header(403)') === false
+        && strpos($page_source, 'wp_die(') === false
         && strpos($page_source, 'nocache_headers()') !== false
         && strpos($page_source, "header('X-Robots-Tag: noindex, nofollow'") !== false,
-        'worker.php 本身没有落实匿名登录跳转、管理员权限、403、禁缓存或 noindex。'
+        'worker.php 没有让匿名与无 manage_options 权限请求统一返回 404，或仍会登录跳转/返回 403。'
     );
     argon_worker_status_assert(
         strpos($page_source, "rest_url('argon/v1/friend-link-worker-status')") !== false

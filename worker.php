@@ -9,17 +9,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-if (!is_user_logged_in()) {
-    auth_redirect();
-    exit;
-}
-if (!current_user_can('manage_options')) {
-    status_header(403);
-    wp_die(
-        esc_html__('您没有权限查看 Worker 状态。', 'argon'),
-        esc_html__('访问被拒绝', 'argon'),
-        array('response' => 403)
-    );
+if (!is_user_logged_in() || !current_user_can('manage_options')) {
+    argon_worker_status_render_404();
+    return;
 }
 
 nocache_headers();
@@ -32,24 +24,25 @@ get_header();
 argon_special_page_surface_open('worker-page');
 ?>
 
-<div id="argon-worker-status-page" class="argon-special-page-list">
-    <?php
-    argon_special_page_surface_header(array(
-        'icon' => 'cloud',
-        'title' => __('友链 Worker 实时状态', 'argon'),
-        'subtitle' => __('自动巡检、队列与实时探测状态，每秒更新两次', 'argon'),
-        'stats' => array(
-            array(
-                'icon' => 'circle',
-                'text' => __('正在连接', 'argon'),
-                'id' => 'argon-worker-live',
-                'text_id' => 'argon-worker-live-text',
-                'class' => 'argon-special-page-badge argon-special-page-live',
-                'aria_live' => 'polite',
-            ),
+<?php
+argon_special_page_surface_header(array(
+    'icon' => 'cloud',
+    'title' => __('友链 Worker 实时状态', 'argon'),
+    'subtitle' => __('自动巡检、队列与实时探测状态，每秒更新两次', 'argon'),
+    'stats' => array(
+        array(
+            'icon' => 'circle',
+            'text' => __('正在连接', 'argon'),
+            'id' => 'argon-worker-live',
+            'text_id' => 'argon-worker-live-text',
+            'class' => 'argon-special-page-badge argon-special-page-live',
+            'aria_live' => 'polite',
         ),
-    ));
-    ?>
+    ),
+));
+?>
+
+<div id="argon-worker-status-page" class="argon-special-page-list">
 
     <div class="argon-special-page-stats argon-special-page-meta">
         <span class="argon-special-page-stat"><?php esc_html_e('上次更新', 'argon'); ?>：<strong id="argon-worker-updated-at">—</strong></span>
@@ -57,12 +50,18 @@ argon_special_page_surface_open('worker-page');
         <span class="argon-special-page-stat"><?php esc_html_e('服务时间', 'argon'); ?>：<strong id="argon-worker-server-time">—</strong></span>
     </div>
 
-    <section class="argon-special-page-grid" id="argon-worker-summary" aria-label="<?php echo esc_attr__('Worker 状态汇总', 'argon'); ?>">
-        <article class="argon-special-page-metric">
-            <div class="argon-special-page-metric-label"><?php esc_html_e('等待数据', 'argon'); ?></div>
-            <div class="argon-special-page-metric-value">—</div>
-        </article>
-    </section>
+    <article class="post card shadow-sm bg-white border-0 argon-special-page-card argon-special-page-section" aria-labelledby="argon-worker-summary-title">
+        <div class="argon-special-page-section-header">
+            <h2 class="argon-special-page-section-title" id="argon-worker-summary-title"><i class="fa fa-dashboard" aria-hidden="true"></i><?php esc_html_e('状态汇总', 'argon'); ?></h2>
+            <span class="argon-special-page-section-count"><i class="fa fa-bolt" aria-hidden="true"></i><?php esc_html_e('实时', 'argon'); ?></span>
+        </div>
+        <section class="argon-special-page-grid" id="argon-worker-summary" aria-label="<?php echo esc_attr__('Worker 状态汇总', 'argon'); ?>">
+            <article class="argon-special-page-metric">
+                <div class="argon-special-page-metric-label"><?php esc_html_e('等待数据', 'argon'); ?></div>
+                <div class="argon-special-page-metric-value">—</div>
+            </article>
+        </section>
+    </article>
 
     <article class="post card shadow-sm bg-white border-0 argon-special-page-card argon-special-page-section" aria-labelledby="argon-worker-jobs-title">
         <div class="argon-special-page-section-header">
