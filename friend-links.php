@@ -381,17 +381,17 @@ argon_special_page_surface_open('flinks-page');
 ?>
 
 <style id="flinks-page-style">
-.flinks-detect-status { display: block; min-height: 18px; margin-top: 5px; color: var(--flinks-text-soft); font-size: 11px; line-height: 1.45; }
+.flinks-detect-status { display: block; min-height: 18px; margin-top: 5px; color: var(--argon-special-page-text-soft); font-size: 11px; line-height: 1.45; }
 .flinks-apply-header:focus { outline: none; box-shadow: none; }
 .flinks-apply-header:focus-visible, .flink-card:focus-visible { outline: 2px solid rgba(var(--themecolor-rgbstr), 0.28); outline-offset: 2px; }
-.flink-modal input::placeholder { color: var(--flinks-placeholder); }
+.flink-modal input::placeholder { color: var(--argon-special-page-placeholder); }
 
-.flinks-welcome-text { font-size: 14px; color: var(--flinks-text-muted); line-height: 1.6; margin-bottom: 16px; padding: 12px 16px; background: var(--flinks-surface-soft); border-radius: var(--card-radius-sm); border-left: 3px solid var(--themecolor); }
+.flinks-welcome-text { font-size: 14px; color: var(--argon-special-page-text-muted); line-height: 1.6; margin-bottom: 16px; padding: 12px 16px; background: var(--argon-special-page-surface-soft); border-radius: var(--card-radius-sm); border-left: 3px solid var(--themecolor); }
 
 .flink-card { display: flex; align-items: flex-start; gap: 14px; padding: 14px; background: transparent; border-radius: var(--card-radius-sm); text-decoration: none !important; color: inherit; border: 1px solid transparent; transition: all var(--animation-fast) var(--ease-standard); min-height: 88px; position: relative; }
 .flink-card:hover { 
 	transform: translateY(-2px); 
-	background: var(--flinks-surface-hover);
+	background: var(--argon-special-page-surface-hover);
 	border-color: rgba(var(--themecolor-rgbstr), 0.16);
 }
 .flink-card.editable { cursor: default; border-radius: var(--card-radius); overflow: hidden; }
@@ -406,7 +406,7 @@ argon_special_page_surface_open('flinks-page');
 /* 状态标记 */
 .flink-status-badge { position: absolute; top: 6px; right: 6px; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 500; cursor: help; }
 .flink-status-badge.no-backlink { background: #fef3c7; color: #d97706; }
-.flink-status-badge.unknown { background: rgba(107, 114, 128, 0.14); color: var(--flinks-text-muted); }
+.flink-status-badge.unknown { background: rgba(107, 114, 128, 0.14); color: var(--argon-special-page-text-muted); }
 .flink-status-badge.inaccessible { background: #fee2e2; color: #dc2626; }
 .flink-status-badge.waf-blocked { background: #fce7f3; color: #db2777; }
 .flink-status-badge.auto-approved { background: #d1fae5; color: #059669; cursor: pointer; }
@@ -424,17 +424,17 @@ argon_special_page_surface_open('flinks-page');
 .flink-info { flex: 1; min-width: 0; padding-top: 2px; }
 .flink-name { font-size: 15px; font-weight: 600; color: var(--color-text-deeper); margin-bottom: 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; line-height: 1.4; }
 .flink-name .main-name { }
-.flink-name .sub-name { font-size: 13px; font-weight: 400; color: var(--flinks-text-soft); }
-.flink-desc { font-size: 13px; color: var(--flinks-text-muted); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 4px; }
-.flink-url { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--flinks-text-faint); margin-top: 6px; white-space: nowrap; overflow: hidden; }
+.flink-name .sub-name { font-size: 13px; font-weight: 400; color: var(--argon-special-page-text-soft); }
+.flink-desc { font-size: 13px; color: var(--argon-special-page-text-muted); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 4px; }
+.flink-url { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--argon-special-page-text-faint); margin-top: 6px; white-space: nowrap; overflow: hidden; }
 .flink-url-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .flink-open-icon { flex-shrink: 0; opacity: 0; transform: translateX(-3px); transition: all var(--animation-fast) var(--ease-standard); color: var(--themecolor); }
 .flink-card:hover .flink-open-icon { opacity: 0.85; transform: translateX(0); }
 
 /* 申请区域 */
 .flinks-apply-card { padding: 0; overflow: hidden; }
-.flinks-apply-header { display: flex; align-items: center; justify-content: space-between; width: 100%; cursor: pointer; user-select: none; padding: 16px 22px; border: 0; background: var(--flinks-surface-soft); font-family: var(--font); text-align: left; }
-.flinks-apply-header:hover { background: var(--flinks-surface-hover); }
+.flinks-apply-header { display: flex; align-items: center; justify-content: space-between; width: 100%; cursor: pointer; user-select: none; padding: 16px 22px; border: 0; background: var(--argon-special-page-surface-soft); font-family: var(--font); text-align: left; }
+.flinks-apply-header:hover { background: var(--argon-special-page-surface-hover); }
 .flinks-apply-title { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; color: var(--themecolor); }
 .flinks-apply-arrow { color: var(--themecolor); font-size: 14px; transition: transform var(--animation-normal) var(--ease-standard); }
 .flinks-apply-arrow.open { transform: rotate(180deg); }
@@ -442,15 +442,15 @@ argon_special_page_surface_open('flinks-page');
 .flinks-apply-content.open { max-height: 2600px; padding-bottom: 18px; }
 
 .flinks-requirements { background: rgba(var(--themecolor-rgbstr), 0.05); border-radius: var(--card-radius); padding: 10px 12px; margin: 10px 0 8px; border: none; border-left: 3px solid var(--themecolor); font-size: 13px; line-height: 1.5; }
-.flinks-requirements, .flinks-requirements p, .flinks-requirements li { color: var(--flinks-text-muted); }
+.flinks-requirements, .flinks-requirements p, .flinks-requirements li { color: var(--argon-special-page-text-muted); }
 .flinks-requirements p { margin: 0; }
 
 .flinks-mysite-info { background: transparent; border-radius: var(--card-radius); padding: 10px 12px; margin: 8px 0; border: none; }
 .flinks-mysite-title { font-size: 12px; font-weight: 600; color: var(--themecolor); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
 .flinks-mysite-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.flinks-mysite-item { background: var(--flinks-surface-soft); border-radius: calc(var(--card-radius) * 0.6); padding: 7px 10px; cursor: pointer; transition: all var(--animation-fast) var(--ease-standard); border: 1px solid transparent; }
-.flinks-mysite-item:hover { background: var(--flinks-surface-hover); border-color: rgba(var(--themecolor-rgbstr), 0.18); }
-.flinks-mysite-item label { display: block; font-size: 10px; color: var(--flinks-text-soft); margin-bottom: 1px; text-transform: uppercase; pointer-events: none; }
+.flinks-mysite-item { background: var(--argon-special-page-surface-soft); border-radius: calc(var(--card-radius) * 0.6); padding: 7px 10px; cursor: pointer; transition: all var(--animation-fast) var(--ease-standard); border: 1px solid transparent; }
+.flinks-mysite-item:hover { background: var(--argon-special-page-surface-hover); border-color: rgba(var(--themecolor-rgbstr), 0.18); }
+.flinks-mysite-item label { display: block; font-size: 10px; color: var(--argon-special-page-text-soft); margin-bottom: 1px; text-transform: uppercase; pointer-events: none; }
 .flinks-mysite-item span { font-size: 12px; color: var(--color-text-deeper); word-break: break-all; font-weight: 500; pointer-events: none; }
 
 .flinks-form { margin-top: 8px; font-family: var(--font); }
@@ -459,8 +459,8 @@ argon_special_page_surface_open('flinks-page');
 .flinks-form .form-group { margin-bottom: 8px; }
 .flinks-form .form-control-label { font-size: 12px; font-weight: 600; margin-bottom: 3px; color: var(--color-text-deeper); display: block; font-family: var(--font); }
 .flinks-form .form-control { padding: 7px 10px; font-size: 13px; }
-.flinks-form .char-count { font-size: 11px; color: var(--flinks-text-soft); float: right; }
-.flinks-autopass-note { color: var(--flinks-success-text); font-weight: normal; }
+.flinks-form .char-count { font-size: 11px; color: var(--argon-special-page-text-soft); float: right; }
+.flinks-autopass-note { color: var(--argon-special-page-success-text); font-weight: normal; }
 .flinks-submit { margin-top: 10px; text-align: center; }
 .flinks-submit .btn { padding: 8px 24px; font-size: 13px; font-weight: 600; font-family: var(--font); }
 
@@ -473,12 +473,12 @@ argon_special_page_surface_open('flinks-page');
 .flinks-auto-preview-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .flinks-auto-preview-info { flex: 1; min-width: 0; }
 .flinks-auto-preview-name { font-size: 14px; font-weight: 600; color: var(--color-text-deeper); }
-.flinks-auto-preview-desc { font-size: 12px; color: var(--flinks-text-muted); margin-top: 4px; }
+.flinks-auto-preview-desc { font-size: 12px; color: var(--argon-special-page-text-muted); margin-top: 4px; }
 
 /* 验证码 */
 .flinks-captcha { margin-top: 10px; }
 .flinks-captcha .input-group { max-width: 280px; }
-.flinks-captcha-text { background: var(--color-background); color: var(--flinks-text-main); border-color: var(--color-border); font-family: monospace; font-size: 14px; letter-spacing: 2px; cursor: pointer; user-select: none; }
+.flinks-captcha-text { background: var(--color-background); color: var(--argon-special-page-text-main); border-color: var(--color-border); font-family: monospace; font-size: 14px; letter-spacing: 2px; cursor: pointer; user-select: none; }
 
 /* 管理面板 */
 .flinks-admin-card { padding: 16px 20px; }
@@ -487,16 +487,16 @@ argon_special_page_surface_open('flinks-page');
 .flinks-admin-section:last-child { margin-bottom: 0; }
 .flinks-admin-section h4 { font-size: 13px; font-weight: 600; color: var(--color-text-deeper); margin: 0 0 8px; display: flex; align-items: center; gap: 6px; }
 
-.flinks-pending-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: var(--flinks-warning-bg); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: var(--card-radius); margin-bottom: 8px; }
+.flinks-pending-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: var(--argon-special-page-warning-bg); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: var(--card-radius); margin-bottom: 8px; }
 .flinks-pending-avatar { width: 40px; height: 40px; border-radius: 8px; background: var(--color-border); flex-shrink: 0; overflow: hidden; }
 .flinks-pending-avatar img { width: 100%; height: 100%; padding: 3px; box-sizing: border-box; object-fit: contain; object-position: center; opacity: 0; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .18)) drop-shadow(0 0 1px rgba(255, 255, 255, .2)); transition: opacity var(--animation-normal) var(--ease-standard); }
 .flinks-pending-avatar img.is-loaded { opacity: 1; }
 .flinks-pending-info { flex: 1; min-width: 0; }
-.flinks-pending-name { font-weight: 600; font-size: 14px; margin-bottom: 2px; color: var(--flinks-text-main); }
-.flinks-pending-name .sub-name { font-weight: 400; font-size: 12px; color: var(--flinks-text-soft); margin-left: 6px; }
-.flinks-pending-url { font-size: 12px; color: var(--flinks-text-muted); margin-bottom: 4px; }
+.flinks-pending-name { font-weight: 600; font-size: 14px; margin-bottom: 2px; color: var(--argon-special-page-text-main); }
+.flinks-pending-name .sub-name { font-weight: 400; font-size: 12px; color: var(--argon-special-page-text-soft); margin-left: 6px; }
+.flinks-pending-url { font-size: 12px; color: var(--argon-special-page-text-muted); margin-bottom: 4px; }
 .flinks-pending-url a { color: var(--themecolor); }
-.flinks-pending-desc { font-size: 12px; color: var(--flinks-text-muted); }
+.flinks-pending-desc { font-size: 12px; color: var(--argon-special-page-text-muted); }
 .flinks-pending-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .flinks-pending-actions .btn { padding: 4px 12px; font-size: 12px; }
 
@@ -514,31 +514,31 @@ argon_special_page_surface_open('flinks-page');
 /* 编辑弹窗 */
 .flink-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9998; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--motion-popup-duration) var(--motion-ease-exit), visibility 0s linear var(--motion-popup-duration); }
 .flink-modal-overlay.show { opacity: 1; visibility: visible; pointer-events: auto; transition-timing-function: var(--motion-ease-enter), linear; transition-delay: 0s; }
-.flink-modal { background: var(--color-foreground); border-radius: var(--card-radius); padding: 20px; width: 90%; max-width: 560px; max-height: 90vh; overflow-y: auto; color: var(--flinks-text-main); box-shadow: 0 24px 80px rgba(0,0,0,0.28); opacity: 0; transform: translateY(var(--motion-popup-offset)) scale(var(--motion-popup-scale)); transition: opacity var(--motion-popup-duration) var(--motion-ease-exit), transform var(--motion-popup-duration) var(--motion-ease-exit); }
+.flink-modal { background: var(--color-foreground); border-radius: var(--card-radius); padding: 20px; width: 90%; max-width: 560px; max-height: 90vh; overflow-y: auto; color: var(--argon-special-page-text-main); box-shadow: 0 24px 80px rgba(0,0,0,0.28); opacity: 0; transform: translateY(var(--motion-popup-offset)) scale(var(--motion-popup-scale)); transition: opacity var(--motion-popup-duration) var(--motion-ease-exit), transform var(--motion-popup-duration) var(--motion-ease-exit); }
 .flink-modal-overlay.show .flink-modal { opacity: 1; transform: translateY(0) scale(1); transition-timing-function: var(--motion-ease-enter); }
-.flink-modal-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; color: var(--flinks-text-main); }
-.flink-modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--flinks-text-soft); padding: 0; line-height: 1; }
-.flink-modal-close:hover { color: var(--flinks-text-main); }
+.flink-modal-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; color: var(--argon-special-page-text-main); }
+.flink-modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--argon-special-page-text-soft); padding: 0; line-height: 1; }
+.flink-modal-close:hover { color: var(--argon-special-page-text-main); }
 .flink-modal .form-group { margin-bottom: 12px; }
 .flink-modal .form-group label { font-size: 12px; font-weight: 600; color: var(--color-text-deeper); margin-bottom: 4px; display: block; }
 .flink-modal .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; }
 .flink-modal .form-group.full { grid-column: 1 / -1; }
-.flink-modal .form-group input, .flink-modal .form-group select { width: 100%; padding: 8px 10px; font-size: 13px; border: 1px solid var(--color-border); border-radius: calc(var(--card-radius) * 0.6); font-family: var(--font); box-sizing: border-box; background: var(--flinks-input-bg); color: var(--flinks-input-text); }
+.flink-modal .form-group input, .flink-modal .form-group select { width: 100%; padding: 8px 10px; font-size: 13px; border: 1px solid var(--color-border); border-radius: calc(var(--card-radius) * 0.6); font-family: var(--font); box-sizing: border-box; background: var(--argon-special-page-input-bg); color: var(--argon-special-page-input-text); }
 .flink-modal .form-group input:focus, .flink-modal .form-group select:focus { border-color: var(--themecolor); outline: none; box-shadow: 0 0 0 2px rgba(var(--themecolor-rgbstr), 0.12); }
 .flink-modal .form-actions { margin-top: 16px; display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
 .flink-modal .form-actions .btn { display: inline-flex; align-items: center; justify-content: center; text-align: center; min-width: auto; }
 .flink-modal .btn-danger { background: #ef4444; border-color: #ef4444; }
 .flink-modal .btn-danger:hover { background: #dc2626; border-color: #dc2626; }
-.flink-modal .status-info { font-size: 12px; color: var(--flinks-text-muted); margin-top: 12px; padding: 12px; border: 1px solid var(--color-border-on-foreground); border-radius: var(--card-radius-sm); background: var(--flinks-surface-soft); }
+.flink-modal .status-info { font-size: 12px; color: var(--argon-special-page-text-muted); margin-top: 12px; padding: 12px; border: 1px solid var(--color-border-on-foreground); border-radius: var(--card-radius-sm); background: var(--argon-special-page-surface-soft); }
 .flink-modal .status-info .badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; }
-.flink-modal .status-info .badge-warning { background: var(--flinks-warning-bg); color: var(--flinks-warning-text); }
-.flink-modal .status-info .badge-danger { background: var(--flinks-danger-bg); color: var(--flinks-danger-text); }
-.flink-modal .status-info .badge-success { background: var(--flinks-success-bg); color: var(--flinks-success-text); }
-.flink-modal .status-info .badge-secondary { background: var(--flinks-surface-hover); color: var(--flinks-text-muted); }
+.flink-modal .status-info .badge-warning { background: var(--argon-special-page-warning-bg); color: var(--argon-special-page-warning-text); }
+.flink-modal .status-info .badge-danger { background: var(--argon-special-page-danger-bg); color: var(--argon-special-page-danger-text); }
+.flink-modal .status-info .badge-success { background: var(--argon-special-page-success-bg); color: var(--argon-special-page-success-text); }
+.flink-modal .status-info .badge-secondary { background: var(--argon-special-page-surface-hover); color: var(--argon-special-page-text-muted); }
 .flink-action-message { display: none; margin-top: 10px; padding: 9px 12px; border-radius: var(--card-radius-sm); font-size: 12px; line-height: 1.5; }
 .flink-action-message.show { display: block; }
-.flink-action-message.success { background: var(--flinks-success-bg); color: var(--flinks-success-text); }
-.flink-action-message.error { background: var(--flinks-danger-bg); color: var(--flinks-danger-text); }
+.flink-action-message.success { background: var(--argon-special-page-success-bg); color: var(--argon-special-page-success-text); }
+.flink-action-message.error { background: var(--argon-special-page-danger-bg); color: var(--argon-special-page-danger-text); }
 .flink-action-message.info { background: rgba(var(--themecolor-rgbstr), 0.1); color: var(--themecolor); }
 .flink-copy-tip { position: fixed; top: 50%; left: 50%; z-index: 9999; padding: 10px 20px; border-radius: 8px; background: rgba(0,0,0,0.75); color: #fff; font-size: 14px; opacity: 0; transform: translate(-50%, calc(-50% + var(--motion-popup-offset))) scale(var(--motion-popup-scale)); pointer-events: none; transition: opacity var(--motion-popup-duration) var(--motion-ease-exit), transform var(--motion-popup-duration) var(--motion-ease-exit); }
 .flink-copy-tip.is-visible { opacity: 1; transform: translate(-50%, -50%) scale(1); transition-timing-function: var(--motion-ease-enter); }
@@ -698,17 +698,17 @@ argon_special_page_surface_header(array(
 
 <!-- 友链列表 -->
 <?php if (!empty($links)) : ?>
-<div class="flinks-list">
+<div class="argon-special-page-list">
     <?php $color_index = 0; foreach ($links as $category => $category_links) : ?>
-    <article class="post card shadow-sm bg-white border-0 flinks-surface-card flinks-category-card" data-category="<?php echo esc_attr($category); ?>">
-        <div class="flinks-category-header">
-            <h2 class="flinks-category-title">
+    <article class="post card shadow-sm bg-white border-0 argon-special-page-card argon-special-page-section" data-category="<?php echo esc_attr($category); ?>">
+        <div class="argon-special-page-section-header">
+            <h2 class="argon-special-page-section-title">
                 <i class="fa fa-<?php echo empty($category) ? 'star' : 'folder-open'; ?>"></i>
                 <?php echo empty($category) ? __('友情链接', 'argon') : esc_html($category); ?>
             </h2>
-            <span class="flinks-category-count"><i class="fa fa-link"></i><?php echo count($category_links); ?> <?php _e('个站点', 'argon'); ?></span>
+            <span class="argon-special-page-section-count"><i class="fa fa-link"></i><?php echo count($category_links); ?> <?php _e('个站点', 'argon'); ?></span>
         </div>
-        <div class="flinks-grid">
+        <div class="argon-special-page-grid">
             <?php foreach ($category_links as $link) : 
                 $host = parse_url($link['url'], PHP_URL_HOST);
                 $main_name = $link['name'];

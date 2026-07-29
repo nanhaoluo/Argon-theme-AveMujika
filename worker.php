@@ -29,10 +29,10 @@ if (!headers_sent()) {
 
 require_once get_template_directory() . '/inc/special-page-surface.php';
 get_header();
-argon_special_page_surface_open('flinks-page');
+argon_special_page_surface_open('worker-page');
 ?>
 
-<div id="argon-worker-status-page" class="flinks-list">
+<div id="argon-worker-status-page" class="argon-special-page-list">
     <?php
     argon_special_page_surface_header(array(
         'icon' => 'cloud',
@@ -44,33 +44,33 @@ argon_special_page_surface_open('flinks-page');
                 'text' => __('正在连接', 'argon'),
                 'id' => 'argon-worker-live',
                 'text_id' => 'argon-worker-live-text',
-                'class' => 'flinks-badge flinks-worker-live',
+                'class' => 'argon-special-page-badge argon-special-page-live',
                 'aria_live' => 'polite',
             ),
         ),
     ));
     ?>
 
-    <div class="flinks-stats flinks-surface-meta">
-        <span class="flinks-stat"><?php esc_html_e('上次更新', 'argon'); ?>：<strong id="argon-worker-updated-at">—</strong></span>
-        <span class="flinks-stat"><?php esc_html_e('请求耗时', 'argon'); ?>：<strong id="argon-worker-latency">—</strong></span>
-        <span class="flinks-stat"><?php esc_html_e('服务时间', 'argon'); ?>：<strong id="argon-worker-server-time">—</strong></span>
+    <div class="argon-special-page-stats argon-special-page-meta">
+        <span class="argon-special-page-stat"><?php esc_html_e('上次更新', 'argon'); ?>：<strong id="argon-worker-updated-at">—</strong></span>
+        <span class="argon-special-page-stat"><?php esc_html_e('请求耗时', 'argon'); ?>：<strong id="argon-worker-latency">—</strong></span>
+        <span class="argon-special-page-stat"><?php esc_html_e('服务时间', 'argon'); ?>：<strong id="argon-worker-server-time">—</strong></span>
     </div>
 
-    <section class="flinks-grid" id="argon-worker-summary" aria-label="<?php echo esc_attr__('Worker 状态汇总', 'argon'); ?>">
-        <article class="flinks-metric-card">
-            <div class="flinks-metric-label"><?php esc_html_e('等待数据', 'argon'); ?></div>
-            <div class="flinks-metric-value">—</div>
+    <section class="argon-special-page-grid" id="argon-worker-summary" aria-label="<?php echo esc_attr__('Worker 状态汇总', 'argon'); ?>">
+        <article class="argon-special-page-metric">
+            <div class="argon-special-page-metric-label"><?php esc_html_e('等待数据', 'argon'); ?></div>
+            <div class="argon-special-page-metric-value">—</div>
         </article>
     </section>
 
-    <article class="post card shadow-sm bg-white border-0 flinks-surface-card flinks-category-card" aria-labelledby="argon-worker-jobs-title">
-        <div class="flinks-category-header">
-            <h2 class="flinks-category-title" id="argon-worker-jobs-title"><i class="fa fa-tasks" aria-hidden="true"></i><?php esc_html_e('最近任务', 'argon'); ?></h2>
-            <span class="flinks-category-count"><i class="fa fa-refresh" aria-hidden="true"></i><?php esc_html_e('实时', 'argon'); ?></span>
+    <article class="post card shadow-sm bg-white border-0 argon-special-page-card argon-special-page-section" aria-labelledby="argon-worker-jobs-title">
+        <div class="argon-special-page-section-header">
+            <h2 class="argon-special-page-section-title" id="argon-worker-jobs-title"><i class="fa fa-tasks" aria-hidden="true"></i><?php esc_html_e('最近任务', 'argon'); ?></h2>
+            <span class="argon-special-page-section-count"><i class="fa fa-refresh" aria-hidden="true"></i><?php esc_html_e('实时', 'argon'); ?></span>
         </div>
-        <div class="flinks-table-wrap">
-            <table class="flinks-table">
+        <div class="argon-special-page-table-wrap">
+            <table class="argon-special-page-table">
                 <thead>
                     <tr>
                         <th><?php esc_html_e('任务', 'argon'); ?></th>
@@ -83,17 +83,17 @@ argon_special_page_surface_open('flinks-page');
                     </tr>
                 </thead>
                 <tbody id="argon-worker-jobs">
-                    <tr><td colspan="7" class="flinks-empty"><?php esc_html_e('正在读取 Worker 任务…', 'argon'); ?></td></tr>
+                    <tr><td colspan="7" class="argon-special-page-empty"><?php esc_html_e('正在读取 Worker 任务…', 'argon'); ?></td></tr>
                 </tbody>
             </table>
         </div>
     </article>
 
-    <article class="post card shadow-sm bg-white border-0 flinks-surface-card flinks-category-card" aria-labelledby="argon-worker-details-title">
-        <div class="flinks-category-header">
-            <h2 class="flinks-category-title" id="argon-worker-details-title"><i class="fa fa-code" aria-hidden="true"></i><?php esc_html_e('完整状态详情', 'argon'); ?></h2>
+    <article class="post card shadow-sm bg-white border-0 argon-special-page-card argon-special-page-section" aria-labelledby="argon-worker-details-title">
+        <div class="argon-special-page-section-header">
+            <h2 class="argon-special-page-section-title" id="argon-worker-details-title"><i class="fa fa-code" aria-hidden="true"></i><?php esc_html_e('完整状态详情', 'argon'); ?></h2>
         </div>
-        <pre class="flinks-surface-details" id="argon-worker-details"><?php esc_html_e('正在读取…', 'argon'); ?></pre>
+        <pre class="argon-special-page-details" id="argon-worker-details"><?php esc_html_e('正在读取…', 'argon'); ?></pre>
     </article>
 </div>
 
@@ -151,7 +151,7 @@ argon_special_page_surface_open('flinks-page');
     }
 
     function setLive(state, message) {
-        live.className = 'flinks-stat flinks-badge flinks-worker-live' + (state ? ' is-' + state : '');
+        live.className = 'argon-special-page-stat argon-special-page-badge argon-special-page-live' + (state ? ' is-' + state : '');
         liveText.textContent = message;
     }
 
@@ -220,12 +220,12 @@ argon_special_page_surface_open('flinks-page');
         summary.textContent = '';
         Object.keys(values).forEach(function(key) {
             var card = document.createElement('article');
-            card.className = 'flinks-metric-card';
+            card.className = 'argon-special-page-metric';
             var label = document.createElement('div');
-            label.className = 'flinks-metric-label';
+            label.className = 'argon-special-page-metric-label';
             label.textContent = key;
             var value = document.createElement('div');
-            value.className = 'flinks-metric-value';
+            value.className = 'argon-special-page-metric-value';
             var raw = values[key];
             value.textContent = raw && typeof raw === 'object' ? JSON.stringify(raw) : String(raw === undefined ? '—' : raw);
             var normalizedState = String(raw || '').toLowerCase();
@@ -244,7 +244,7 @@ argon_special_page_surface_open('flinks-page');
             var emptyRow = document.createElement('tr');
             var emptyCell = document.createElement('td');
             emptyCell.colSpan = 7;
-            emptyCell.className = 'flinks-empty';
+            emptyCell.className = 'argon-special-page-empty';
             emptyCell.textContent = '<?php echo esc_js(__('当前没有可显示的任务', 'argon')); ?>';
             emptyRow.appendChild(emptyCell);
             jobsBody.appendChild(emptyRow);

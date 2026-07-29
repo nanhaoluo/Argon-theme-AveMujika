@@ -24,11 +24,11 @@ function argon_emotion_search_assert($condition, $message) {
 argon_emotion_search_assert(
 	strpos($style, '.argon-text-input,') !== false
 	&& strpos($style, '#post_comment_content_editor {') !== false
-	&& strpos($specialPageSurface, '--flinks-input-bg: rgba(var(--themecolor-rgbstr), 0.05)') !== false
+	&& strpos($specialPageSurface, '--argon-special-page-input-bg: rgba(var(--themecolor-rgbstr), 0.05)') !== false
 	&& strpos($style, '--argon-text-input-bg: rgba(var(--themecolor-rgbstr), 0.05)') !== false
 	&& strpos($style, 'background: var(--argon-text-input-bg) !important;') !== false
 	&& preg_match('/\.argon-text-input:focus\s*,[\s\S]*?#post_comment_content_editor:focus-visible\s*\{[^}]*border-color:\s*rgba\(var\(--themecolor-rgbstr\),\s*0\.45\)[^}]*box-shadow:\s*0 0 0 2px/s', $style) === 1,
-	'公共输入样式没有复用友链输入令牌，或缺少统一聚焦状态。'
+	'公共输入样式没有复用自定义功能页共享输入令牌，或缺少统一聚焦状态。'
 );
 
 argon_emotion_search_assert(

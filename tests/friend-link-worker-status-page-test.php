@@ -83,35 +83,48 @@ if ($page_source !== false) {
     argon_worker_status_assert(
         $surface_source !== false
         && strpos($surface_source, 'id="argon-special-page-surface-style"') !== false
-        && strpos($surface_source, '.flinks-surface-card') !== false
-        && strpos($surface_source, '.flinks-badge') !== false
-        && strpos($surface_source, '.flinks-table') !== false
-        && strpos($surface_source, '.flinks-empty') !== false
+        && strpos($surface_source, '.argon-special-page-card') !== false
+        && strpos($surface_source, '.argon-special-page-badge') !== false
+        && strpos($surface_source, '.argon-special-page-table') !== false
+        && strpos($surface_source, '.argon-special-page-empty') !== false
+        && strpos($surface_source, 'flinks-') === false
         && strpos($surface_source, 'html.darkmode body.argon-special-page') !== false
+        && strpos($surface_source, 'body.argon-special-page #footer') !== false
+        && strpos($surface_source, 'max-width: calc(var(--argon-special-page-width, 1040px) - 40px) !important;') !== false
         && strpos($surface_source, 'data-argon-special-page') !== false
         && strpos($surface_source, "getAttribute('data-argon-special-page-class')") !== false
         && strpos($page_source, 'id="argon-worker-status-style"') === false,
         '/worker 仍维护独立 CSS，或共享的卡片、徽章、表格、空状态、明暗主题规则不完整。'
     );
     argon_worker_status_assert(
-        strpos($page_source, 'flinks-surface-card') !== false
-        && strpos($page_source, 'flinks-badge') !== false
-        && strpos($page_source, 'flinks-table') !== false
-        && strpos($page_source, 'flinks-empty') !== false,
-        '/worker 没有实际使用 /friends/ 的共享卡片、徽章、表格或空状态组件。'
+        strpos($page_source, "argon_special_page_surface_open('worker-page')") !== false
+        && strpos($page_source, 'argon-special-page-card') !== false
+        && strpos($page_source, 'argon-special-page-badge') !== false
+        && strpos($page_source, 'argon-special-page-table') !== false
+        && strpos($page_source, 'argon-special-page-empty') !== false
+        && strpos($page_source, 'flinks-') === false,
+        '/worker 没有实际使用三个自定义功能页共享的卡片、徽章、表格或空状态组件。'
     );
     argon_worker_status_assert(
-        strpos($feedback_page_source, 'flinks-surface-card') !== false
-        && strpos($feedback_page_source, 'flinks-badge') !== false
-        && strpos($feedback_page_source, 'flinks-empty') !== false,
+        strpos($feedback_page_source, 'argon-special-page-card') !== false
+        && strpos($feedback_page_source, 'argon-special-page-badge') !== false
+        && strpos($feedback_page_source, 'argon-special-page-empty') !== false
+        && strpos($feedback_page_source, 'flinks-') === false,
         '/feedback 没有实际使用三页共享的卡片、徽章或空状态组件。'
+    );
+    argon_worker_status_assert(
+        strpos($friends_page_source, 'argon-special-page-list') !== false
+        && strpos($friends_page_source, 'argon-special-page-card') !== false
+        && strpos($friends_page_source, 'argon-special-page-section') !== false
+        && strpos($friends_page_source, 'argon-special-page-grid') !== false,
+        '/friends/ 没有实际使用三个自定义功能页的共享列表、卡片、分区或网格组件。'
     );
     argon_worker_status_assert(
         strpos($feedback_page_source, '.feedback-header-card') === false
         && strpos($feedback_page_source, 'body.feedback-page #primary') === false
         && strpos($feedback_page_source, "document.body.classList.add('feedback-page')") === false
-        && strpos($feedback_page_source, 'feedback-badge flinks-badge') !== false
-        && strpos($feedback_page_source, 'feedback-empty flinks-empty') !== false
+        && strpos($feedback_page_source, 'feedback-badge argon-special-page-badge') !== false
+        && strpos($feedback_page_source, 'feedback-empty argon-special-page-empty') !== false
         && strpos($feedback_page_source, 'feedback-empty-filter') !== false,
         '/feedback 仍复制页头、布局或页面生命周期，或共享徽章/静态空状态破坏了筛选空状态。'
     );

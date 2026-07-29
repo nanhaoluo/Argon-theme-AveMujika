@@ -934,7 +934,7 @@ argon_special_page_surface_header(array(
 ));
 ?>
 
-<article class="post card shadow-sm bg-white border-0 flinks-surface-card feedback-auth-view">
+<article class="post card shadow-sm bg-white border-0 argon-special-page-card feedback-auth-view">
 	<div class="feedback-auth-notice">
 		<i class="fa fa-lock"></i>
 		<?php _e('这是您的专属链接，请妥善保管', 'argon'); ?>
@@ -955,8 +955,8 @@ argon_special_page_surface_header(array(
 					<span class="feedback-item-time"><?php echo date('Y-m-d H:i', $single_feedback['created_at']); ?></span>
 				</div>
 				<div class="feedback-item-badges">
-					<span class="feedback-badge flinks-badge type-<?php echo $type; ?>"><?php echo $type_labels[$type] ?? $type; ?></span>
-					<span class="feedback-badge flinks-badge status-<?php echo $status; ?>"><?php echo $status_labels[$status] ?? $status; ?></span>
+					<span class="feedback-badge argon-special-page-badge type-<?php echo $type; ?>"><?php echo $type_labels[$type] ?? $type; ?></span>
+					<span class="feedback-badge argon-special-page-badge status-<?php echo $status; ?>"><?php echo $status_labels[$status] ?? $status; ?></span>
 				</div>
 			</div>
 		</div>
@@ -1023,7 +1023,7 @@ if ($is_admin && $stats['pending'] > 0) {
 	$feedback_header_stats[] = array(
 		'icon' => 'clock-o',
 		'text' => sprintf(__('%d 条待处理', 'argon'), $stats['pending']),
-		'class' => 'flinks-badge is-warning',
+		'class' => 'argon-special-page-badge is-warning',
 	);
 }
 argon_special_page_surface_header(array(
@@ -1057,7 +1057,7 @@ argon_special_page_surface_header(array(
 
 <?php if (!$is_admin) : ?>
 <!-- 访客提交反馈表单 -->
-<article class="post card shadow-sm bg-white border-0 flinks-surface-card feedback-form-card" style="margin-bottom: 0;">
+<article class="post card shadow-sm bg-white border-0 argon-special-page-card feedback-form-card" style="margin-bottom: 0;">
 	<div class="feedback-card-heading">
 		<div>
 			<p class="feedback-kicker"><?php _e('Feedback', 'argon'); ?></p>
@@ -1186,7 +1186,7 @@ argon_special_page_surface_header(array(
 <?php endif; ?>
 
 <!-- 公开反馈列表 -->
-<article class="post card shadow-sm bg-white border-0 flinks-surface-card feedback-form-card" style="margin-bottom: 16px;">
+<article class="post card shadow-sm bg-white border-0 argon-special-page-card feedback-form-card" style="margin-bottom: 16px;">
 	<div class="feedback-card-heading">
 		<h2 class="feedback-list-title"><i class="fa fa-comments-o"></i><?php _e('公开反馈', 'argon'); ?><span class="count" id="feedback-visible-count"><?php echo count($public_feedbacks); ?></span></h2>
 	</div>
@@ -1256,8 +1256,8 @@ argon_special_page_surface_header(array(
 						<span class="feedback-item-time"><?php echo date('Y-m-d H:i', $fb['created_at']); ?></span>
 					</div>
 					<div class="feedback-item-badges">
-						<span class="feedback-badge flinks-badge type-<?php echo $type; ?>"><?php echo $type_labels[$type] ?? $type; ?></span>
-						<span class="feedback-badge flinks-badge status-<?php echo $status; ?>"><?php echo $status_labels[$status] ?? $status; ?></span>
+						<span class="feedback-badge argon-special-page-badge type-<?php echo $type; ?>"><?php echo $type_labels[$type] ?? $type; ?></span>
+						<span class="feedback-badge argon-special-page-badge status-<?php echo $status; ?>"><?php echo $status_labels[$status] ?? $status; ?></span>
 					</div>
 				</div>
 			</div>
@@ -1309,7 +1309,7 @@ argon_special_page_surface_header(array(
 			<?php _e('没有符合筛选条件的公开反馈', 'argon'); ?>
 		</div>
 	<?php else : ?>
-		<div class="feedback-empty flinks-empty">
+		<div class="feedback-empty argon-special-page-empty">
 			<i class="fa fa-inbox"></i>
 			<p><?php _e('暂无公开反馈', 'argon'); ?></p>
 		</div>
@@ -1321,7 +1321,7 @@ argon_special_page_surface_header(array(
 	if (!empty($private_feedbacks)) :
 ?>
 <!-- 管理员：私密反馈 -->
-<article class="post card shadow-sm bg-white border-0 flinks-surface-card feedback-admin-card" style="margin-bottom: 16px;">
+<article class="post card shadow-sm bg-white border-0 argon-special-page-card feedback-admin-card" style="margin-bottom: 16px;">
 	<h3 class="feedback-admin-title"><i class="fa fa-lock"></i><?php _e('私密反馈', 'argon'); ?> (<?php echo count($private_feedbacks); ?>)</h3>
 	<?php foreach ($private_feedbacks as $fb) : 
 		$type = $fb['type'] ?? 'other';
@@ -1339,8 +1339,8 @@ argon_special_page_surface_header(array(
 					<span class="feedback-item-time"><?php echo date('Y-m-d H:i', $fb['created_at']); ?></span>
 				</div>
 				<div class="feedback-item-badges">
-					<span class="feedback-badge flinks-badge type-<?php echo $type; ?>"><?php echo $type_labels[$type] ?? $type; ?></span>
-					<span class="feedback-badge flinks-badge status-<?php echo $status; ?>"><?php echo $status_labels[$status] ?? $status; ?></span>
+					<span class="feedback-badge argon-special-page-badge type-<?php echo $type; ?>"><?php echo $type_labels[$type] ?? $type; ?></span>
+					<span class="feedback-badge argon-special-page-badge status-<?php echo $status; ?>"><?php echo $status_labels[$status] ?? $status; ?></span>
 				</div>
 			</div>
 		</div>
@@ -2587,11 +2587,11 @@ function renderFeedbackDetail(data) {
 	// 基本信息
 	html += '<div class="feedback-detail-section">';
 	html += '<div class="feedback-item-badges" style="margin-bottom:12px;">';
-	html += '<span class="feedback-badge flinks-badge type-' + data.type + '">' + (typeLabels[data.type] || data.type) + '</span>';
-	html += '<span class="feedback-badge flinks-badge status-' + data.status + '">' + (statusLabels[data.status] || data.status) + '</span>';
-	if (data.is_public) html += '<span class="feedback-badge flinks-badge" style="background:#d1fae5;color:#059669;"><?php _e('公开', 'argon'); ?></span>';
-	else html += '<span class="feedback-badge flinks-badge" style="background:#e5e7eb;color:#6b7280;"><?php _e('私密', 'argon'); ?></span>';
-	if (isArchived) html += '<span class="feedback-badge flinks-badge" style="background:#fef3c7;color:#d97706;"><?php _e('已存档', 'argon'); ?></span>';
+	html += '<span class="feedback-badge argon-special-page-badge type-' + data.type + '">' + (typeLabels[data.type] || data.type) + '</span>';
+	html += '<span class="feedback-badge argon-special-page-badge status-' + data.status + '">' + (statusLabels[data.status] || data.status) + '</span>';
+	if (data.is_public) html += '<span class="feedback-badge argon-special-page-badge" style="background:#d1fae5;color:#059669;"><?php _e('公开', 'argon'); ?></span>';
+	else html += '<span class="feedback-badge argon-special-page-badge" style="background:#e5e7eb;color:#6b7280;"><?php _e('私密', 'argon'); ?></span>';
+	if (isArchived) html += '<span class="feedback-badge argon-special-page-badge" style="background:#fef3c7;color:#d97706;"><?php _e('已存档', 'argon'); ?></span>';
 	html += '</div>';
 	html += '</div>';
 	
