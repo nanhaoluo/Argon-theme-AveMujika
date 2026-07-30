@@ -5025,6 +5025,26 @@ function postPasswordRequiredOnPage() {
 	return !!(content && content.querySelector(".post-password-form"));
 }
 
+function getVirtualScrollDirection(previousScrollTop, currentScrollTop) {
+	if (currentScrollTop < previousScrollTop - 1) {
+		return "up";
+	}
+	if (currentScrollTop > previousScrollTop + 1) {
+		return "down";
+	}
+	return "none";
+}
+
+function shouldUnmountVirtualSection(sectionIndex, keepStart, keepEnd, scrollDirection) {
+	if (scrollDirection === "up") {
+		return sectionIndex > keepEnd;
+	}
+	if (scrollDirection === "down") {
+		return sectionIndex < keepStart;
+	}
+	return sectionIndex < keepStart || sectionIndex > keepEnd;
+}
+
 function createArgonLongContentVirtualizer(content, options) {
 	var sections = [];
 	var headers = [];
@@ -5033,6 +5053,8 @@ function createArgonLongContentVirtualizer(content, options) {
 	var resizeHandler = null;
 	var scheduled = false;
 	var destroyed = false;
+	var lastScrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+	var scrollDirection = "none";
 
 	function init() {
 		if (options.sourceSections && options.sourceSections.length) {
@@ -5316,10 +5338,16 @@ function createArgonLongContentVirtualizer(content, options) {
 				observer.observe(sections[s].placeholder);
 			}
 		}
-		scrollHandler = throttleVirtualUpdate(scheduleUpdate, 80);
+		scrollHandler = throttleVirtualUpdate(function () {
+			var currentScrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+			scrollDirection = getVirtualScrollDirection(lastScrollTop, currentScrollTop);
+			lastScrollTop = currentScrollTop;
+			scheduleUpdate();
+		}, 80);
 		window.addEventListener("scroll", scrollHandler, { passive: true });
 
 		resizeHandler = throttleVirtualUpdate(function () {
+			scrollDirection = "none";
 			for (var i = 0; i < sections.length; i++) {
 				if (sections[i].mounted) {
 					updateSectionHeight(sections[i]);
@@ -5446,7 +5474,7 @@ function createArgonLongContentVirtualizer(content, options) {
 		keepStart = Math.min(keepStart, visibleRange.start);
 		keepEnd = Math.max(keepEnd, visibleRange.end);
 		for (var i = 0; i < sections.length; i++) {
-			if (i < keepStart || i > keepEnd) {
+			if (shouldUnmountVirtualSection(i, keepStart, keepEnd, scrollDirection)) {
 				unmountSection(sections[i]);
 			}
 		}

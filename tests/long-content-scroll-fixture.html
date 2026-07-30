@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ARGON-FIXTURE-BOOTING</title>
+<!--
+  最小浏览器夹具：在没有本地 WordPress 环境时，复现与线上长文章相同的虚拟分段
+  裁剪链路，验证 argontheme.js 中按滚动方向裁剪分段的本地补丁是否真正打破
+  "挂载上方分段→立即被裁剪→浏览器滚动锚定回推"的反馈循环。
+
+  设计要点：
+  - 运行时 fetch 真实 argontheme.js，切出虚拟化器源码切片并注入，始终测试当前
+    工作区里的补丁代码，而非手抄副本；补丁标记缺失时拒绝运行。
+  - 通过 document.title 暴露分阶段进度与最终结论，便于在后台标签页/无头环境中
+    可靠读取（rAF 与 setTimeout 在后台标签页会被节流，故不依赖 rAF）。
+  - 顶层 error 处理把任何异常（含注入切片的语法错误）写入 title 与状态栏。
+-->
+<style>
+	body { margin: 0; font: 16px/1.6 -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+	#post_content { max-width: 720px; margin: 0 auto; padding: 24px 20px 120px; }
+	.argon-virtual-section { border-bottom: 1px dotted #ddd; }
+	#probe-status {
+		position: fixed; top: 12px; right: 12px; left: 12px;
+		background: #fff; border: 1px solid #999; padding: 14px 16px;
+		font: 13px/1.5 ui-monospace, Consolas, Menlo, monospace;
+		white-space: pre-wrap; word-break: break-word; z-index: 9999;
+		box-shadow: 0 2px 12px rgba(0,0,0,.18); border-radius: 6px; max-height: 70vh; overflow: auto;
+	}
+	.probe-pass { border-color: #2c8; color: #060; }
+	.probe-fail { border-color: #c33; color: #900; }
+	.probe-run  { border-color: #39c; color: #036; }
+</style>
+</head>
+<body>
+<div id="probe-status" class="probe-run">初始化中…</div>
+<div id="post_content"></div>
+
+<script src="../assets/vendor/jquery/jquery.min.js"></script>
+<script>
+// 顶层错误捕获：任何异常（含注入切片的语法错误）都写入 title 与状态栏，
+// 确保后台/无头环境也能看到失败原因。
+window.addEventListener('error', function(e) {
+	var msg = (e && (e.message || (e.error && e.error.message))) || 'unknown error';
+	try {
+		document.title = 'ARGON-FIXTURE-ERR: ' + msg.slice(0, 180);
+		var el = document.getElementById('probe-status');
+		if (el) { el.className = 'probe-fail'; el.textContent = 'UNCAUGHT ERROR: ' + msg; }
+		window.__probeResult = { pass: false, msg: 'UNCAUGHT_ERROR', detail: { message: msg, filename: e && e.filename, lineno: e && e.lineno } };
+	} catch (_) {}
+});
+window.addEventListener('unhandledrejection', function(e) {
+	var reason = e && e.reason;
+	var msg = (reason && (reason.message || String(reason))) || 'unhandled rejection';
+	try {
+		document.title = 'ARGON-FIXTURE-ERR: ' + msg.slice(0, 180);
+		var el = document.getElementById('probe-status');
+		if (el) { el.className = 'probe-fail'; el.textContent = 'UNHANDLED REJECTION: ' + msg; }
+		window.__probeResult = { pass: false, msg: 'UNHANDLED_REJECTION', detail: { message: msg } };
+	} catch (_) {}
+});
+
+// 外部依赖桩：虚拟化器切片在 argontheme.js 中依赖这些全局符号。
+// 仅 stub 与滚动稳定性无关的副作用，不修改裁剪逻辑本身。
+window.ArgonDebug = { warn: function(){}, info: function(){}, error: function(){} };
+window.lazyloadInit = function(){};
+window.zoomifyInit = function(){};
+window.highlightJsRender = function(){};
+window.tippyInit = function(){};
+window.patchHeadIndexForVirtualContent = function(){};
+window.escapeJqueryId = function(id){ return id; };
+var zoomifyInstances = [];
+var highlightObserver = null;
+
+// 生成长文章：260 段，每段约 2000 字符，触发虚拟化并产生约 260 个分段。
+(function buildContent() {
+	var content = document.getElementById('post_content');
+	var words = ('lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat duis aute irure dolor in reprehenderit in voluptate velit esse cillum').split(' ');
+	for (var i = 0; i < 260; i++) {
+		var p = document.createElement('p');
+		var parts = [];
+		for (var w = 0; w < 300; w++) {
+			parts.push(words[(i * 7 + w) % words.length]);
+		}
+		p.textContent = '\u00a7' + i + ' ' + parts.join(' ');
+		content.appendChild(p);
+	}
+})();
+
+function setPhase(title, statusText) {
+	document.title = 'ARGON-FIXTURE-' + title;
+	var el = document.getElementById('probe-status');
+	if (el && statusText) el.textContent = statusText;
+}
+
+var probe = {
+	fail: function(msg, detail) {
+		var el = document.getElementById('probe-status');
+		if (el) { el.className = 'probe-fail'; el.textContent = 'FAIL: ' + msg + '\n\n' + JSON.stringify(detail, null, 2); }
+		document.title = 'ARGON-FIXTURE-FAIL:' + msg;
+		window.__probeResult = { pass: false, msg: msg, detail: detail };
+	},
+	pass: function(detail) {
+		var el = document.getElementById('probe-status');
+		if (el) { el.className = 'probe-pass'; el.textContent = 'PASS\n\n' + JSON.stringify(detail, null, 2); }
+		document.title = 'ARGON-FIXTURE-PASS';
+		window.__probeResult = { pass: true, detail: detail };
+	}
+};
+
+function getMountedSet() {
+	var set = {};
+	var nodes = document.querySelectorAll('#post_content .argon-virtual-section-mounted');
+	for (var i = 0; i < nodes.length; i++) {
+		var idx = parseInt(nodes[i].getAttribute('data-argon-virtual-index'), 10);
+		if (!isNaN(idx)) set[idx] = true;
+	}
+	return set;
+}
+function wait(ms) { return new Promise(function(res){ setTimeout(res, ms); }); }
+
+async function runProbe() {
+	setPhase('FETCH', '加载 argontheme.js 切片…');
+	var src = await fetch('../argontheme.js', { cache: 'no-store' }).then(function(r){ return r.text(); });
+	setPhase('FETCHED', '已加载 ' + src.length + ' 字节，校验补丁标记…');
+
+	// 源码补丁存在性校验：保证夹具测试的是本地补丁版本，而非旧版本。
+	if (!/function getVirtualScrollDirection\(previousScrollTop, currentScrollTop\)/.test(src)) {
+		return probe.fail('SOURCE_NOT_PATCHED', { reason: '缺少 getVirtualScrollDirection' });
+	}
+	if (!/function shouldUnmountVirtualSection\(sectionIndex, keepStart, keepEnd, scrollDirection\)/.test(src)) {
+		return probe.fail('SOURCE_NOT_PATCHED', { reason: '缺少 shouldUnmountVirtualSection' });
+	}
+	if (!/scrollDirection\s*=\s*getVirtualScrollDirection\(lastScrollTop, currentScrollTop\)/.test(src)) {
+		return probe.fail('SOURCE_NOT_PATCHED', { reason: 'scrollHandler 未在裁剪前更新 scrollDirection' });
+	}
+	if (!/shouldUnmountVirtualSection\(i, keepStart, keepEnd, scrollDirection\)/.test(src)) {
+		return probe.fail('SOURCE_NOT_PATCHED', { reason: 'pruneSections 未使用方向判定' });
+	}
+
+	// 注入真实虚拟化器切片：从 getVirtualScrollDirection 到 patchHeadIndexForVirtualContent 之前。
+	// 该范围包含 getVirtualScrollDirection / shouldUnmountVirtualSection / createArgonLongContentVirtualizer
+	// / throttleVirtualUpdate / cleanupSectionRuntime / renderMathForVirtualSection，全部为虚拟化器自有代码。
+	var startIdx = src.indexOf('function getVirtualScrollDirection(previousScrollTop, currentScrollTop)');
+	var endIdx = src.indexOf('function patchHeadIndexForVirtualContent()');
+	if (startIdx < 0 || endIdx <= startIdx) {
+		return probe.fail('SLICE_BOUNDARY_NOT_FOUND', { startIdx: startIdx, endIdx: endIdx });
+	}
+	var slice = src.slice(startIdx, endIdx);
+	setPhase('INJECT', '注入虚拟化器切片 ' + slice.length + ' 字节…');
+	var script = document.createElement('script');
+	script.textContent = slice;
+	document.body.appendChild(script);
+
+	if (typeof createArgonLongContentVirtualizer !== 'function') {
+		return probe.fail('VIRTUALIZER_NOT_DEFINED', { reason: '切片注入后 createArgonLongContentVirtualizer 未定义（可能切片含语法错误）' });
+	}
+
+	// 用与 initArgonLongContentVirtualizer 完全一致的真实配置实例化虚拟化器。
+	setPhase('INIT', '实例化虚拟化器…');
+	var content = document.getElementById('post_content');
+	window.ArgonLongContentVirtualizer = createArgonLongContentVirtualizer(content, {
+		sourceSections: null,
+		targetTextLength: 1800,
+		maxPlainTextBlockLength: 2200,
+		maxNodesPerSection: 18,
+		keepRange: 2,
+		viewportBuffer: 900,
+		rootMargin: '1200px 0px 1200px 0px'
+	});
+	window.ArgonLongContentVirtualizer.init();
+	await wait(300);
+
+	var sectionsTotal = document.querySelectorAll('#post_content .argon-virtual-section').length;
+	if (sectionsTotal < 10) {
+		return probe.fail('NOT_ENOUGH_SECTIONS', { sectionsTotal: sectionsTotal });
+	}
+	setPhase('POSITION', '定位到 80% 深度临界位置，分段总数 ' + sectionsTotal + '…');
+
+	// 定位到接近 80% 深度的临界位置：此处向上滚动需要不断挂载上方分段，
+	// 正是线上复现到反馈循环的位置。
+	var targetIndex = Math.floor(sectionsTotal * 0.8);
+	var placeholder = document.querySelector('#post_content .argon-virtual-section[data-argon-virtual-index="' + targetIndex + '"]');
+	if (!placeholder) {
+		return probe.fail('TARGET_PLACEHOLDER_MISSING', { targetIndex: targetIndex });
+	}
+	var y = placeholder.getBoundingClientRect().top + (window.pageYOffset || document.documentElement.scrollTop) - 200;
+	window.scrollTo(0, y);
+	await wait(400);
+
+	// 向上滚动轨迹采样：每步 120px、间隔 120ms（>80ms 节流窗口，确保每步独立触发裁剪）。
+	// 不使用 requestAnimationFrame：后台标签页会大幅节流 rAF，导致探测超时。
+	var trajectory = [];
+	var prevSet = null;
+	var recentlyMounted = {}; // idx -> 最近一次挂载的 step
+	var churnCount = 0;       // 上方分段"挂载后立即被裁剪"的次数（反馈循环的核心信号）
+	var startScrollY = window.pageYOffset || document.documentElement.scrollTop;
+	var STEPS = 18;
+
+	for (var step = 0; step < STEPS; step++) {
+		var beforeY = window.pageYOffset || document.documentElement.scrollTop;
+		window.scrollTo(0, beforeY - 120); // 向上滚动
+		await wait(120);
+
+		var afterY = window.pageYOffset || document.documentElement.scrollTop;
+		var curSet = getMountedSet();
+
+		if (prevSet) {
+			Object.keys(curSet).forEach(function(k) {
+				if (!prevSet[k] && Number(k) < targetIndex) {
+					recentlyMounted[k] = step;
+				}
+			});
+			Object.keys(prevSet).forEach(function(k) {
+				if (!curSet[k] && Number(k) < targetIndex) {
+					if (recentlyMounted[k] !== undefined && step - recentlyMounted[k] <= 2) {
+						churnCount++;
+					}
+				}
+			});
+		}
+		prevSet = curSet;
+
+		var mounted = Object.keys(curSet).map(Number).sort(function(a, b){ return a - b; });
+		trajectory.push({
+			step: step,
+			scrollY: Math.round(afterY),
+			delta: Math.round(afterY - beforeY),
+			mountedCount: mounted.length,
+			minMounted: mounted[0],
+			maxMounted: mounted[mounted.length - 1]
+		});
+		if (step % 4 === 0) setPhase('SCROLL-' + step, '向上滚动采样 ' + (step + 1) + '/' + STEPS + '…');
+	}
+
+	setPhase('SETTLE', '等待布局稳定…');
+	await wait(400);
+
+	// 判定1：向上滚动期间不应出现大幅反向回弹（挂载→裁剪→浏览器滚动锚定回推）。
+	// 线上复现信号为单步约 760~1060px；补丁正确时应接近 0。
+	var maxReverse = 0;
+	for (var i = 1; i < trajectory.length; i++) {
+		if (trajectory[i].scrollY > trajectory[i - 1].scrollY) {
+			maxReverse = Math.max(maxReverse, trajectory[i].scrollY - trajectory[i - 1].scrollY);
+		}
+	}
+	var netDelta = trajectory[trajectory.length - 1].scrollY - trajectory[0].scrollY;
+
+	// 判定2：向上滚动期间挂载过的上方分段，在序列结束后仍应保持挂载（未被立即裁剪）。
+	var finalSet = getMountedSet();
+	var upperMountedDuringUp = 0;
+	var upperUnmountedAfter = [];
+	Object.keys(recentlyMounted).forEach(function(k) {
+		upperMountedDuringUp++;
+		if (!finalSet[k]) upperUnmountedAfter.push(Number(k));
+	});
+
+	var detail = {
+		sectionsTotal: sectionsTotal,
+		targetIndex: targetIndex,
+		startScrollY: Math.round(startScrollY),
+		endScrollY: trajectory[trajectory.length - 1].scrollY,
+		netDelta: Math.round(netDelta),
+		maxReverseJump: Math.round(maxReverse),
+		upperMountedDuringUp: upperMountedDuringUp,
+		upperUnmountedAfter: upperUnmountedAfter.length,
+		upperUnmountedSample: upperUnmountedAfter.slice(0, 10),
+		mountUnmountChurn: churnCount,
+		trajectoryHead: trajectory.slice(0, 3),
+		trajectoryTail: trajectory.slice(-4)
+	};
+
+	// 通过标准：净滚动向上、无大幅反向回弹、无"挂载即裁剪"抖动、向上挂载的上方分段未被回收。
+	if (churnCount > 0) {
+		return probe.fail('FEEDBACK_LOOP_MOUNT_THEN_PRUNE', detail);
+	}
+	if (maxReverse >= 300) {
+		return probe.fail('FEEDBACK_LOOP_REVERSE_JUMP', detail);
+	}
+	if (upperUnmountedAfter.length > 0) {
+		return probe.fail('UPPER_SECTIONS_PRUNED_DURING_UPWARD_SCROLL', detail);
+	}
+	if (netDelta >= -100) {
+		return probe.fail('SCROLL_DID_NOT_ADVANCE_UPWARD', detail);
+	}
+	probe.pass(detail);
+}
+
+window.addEventListener('load', function() {
+	runProbe().catch(function(e) {
+		probe.fail('PROBE_EXCEPTION', { message: e && e.message, stack: e && e.stack });
+	});
+});
+</script>
+</body>
+</html>
