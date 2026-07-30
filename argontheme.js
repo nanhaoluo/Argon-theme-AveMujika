@@ -748,6 +748,13 @@ $(document).on("change", ".search-filter", function (e) {
 	let leftbarHeightObservedNodes = [];
 	let leftbarHeightSignature = '';
 	let leftbarPart1MetricsDirty = false;
+	// 迟滞状态：sticky 和 leftbar-can-headroom 的切换在临界点附近会改变文档几何
+	// （part2 的 position:fixed ↔ static 改变文档流高度），几何变化又触发 CSS Scroll
+	// Anchoring 调整 scrollY，形成"切换→高度变→scrollY 跳→再切换"的反馈循环，表现为
+	// 用户向上滚动时页面小幅弹回、无法顺畅滚动。用迟滞区间消除临界点反复切换：
+	// 进入用阈值 A，退出用阈值 B（A > B），中间留不切换的死区。
+	var leftbarStickyActive = false;
+	var leftbarCanHeadroomActive = false;
 
 	function setLeftbarRootProperty(name, value) {
 		if (document.documentElement.style.getPropertyValue(name) !== value) {
@@ -918,7 +925,18 @@ $(document).on("change", ".search-filter", function (e) {
 		if (!isLeftbarDesktopLayout()) return;
 		updateLeftbarTabsHeight();
 		let scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
-		if (part1OffsetTop + part1OuterHeight + 10 - scrollTop <= (argonConfig.headroom != "absolute" ? 90 : 18)) {
+		// 迟滞判定：进入 sticky 用 enterThreshold，退出用 exitThreshold（更严格），
+		// 中间留 20px 死区，避免临界点因 sticky↔static 切换改变文档高度而反复抖动。
+		var headroomOffset = (argonConfig.headroom != "absolute" ? 90 : 18);
+		var enterThreshold = headroomOffset;
+		var exitThreshold = headroomOffset + 20;
+		var distance = part1OffsetTop + part1OuterHeight + 10 - scrollTop;
+		if (!leftbarStickyActive) {
+			leftbarStickyActive = distance <= enterThreshold;
+		} else {
+			leftbarStickyActive = distance <= exitThreshold;
+		}
+		if (leftbarStickyActive) {
 			//滚动条在页面中间浮动状态
 			let wasSticky = leftbarPart2.classList.contains('sticky');
 			leftbarPart2.classList.add('sticky');
@@ -989,11 +1007,19 @@ $(document).on("change", ".search-filter", function (e) {
 			leftbarPart2.classList.remove('leftbar-tab-catalog-active');
 			if (leftbarPart3) leftbarPart3.classList.remove('sticky');
 		}
-		if (part1OffsetTop + part1OuterHeight + 10 - scrollTop <= 20) {//侧栏下部分是否可以随 Headroom 一起向上移动
-			document.body.classList.add('leftbar-can-headroom');
-		} else {
-			document.body.classList.remove('leftbar-can-headroom');
-		}
+		// leftbar-can-headroom 同样用迟滞判定，避免在临界点反复切换 body class
+	// 触发 navbar/侧栏 transform 联动而引起视觉抖动。
+	var canHeadroomDistance = part1OffsetTop + part1OuterHeight + 10 - scrollTop;
+	if (!leftbarCanHeadroomActive) {
+		leftbarCanHeadroomActive = canHeadroomDistance <= 20;
+	} else {
+		leftbarCanHeadroomActive = canHeadroomDistance <= 40;
+	}
+	if (leftbarCanHeadroomActive) {//侧栏下部分是否可以随 Headroom 一起向上移动
+		document.body.classList.add('leftbar-can-headroom');
+	} else {
+		document.body.classList.remove('leftbar-can-headroom');
+	}
 	}
 	changeLeftbarStickyStatus();
 	leftbarHeightSignature = getLeftbarHeightSignature();
