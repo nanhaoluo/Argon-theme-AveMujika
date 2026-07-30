@@ -5055,6 +5055,22 @@ function createArgonLongContentVirtualizer(content, options) {
 	var destroyed = false;
 	var lastScrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
 	var scrollDirection = "none";
+	// 虚拟化更新冻结期：mount/unmount 会触发 CSS Scroll Anchoring 调整 scrollY，
+	// 该调整会被 scroll handler 误判为用户反向滚动，从而翻转 scrollDirection，
+	// 导致刚挂载的上方分段被立即裁剪，形成反馈循环。
+	// 在更新后短暂冻结 scrollDirection，让 anchoring 位移不被当作用户滚动。
+	var virtualUpdateInProgress = false;
+	var virtualUpdateTimer = null;
+	function markVirtualUpdate() {
+		virtualUpdateInProgress = true;
+		if (virtualUpdateTimer) {
+			clearTimeout(virtualUpdateTimer);
+		}
+		virtualUpdateTimer = setTimeout(function () {
+			virtualUpdateInProgress = false;
+			virtualUpdateTimer = null;
+		}, 150);
+	}
 
 	function init() {
 		if (options.sourceSections && options.sourceSections.length) {
@@ -5332,6 +5348,7 @@ function createArgonLongContentVirtualizer(content, options) {
 					}
 				}
 				pruneSections();
+				markVirtualUpdate();
 			}, { rootMargin: options.rootMargin, threshold: 0 });
 
 			for (var s = 0; s < sections.length; s++) {
@@ -5340,7 +5357,9 @@ function createArgonLongContentVirtualizer(content, options) {
 		}
 		scrollHandler = throttleVirtualUpdate(function () {
 			var currentScrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
-			scrollDirection = getVirtualScrollDirection(lastScrollTop, currentScrollTop);
+			if (!virtualUpdateInProgress) {
+				scrollDirection = getVirtualScrollDirection(lastScrollTop, currentScrollTop);
+			}
 			lastScrollTop = currentScrollTop;
 			scheduleUpdate();
 		}, 80);
@@ -5368,6 +5387,7 @@ function createArgonLongContentVirtualizer(content, options) {
 			var index = getNearestVisibleSectionIndex();
 			renderAroundIndex(index);
 			pruneSections();
+			markVirtualUpdate();
 		});
 	}
 
