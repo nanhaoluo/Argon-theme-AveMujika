@@ -62,19 +62,28 @@ argon_special_surface_assert(
     'bangumi client must update shared header statistic values'
 );
 
-$bangumi_card_rule = '';
-if ($bangumiCss !== false && preg_match('/\.bangumi-card\s*\{([^}]*)\}/s', $bangumiCss, $matches) === 1) {
-    $bangumi_card_rule = $matches[1];
-}
+$bangumi_surface_markup = '<article class="post card shadow-sm bg-white border-0 argon-special-page-card bangumi-page-surface">';
+$bangumi_surface_position = $bangumi !== false ? strpos($bangumi, $bangumi_surface_markup) : false;
+$bangumi_toolbar_position = $bangumi !== false ? strpos($bangumi, 'class="bangumi-toolbar"') : false;
+$bangumi_error_position = $bangumi !== false ? strpos($bangumi, 'id="bangumi-error"') : false;
+$bangumi_surface_close_position = ($bangumi !== false && $bangumi_error_position !== false)
+    ? strpos($bangumi, '</article>', $bangumi_error_position)
+    : false;
 
 argon_special_surface_assert(
     $bangumiJs !== false
-    && substr_count($bangumiJs, 'class="bangumi-card card shadow-sm bg-white border-0"') === 2
-    && $bangumi_card_rule !== ''
-    && strpos($bangumi_card_rule, 'background:') === false
-    && strpos($bangumi_card_rule, 'box-shadow:') === false
-    && strpos($bangumiCss, 'html.darkmode .bangumi-card {') === false,
-    'bangumi cards must reuse the shared Argon card surface without overriding its background or base shadow'
+    && $bangumiCss !== false
+    && substr_count($bangumiJs, 'class="bangumi-card"') === 2
+    && $bangumi_surface_position !== false
+    && $bangumi_toolbar_position !== false
+    && $bangumi_error_position !== false
+    && $bangumi_surface_close_position !== false
+    && $bangumi_surface_position < $bangumi_toolbar_position
+    && $bangumi_toolbar_position < $bangumi_error_position
+    && $bangumi_error_position < $bangumi_surface_close_position
+    && strpos($bangumiCss, '.bangumi-page-surface { padding: 18px; }') !== false
+    && strpos($bangumiCss, '.bangumi-page-surface { padding: 12px; }') !== false,
+    'bangumi page content must use one shared page surface below the header without changing item-card ownership'
 );
 
 if ($failures) {

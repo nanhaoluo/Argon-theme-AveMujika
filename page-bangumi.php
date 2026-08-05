@@ -83,6 +83,7 @@ argon_special_page_surface_open('bangumi-page');
 		));
 		?>
 
+		<article class="post card shadow-sm bg-white border-0 argon-special-page-card bangumi-page-surface">
 			<?php if (!$bangumi_enabled): ?>
 				<div class="bangumi-notice" role="status">
 					<i class="fa fa-sliders" aria-hidden="true"></i>
@@ -116,6 +117,7 @@ argon_special_page_surface_open('bangumi-page');
 			</div>
 			<button type="button" id="bangumi-load-more" class="bangumi-load-more"<?php echo $bangumi_enabled ? '' : ' disabled'; ?>><i class="fa fa-refresh" aria-hidden="true"></i><span><?php esc_html_e('加载更多', 'argon'); ?></span></button>
 			<div id="bangumi-error" class="bangumi-error" role="alert" hidden></div>
+		</article>
 		</section>
 	<script type="application/json" id="argon-bangumi-config"><?php echo wp_json_encode($bangumi_config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
 	<script src="<?php echo esc_url($bangumi_script_url); ?>" data-pjax></script>

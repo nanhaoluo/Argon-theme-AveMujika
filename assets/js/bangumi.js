@@ -117,7 +117,7 @@
 		var scoreHtml = score > 0 ? '<span class="bangumi-score"><i class="fa fa-star" aria-hidden="true"></i>' + score.toFixed(1) + '</span>' : '';
 		var imageHtml = cover ? '<img src="' + escapeHtml(cover) + '" alt="" loading="lazy" decoding="async" fetchpriority="' + (index < 6 ? 'high' : 'auto') + '">' : '';
 		var mediaClass = cover ? 'bangumi-card-media' : 'bangumi-card-media is-empty';
-		var cardOpen = url ? '<a class="bangumi-card card shadow-sm bg-white border-0" role="listitem" href="' + escapeHtml(url) + '" target="_blank" rel="noopener noreferrer" data-season-id="' + escapeHtml(item.season_id) + '">' : '<article class="bangumi-card card shadow-sm bg-white border-0" role="listitem" data-season-id="' + escapeHtml(item.season_id) + '">';
+		var cardOpen = url ? '<a class="bangumi-card" role="listitem" href="' + escapeHtml(url) + '" target="_blank" rel="noopener noreferrer" data-season-id="' + escapeHtml(item.season_id) + '">' : '<article class="bangumi-card" role="listitem" data-season-id="' + escapeHtml(item.season_id) + '">';
 		var cardClose = url ? '</a>' : '</article>';
 		return cardOpen +
 			'<div class="' + mediaClass + '">' + imageHtml + '<span class="bangumi-status-badge ' + status.className + '">' + status.label + '</span></div>' +
