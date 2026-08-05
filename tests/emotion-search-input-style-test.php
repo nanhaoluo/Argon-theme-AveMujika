@@ -112,11 +112,13 @@ argon_emotion_search_assert(
 );
 
 argon_emotion_search_assert(
-	preg_match('/#emotion_keyboard\.emotion-keyboard-root-layer\s*\{[^}]*background:\s*var\(--color-foreground\)\s*!important;[^}]*border:\s*1px solid var\(--color-border\)\s*!important;[^}]*border-radius:\s*var\(--card-radius\)\s*!important;/s', $style) === 1
-	&& preg_match('/html\.darkmode #emotion_keyboard\.emotion-keyboard-root-layer\s*\{[^}]*background:\s*var\(--color-foreground\)\s*!important;/s', $style) === 1
+	preg_match('/#emotion_keyboard\.emotion-keyboard-root-layer\s*\{[^}]*--emotion-keyboard-control-radius:\s*calc\(var\(--card-radius,\s*10px\)\s*\*\s*0\.6\);[^}]*background:\s*rgba\(255,\s*255,\s*255,\s*var\(--card-opacity,\s*0\.7\)\)\s*!important;[^}]*border:\s*1px solid rgba\(255,\s*255,\s*255,\s*0\.3\)\s*!important;[^}]*border-radius:\s*var\(--card-radius\)\s*!important;[^}]*blur\(var\(--card-blur,\s*20px\)\)\s*saturate\(var\(--card-saturate,\s*180%\)\)/s', $style) === 1
+	&& preg_match('/html\.darkmode #emotion_keyboard\.emotion-keyboard-root-layer\s*\{[^}]*background:\s*rgba\(66,\s*66,\s*66,\s*var\(--card-opacity,\s*0\.7\)\)\s*!important;[^}]*border-color:\s*rgba\(255,\s*255,\s*255,\s*0\.1\)\s*!important;/s', $style) === 1
 	&& preg_match('/\.emotion-group-stickers\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(88px,\s*104px\)\);[^}]*justify-content:\s*start;/s', $style) === 1
+	&& preg_match('/\.emotion-item\s*\{[^}]*border-radius:\s*var\(--emotion-keyboard-control-radius\);[^}]*background:\s*rgba\(var\(--themecolor-rgbstr\),\s*0\.045\);/s', $style) === 1
+	&& preg_match('/\.emotion-group-name\.active\s*\{[^}]*background:\s*var\(--themecolor\);[^}]*color:\s*#fff;/s', $style) === 1
 	&& preg_match('/\.emotion-group-description\s*\{[^}]*color:\s*var\(--color-text-deeper\);[^}]*white-space:\s*normal;/s', $style) === 1,
-	'Emotion keyboard cards must use readable theme surfaces in light and dark modes.'
+	'Emotion keyboard must reuse the theme radius, glass, and accent-color tokens.'
 );
 
 if ($failures) {

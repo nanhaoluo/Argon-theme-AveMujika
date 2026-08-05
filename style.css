@@ -19882,29 +19882,41 @@ html.darkmode {
 
 /* Emotion keyboard card readability and theme alignment. */
 #emotion_keyboard.emotion-keyboard-root-layer {
-	background: var(--color-foreground) !important;
-	border: 1px solid var(--color-border) !important;
+	--emotion-keyboard-control-radius: calc(var(--card-radius, 10px) * 0.6);
+	background: rgba(255, 255, 255, var(--card-opacity, 0.7)) !important;
+	border: 1px solid rgba(255, 255, 255, 0.3) !important;
 	border-radius: var(--card-radius) !important;
+	-webkit-backdrop-filter: blur(var(--card-blur, 20px)) saturate(var(--card-saturate, 180%));
+	backdrop-filter: blur(var(--card-blur, 20px)) saturate(var(--card-saturate, 180%));
+	background-clip: padding-box;
 	color: var(--color-text-deeper);
 	box-shadow:
-		0 8px 24px rgba(0, 0, 0, 0.12),
-		0 2px 8px rgba(var(--themecolor-rgbstr), 0.08);
+		0 8px 32px rgba(0, 0, 0, 0.12),
+		0 2px 12px rgba(var(--themecolor-rgbstr), 0.12);
 }
 
 html.darkmode #emotion_keyboard.emotion-keyboard-root-layer {
-	background: var(--color-foreground) !important;
+	background: rgba(66, 66, 66, var(--card-opacity, 0.7)) !important;
+	border-color: rgba(255, 255, 255, 0.1) !important;
+	box-shadow:
+		0 8px 32px rgba(0, 0, 0, 0.3),
+		0 2px 12px rgba(var(--themecolor-rgbstr), 0.16);
 }
 
 .emotion-keyboard-toolbar {
 	gap: 12px;
 	padding: 12px 14px 10px;
-	background: rgba(var(--themecolor-rgbstr), 0.035);
-	border-bottom-color: var(--color-border);
+	background: rgba(var(--themecolor-rgbstr), 0.045);
+	border-bottom-color: rgba(var(--themecolor-rgbstr), 0.14);
 }
 
 .emotion-keyboard-content {
-	background: rgba(var(--themecolor-rgbstr), 0.015);
+	background: transparent;
 	scrollbar-color: rgba(var(--themecolor-rgbstr), 0.32) transparent;
+}
+
+#emotion_search_input {
+	border-radius: var(--emotion-keyboard-control-radius) !important;
 }
 
 .emotion-group:not(.emotion-group-stickers) {
@@ -19921,10 +19933,11 @@ html.darkmode #emotion_keyboard.emotion-keyboard-root-layer {
 	min-height: 36px;
 	margin: 0;
 	padding: 7px 10px;
-	border: 1px solid var(--color-border);
-	border-radius: var(--card-radius);
-	background: var(--color-widgets);
+	border: 1px solid rgba(var(--themecolor-rgbstr), 0.14);
+	border-radius: var(--emotion-keyboard-control-radius);
+	background: rgba(var(--themecolor-rgbstr), 0.045);
 	color: var(--color-text-deeper);
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
 	font: inherit;
 	font-size: 13px;
 	line-height: 1.35;
@@ -19939,11 +19952,13 @@ html.darkmode #emotion_keyboard.emotion-keyboard-root-layer {
 
 .emotion-item:hover,
 .emotion-item:focus-visible {
-	border-color: rgba(var(--themecolor-rgbstr), 0.55);
-	background: rgba(var(--themecolor-rgbstr), 0.1);
+	border-color: rgba(var(--themecolor-rgbstr), 0.42);
+	background: rgba(var(--themecolor-rgbstr), 0.12);
 	color: var(--color-text-deeper);
 	outline: none;
-	box-shadow: 0 3px 10px rgba(var(--themecolor-rgbstr), 0.14);
+	box-shadow:
+		0 3px 10px rgba(var(--themecolor-rgbstr), 0.14),
+		0 0 0 2px rgba(var(--themecolor-rgbstr), 0.1);
 	transform: translateY(-1px);
 }
 
@@ -19956,9 +19971,9 @@ html.darkmode #emotion_keyboard.emotion-keyboard-root-layer {
 	gap: 5px;
 	min-height: 104px;
 	padding: 6px;
-	border: 1px solid var(--color-border);
-	border-radius: var(--card-radius);
-	background: var(--color-widgets);
+	border: 1px solid rgba(var(--themecolor-rgbstr), 0.14);
+	border-radius: var(--emotion-keyboard-control-radius);
+	background: rgba(var(--themecolor-rgbstr), 0.045);
 	color: var(--color-text-deeper);
 }
 
@@ -19970,15 +19985,15 @@ html.darkmode #emotion_keyboard.emotion-keyboard-root-layer {
 
 .emotion-item.emotion-item-sticker:hover,
 .emotion-item.emotion-item-sticker:focus-visible {
-	background: rgba(var(--themecolor-rgbstr), 0.1);
+	background: rgba(var(--themecolor-rgbstr), 0.12);
 	color: var(--color-text-deeper);
 }
 
 .emotion-item > img {
 	height: 68px;
 	max-height: 68px;
-	background: var(--color-border-on-foreground);
-	border-radius: max(2px, calc(var(--card-radius) - 1px));
+	background: rgba(var(--themecolor-rgbstr), 0.06);
+	border-radius: max(2px, calc(var(--emotion-keyboard-control-radius) - 1px));
 }
 
 .emotion-item-title {
@@ -19991,7 +20006,7 @@ html.darkmode #emotion_keyboard.emotion-keyboard-root-layer {
 .emotion-group-description {
 	margin-top: 2px;
 	padding: 9px 0 0;
-	border-top: 1px dashed var(--color-border);
+	border-top: 1px dashed rgba(var(--themecolor-rgbstr), 0.16);
 	color: var(--color-text-deeper);
 	font-size: 11px;
 	line-height: 1.5;
@@ -20004,8 +20019,8 @@ html.darkmode #emotion_keyboard.emotion-keyboard-root-layer {
 .emotion-keyboard-navigation {
 	gap: 4px;
 	padding: 6px;
-	border-top: 1px solid var(--color-border);
-	background: rgba(var(--themecolor-rgbstr), 0.035);
+	border-top: 1px solid rgba(var(--themecolor-rgbstr), 0.14);
+	background: rgba(var(--themecolor-rgbstr), 0.045);
 }
 
 .emotion-keyboard-bar {
@@ -20017,7 +20032,7 @@ html.darkmode #emotion_keyboard.emotion-keyboard-root-layer {
 .emotion-group-name {
 	min-height: 34px;
 	padding: 7px 12px;
-	border-radius: var(--card-radius);
+	border-radius: var(--emotion-keyboard-control-radius);
 	color: var(--color-text-deeper);
 	font-size: 12px;
 	font-weight: 500;
@@ -20031,23 +20046,20 @@ html.darkmode #emotion_keyboard.emotion-keyboard-root-layer {
 }
 
 .emotion-group-name.active {
-	background: rgba(var(--themecolor-rgbstr), 0.12);
-	color: var(--themecolor);
+	background: var(--themecolor);
+	color: #fff;
 	font-weight: 600;
+	box-shadow: 0 2px 8px rgba(var(--themecolor-rgbstr), 0.24);
 }
 
 .emotion-group-name.active:after {
-	left: 10px;
-	right: 10px;
-	bottom: 2px;
-	height: 2px;
-	border-radius: 2px;
+	display: none;
 }
 
 .emotion-keyboard-scroll {
 	min-width: 34px;
 	height: 34px;
-	border-radius: var(--card-radius);
+	border-radius: var(--emotion-keyboard-control-radius);
 }
 
 .emotion-keyboard-empty {
