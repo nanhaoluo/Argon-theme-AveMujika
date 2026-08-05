@@ -7111,6 +7111,7 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 }
 
 .emotion-keyboard {
+	--emotion-keyboard-position-duration: 120ms;
 
 	width: min(720px, calc(100vw - 24px));
 
@@ -7133,7 +7134,7 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 	/* 建立局部层叠上下文；内部分享面板再高也不能越过 z-index:100 的顶栏。 */
 	z-index: 1;
 
-	transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
+	transition: top var(--emotion-keyboard-position-duration) var(--ease-standard), left var(--emotion-keyboard-position-duration) var(--ease-standard), background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
 
 	display: none;
 

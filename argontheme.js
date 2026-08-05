@@ -3404,6 +3404,17 @@ function positionEmotionKeyboard() {
 	keyboard.style.left = left + "px";
 }
 
+var emotionKeyboardPositionFrame = 0;
+function scheduleEmotionKeyboardPosition() {
+	if (!$("#emotion_keyboard").hasClass("comment-emotion-keyboard-open") || emotionKeyboardPositionFrame) return;
+	emotionKeyboardPositionFrame = window.requestAnimationFrame(function () {
+		emotionKeyboardPositionFrame = 0;
+		if ($("#emotion_keyboard").hasClass("comment-emotion-keyboard-open")) {
+			positionEmotionKeyboard();
+		}
+	});
+}
+
 function updateEmotionKeyboardScrollButtons() {
 	var bar = document.querySelector(".emotion-keyboard-bar");
 	if (!bar) return;
@@ -3730,10 +3741,11 @@ document.addEventListener('click', (e) => {
 
 window.addEventListener('resize', function() {
 	if ($("#emotion_keyboard").hasClass("comment-emotion-keyboard-open")) {
-		positionEmotionKeyboard();
+		scheduleEmotionKeyboardPosition();
 		updateEmotionKeyboardScrollButtons();
 	}
 });
+window.addEventListener("scroll", scheduleEmotionKeyboardPosition, { passive: true });
 /*查看评论编辑记录*/
 function showCommentEditHistory(id) {
 	let requestID = parseInt(new Date().getTime());
