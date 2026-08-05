@@ -157,7 +157,7 @@
 		if (!stats) return;
 		state.stats = stats;
 		Object.keys(stats).forEach(function (key) {
-			var target = document.querySelector('[data-bangumi-stat="' + key + '"]');
+			var target = document.getElementById('bangumi-stat-' + key) || document.querySelector('[data-bangumi-stat="' + key + '"]');
 			if (target) target.textContent = Number(stats[key] || 0).toLocaleString();
 		});
 	}

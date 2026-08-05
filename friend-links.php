@@ -451,7 +451,7 @@ argon_special_page_surface_open('flinks-page');
 .flinks-mysite-item { background: var(--argon-special-page-surface-soft); border-radius: calc(var(--card-radius) * 0.6); padding: 7px 10px; cursor: pointer; transition: all var(--animation-fast) var(--ease-standard); border: 1px solid transparent; }
 .flinks-mysite-item:hover { background: var(--argon-special-page-surface-hover); border-color: rgba(var(--themecolor-rgbstr), 0.18); }
 .flinks-mysite-item label { display: block; font-size: 10px; color: var(--argon-special-page-text-soft); margin-bottom: 1px; text-transform: uppercase; pointer-events: none; }
-.flinks-mysite-item span { font-size: 12px; color: var(--color-text-deeper); word-break: break-all; font-weight: 500; pointer-events: none; }
+.flinks-mysite-item span { font-size: 12px; color: var(--color-text-deeper); overflow-wrap: break-word; word-break: normal; font-weight: 500; pointer-events: none; }
 
 .flinks-form { margin-top: 8px; font-family: var(--font); }
 .flinks-form .row { margin-left: -6px; margin-right: -6px; }

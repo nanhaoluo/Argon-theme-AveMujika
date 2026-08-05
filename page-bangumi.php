@@ -45,22 +45,43 @@ $bangumi_config = array(
 get_header();
 argon_special_page_surface_open('bangumi-page');
 ?>
-		<section class="bangumi-page" aria-labelledby="bangumi-page-title">
-			<header class="bangumi-header">
-				<div class="bangumi-header-copy">
-					<span class="bangumi-kicker"><i class="fa fa-bookmark" aria-hidden="true"></i><?php esc_html_e('BANGUMI LIBRARY', 'argon'); ?></span>
-					<h1 id="bangumi-page-title"><?php esc_html_e('正在追番', 'argon'); ?></h1>
-					<p><?php esc_html_e('把正在追的故事，整理成一份轻盈的本地清单。', 'argon'); ?></p>
-				</div>
-				<div class="bangumi-header-mark" aria-hidden="true"><i class="fa fa-play"></i></div>
-			</header>
-
-			<div class="bangumi-statistics" aria-label="<?php esc_attr_e('追番统计', 'argon'); ?>">
-				<div class="bangumi-stat"><span><?php esc_html_e('共', 'argon'); ?></span><strong data-bangumi-stat="total"><?php echo esc_html(number_format_i18n((int)$bangumi_stats['total'])); ?></strong><span><?php esc_html_e('部', 'argon'); ?></span></div>
-				<div class="bangumi-stat is-watching"><span><?php esc_html_e('在看', 'argon'); ?></span><strong data-bangumi-stat="watching"><?php echo esc_html(number_format_i18n((int)$bangumi_stats['watching'])); ?></strong></div>
-				<div class="bangumi-stat is-want"><span><?php esc_html_e('想看', 'argon'); ?></span><strong data-bangumi-stat="want"><?php echo esc_html(number_format_i18n((int)$bangumi_stats['want'])); ?></strong></div>
-				<div class="bangumi-stat is-watched"><span><?php esc_html_e('看过', 'argon'); ?></span><strong data-bangumi-stat="watched"><?php echo esc_html(number_format_i18n((int)$bangumi_stats['watched'])); ?></strong></div>
-			</div>
+	<section class="bangumi-page" aria-labelledby="bangumi-page-title">
+		<?php
+		$bangumi_header_stats = array(
+			array(
+				'icon' => 'th-large',
+				'label' => __('共', 'argon'),
+				'value' => number_format_i18n((int)$bangumi_stats['total']),
+				'suffix' => __('部', 'argon'),
+				'value_id' => 'bangumi-stat-total',
+			),
+			array(
+				'icon' => 'eye',
+				'label' => __('在看', 'argon'),
+				'value' => number_format_i18n((int)$bangumi_stats['watching']),
+				'value_id' => 'bangumi-stat-watching',
+			),
+			array(
+				'icon' => 'bookmark-o',
+				'label' => __('想看', 'argon'),
+				'value' => number_format_i18n((int)$bangumi_stats['want']),
+				'value_id' => 'bangumi-stat-want',
+			),
+			array(
+				'icon' => 'check',
+				'label' => __('看过', 'argon'),
+				'value' => number_format_i18n((int)$bangumi_stats['watched']),
+				'value_id' => 'bangumi-stat-watched',
+			),
+		);
+		argon_special_page_surface_header(array(
+			'icon' => 'play-circle',
+			'title_id' => 'bangumi-page-title',
+			'title' => __('正在追番', 'argon'),
+			'subtitle' => __('把正在追的故事，整理成一份轻盈的本地清单。', 'argon'),
+			'stats' => $bangumi_header_stats,
+		));
+		?>
 
 			<?php if (!$bangumi_enabled): ?>
 				<div class="bangumi-notice" role="status">

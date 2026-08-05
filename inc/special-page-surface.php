@@ -157,8 +157,10 @@ html.darkmode body.argon-special-page {
 	font-size: 13px;
 	font-weight: 500;
 	color: var(--themecolor);
+	white-space: nowrap;
 	transition: all var(--animation-fast) var(--ease-standard);
 }
+.argon-special-page-stat-value { font-size: 1.05em; font-weight: 700; }
 .argon-special-page-stat:hover { background: rgba(var(--themecolor-rgbstr), 0.12); }
 .argon-special-page-list { display: flex; flex-direction: column; gap: 16px; margin-bottom: 16px; }
 .argon-special-page-card { margin-bottom: 16px; }
@@ -239,8 +241,8 @@ html.darkmode body.argon-special-page {
 	border-color: rgba(var(--themecolor-rgbstr), 0.16);
 	transform: translateY(-2px);
 }
-.argon-special-page-metric-label { color: var(--argon-special-page-text-muted); font-size: 12px; overflow-wrap: anywhere; }
-.argon-special-page-metric-value { margin-top: 9px; color: var(--color-text-deeper); font-size: 24px; font-weight: 700; overflow-wrap: anywhere; }
+.argon-special-page-metric-label { color: var(--argon-special-page-text-muted); font-size: 12px; overflow-wrap: break-word; word-break: normal; }
+.argon-special-page-metric-value { margin-top: 9px; color: var(--color-text-deeper); font-size: 24px; font-weight: 700; overflow-wrap: break-word; word-break: normal; }
 .argon-special-page-metric[data-state="ok"] .argon-special-page-metric-value { color: var(--argon-special-page-success-text); }
 .argon-special-page-metric[data-state="running"] .argon-special-page-metric-value,
 .argon-special-page-metric[data-state="deferred"] .argon-special-page-metric-value,
@@ -263,7 +265,7 @@ html.darkmode body.argon-special-page {
 	font-weight: 600;
 }
 .argon-special-page-table tr:last-child td { border-bottom: 0; }
-.argon-special-page-table td { max-width: 260px; color: var(--argon-special-page-text-main); overflow-wrap: anywhere; }
+.argon-special-page-table td { max-width: 260px; color: var(--argon-special-page-text-main); overflow-wrap: break-word; word-break: normal; }
 .argon-special-page-empty { padding: 60px 24px; text-align: center; }
 .argon-special-page-empty i { display: block; margin-bottom: 16px; color: var(--color-border); font-size: 48px; }
 .argon-special-page-empty p { margin: 0; color: var(--argon-special-page-text-muted); font-size: 15px; }
@@ -277,7 +279,7 @@ html.darkmode body.argon-special-page {
 	color: var(--argon-special-page-text-main);
 	font: 12px/1.6 Consolas, Monaco, monospace;
 	white-space: pre-wrap;
-	overflow-wrap: anywhere;
+	overflow-wrap: break-word;
 }
 html.darkmode body.argon-special-page .argon-special-page-details {
 	background: rgba(0, 0, 0, 0.18);
@@ -343,11 +345,12 @@ if (!function_exists('argon_special_page_surface_header')) {
 		$icon = isset($args['icon']) ? sanitize_html_class($args['icon']) : 'link';
 		$title = isset($args['title']) ? (string)$args['title'] : '';
 		$subtitle = isset($args['subtitle']) ? (string)$args['subtitle'] : '';
+		$title_id = isset($args['title_id']) ? sanitize_html_class($args['title_id']) : '';
 		$stats = isset($args['stats']) && is_array($args['stats']) ? $args['stats'] : array();
 		?>
 <header class="argon-special-page-header">
 	<div class="argon-special-page-header-icon"><i class="fa fa-<?php echo esc_attr($icon); ?>" aria-hidden="true"></i></div>
-	<h1 class="argon-special-page-title"><?php echo esc_html($title); ?></h1>
+	<h1 class="argon-special-page-title"<?php if ($title_id !== '') : ?> id="<?php echo esc_attr($title_id); ?>"<?php endif; ?>><?php echo esc_html($title); ?></h1>
 	<?php if ($subtitle !== '') : ?><p class="argon-special-page-subtitle"><?php echo esc_html($subtitle); ?></p><?php endif; ?>
 	<?php if ($stats) : ?>
 	<div class="argon-special-page-stats">
@@ -356,6 +359,8 @@ if (!function_exists('argon_special_page_surface_header')) {
 			$stat_icon = isset($stat['icon']) ? sanitize_html_class($stat['icon']) : '';
 			$stat_id = isset($stat['id']) ? sanitize_html_class($stat['id']) : '';
 			$text_id = isset($stat['text_id']) ? sanitize_html_class($stat['text_id']) : '';
+			$value_id = isset($stat['value_id']) ? sanitize_html_class($stat['value_id']) : '';
+			$has_value = array_key_exists('value', $stat);
 			$classes = array('argon-special-page-stat');
 			if (!empty($stat['class'])) {
 				foreach (preg_split('/\s+/', (string)$stat['class']) as $class_name) {
@@ -366,7 +371,13 @@ if (!function_exists('argon_special_page_surface_header')) {
 			?>
 		<div class="<?php echo esc_attr(implode(' ', array_unique($classes))); ?>"<?php if ($stat_id !== '') : ?> id="<?php echo esc_attr($stat_id); ?>"<?php endif; ?><?php if (!empty($stat['aria_live'])) : ?> role="status" aria-live="<?php echo esc_attr($stat['aria_live']); ?>"<?php endif; ?>>
 			<?php if ($stat_icon !== '') : ?><i class="fa fa-<?php echo esc_attr($stat_icon); ?>" aria-hidden="true"></i><?php endif; ?>
-			<span<?php if ($text_id !== '') : ?> id="<?php echo esc_attr($text_id); ?>"<?php endif; ?>><?php echo esc_html(isset($stat['text']) ? $stat['text'] : ''); ?></span>
+			<?php if ($has_value) : ?>
+				<?php if (isset($stat['label'])) : ?><span class="argon-special-page-stat-label"><?php echo esc_html($stat['label']); ?></span><?php endif; ?>
+				<strong class="argon-special-page-stat-value"<?php if ($value_id !== '') : ?> id="<?php echo esc_attr($value_id); ?>"<?php endif; ?>><?php echo esc_html($stat['value']); ?></strong>
+				<?php if (isset($stat['suffix'])) : ?><span class="argon-special-page-stat-suffix"><?php echo esc_html($stat['suffix']); ?></span><?php endif; ?>
+			<?php else : ?>
+				<span<?php if ($text_id !== '') : ?> id="<?php echo esc_attr($text_id); ?>"<?php endif; ?>><?php echo esc_html(isset($stat['text']) ? $stat['text'] : ''); ?></span>
+			<?php endif; ?>
 		</div>
 		<?php endforeach; ?>
 	</div>

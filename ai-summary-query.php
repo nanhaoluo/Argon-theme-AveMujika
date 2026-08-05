@@ -6,6 +6,7 @@
 $wp_load_path = dirname(dirname(dirname(dirname(__FILE__)))) . '/wp-load.php';
 if (!file_exists($wp_load_path)) $wp_load_path = $_SERVER['DOCUMENT_ROOT'] . '/wp-load.php';
 require_once($wp_load_path);
+require_once get_template_directory() . '/inc/special-page-surface.php';
 
 // ==========================================================================
 // 安全防护：IP 访问限制
@@ -98,28 +99,21 @@ $rate_limit_check = argon_ai_query_check_rate_limit();
 if ($rate_limit_check !== true) {
 	// 访问受限，显示错误页面
 	get_header();
+	argon_special_page_surface_open('ai-verify-page');
+	argon_special_page_surface_header(array(
+		'icon' => 'shield',
+		'title' => __('AI 内容查询', 'argon'),
+		'subtitle' => __('通过识别码查询 AI 生成内容的详细信息，确保内容可追溯', 'argon'),
+	));
 	?>
-	<div class="page-information-card-container"></div>
-	<?php get_sidebar(); ?>
-	<div id="primary" class="content-area">
-	<style id="ai-verify-page-style">
-	@media screen and (min-width: 901px) {
-		body.ai-verify-page #leftbar_part, body.ai-verify-page #leftbar { display: none !important; }
-	}
-	body.ai-verify-page #primary { width: 100% !important; max-width: 1000px !important; margin: 0 auto !important; float: none !important; }
-	body.ai-verify-page #content { margin-top: -50vh !important; }
-	</style>
-	<script data-pjax>
-	document.body.classList.add('ai-verify-page');
-	</script>
-	<main id="main" class="site-main" role="main">
-	<article class="post card shadow-sm bg-white border-0" style="padding: 60px 40px; text-align: center; margin-bottom: 16px;">
+	<article class="post card shadow-sm bg-white border-0 argon-special-page-card ai-verify-card ai-verify-error-card" style="padding: 48px 32px; text-align: center;">
 		<div style="font-size: 48px; color: #f59e0b; margin-bottom: 20px;"><i class="fa fa-exclamation-triangle"></i></div>
 		<h2 style="font-size: 20px; font-weight: 600; color: var(--color-text-deeper); margin-bottom: 12px;"><?php _e('访问受限', 'argon'); ?></h2>
 		<p style="color: var(--color-text-muted); margin-bottom: 24px;"><?php echo esc_html($rate_limit_check); ?></p>
 		<a href="<?php echo home_url('/ai-query'); ?>" class="btn btn-primary"><?php _e('返回查询页面', 'argon'); ?></a>
 	</article>
 	<?php
+	argon_special_page_surface_close();
 	get_footer();
 	exit;
 }
@@ -319,60 +313,11 @@ if (!empty($client_ip)) {
 }
 
 get_header();
+argon_special_page_surface_open('ai-verify-page');
 ?>
-
-<div class="page-information-card-container"></div>
-<?php get_sidebar(); ?>
-
-<div id="primary" class="content-area">
-
 <style id="ai-verify-page-style">
-@media screen and (min-width: 901px) {
-	body.ai-verify-page #leftbar_part, body.ai-verify-page #leftbar { display: none !important; }
-}
-@media screen and (max-width: 900px) {
-	body.ai-verify-page #leftbar {
-		display: block;
-		position: fixed;
-		background: var(--color-foreground);
-		top: 0;
-		left: 0;
-		height: 100vh;
-		width: 280px;
-		padding: 0;
-		overflow-y: auto;
-		overflow-x: hidden;
-		z-index: 1002;
-		box-shadow: 0 15px 35px rgba(50, 50, 93, 0.1), 0 5px 15px rgba(0, 0, 0, 0.07) !important;
-		transform: translateX(-100%);
-		transition: transform var(--motion-fast-duration) var(--motion-ease-exit), box-shadow var(--motion-fast-duration) var(--motion-ease-exit);
-	}
-	html.leftbar-opened body.ai-verify-page #leftbar {
-		transform: translateX(0);
-		transition-timing-function: var(--motion-ease-enter);
-	}
-	body.ai-verify-page .leftbar-mobile-nav { display: flex; flex-direction: column; min-height: 100%; }
-	body.ai-verify-page .leftbar-desktop-content { display: none !important; }
-	body.ai-verify-page .leftbar-mobile-footer {
-		margin-top: auto;
-		position: sticky;
-		bottom: 0;
-		background: var(--color-foreground);
-		z-index: 10;
-	}
-}
-body.ai-verify-page #primary { width: 100% !important; max-width: 1000px !important; margin: 0 auto !important; float: none !important; }
-body.ai-verify-page #content { margin-top: -50vh !important; }
-
-.ai-verify-header-card { text-align: center; padding: 40px 24px 32px; background: transparent !important; box-shadow: none !important; }
-.ai-verify-header-icon { width: 64px; height: 64px; margin: 0 auto 20px; background: var(--themecolor-gradient); border-radius: var(--card-radius); display: flex; align-items: center; justify-content: center; font-size: 28px; color: #fff; box-shadow: 0 4px 12px rgba(var(--themecolor-rgbstr), 0.2); transition: transform var(--animation-fast) var(--ease-standard); }
-.ai-verify-header-icon:hover { transform: translateY(-2px); }
-.ai-verify-title { font-size: 24px; font-weight: 600; margin: 0 0 12px; color: var(--color-text-deeper); background: none !important; }
-.ai-verify-title::before, .ai-verify-title::after { display: none !important; }
-.ai-verify-subtitle { font-size: 14px; color: var(--color-text-muted); margin: 0; line-height: 1.6; }
-html.darkmode .ai-verify-subtitle { color: #aaa; }
-
 .ai-verify-card { padding: 28px 32px; margin-bottom: 16px; }
+.ai-admin-section-title { margin: 32px 4px 16px; }
 .ai-verify-section-title { font-size: 18px; font-weight: 600; margin: 0 0 20px; color: var(--color-text-deeper); display: flex; align-items: center; gap: 10px; background: none !important; padding-bottom: 12px; border-bottom: 2px solid rgba(var(--themecolor-rgbstr), 0.1); }
 .ai-verify-section-title::before, .ai-verify-section-title::after { display: none !important; }
 .ai-verify-section-title i { color: var(--themecolor); font-size: 18px; }
@@ -399,7 +344,7 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 .ai-info-item:last-child { border-bottom: none; }
 .ai-info-item:hover { background: rgba(var(--themecolor-rgbstr), 0.05); }
 .ai-info-label { color: var(--color-text-muted); font-size: 14px; min-width: 110px; flex-shrink: 0; font-weight: 500; }
-.ai-info-value { color: var(--color-text); flex: 1; word-break: break-word; font-size: 14px; line-height: 1.6; }
+.ai-info-value { min-width: 0; color: var(--color-text); flex: 1; overflow-wrap: break-word; word-break: normal; font-size: 14px; line-height: 1.6; }
 .ai-info-value-mono { font-family: 'Consolas', 'Monaco', monospace; background: rgba(var(--themecolor-rgbstr), 0.05); padding: 2px 8px; border-radius: 4px; }
 .ai-info-value-link { color: var(--themecolor); text-decoration: none; font-weight: 500; transition: opacity var(--animation-fast) var(--ease-standard); }
 .ai-info-value-link:hover { opacity: 0.75; text-decoration: underline; }
@@ -419,7 +364,6 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 
 @media (max-width: 768px) {
 	.ai-verify-card { padding: 24px 20px; }
-	.ai-verify-header-card { padding: 30px 20px 24px; }
 	.ai-code-display { font-size: 26px; letter-spacing: 3px; padding: 20px; }
 	.ai-info-label { min-width: 90px; font-size: 13px; }
 	.ai-info-item { flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px 14px; }
@@ -429,49 +373,15 @@ html.darkmode .ai-verify-subtitle { color: #aaa; }
 }
 </style>
 
-<script data-pjax>
-(function() {
-	function cleanupAIVerifyPage() {
-		document.body.classList.remove('ai-verify-page');
-		var s = document.getElementById('ai-verify-page-style');
-		if (s) s.remove();
-	}
-	
-	if (!document.getElementById('ai-verify-page-style')) {
-		document.body.classList.remove('ai-verify-page');
-	}
-	
-	document.body.classList.add('ai-verify-page');
-	
-	if (typeof jQuery !== 'undefined') {
-		var $ = jQuery;
-		$(document).off('pjax:start.aiverify pjax:popstate.aiverify');
-		
-		$(document).on('pjax:start.aiverify', function() {
-			cleanupAIVerifyPage();
-			$(document).off('pjax:start.aiverify pjax:popstate.aiverify');
-		});
-		
-		$(document).on('pjax:popstate.aiverify', function() {
-			setTimeout(function() {
-				if (!document.getElementById('ai-verify-page-style')) {
-					document.body.classList.remove('ai-verify-page');
-				}
-			}, 50);
-		});
-	}
-})();
-</script>
+<?php
+argon_special_page_surface_header(array(
+	'icon' => 'shield',
+	'title' => __('AI 内容查询', 'argon'),
+	'subtitle' => __('通过识别码查询 AI 生成内容的详细信息，确保内容可追溯', 'argon'),
+));
+?>
 
-<main id="main" class="site-main" role="main">
-
-<div class="ai-verify-header-card" style="margin-bottom: 16px;">
-	<div class="ai-verify-header-icon"><i class="fa fa-shield"></i></div>
-	<h1 class="ai-verify-title"><?php _e('AI 内容查询', 'argon'); ?></h1>
-	<p class="ai-verify-subtitle"><?php _e('通过识别码查询 AI 生成内容的详细信息，确保内容可追溯', 'argon'); ?></p>
-</div>
-
-<article class="post card shadow-sm bg-white border-0 ai-verify-card">
+<article class="post card shadow-sm bg-white border-0 argon-special-page-card ai-verify-card">
 	<h3 class="ai-verify-section-title"><i class="fa fa-search"></i><?php _e('查询验证', 'argon'); ?></h3>
 	
 	<div class="ai-query-form">
@@ -858,24 +768,25 @@ if (current_user_can('manage_options')):
 	if (!empty($all_records)):
 ?>
 
-<h2 style="font-size: 28px; font-weight: 700; margin: 40px 0 24px; color: var(--color-text-deeper); display: flex; align-items: center; gap: 12px;">
-	<i class="fa fa-database" style="color: var(--themecolor);"></i>
+<h2 class="argon-special-page-section-title ai-admin-section-title">
+	<i class="fa fa-database"></i>
 	<?php _e('AI 请求记录', 'argon'); ?>
 </h2>
 
-<article class="post card shadow-sm bg-white border-0 ai-verify-card">
+<article class="post card shadow-sm bg-white border-0 argon-special-page-card ai-verify-card">
 	<style>
-	.ai-records-table { width: 100%; border-collapse: collapse; }
+	.ai-records-table { width: 100%; min-width: 760px; table-layout: auto; border-collapse: collapse; }
 	.ai-records-table th { background: linear-gradient(135deg, rgba(var(--themecolor-rgbstr), 0.08) 0%, rgba(var(--themecolor-rgbstr), 0.04) 100%); padding: 14px 16px; text-align: left; font-size: 13px; font-weight: 600; color: var(--color-text-deeper); border: none; }
 	.ai-records-table td { padding: 14px 16px; font-size: 14px; color: var(--color-text); vertical-align: middle; border: none; }
+	.ai-records-table td:nth-child(2), .ai-record-code { white-space: nowrap; word-break: normal; overflow-wrap: normal; }
 	.ai-records-table tbody tr { cursor: pointer; transition: all var(--animation-fast) var(--ease-standard); }
 	.ai-records-table tbody tr:hover { background: rgba(var(--themecolor-rgbstr), 0.05); }
 	.ai-record-type-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 	.ai-record-type-summary { background: rgba(59, 130, 246, 0.12); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.25); }
 	.ai-record-type-spam { background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.25); }
-	.ai-record-code { font-family: 'Consolas', 'Monaco', monospace; font-size: 13px; color: var(--themecolor); font-weight: 700; letter-spacing: 1px; background: rgba(var(--themecolor-rgbstr), 0.08); padding: 4px 10px; border-radius: 4px; }
+	.ai-record-code { display: inline-block; font-family: 'Consolas', 'Monaco', monospace; font-size: 13px; color: var(--themecolor); font-weight: 700; letter-spacing: 1px; background: rgba(var(--themecolor-rgbstr), 0.08); padding: 4px 10px; border-radius: 4px; }
 	.ai-record-time { color: var(--color-text-muted); font-size: 13px; }
-	.ai-record-title { color: var(--color-text); font-weight: 500; }
+	.ai-record-title { display: block; min-width: 0; color: var(--color-text); font-weight: 500; overflow-wrap: break-word; word-break: normal; }
 	.ai-record-title:hover { color: var(--themecolor); }
 	
 	.ai-modal { display: flex; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.5); overflow: auto; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--motion-layer-duration) var(--motion-ease-exit), visibility 0s linear var(--motion-layer-duration); }
@@ -889,16 +800,16 @@ if (current_user_can('manage_options')):
 	.ai-modal-body { padding: 24px; }
 	
 	@media (max-width: 768px) {
-		.ai-records-table { display: block; overflow-x: auto; }
-		.ai-records-table th, .ai-records-table td { white-space: nowrap; }
+		.ai-records-table th, .ai-records-table td { white-space: normal; }
+		.ai-records-table th:nth-child(1), .ai-records-table th:nth-child(2), .ai-records-table th:nth-child(4), .ai-records-table td:nth-child(1), .ai-records-table td:nth-child(2), .ai-records-table td:nth-child(4) { white-space: nowrap; }
 		.ai-modal-content { width: 95%; max-height: 95vh; }
 		.ai-modal-header { padding: 16px; }
 		.ai-modal-body { padding: 16px; }
 	}
 	</style>
 	
-	<div style="overflow-x: auto;">
-		<table class="ai-records-table">
+	<div class="argon-special-page-table-wrap ai-records-table-wrap">
+		<table class="argon-special-page-table ai-records-table">
 			<thead>
 				<tr>
 					<th style="width: 100px;"><?php _e('类型', 'argon'); ?></th>
@@ -1159,12 +1070,12 @@ if (current_user_can('manage_options')):
 	// ==========================================================================
 	?>
 	
-	<h2 style="font-size: 28px; font-weight: 700; margin: 40px 0 24px; color: var(--color-text-deeper); display: flex; align-items: center; gap: 12px;">
-		<i class="fa fa-bar-chart" style="color: var(--themecolor);"></i>
+	<h2 class="argon-special-page-section-title ai-admin-section-title">
+		<i class="fa fa-bar-chart"></i>
 		<?php _e('AI 查询统计', 'argon'); ?>
 	</h2>
 	
-	<article class="post card shadow-sm bg-white border-0 ai-verify-card">
+	<article class="post card shadow-sm bg-white border-0 argon-special-page-card ai-verify-card">
 		<div id="aiStatsContainer">
 			<div style="text-align: center; padding: 40px; color: var(--color-text-muted);">
 				<i class="fa fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 12px;"></i>
@@ -1248,8 +1159,8 @@ if (current_user_can('manage_options')):
 				if (stats.by_scenario && stats.by_scenario.length > 0) {
 					html += `
 						<h4 class="ai-section-subtitle"><?php _e('按场景统计', 'argon'); ?></h4>
-						<div style="overflow-x: auto;">
-							<table class="ai-stats-table">
+						<div class="argon-special-page-table-wrap ai-stats-table-wrap">
+							<table class="argon-special-page-table ai-stats-table">
 								<thead>
 									<tr>
 										<th><?php _e('场景', 'argon'); ?></th>
@@ -1289,8 +1200,8 @@ if (current_user_can('manage_options')):
 				if (stats.by_provider && stats.by_provider.length > 0) {
 					html += `
 						<h4 class="ai-section-subtitle" style="margin-top: 28px;"><?php _e('按服务商统计', 'argon'); ?></h4>
-						<div style="overflow-x: auto;">
-							<table class="ai-stats-table">
+						<div class="argon-special-page-table-wrap ai-stats-table-wrap">
+							<table class="argon-special-page-table ai-stats-table">
 								<thead>
 									<tr>
 										<th><?php _e('服务商', 'argon'); ?></th>
@@ -1366,5 +1277,6 @@ endif; // current_user_can('manage_options')
 ?>
 
 <?php
+argon_special_page_surface_close();
 get_footer();
 ?>

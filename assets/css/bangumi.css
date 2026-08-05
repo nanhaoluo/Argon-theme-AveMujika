@@ -1,72 +1,5 @@
 /* Argon bangumi library */
-.bangumi-main { padding: 0 0 48px; }
 .bangumi-page { color: var(--argon-special-page-text-main); }
-.bangumi-header {
-	display: flex;
-	align-items: flex-end;
-	justify-content: space-between;
-	gap: 24px;
-	padding: 42px 8px 28px;
-}
-.bangumi-kicker {
-	display: inline-flex;
-	align-items: center;
-	gap: 7px;
-	font-size: 11px;
-	font-weight: 700;
-	letter-spacing: 0.12em;
-	color: var(--themecolor);
-}
-.bangumi-header h1 {
-	margin: 8px 0 7px;
-	font-size: 30px;
-	font-weight: 700;
-	line-height: 1.2;
-	color: var(--color-text-deeper);
-}
-.bangumi-header h1::before,
-.bangumi-header h1::after { display: none !important; }
-.bangumi-header p {
-	margin: 0;
-	font-size: 14px;
-	line-height: 1.65;
-	color: var(--argon-special-page-text-muted);
-}
-.bangumi-header-mark {
-	display: grid;
-	place-items: center;
-	width: 58px;
-	height: 58px;
-	flex: 0 0 58px;
-	border: 1px solid rgba(var(--themecolor-rgbstr), 0.22);
-	border-radius: var(--card-radius);
-	background: rgba(var(--themecolor-rgbstr), 0.08);
-	color: var(--themecolor);
-	font-size: 20px;
-	transform: rotate(5deg);
-}
-.bangumi-statistics {
-	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
-	gap: 10px;
-	margin: 0 0 18px;
-}
-.bangumi-stat {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 12px;
-	min-height: 66px;
-	padding: 12px 16px;
-	border: 1px solid var(--color-border-on-foreground);
-	border-radius: var(--card-radius, 4px);
-	background: var(--argon-special-page-surface-soft);
-}
-.bangumi-stat span { color: var(--argon-special-page-text-muted); font-size: 12px; }
-.bangumi-stat strong { color: var(--color-text-deeper); font-size: 21px; line-height: 1; }
-.bangumi-stat.is-watching strong { color: #d97706; }
-.bangumi-stat.is-want strong { color: #3b82f6; }
-.bangumi-stat.is-watched strong { color: #16a34a; }
 .bangumi-notice {
 	display: flex;
 	align-items: flex-start;
@@ -194,14 +127,12 @@ html.darkmode .bangumi-card:hover { box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
 	.bangumi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 @media screen and (max-width: 991px) {
-	.bangumi-header { padding-top: 28px; }
 	.bangumi-grid { display: flex; flex-direction: column; gap: 12px; }
 	.bangumi-card { display: grid; grid-template-columns: 132px minmax(0, 1fr); min-height: 178px; }
 	.bangumi-card-media { aspect-ratio: auto; min-height: 178px; }
 	.bangumi-card-body { padding: 13px 15px 13px 14px; }
 }
 @media screen and (max-width: 700px) {
-	.bangumi-statistics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 	.bangumi-toolbar { align-items: stretch; flex-wrap: wrap; }
 	.bangumi-tabs { width: 100%; }
 	.bangumi-tab { flex: 1; }
@@ -209,9 +140,6 @@ html.darkmode .bangumi-card:hover { box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
 	.bangumi-search { width: auto; flex: 1; }
 }
 @media screen and (max-width: 460px) {
-	.bangumi-header { align-items: flex-start; padding-right: 0; padding-left: 0; }
-	.bangumi-header-mark { width: 46px; height: 46px; flex-basis: 46px; font-size: 16px; }
-	.bangumi-header h1 { font-size: 26px; }
 	.bangumi-card { grid-template-columns: 104px minmax(0, 1fr); min-height: 154px; }
 	.bangumi-card-media { min-height: 154px; }
 	.bangumi-card-body { padding: 11px 12px; }
