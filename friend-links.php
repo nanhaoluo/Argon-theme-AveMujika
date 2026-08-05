@@ -938,7 +938,7 @@ argon_special_page_surface_header(array(
 </div>
 <?php endif; ?>
 
-<script src="<?php echo esc_url(get_template_directory_uri() . '/assets/js/friend-links-browser.js'); ?>" data-pjax></script>
+<script src="<?php echo esc_url(get_template_directory_uri() . '/assets/js/friend-links-browser.js?ver=' . rawurlencode(argon_get_asset_file_version('assets/js/friend-links-browser.js'))); ?>" data-pjax></script>
 <script data-pjax>
 function toggleApplyForm() {
     var c = document.querySelector('.flinks-apply-content');

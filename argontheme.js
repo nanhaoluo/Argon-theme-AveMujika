@@ -4990,31 +4990,38 @@ function executePjaxScriptsSync(containers) {
  * 解决浏览器后退/前进时 pjax:complete 不触发导致脚本不执行的问题
  */
 function reActivatePageScripts() {
-	var executedCount = 0;
+	var scripts = [];
 	pjaxContainers.forEach(function (selector) {
 		var container = document.querySelector(selector);
 		if (!container) return;
 
 		// 清除 data-pjax-executed 标记（缓存的 DOM 会保留此标记）
-		container.querySelectorAll('script[data-pjax-executed]').forEach(function (script) {
+		container.querySelectorAll('script[data-pjax]').forEach(function (script) {
 			script.removeAttribute('data-pjax-executed');
+			scripts.push(script);
 		});
 
 		// 重新执行 <script data-pjax> 脚本（页面特定的生命周期脚本）
-		container.querySelectorAll('script[data-pjax]').forEach(function (script) {
-			try {
-				executeScriptSync(script);
-				script.setAttribute('data-pjax-executed', 'true');
-				executedCount++;
-			} catch (e) {
-				ArgonDebug.warn('reActivatePageScripts: script execution failed:', e);
-			}
-		});
 	});
 
-	if (executedCount > 0) {
-		ArgonDebug.log('reActivatePageScripts: re-executed', executedCount, 'scripts');
-	}
+	// 后退/前进同样需要等待外部脚本，避免页面内联初始化抢跑。
+	var executedCount = 0;
+	var chain = Promise.resolve();
+	scripts.forEach(function (script) {
+		chain = chain.then(function () {
+			return executeScript(script).then(function (success) {
+				if (!success) return;
+				script.setAttribute('data-pjax-executed', 'true');
+				executedCount++;
+			});
+		});
+	});
+	return chain.then(function () {
+		if (executedCount > 0) {
+			ArgonDebug.log('reActivatePageScripts: re-executed', executedCount, 'scripts');
+		}
+		return executedCount;
+	});
 }
 
 /**
@@ -7433,12 +7440,22 @@ function runArgonPjaxInitTasks(tasks, onFinish) {
 		var startedAt = readClock();
 		while (index < tasks.length) {
 			var task = tasks[index++];
+			var taskResult = null;
 			try {
 				if (typeof task === 'function') {
-					task();
+					taskResult = task();
 				}
 			} catch (err) {
 				ArgonDebug.error('PJAX init task failed:', err);
+			}
+			if (taskResult && typeof taskResult.then === 'function') {
+				taskResult.then(function () {
+					schedule(runChunk);
+				}, function (err) {
+					ArgonDebug.error('PJAX async init task failed:', err);
+					schedule(runChunk);
+				});
+				return;
 			}
 			if (readClock() - startedAt >= FRAME_BUDGET) {
 				break;
@@ -7590,7 +7607,7 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 			// 防止切片跨帧后出现肉眼可见的滚动跳动。
 			runArgonPjaxInitTasks([
 				// ========== 同步执行新页面中的内联脚本（必须在模块初始化之前）==========
-				function () { executePjaxScriptsSync(pjaxContainers); },
+				function () { return executePjaxScripts(pjaxContainers); },
 				function () {
 					if (pjaxScrollTop > 0) {
 						$("body,html").scrollTop(pjaxScrollTop);
