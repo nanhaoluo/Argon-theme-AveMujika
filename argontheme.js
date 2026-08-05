@@ -5251,6 +5251,15 @@ function createArgonLongContentVirtualizer(content, options) {
 		virtualUpdateTimer = setTimeout(function () {
 			virtualUpdateInProgress = false;
 			virtualUpdateTimer = null;
+			// A fast jump away from the article tail can happen while mounting is
+			// frozen. Re-evaluate once the freeze ends so the middle is not left
+			// with only empty placeholders and no further scroll event to recover it.
+			if (tailLockActive && scrollDirection === "up") {
+				updateVirtualTailLock();
+				if (!tailLockActive) {
+					scheduleUpdate();
+				}
+			}
 		}, 150);
 	}
 
@@ -5542,7 +5551,9 @@ function createArgonLongContentVirtualizer(content, options) {
 		}
 		scrollHandler = throttleVirtualUpdate(function () {
 			var currentScrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
-			if (!virtualUpdateInProgress) {
+			// Tail lock disables root scroll anchoring, so movement here is safe to
+			// treat as navigation even during the normal mount/unmount freeze.
+			if (!virtualUpdateInProgress || tailLockActive) {
 				scrollDirection = getVirtualScrollDirection(lastScrollTop, currentScrollTop);
 			}
 			lastScrollTop = currentScrollTop;

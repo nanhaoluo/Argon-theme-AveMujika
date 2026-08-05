@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ARGON-MIDDLE-VISIBILITY-BOOTING</title>
+<style>
+	body { margin: 0; font: 16px/1.6 Arial, sans-serif; }
+	#post_content { margin: 0 auto; max-width: 720px; }
+	.fixture-section { box-sizing: border-box; height: 360px; margin: 0; padding: 24px; }
+	#probe-status {
+		position: fixed;
+		top: 12px;
+		left: 12px;
+		right: 12px;
+		z-index: 20;
+		max-height: 45vh;
+		overflow: auto;
+		padding: 12px;
+		background: #fff;
+		border: 1px solid #777;
+		white-space: pre-wrap;
+		font: 12px/1.5 Consolas, monospace;
+	}
+</style>
+</head>
+<body>
+<div id="probe-status">Preparing middle-section visibility probe...</div>
+<main id="post_content"></main>
+
+<script src="../assets/vendor/jquery/jquery.min.js"></script>
+<script>
+window.ArgonDebug = { warn: function(){}, info: function(){}, error: function(){} };
+window.lazyloadInit = function(){};
+window.zoomifyInit = function(){};
+window.highlightJsRender = function(){};
+window.tippyInit = function(){};
+window.patchHeadIndexForVirtualContent = function(){};
+window.escapeJqueryId = function(id){ return id; };
+var zoomifyInstances = [];
+var highlightObserver = null;
+
+function wait(ms) {
+	return new Promise(function(resolve) { setTimeout(resolve, ms); });
+}
+
+function mountedIndexes() {
+	return Array.prototype.map.call(
+		document.querySelectorAll('#post_content .argon-virtual-section-mounted'),
+		function(node) { return Number(node.getAttribute('data-argon-virtual-index')); }
+	);
+}
+
+function setResult(pass, message, detail) {
+	var status = document.getElementById('probe-status');
+	status.textContent = (pass ? 'PASS' : 'FAIL: ' + message) + '\n\n' + JSON.stringify(detail, null, 2);
+	status.style.borderColor = pass ? '#18864b' : '#c03434';
+	document.title = pass ? 'ARGON-MIDDLE-VISIBILITY-PASS' : 'ARGON-MIDDLE-VISIBILITY-FAIL:' + message;
+	window.__probeResult = { pass: pass, message: message, detail: detail };
+}
+
+async function waitForTailLock(sectionCount) {
+	var deadline = Date.now() + 1800;
+	while (Date.now() < deadline) {
+		var mounted = mountedIndexes();
+		if (mounted.length && Math.min.apply(Math, mounted) >= sectionCount - 8) {
+			return mounted;
+		}
+		await wait(20);
+	}
+	return mountedIndexes();
+}
+
+async function runProbe() {
+	var source = await fetch('../argontheme.js', { cache: 'no-store' }).then(function(response) {
+		return response.text();
+	});
+	var start = source.indexOf('function getVirtualScrollDirection(previousScrollTop, currentScrollTop)');
+	var end = source.indexOf('function patchHeadIndexForVirtualContent()');
+	if (start < 0 || end <= start) {
+		return setResult(false, 'VIRTUALIZER_SOURCE_MISSING', { start: start, end: end });
+	}
+	var script = document.createElement('script');
+	script.textContent = source.slice(start, end);
+	document.body.appendChild(script);
+
+	var sectionCount = 120;
+	var sourceSections = [];
+	for (var i = 0; i < sectionCount; i++) {
+		sourceSections.push({
+			html: '<p class="fixture-section">VISIBLE SECTION ' + i + '</p>',
+			headers: [],
+			nodeIds: [],
+			textCount: 120,
+			estimatedHeight: 360
+		});
+	}
+
+	var content = document.getElementById('post_content');
+	window.ArgonLongContentVirtualizer = createArgonLongContentVirtualizer(content, {
+		sourceSections: sourceSections,
+		targetTextLength: 1800,
+		maxPlainTextBlockLength: 2200,
+		maxNodesPerSection: 18,
+		keepRange: 2,
+		viewportBuffer: 900,
+		rootMargin: '1200px 0px 1200px 0px'
+	});
+	window.ArgonLongContentVirtualizer.init();
+	await wait(250);
+
+	var targetIndex = Math.floor(sectionCount / 2);
+	var target = content.querySelector('[data-argon-virtual-index="' + targetIndex + '"]');
+	var targetTop = target.getBoundingClientRect().top + window.pageYOffset - 120;
+
+	window.scrollTo(0, document.documentElement.scrollHeight);
+	var tailMounted = await waitForTailLock(sectionCount);
+	window.scrollTo(0, targetTop);
+	await wait(500);
+
+	var visible = Array.prototype.map.call(content.querySelectorAll('.argon-virtual-section'), function(node) {
+		var rect = node.getBoundingClientRect();
+		return {
+			index: Number(node.getAttribute('data-argon-virtual-index')),
+			top: Math.round(rect.top),
+			bottom: Math.round(rect.bottom),
+			mounted: node.classList.contains('argon-virtual-section-mounted'),
+			text: (node.innerText || '').trim()
+		};
+	}).filter(function(section) {
+		return section.bottom > 0 && section.top < window.innerHeight;
+	});
+	var hasVisibleText = visible.some(function(section) {
+		return section.mounted && section.text.indexOf('VISIBLE SECTION') !== -1;
+	});
+	var detail = {
+		targetIndex: targetIndex,
+		tailMounted: tailMounted,
+		finalMounted: mountedIndexes(),
+		visible: visible,
+		scrollY: Math.round(window.pageYOffset)
+	};
+	setResult(hasVisibleText, hasVisibleText ? '' : 'MIDDLE_SECTION_TEXT_MISSING', detail);
+}
+
+window.addEventListener('load', function() {
+	runProbe().catch(function(error) {
+		setResult(false, 'PROBE_EXCEPTION', { message: error && error.message, stack: error && error.stack });
+	});
+});
+</script>
+</body>
+</html>
