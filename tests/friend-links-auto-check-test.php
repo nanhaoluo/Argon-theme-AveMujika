@@ -157,8 +157,8 @@ $open_modal_start = strpos($page, 'window.openEditModal = function(id)');
 $open_modal_end = strpos($page, 'window.closeEditModal = function()', $open_modal_start);
 $open_modal_section = substr($page, $open_modal_start, $open_modal_end - $open_modal_start);
 argon_flink_test_assert(
-    strpos($open_modal_section, "classList.add('show')") !== false
-    && strpos($open_modal_section, "classList.add('show')") < strpos($open_modal_section, "flinkAction('get'"),
+    strpos($open_modal_section, "window.ArgonMotion.fast(modal, true, { className: 'show' })") !== false
+    && strpos($open_modal_section, "window.ArgonMotion.fast(modal, true, { className: 'show' })") < strpos($open_modal_section, "flinkAction('get'"),
     '编辑窗口仍等待网络请求完成后才打开。'
 );
 argon_flink_test_assert(

@@ -210,11 +210,12 @@ License URI: https://www.gnu.org/licenses/gpl-3.0.html
 	--animation-normal: 250ms;
 	--animation-slow: 400ms;
 	--animation-slower: 600ms;
-	/* Semantic motion tokens: every popup, scroll and zoom reuses these values. */
-	--motion-popup-duration: 200ms;
+	/* Semantic motion tokens: popup and drawer state changes share one fast cadence. */
+	--motion-fast-duration: 150ms;
+	--motion-popup-duration: var(--motion-fast-duration);
 	--motion-popup-stagger: 20ms;
 	--motion-popup-stagger-close: 10ms;
-	--motion-layer-duration: 400ms;
+	--motion-layer-duration: var(--motion-fast-duration);
 	--motion-scroll-duration: 420ms;
 	--motion-scroll-compact-duration: 260ms;
 	--motion-zoom-duration: 360ms;
@@ -7111,8 +7112,8 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 }
 
 .emotion-keyboard {
-	--emotion-keyboard-position-duration: 100ms;
-	--emotion-keyboard-visibility-duration: 90ms;
+	--emotion-keyboard-position-duration: var(--motion-fast-duration);
+	--emotion-keyboard-visibility-duration: var(--motion-fast-duration);
 	--emotion-keyboard-visibility-easing: var(--ease-standard-accelerate);
 
 	width: min(720px, calc(100vw - 24px));
@@ -7180,7 +7181,7 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 .emotion-keyboard.comment-emotion-keyboard-open {
 
-	--emotion-keyboard-visibility-duration: 120ms;
+	--emotion-keyboard-visibility-duration: var(--motion-fast-duration);
 
 	--emotion-keyboard-visibility-easing: var(--ease-standard-decelerate);
 
@@ -18232,7 +18233,7 @@ article img:not([loading="lazy"]),
 	}
 
 	#leftbar_backdrop {
-		transition: opacity var(--animation-normal) var(--ease-standard), visibility var(--animation-normal);
+		transition: opacity var(--motion-fast-duration) var(--motion-ease-exit), visibility 0s linear var(--motion-fast-duration);
 	}
 
 	@keyframes modernSlideInDown {
@@ -20131,5 +20132,54 @@ html.darkmode #emotion_keyboard.emotion-keyboard-root-layer {
 	.emotion-keyboard-navigation {
 		grid-template-columns: 34px minmax(0, 1fr) 34px;
 		padding: 5px;
+	}
+}
+
+/* Keep the mobile drawer content in the same fast cadence as its surface. */
+@keyframes argonDrawerContentIn {
+	from {
+		opacity: 0;
+		transform: translateY(6px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@media screen and (max-width: 900px) {
+	html.leftbar-opened #leftbar .leftbar-mobile-profile,
+	html.leftbar-opened #leftbar .leftbar-mobile-search,
+	html.leftbar-opened #leftbar .leftbar-mobile-menu-section,
+	html.leftbar-opened #leftbar .leftbar-mobile-footer {
+		animation: argonDrawerContentIn var(--motion-fast-duration) var(--motion-ease-enter) both !important;
+		animation-delay: 0ms !important;
+	}
+
+	html.leftbar-opened #leftbar .leftbar-mobile-avatar,
+	html.leftbar-opened #leftbar .leftbar-mobile-user-info,
+	html.leftbar-opened #leftbar .leftbar-mobile-user-name .duolingo-streak,
+	html.leftbar-opened #leftbar .leftbar-mobile-stats,
+	html.leftbar-opened #leftbar .leftbar-mobile-menu-item,
+	html.leftbar-opened #leftbar .leftbar-mobile-profile::before,
+	html.leftbar-opened #leftbar .leftbar-mobile-profile::after {
+		animation: none !important;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	@keyframes argonDrawerContentIn {
+		from,
+		to {
+			opacity: 1;
+			transform: none;
+		}
+	}
+
+	html.leftbar-opened #leftbar .leftbar-mobile-profile,
+	html.leftbar-opened #leftbar .leftbar-mobile-search,
+	html.leftbar-opened #leftbar .leftbar-mobile-menu-section,
+	html.leftbar-opened #leftbar .leftbar-mobile-footer {
+		animation: none !important;
 	}
 }

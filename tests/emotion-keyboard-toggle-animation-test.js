@@ -72,7 +72,7 @@ const context = {
 	emotionKeyboardOpenFrame: 0,
 	emotionKeyboardCloseTimer: 0,
 	emotionKeyboardCloseToken: 0,
-	emotionKeyboardCloseDuration: 90,
+	emotionKeyboardCloseDuration: 150,
 	emotionKeyboardPositionAnimation: null,
 	lazyloadStickers: () => {},
 	argonBuildStickerMap: () => {},
@@ -89,6 +89,15 @@ const context = {
 	},
 	window: {
 		matchMedia: () => ({ matches: reducedMotion }),
+		ArgonMotion: {
+			duration: () => 150,
+			fast: (target, isOpen, options = {}) => {
+				const className = options.className || 'show';
+				if (isOpen) target.classList.add(className);
+				else target.classList.remove(className);
+				return !!isOpen;
+			}
+		},
 		requestAnimationFrame: (callback) => {
 			const id = nextFrameId++;
 			frames.set(id, callback);
@@ -162,8 +171,9 @@ context.openEmotionKeyboard();
 assert.ok(keyboard.classList.contains('comment-emotion-keyboard-open'), 'reduced motion must reveal without waiting for an animation frame');
 context.closeEmotionKeyboard();
 
-assert.match(stylesheet, /--emotion-keyboard-visibility-duration:\s*90ms;/, 'the default close transition must remain brief');
-assert.match(stylesheet, /\.emotion-keyboard\.comment-emotion-keyboard-open\s*\{[^}]*--emotion-keyboard-visibility-duration:\s*120ms;/s, 'the open transition must remain quick and readable');
+assert.match(stylesheet, /--motion-fast-duration:\s*150ms;/, 'the shared fast duration must remain brief');
+assert.match(stylesheet, /\.emotion-keyboard\s*\{[^}]*--emotion-keyboard-visibility-duration:\s*var\(--motion-fast-duration\);/s, 'the default close transition must use the shared fast duration');
+assert.match(stylesheet, /\.emotion-keyboard\.comment-emotion-keyboard-open\s*\{[^}]*--emotion-keyboard-visibility-duration:\s*var\(--motion-fast-duration\);/s, 'the open transition must use the shared fast duration');
 assert.match(stylesheet, /\.emotion-keyboard\.emotion-keyboard-closing\s*\{[^}]*opacity:\s*0;[^}]*translate3d\(0, 3px, 0\) scale\(0\.995\)/s, 'the close state must use restrained movement and scale');
 assert.match(comments, /id="comment_emotion_btn"[^\r\n]*aria-controls="emotion_keyboard"[^\r\n]*aria-expanded="false"/, 'the trigger must expose its collapsed state');
 assert.match(keyboardTemplate, /id="emotion_keyboard"[^>]*aria-hidden="true"/, 'the panel must start hidden from assistive technology');

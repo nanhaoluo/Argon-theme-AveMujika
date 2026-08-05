@@ -41,7 +41,7 @@ if (!function_exists('argon_special_page_surface_open')) {
 		position: fixed;
 		background: var(--color-foreground);
 		top: 0;
-		left: -300px;
+		left: 0;
 		height: 100vh;
 		width: 280px;
 		padding: 0;
@@ -49,9 +49,13 @@ if (!function_exists('argon_special_page_surface_open')) {
 		overflow-x: hidden;
 		z-index: 1002;
 		box-shadow: 0 15px 35px rgba(50, 50, 93, 0.1), 0 5px 15px rgba(0, 0, 0, 0.07) !important;
-		transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+		transform: translateX(-100%);
+		transition: transform var(--motion-fast-duration) var(--motion-ease-exit), box-shadow var(--motion-fast-duration) var(--motion-ease-exit);
 	}
-	html.leftbar-opened body.argon-special-page #leftbar { left: 0; }
+	html.leftbar-opened body.argon-special-page #leftbar {
+		transform: translateX(0);
+		transition-timing-function: var(--motion-ease-enter);
+	}
 	body.argon-special-page .leftbar-mobile-nav { display: flex; flex-direction: column; min-height: 100%; }
 	body.argon-special-page .leftbar-desktop-content { display: none !important; }
 	body.argon-special-page .leftbar-mobile-footer {

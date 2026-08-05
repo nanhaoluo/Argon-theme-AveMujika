@@ -2570,7 +2570,7 @@ function openFeedbackDetail(id) {
 		.then(function(res) {
 			if (res.success) {
 				renderFeedbackDetail(res.data);
-				document.getElementById('feedback-detail-modal').classList.add('show');
+				window.ArgonMotion.fast(document.getElementById('feedback-detail-modal'), true, { className: 'show' });
 			} else {
 				showFeedbackNotice('error', res.message || '<?php _e('反馈不存在', 'argon'); ?>');
 			}
@@ -2689,7 +2689,7 @@ function formatTime(timestamp) {
 }
 
 function closeFeedbackDetail() {
-	document.getElementById('feedback-detail-modal').classList.remove('show');
+	window.ArgonMotion.fast(document.getElementById('feedback-detail-modal'), false, { className: 'show' });
 	currentFeedbackId = null;
 }
 

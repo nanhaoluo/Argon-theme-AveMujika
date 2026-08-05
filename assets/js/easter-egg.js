@@ -48,7 +48,7 @@
             
             setTimeout(function() {
                 badBtn.style.transition = '';
-                overlay.classList.add('show');
+                window.ArgonMotion.fast(overlay, true, { className: 'show' });
                 overlay.setAttribute('aria-hidden', 'false');
                 startTracking();
             }, 20);
@@ -58,7 +58,7 @@
     function hideModal() {
         var overlay = document.getElementById('git-easter-egg-overlay');
         if (overlay) {
-            overlay.classList.remove('show');
+            window.ArgonMotion.fast(overlay, false, { className: 'show' });
             overlay.setAttribute('aria-hidden', 'true');
         }
         stopTracking();

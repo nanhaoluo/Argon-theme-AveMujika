@@ -28,8 +28,9 @@
 		'.feedback-viewer-image'
 	].join(',');
 	var durationTokens = {
-		popup: ['--motion-popup-duration', 200],
-		layer: ['--motion-layer-duration', 400],
+		fast: ['--motion-fast-duration', 150],
+		popup: ['--motion-fast-duration', 150],
+		layer: ['--motion-fast-duration', 150],
 		scroll: ['--motion-scroll-duration', 420],
 		scrollCompact: ['--motion-scroll-compact-duration', 260],
 		zoom: ['--motion-zoom-duration', 360]
@@ -42,6 +43,49 @@
 	function targetElement(target) {
 		if (!target) return null;
 		return target.nodeType === 1 ? target : target.parentElement;
+	}
+
+	function resolveElement(target) {
+		if (typeof target === 'string') {
+			try {
+				return document.querySelector(target);
+			} catch (error) {
+				return null;
+			}
+		}
+		if (target && target.jquery) target = target[0];
+		return targetElement(target);
+	}
+
+	function syncAttribute(target, name, value) {
+		if (!target) return;
+		var elements = [];
+		if (typeof target === 'string' && document.querySelectorAll) {
+			try {
+				elements = Array.prototype.slice.call(document.querySelectorAll(target));
+			} catch (error) {
+				return;
+			}
+		} else {
+			var element = resolveElement(target);
+			if (element) elements = [element];
+		}
+		elements.forEach(function (element) {
+			if (element && element.setAttribute) element.setAttribute(name, value);
+		});
+	}
+
+	/* Shared state toggle for fast popup, drawer and menu transitions. */
+	function fast(target, isOpen, options) {
+		options = options || {};
+		var element = resolveElement(target);
+		if (!element || !element.classList) return false;
+		var className = options.className || 'show';
+		var open = isOpen == null ? !element.classList.contains(className) : !!isOpen;
+		element.classList.toggle(className, open);
+		if (options.ariaHiddenTarget) syncAttribute(options.ariaHiddenTarget, 'aria-hidden', open ? 'false' : 'true');
+		if (options.ariaExpandedTarget) syncAttribute(options.ariaExpandedTarget, 'aria-expanded', open ? 'true' : 'false');
+		return open;
 	}
 
 	function closestPopupSurface(target) {
@@ -194,6 +238,7 @@
 	window.ArgonMotion = {
 		duration: duration,
 		easing: easing,
+		fast: fast,
 		isOutsideClick: isOutsideClick,
 		prefersReducedMotion: prefersReducedMotion,
 		scrollTo: scrollTo,

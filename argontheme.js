@@ -1654,7 +1654,7 @@ function bindArgonPostActionEvents() {
 		.off('click.argonPostActions')
 		.on('click.argonPostActions', '#share_show', function (e) {
 			e.preventDefault();
-			$('#share_container').addClass('opened');
+			window.ArgonMotion.fast(document.getElementById('share_container'), true, { className: 'opened' });
 		})
 		.on('click.argonPostActions', '#share_copy_link', function (e) {
 			e.preventDefault();
@@ -1668,7 +1668,7 @@ function bindArgonPostActionEvents() {
 			var shareContainer = document.getElementById('share_container');
 			if (shareContainer && shareContainer.classList.contains('opened') &&
 				window.ArgonMotion.isOutsideClick(e, shareContainer)) {
-				shareContainer.classList.remove('opened');
+				window.ArgonMotion.fast(shareContainer, false, { className: 'opened' });
 			}
 		});
 }
@@ -1890,10 +1890,10 @@ const ARGON_FABTN_INIT_MAX_ATTEMPTS = 40;
 	});
 	//博客设置
 	$toggleBlogSettings.on("click", function () {
-		$("#float_action_buttons").toggleClass("blog_settings_opened");
+		window.ArgonMotion.fast(document.getElementById("float_action_buttons"), null, { className: "blog_settings_opened" });
 	});
 	$("#close_blog_settings").on("click", function () {
-		$("#float_action_buttons").removeClass("blog_settings_opened");
+		window.ArgonMotion.fast(document.getElementById("float_action_buttons"), false, { className: "blog_settings_opened" });
 	});
 	$(document)
 		.off("click.argonBlogSettingsOutside")
@@ -1904,7 +1904,7 @@ const ARGON_FABTN_INIT_MAX_ATTEMPTS = 40;
 			if (!root || !popup || !root.classList.contains("blog_settings_opened")) return;
 			if (toggle && toggle.contains(event.target)) return;
 			if (window.ArgonMotion.isOutsideClick(event, popup)) {
-				root.classList.remove("blog_settings_opened");
+				window.ArgonMotion.fast(root, false, { className: "blog_settings_opened" });
 			}
 		});
 	$("#blog_setting_darkmode_switch .custom-toggle-slider").on("click", function () {
@@ -3353,9 +3353,9 @@ function suspendAnimatedStickers(exceptGroup) {
 var emotionKeyboardOpenFrame = 0;
 var emotionKeyboardCloseTimer = 0;
 var emotionKeyboardCloseToken = 0;
-var emotionKeyboardCloseDuration = 90;
+var emotionKeyboardCloseDuration = window.ArgonMotion ? window.ArgonMotion.duration("fast") : 150;
 var emotionKeyboardPositionAnimation = null;
-var emotionKeyboardPositionDuration = 100;
+var emotionKeyboardPositionDuration = window.ArgonMotion ? window.ArgonMotion.duration("fast") : 150;
 
 function argonPrefersReducedMotion() {
 	return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -3378,7 +3378,7 @@ function closeEmotionKeyboard() {
 	var button = document.getElementById("comment_emotion_btn");
 	var keyboard = document.getElementById("emotion_keyboard");
 	if (button) {
-		button.classList.remove("comment-emotion-keyboard-open");
+		window.ArgonMotion.fast(button, false, { className: "comment-emotion-keyboard-open" });
 		button.setAttribute("aria-expanded", "false");
 	}
 	if (!keyboard) return;
@@ -3396,7 +3396,8 @@ function closeEmotionKeyboard() {
 
 	var wasVisible = keyboard.classList.contains("comment-emotion-keyboard-open")
 		|| keyboard.classList.contains("emotion-keyboard-opening");
-	keyboard.classList.remove("emotion-keyboard-opening", "comment-emotion-keyboard-open");
+	keyboard.classList.remove("emotion-keyboard-opening");
+	window.ArgonMotion.fast(keyboard, false, { className: "comment-emotion-keyboard-open" });
 	emotionKeyboardCloseToken += 1;
 	if (!wasVisible || argonPrefersReducedMotion()) {
 		keyboard.classList.remove("emotion-keyboard-closing");
@@ -3426,10 +3427,11 @@ function openEmotionKeyboard() {
 		window.cancelAnimationFrame(emotionKeyboardOpenFrame);
 		emotionKeyboardOpenFrame = 0;
 	}
-	keyboard.classList.remove("emotion-keyboard-closing", "comment-emotion-keyboard-open");
+	keyboard.classList.remove("emotion-keyboard-closing");
+	window.ArgonMotion.fast(keyboard, false, { className: "comment-emotion-keyboard-open" });
 	keyboard.classList.add("emotion-keyboard-opening");
 	keyboard.setAttribute("aria-hidden", "false");
-	button.classList.add("comment-emotion-keyboard-open");
+	window.ArgonMotion.fast(button, true, { className: "comment-emotion-keyboard-open" });
 	button.setAttribute("aria-expanded", "true");
 
 	lazyloadStickers();
@@ -3441,7 +3443,7 @@ function openEmotionKeyboard() {
 	var revealKeyboard = function () {
 		emotionKeyboardOpenFrame = 0;
 		keyboard.classList.remove("emotion-keyboard-opening");
-		keyboard.classList.add("comment-emotion-keyboard-open");
+		window.ArgonMotion.fast(keyboard, true, { className: "comment-emotion-keyboard-open" });
 	};
 	if (argonPrefersReducedMotion()) {
 		revealKeyboard();
@@ -3913,7 +3915,7 @@ function showCommentEditHistory(id) {
 			}
 			$("#comment_edit_history .modal-body").hide();
 			$("#comment_edit_history .modal-body").html(result.history);
-			$("#comment_edit_history .modal-body").fadeIn(300);
+			$("#comment_edit_history .modal-body").fadeIn(window.ArgonMotion.duration('fast'));
 		},
 		error: function (result) {
 			if ($("#comment_edit_history").data("request-id") != requestID) {
@@ -3921,7 +3923,7 @@ function showCommentEditHistory(id) {
 			}
 			$("#comment_edit_history .modal-body").hide();
 			$("#comment_edit_history .modal-body").html(__("加载失败"));
-			$("#comment_edit_history .modal-body").fadeIn(300);
+			$("#comment_edit_history .modal-body").fadeIn(window.ArgonMotion.duration('fast'));
 		}
 	});
 }
@@ -7786,7 +7788,7 @@ function setSiteRssOpen(details, open) {
 			if (!details.hasAttribute("open") || details.classList.contains("site-rss-closing")) {
 				return;
 			}
-			details.classList.add("site-rss-opened");
+			window.ArgonMotion.fast(details, true, { className: "site-rss-opened" });
 			details.classList.remove("site-rss-opening");
 		});
 		return;
@@ -7794,7 +7796,8 @@ function setSiteRssOpen(details, open) {
 	if (!details.hasAttribute("open")) {
 		return;
 	}
-	details.classList.remove("site-rss-opening", "site-rss-opened");
+	details.classList.remove("site-rss-opening");
+	window.ArgonMotion.fast(details, false, { className: "site-rss-opened" });
 	details.classList.add("site-rss-closing");
 	if (details._argonRssTimer) {
 		clearTimeout(details._argonRssTimer);
@@ -7954,9 +7957,11 @@ $(document).on("keydown", function (e) {
 	}
 
 	function setSidebarOpen(open, trigger, restoreFocus) {
-		$("html").toggleClass("leftbar-opened", open);
-		$("#fabtn_open_sidebar, #open_sidebar").attr("aria-expanded", open ? "true" : "false");
-		$("#leftbar_mobile_nav").attr("aria-hidden", open ? "false" : "true");
+		window.ArgonMotion.fast(document.documentElement, open, {
+			className: "leftbar-opened",
+			ariaExpandedTarget: "#fabtn_open_sidebar, #open_sidebar",
+			ariaHiddenTarget: "#leftbar_mobile_nav"
+		});
 		if (open && trigger) {
 			lastSidebarTrigger = trigger;
 			syncMobileDarkmodeAction();

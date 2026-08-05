@@ -99,7 +99,7 @@ const button = { getBoundingClientRect: () => buttonRect };
 let closeCalls = 0;
 const positionContext = {
 	emotionKeyboardPositionAnimation: null,
-	emotionKeyboardPositionDuration: 100,
+	emotionKeyboardPositionDuration: 150,
 	argonPrefersReducedMotion: () => false,
 	closeEmotionKeyboard: () => { closeCalls += 1; },
 	document: {
@@ -121,7 +121,7 @@ const positionContext = {
 const position = vm.runInNewContext(`${visibilitySource}\n(${positionSource})`, positionContext);
 position();
 assert.ok(positionAnimation, 'a changed keyboard position must create an animation');
-assert.strictEqual(positionAnimation.options.duration, 100, 'position animation must remain quick but visible');
+assert.strictEqual(positionAnimation.options.duration, 150, 'position animation must use the shared fast duration');
 assert.match(positionAnimation.frames[0].transform, /translate3d\(30px, 250px, 0\)/, 'animation must start from the previous visual position');
 assert.strictEqual(positionAnimation.frames[1].transform, 'translate3d(0, 0, 0) scale(1)', 'animation must finish at the calculated position');
 
@@ -143,7 +143,7 @@ assert.match(
 );
 assert.match(
 	stylesheet,
-	/\.emotion-keyboard\s*\{[^}]*--emotion-keyboard-position-duration:\s*100ms;[^}]*transition:[^}]*left\s+var\(--emotion-keyboard-position-duration\)/s,
+	/\.emotion-keyboard\s*\{[^}]*--emotion-keyboard-position-duration:\s*var\(--motion-fast-duration\);[^}]*transition:[^}]*left\s+var\(--emotion-keyboard-position-duration\)/s,
 	'keyboard horizontal movement must use the fast position transition'
 );
 assert.match(

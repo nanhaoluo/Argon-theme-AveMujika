@@ -1639,7 +1639,7 @@ if (typeof initGeetest4 === 'function') {
             var button = document.getElementById(buttonId);
             if (button) button.disabled = true;
         });
-        if (modal) modal.classList.add('show');
+        if (modal) window.ArgonMotion.fast(modal, true, { className: 'show' });
         flinkAction('get', { id: id }, function(res) {
             if (contextSequence !== editContextSequence) return;
             if (res.success && res.data) {
@@ -1689,7 +1689,7 @@ if (typeof initGeetest4 === 'function') {
         editContextSequence++;
         editDetectSequence++;
         editBacklinkSequence++;
-        document.getElementById('edit-modal').classList.remove('show');
+        window.ArgonMotion.fast(document.getElementById('edit-modal'), false, { className: 'show' });
         clearMessage();
     };
 
