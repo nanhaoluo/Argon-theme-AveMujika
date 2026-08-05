@@ -14,6 +14,13 @@ require_once get_template_directory() . '/easter-eggs.php';
 require_once get_template_directory() . '/inc/ai-spam-prompts.php';
 require_once get_template_directory() . '/inc/ai-summary-prompt.php';
 require_once get_template_directory() . '/inc/friend-link-algorithms.php';
+require_once get_template_directory() . '/inc/bangumi.php';
+
+function argon_register_bangumi_template($templates) {
+	$templates['page-bangumi.php'] = __('追番展示页', 'argon');
+	return $templates;
+}
+add_filter('theme_page_templates', 'argon_register_bangumi_template');
 
 // 禁止移动端浏览器缓存 HTML 页面
 function argon_prevent_mobile_cache() {
@@ -5500,6 +5507,18 @@ function argon_enqueue_qrcode_script() {
 	}
 }
 add_action('wp_enqueue_scripts', 'argon_enqueue_qrcode_script');
+
+// 追番展示页资源只在对应页面加载，数据请求始终通过本站 AJAX 代理完成。
+function argon_enqueue_bangumi_assets() {
+	if (!is_page_template('page-bangumi.php')) {
+		return;
+	}
+	$style_version = function_exists('argon_get_asset_file_version') ? argon_get_asset_file_version('assets/css/bangumi.css') : $GLOBALS['theme_version'];
+	$script_version = function_exists('argon_get_asset_file_version') ? argon_get_asset_file_version('assets/js/bangumi.js') : $GLOBALS['theme_version'];
+	wp_enqueue_style('argon_bangumi', get_template_directory_uri() . '/assets/css/bangumi.css', array('style'), $style_version);
+	wp_enqueue_script('argon_bangumi', get_template_directory_uri() . '/assets/js/bangumi.js', array(), $script_version, true);
+}
+add_action('wp_enqueue_scripts', 'argon_enqueue_bangumi_assets', 20);
 
 // 停用 wp-editormd 插件的 Prism.js，避免与主题的 Prism.js 冲突
 function argon_dequeue_editormd_prism() {

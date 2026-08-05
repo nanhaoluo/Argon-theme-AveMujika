@@ -2730,6 +2730,35 @@ function themeoptions_page(){
 					</tr>
 
 					<tr>
+						<th><label><?php _e('启用追番页', 'argon');?></label></th>
+						<td>
+							<select name="argon_bangumi_enabled">
+								<?php $argon_bangumi_enabled = get_option('argon_bangumi_enabled', 'false'); ?>
+								<option value="false" <?php selected($argon_bangumi_enabled, 'false'); ?>><?php _e('关闭', 'argon');?></option>
+								<option value="true" <?php selected($argon_bangumi_enabled, 'true'); ?>><?php _e('启用', 'argon');?></option>
+							</select>
+							<p class="description"><?php _e('启用后，可将页面模板设置为“追番展示页”，集中展示本地化的 B 站追番数据。', 'argon');?></p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('B 站 UID', 'argon');?></label></th>
+						<td>
+							<input name="argon_bangumi_uid" type="text" class="regular-text" inputmode="numeric" value="<?php echo esc_attr(get_option('argon_bangumi_uid', '349546967')); ?>">
+							<p class="description"><?php _e('填写要展示的 B 站用户 UID，默认值为 349546967。', 'argon');?></p>
+						</td>
+					</tr>
+
+					<tr>
+						<th><label><?php _e('B 站 SESSDATA', 'argon');?></label></th>
+						<td>
+							<input name="argon_bangumi_sessdata" type="password" class="regular-text" autocomplete="new-password" data-argon-sensitive placeholder="<?php esc_attr_e('留空保持现有值', 'argon'); ?>">
+							<label class="argon-sensitive-clear"><input name="argon_bangumi_clear_sessdata" type="checkbox" value="true" data-argon-sensitive> <?php _e('清除已保存的 SESSDATA', 'argon');?></label>
+							<p class="description"><?php _e('SESSDATA 等同半截登录凭证，泄漏后他人可读取你 B 站账号的非公开信息。建议仅在自托管、可信环境中使用。SESSDATA 一般 30 天过期，过期后进度字段会回到空字符串（不报错，仅降级显示）。', 'argon');?></p>
+						</td>
+					</tr>
+
+					<tr>
 						<th><label><?php _e('显示 RSS 订阅链接', 'argon');?></label></th>
 						<td>
 							<select name="argon_show_rss_link">
@@ -7850,6 +7879,39 @@ function argon_update_friend_link_worker_settings(){
 
 }
 
+function argon_clear_bangumi_cache() {
+	if (!function_exists('argon_bangumi_cache_key')) return;
+	for ($type = 1; $type <= 4; $type += 3) {
+		for ($status = 1; $status <= 3; $status++) {
+			for ($pn = 1; $pn <= 100; $pn++) {
+				delete_transient(argon_bangumi_cache_key($type, $status, $pn));
+			}
+		}
+	}
+}
+
+function argon_update_bangumi_sessdata() {
+	if (argon_is_partial_themeoptions_update() && !array_key_exists('argon_bangumi_sessdata', $_POST)) {
+		return;
+	}
+	if (!array_key_exists('argon_bangumi_sessdata', $_POST)) {
+		return;
+	}
+	$clear = isset($_POST['argon_bangumi_clear_sessdata'])
+		&& wp_unslash($_POST['argon_bangumi_clear_sessdata']) === 'true';
+	if ($clear) {
+		delete_option('argon_bangumi_sessdata');
+		argon_clear_bangumi_cache();
+		return;
+	}
+	$value = sanitize_text_field(wp_unslash($_POST['argon_bangumi_sessdata']));
+	if ($value !== '') {
+		$previous = (string)get_option('argon_bangumi_sessdata', '');
+		update_option('argon_bangumi_sessdata', $value, false);
+		if ($previous !== $value) argon_clear_bangumi_cache();
+	}
+}
+
 function argon_update_themeoptions(){
 
 	if (!isset($_POST['update_themeoptions'])){
@@ -7896,6 +7958,9 @@ function argon_update_themeoptions(){
 
 		argon_update_option('argon_show_duolingo_streak');
 		argon_update_option('argon_duolingo_username');
+		argon_update_option('argon_bangumi_enabled');
+		argon_update_option('argon_bangumi_uid');
+		argon_update_bangumi_sessdata();
 		argon_update_option('argon_show_rss_link');
 
 		if (!argon_is_partial_themeoptions_update() || argon_themeoptions_request_has_any(array('argon_show_duolingo_streak', 'argon_duolingo_username'))) {
