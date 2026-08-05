@@ -19879,3 +19879,208 @@ html.darkmode {
 		width: 100%;
 	}
 }
+
+/* Emotion keyboard card readability and theme alignment. */
+#emotion_keyboard.emotion-keyboard-root-layer {
+	background: var(--color-foreground) !important;
+	border: 1px solid var(--color-border) !important;
+	border-radius: var(--card-radius) !important;
+	color: var(--color-text-deeper);
+	box-shadow:
+		0 8px 24px rgba(0, 0, 0, 0.12),
+		0 2px 8px rgba(var(--themecolor-rgbstr), 0.08);
+}
+
+html.darkmode #emotion_keyboard.emotion-keyboard-root-layer {
+	background: var(--color-foreground) !important;
+}
+
+.emotion-keyboard-toolbar {
+	gap: 12px;
+	padding: 12px 14px 10px;
+	background: rgba(var(--themecolor-rgbstr), 0.035);
+	border-bottom-color: var(--color-border);
+}
+
+.emotion-keyboard-content {
+	background: rgba(var(--themecolor-rgbstr), 0.015);
+	scrollbar-color: rgba(var(--themecolor-rgbstr), 0.32) transparent;
+}
+
+.emotion-group:not(.emotion-group-stickers) {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+	gap: 8px;
+	align-content: start;
+	padding: 16px;
+}
+
+.emotion-item {
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 36px;
+	margin: 0;
+	padding: 7px 10px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--card-radius);
+	background: var(--color-widgets);
+	color: var(--color-text-deeper);
+	font: inherit;
+	font-size: 13px;
+	line-height: 1.35;
+	text-align: center;
+	transition:
+		background-color var(--animation-fast) var(--ease-standard),
+		border-color var(--animation-fast) var(--ease-standard),
+		box-shadow var(--animation-fast) var(--ease-standard),
+		color var(--animation-fast) var(--ease-standard),
+		transform var(--animation-fast) var(--ease-standard);
+}
+
+.emotion-item:hover,
+.emotion-item:focus-visible {
+	border-color: rgba(var(--themecolor-rgbstr), 0.55);
+	background: rgba(var(--themecolor-rgbstr), 0.1);
+	color: var(--color-text-deeper);
+	outline: none;
+	box-shadow: 0 3px 10px rgba(var(--themecolor-rgbstr), 0.14);
+	transform: translateY(-1px);
+}
+
+.emotion-item:active {
+	background: rgba(var(--themecolor-rgbstr), 0.16);
+	transform: translateY(0);
+}
+
+.emotion-item.emotion-item-sticker {
+	gap: 5px;
+	min-height: 104px;
+	padding: 6px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--card-radius);
+	background: var(--color-widgets);
+	color: var(--color-text-deeper);
+}
+
+.emotion-group-stickers {
+	grid-template-columns: repeat(auto-fill, minmax(88px, 104px));
+	justify-content: start;
+	gap: 10px;
+}
+
+.emotion-item.emotion-item-sticker:hover,
+.emotion-item.emotion-item-sticker:focus-visible {
+	background: rgba(var(--themecolor-rgbstr), 0.1);
+	color: var(--color-text-deeper);
+}
+
+.emotion-item > img {
+	height: 68px;
+	max-height: 68px;
+	background: var(--color-border-on-foreground);
+	border-radius: max(2px, calc(var(--card-radius) - 1px));
+}
+
+.emotion-item-title {
+	padding: 3px 2px 1px;
+	color: var(--color-text-deeper);
+	font-size: 11px;
+	font-weight: 600;
+}
+
+.emotion-group-description {
+	margin-top: 2px;
+	padding: 9px 0 0;
+	border-top: 1px dashed var(--color-border);
+	color: var(--color-text-deeper);
+	font-size: 11px;
+	line-height: 1.5;
+	text-align: left;
+	opacity: 0.72;
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+
+.emotion-keyboard-navigation {
+	gap: 4px;
+	padding: 6px;
+	border-top: 1px solid var(--color-border);
+	background: rgba(var(--themecolor-rgbstr), 0.035);
+}
+
+.emotion-keyboard-bar {
+	align-items: center;
+	gap: 4px;
+	padding: 2px 0;
+}
+
+.emotion-group-name {
+	min-height: 34px;
+	padding: 7px 12px;
+	border-radius: var(--card-radius);
+	color: var(--color-text-deeper);
+	font-size: 12px;
+	font-weight: 500;
+}
+
+.emotion-group-name:hover,
+.emotion-group-name:focus-visible {
+	background: rgba(var(--themecolor-rgbstr), 0.08);
+	color: var(--themecolor);
+	outline: none;
+}
+
+.emotion-group-name.active {
+	background: rgba(var(--themecolor-rgbstr), 0.12);
+	color: var(--themecolor);
+	font-weight: 600;
+}
+
+.emotion-group-name.active:after {
+	left: 10px;
+	right: 10px;
+	bottom: 2px;
+	height: 2px;
+	border-radius: 2px;
+}
+
+.emotion-keyboard-scroll {
+	min-width: 34px;
+	height: 34px;
+	border-radius: var(--card-radius);
+}
+
+.emotion-keyboard-empty {
+	min-height: 168px;
+	padding: 30px 24px;
+	color: var(--color-text-deeper);
+	opacity: 0.72;
+}
+
+@media screen and (max-width: 560px) {
+	.emotion-group:not(.emotion-group-stickers) {
+		grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+		gap: 7px;
+		padding: 12px;
+	}
+
+	.emotion-group-stickers {
+		grid-template-columns: repeat(auto-fill, minmax(80px, 88px));
+		gap: 8px;
+		padding: 12px;
+	}
+
+	.emotion-item.emotion-item-sticker {
+		min-height: 96px;
+	}
+
+	.emotion-item > img {
+		height: 62px;
+		max-height: 62px;
+	}
+
+	.emotion-keyboard-navigation {
+		grid-template-columns: 34px minmax(0, 1fr) 34px;
+		padding: 5px;
+	}
+}

@@ -39,17 +39,19 @@
 					}
 					if (isset($emotion['type']) && $emotion['type'] == 'text'){
 						$itemSearchText = trim($emotion['text'] . ' ' . $title);
-						echo "<div class='emotion-item' text='" . esc_attr($emotion['text']) . "' data-search='" . esc_attr($itemSearchText) . "'>" . esc_html($emotion['text']) . "</div>";
+						$textLabel = $title !== '' ? $title : $emotion['text'];
+						echo "<button type='button' class='emotion-item' text='" . esc_attr($emotion['text']) . "' data-search='" . esc_attr($itemSearchText) . "' aria-label='" . esc_attr($textLabel) . "'>" . esc_html($emotion['text']) . "</button>";
 					}
 					if (isset($emotion['type']) && $emotion['type'] == 'sticker'){
 						$animatedClass = !empty($emotion['animated']) ? ' emotion-item-animated' : '';
 						$animatedValue = !empty($emotion['animated']) ? 'true' : 'false';
 						$itemSearchText = trim($emotion['code'] . ' ' . $title);
-						echo "<div class='emotion-item emotion-item-sticker" . esc_attr($animatedClass) . "' code='" . esc_attr($emotion['code']) . "' data-search='" . esc_attr($itemSearchText) . "'><img src='" . esc_attr($stickerPlaceholder) . "' data-sticker-src='" . esc_url($emotion['src']) . "' data-sticker-animated='" . esc_attr($animatedValue) . "' alt='" . esc_attr($title) . "' loading='lazy' decoding='async' referrerpolicy='strict-origin-when-cross-origin' draggable='false'/>";
+						$stickerLabel = $title !== '' ? $title : $emotion['code'];
+						echo "<button type='button' class='emotion-item emotion-item-sticker" . esc_attr($animatedClass) . "' code='" . esc_attr($emotion['code']) . "' data-search='" . esc_attr($itemSearchText) . "' aria-label='" . esc_attr($stickerLabel) . "'><img src='" . esc_attr($stickerPlaceholder) . "' data-sticker-src='" . esc_url($emotion['src']) . "' data-sticker-animated='" . esc_attr($animatedValue) . "' alt='" . esc_attr($stickerLabel) . "' loading='lazy' decoding='async' referrerpolicy='strict-origin-when-cross-origin' draggable='false'/>";
 						if ($title !== ''){
 							echo "<span class='emotion-item-title' title='" . esc_attr($title) . "'>" . esc_html($title) . "</span>";
 						}
-						echo "</div>";
+						echo "</button>";
 					}
 				}
 				if ($footerParts){

@@ -81,6 +81,13 @@ argon_emotion_search_assert(
 );
 
 argon_emotion_search_assert(
+	strpos($template, "<button type='button' class='emotion-item'") !== false
+	&& strpos($template, "<button type='button' class='emotion-item emotion-item-sticker") !== false
+	&& strpos($template, "aria-label='") !== false,
+	'Emotion items must render as accessible buttons.'
+);
+
+argon_emotion_search_assert(
 	strpos($themejs, 'function filterEmotionKeyboard(value)') !== false
 	&& strpos($themejs, 'function resetEmotionKeyboardSearch(reposition)') !== false
 	&& strpos($themejs, 'toLocaleLowerCase()') !== false
@@ -102,6 +109,14 @@ argon_emotion_search_assert(
 	&& strpos($themejs, 'Math.ceil(toolbarRect.bottom) + 10') !== false
 	&& strpos($themejs, '$(document).on("pjax:beforeReplace"') !== false,
 	'表情面板没有脱离裁剪上下文、避开顶栏，或 PJAX 后仍会遗留旧节点。'
+);
+
+argon_emotion_search_assert(
+	preg_match('/#emotion_keyboard\.emotion-keyboard-root-layer\s*\{[^}]*background:\s*var\(--color-foreground\)\s*!important;[^}]*border:\s*1px solid var\(--color-border\)\s*!important;[^}]*border-radius:\s*var\(--card-radius\)\s*!important;/s', $style) === 1
+	&& preg_match('/html\.darkmode #emotion_keyboard\.emotion-keyboard-root-layer\s*\{[^}]*background:\s*var\(--color-foreground\)\s*!important;/s', $style) === 1
+	&& preg_match('/\.emotion-group-stickers\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(88px,\s*104px\)\);[^}]*justify-content:\s*start;/s', $style) === 1
+	&& preg_match('/\.emotion-group-description\s*\{[^}]*color:\s*var\(--color-text-deeper\);[^}]*white-space:\s*normal;/s', $style) === 1,
+	'Emotion keyboard cards must use readable theme surfaces in light and dark modes.'
 );
 
 if ($failures) {
