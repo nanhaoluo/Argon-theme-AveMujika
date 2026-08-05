@@ -70,6 +70,8 @@ assert.strictEqual(pendingFrames.length, 0, 'closed keyboard must not schedule a
 
 const positionSource = extractFunction('positionEmotionKeyboard');
 assert.ok(positionSource, 'keyboard position function is missing');
+const visibilitySource = extractFunction('isCommentEmotionButtonVisible');
+assert.ok(visibilitySource, 'emotion button visibility check is missing');
 
 const body = {};
 const animationRects = [
@@ -92,12 +94,13 @@ const keyboard = {
 		return positionAnimation;
 	}
 };
-const button = {
-	getBoundingClientRect: () => ({ top: 100, bottom: 140, left: 200, width: 40 })
-};
+let buttonRect = { top: 100, right: 240, bottom: 140, left: 200, width: 40 };
+const button = { getBoundingClientRect: () => buttonRect };
+let closeCalls = 0;
 const positionContext = {
 	emotionKeyboardPositionAnimation: null,
 	emotionKeyboardPositionDuration: 100,
+	closeEmotionKeyboard: () => { closeCalls += 1; },
 	document: {
 		body,
 		getElementById: (id) => {
@@ -114,12 +117,18 @@ const positionContext = {
 		matchMedia: () => ({ matches: false })
 	}
 };
-const position = vm.runInNewContext(`(${positionSource})`, positionContext);
+const position = vm.runInNewContext(`${visibilitySource}\n(${positionSource})`, positionContext);
 position();
 assert.ok(positionAnimation, 'a changed keyboard position must create an animation');
 assert.strictEqual(positionAnimation.options.duration, 100, 'position animation must remain quick but visible');
 assert.match(positionAnimation.frames[0].transform, /translate3d\(30px, 250px, 0\)/, 'animation must start from the previous visual position');
 assert.strictEqual(positionAnimation.frames[1].transform, 'translate3d(0, 0, 0) scale(1)', 'animation must finish at the calculated position');
+
+const positionedTop = keyboard.style.top;
+buttonRect = { top: -60, right: 240, bottom: -20, left: 200, width: 40 };
+position();
+assert.strictEqual(closeCalls, 1, 'an open keyboard must close when its trigger leaves the viewport');
+assert.strictEqual(keyboard.style.top, positionedTop, 'an invisible trigger must not reposition the keyboard');
 
 assert.match(
 	themeScript,

@@ -3363,6 +3363,13 @@ function closeEmotionKeyboard() {
 
 var emotionKeyboardPositionAnimation = null;
 var emotionKeyboardPositionDuration = 100;
+function isCommentEmotionButtonVisible(btnRect, viewportTopOffset) {
+	return btnRect.bottom > viewportTopOffset
+		&& btnRect.top < window.innerHeight
+		&& btnRect.right > 0
+		&& btnRect.left < window.innerWidth;
+}
+
 function positionEmotionKeyboard() {
 	var btn = document.getElementById("comment_emotion_btn");
 	var keyboard = document.getElementById("emotion_keyboard");
@@ -3375,8 +3382,6 @@ function positionEmotionKeyboard() {
 	keyboard.classList.add("emotion-keyboard-root-layer");
 	
 	var btnRect = btn.getBoundingClientRect();
-	var keyboardHeight = keyboard.offsetHeight;
-	var keyboardWidth = keyboard.offsetWidth;
 	var viewportTopOffset = 10;
 	var toolbar = document.getElementById("navbar-main");
 	if (toolbar) {
@@ -3386,6 +3391,12 @@ function positionEmotionKeyboard() {
 			viewportTopOffset = Math.max(viewportTopOffset, Math.ceil(toolbarRect.bottom) + 10);
 		}
 	}
+	if (!isCommentEmotionButtonVisible(btnRect, viewportTopOffset)) {
+		closeEmotionKeyboard();
+		return;
+	}
+	var keyboardHeight = keyboard.offsetHeight;
+	var keyboardWidth = keyboard.offsetWidth;
 	var viewportTop = window.scrollY + viewportTopOffset;
 	var viewportBottom = window.scrollY + window.innerHeight - 10;
 	
