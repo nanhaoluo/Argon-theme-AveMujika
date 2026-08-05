@@ -86,6 +86,21 @@ argon_special_surface_assert(
     'bangumi page content must use one shared page surface below the header without changing item-card ownership'
 );
 
+argon_special_surface_assert(
+    $bangumiCss !== false
+    && strpos($bangumiCss, '.bangumi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(172px, 1fr)); gap: 14px; }') !== false
+    && strpos($bangumiCss, '@media screen and (min-width: 1200px)') === false
+    && strpos($bangumiCss, '.bangumi-card-body { display: flex; min-width: 0; flex: 1; flex-direction: column; padding: 11px 12px 12px; }') !== false
+    && strpos($bangumiCss, 'font-size: 14px; font-weight: 600; line-height: 1.45;') !== false,
+    'bangumi desktop grid must derive dense card columns from its container width'
+);
+
+argon_special_surface_assert(
+    $bangumi !== false
+    && strpos($bangumi, "'subtitle' =>") === false,
+    'bangumi page header must not render the removed descriptive subtitle'
+);
+
 if ($failures) {
     fwrite(STDERR, "Special page surface contract test failed:\n- " . implode("\n- ", $failures) . "\n");
     exit(1);

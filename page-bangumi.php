@@ -78,7 +78,6 @@ argon_special_page_surface_open('bangumi-page');
 			'icon' => 'play-circle',
 			'title_id' => 'bangumi-page-title',
 			'title' => __('正在追番', 'argon'),
-			'subtitle' => __('把正在追的故事，整理成一份轻盈的本地清单。', 'argon'),
 			'stats' => $bangumi_header_stats,
 		));
 		?>
