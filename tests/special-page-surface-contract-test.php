@@ -7,6 +7,7 @@ $ai = file_get_contents($root . '/ai-summary-query.php');
 $friends = file_get_contents($root . '/friend-links.php');
 $feedback = file_get_contents($root . '/feedback.php');
 $bangumiJs = file_get_contents($root . '/assets/js/bangumi.js');
+$bangumiCss = file_get_contents($root . '/assets/css/bangumi.css');
 $failures = array();
 
 function argon_special_surface_assert($condition, $message) {
@@ -59,6 +60,21 @@ argon_special_surface_assert(
     $bangumiJs !== false
     && strpos($bangumiJs, "getElementById('bangumi-stat-' + key)") !== false,
     'bangumi client must update shared header statistic values'
+);
+
+$bangumi_card_rule = '';
+if ($bangumiCss !== false && preg_match('/\.bangumi-card\s*\{([^}]*)\}/s', $bangumiCss, $matches) === 1) {
+    $bangumi_card_rule = $matches[1];
+}
+
+argon_special_surface_assert(
+    $bangumiJs !== false
+    && substr_count($bangumiJs, 'class="bangumi-card card shadow-sm bg-white border-0"') === 2
+    && $bangumi_card_rule !== ''
+    && strpos($bangumi_card_rule, 'background:') === false
+    && strpos($bangumi_card_rule, 'box-shadow:') === false
+    && strpos($bangumiCss, 'html.darkmode .bangumi-card {') === false,
+    'bangumi cards must reuse the shared Argon card surface without overriding its background or base shadow'
 );
 
 if ($failures) {
