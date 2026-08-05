@@ -5279,6 +5279,12 @@ function argon_friend_links_rewrite() {
     add_rewrite_rule('^friends/?$', 'index.php?argon_friend_links=1', 'top');
 }
 
+// 追番展示页 URL 重写
+add_action('init', 'argon_bangumi_rewrite');
+function argon_bangumi_rewrite() {
+    add_rewrite_rule('^bangumi/?$', 'index.php?argon_bangumi_view=1', 'top');
+}
+
 // Worker 实时状态页 URL 重写
 add_action('init', 'argon_worker_status_rewrite');
 function argon_worker_status_rewrite() {
@@ -5293,6 +5299,16 @@ function argon_worker_status_maybe_flush_rewrite_rules() {
 
     flush_rewrite_rules(false);
     update_option('argon_worker_status_rewrite_version', $rewrite_version, false);
+}
+
+// 直接覆盖主题文件时，为新增的固定入口刷新一次 rewrite 规则。
+add_action('init', 'argon_bangumi_maybe_flush_rewrite_rules', 99);
+function argon_bangumi_maybe_flush_rewrite_rules() {
+    $rewrite_version = '1';
+    if (get_option('argon_bangumi_rewrite_version') === $rewrite_version) return;
+
+    flush_rewrite_rules(false);
+    update_option('argon_bangumi_rewrite_version', $rewrite_version, false);
 }
 
 // 反馈页面 URL 重写
@@ -5313,6 +5329,7 @@ add_action('after_switch_theme', 'argon_flush_rewrite_rules');
 add_action('upgrader_process_complete', 'argon_flush_rewrite_rules');
 function argon_flush_rewrite_rules() {
     argon_friend_links_rewrite();
+    argon_bangumi_rewrite();
     argon_worker_status_rewrite();
     argon_feedback_rewrite();
     argon_ai_query_rewrite();
@@ -5322,6 +5339,7 @@ function argon_flush_rewrite_rules() {
 add_filter('query_vars', 'argon_friend_links_query_vars');
 function argon_friend_links_query_vars($vars) {
     $vars[] = 'argon_friend_links';
+    $vars[] = 'argon_bangumi_view';
     $vars[] = 'argon_worker_status';
     $vars[] = 'argon_feedback_view';
     $vars[] = 'argon_ai_query';
@@ -5335,6 +5353,15 @@ function argon_friend_links_template() {
         include(get_template_directory() . '/friend-links.php');
         exit;
     }
+}
+
+// 追番展示页固定入口。
+add_action('template_redirect', 'argon_bangumi_template', 0);
+function argon_bangumi_template() {
+    if (!get_query_var('argon_bangumi_view')) return;
+
+    include(get_template_directory() . '/page-bangumi.php');
+    exit;
 }
 
 // Worker 实时状态页对无权限访问统一返回标准 404，避免暴露管理入口。
@@ -5510,7 +5537,7 @@ add_action('wp_enqueue_scripts', 'argon_enqueue_qrcode_script');
 
 // 追番展示页资源只在对应页面加载，数据请求始终通过本站 AJAX 代理完成。
 function argon_enqueue_bangumi_assets() {
-	if (!is_page_template('page-bangumi.php')) {
+	if (!is_page_template('page-bangumi.php') && !get_query_var('argon_bangumi_view')) {
 		return;
 	}
 	$style_version = function_exists('argon_get_asset_file_version') ? argon_get_asset_file_version('assets/css/bangumi.css') : $GLOBALS['theme_version'];

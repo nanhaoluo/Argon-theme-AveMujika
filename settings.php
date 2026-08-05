@@ -2737,7 +2737,8 @@ function themeoptions_page(){
 								<option value="false" <?php selected($argon_bangumi_enabled, 'false'); ?>><?php _e('关闭', 'argon');?></option>
 								<option value="true" <?php selected($argon_bangumi_enabled, 'true'); ?>><?php _e('启用', 'argon');?></option>
 							</select>
-							<p class="description"><?php _e('启用后，可将页面模板设置为“追番展示页”，集中展示本地化的 B 站追番数据。', 'argon');?></p>
+							<a href="<?php echo esc_url(home_url('/bangumi/')); ?>" class="button" target="_blank" rel="noopener noreferrer"><?php _e('打开追番页面', 'argon');?></a>
+							<p class="description"><?php _e('启用后可直接访问 /bangumi/，集中展示本地化的 B 站追番数据，无需新建页面。', 'argon');?></p>
 						</td>
 					</tr>
 
