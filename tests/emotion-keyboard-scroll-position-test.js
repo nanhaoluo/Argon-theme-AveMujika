@@ -100,6 +100,7 @@ let closeCalls = 0;
 const positionContext = {
 	emotionKeyboardPositionAnimation: null,
 	emotionKeyboardPositionDuration: 100,
+	argonPrefersReducedMotion: () => false,
 	closeEmotionKeyboard: () => { closeCalls += 1; },
 	document: {
 		body,
@@ -152,8 +153,8 @@ assert.match(
 );
 assert.match(
 	stylesheet,
-	/\.emotion-keyboard\.emotion-keyboard-position-flip\s*\{[^}]*transition:[^}]*transform\s+0\.3s\s+ease/s,
-	'the transform animation mode must suppress competing top and left transitions'
+	/\.emotion-keyboard\.emotion-keyboard-position-flip\s*\{[^}]*transition:[^}]*transform\s+var\(--emotion-keyboard-visibility-duration\)\s+var\(--emotion-keyboard-visibility-easing\)/s,
+	'the transform animation mode must keep the crisp visibility timing while suppressing top and left transitions'
 );
 
 process.stdout.write('emotion keyboard scroll positioning test passed.\n');

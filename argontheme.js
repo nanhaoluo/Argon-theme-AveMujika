@@ -3350,19 +3350,106 @@ function suspendAnimatedStickers(exceptGroup) {
 	});
 }
 
-function closeEmotionKeyboard() {
-	$("#comment_emotion_btn").removeClass("comment-emotion-keyboard-open");
-	$("#emotion_keyboard").removeClass("comment-emotion-keyboard-open");
-	if (emotionKeyboardPositionAnimation) {
-		emotionKeyboardPositionAnimation.cancel();
-		emotionKeyboardPositionAnimation = null;
+var emotionKeyboardOpenFrame = 0;
+var emotionKeyboardCloseTimer = 0;
+var emotionKeyboardCloseToken = 0;
+var emotionKeyboardCloseDuration = 90;
+var emotionKeyboardPositionAnimation = null;
+var emotionKeyboardPositionDuration = 100;
+
+function argonPrefersReducedMotion() {
+	return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function finishEmotionKeyboardClose(expectedToken) {
+	if (expectedToken !== emotionKeyboardCloseToken) return;
+	var keyboard = document.getElementById("emotion_keyboard");
+	if (emotionKeyboardCloseTimer) {
+		window.clearTimeout(emotionKeyboardCloseTimer);
+		emotionKeyboardCloseTimer = 0;
 	}
+	if (!keyboard || !keyboard.classList.contains("emotion-keyboard-closing")) return;
+	keyboard.classList.remove("emotion-keyboard-closing");
 	resetEmotionKeyboardSearch(false);
 	suspendAnimatedStickers(null);
 }
 
-var emotionKeyboardPositionAnimation = null;
-var emotionKeyboardPositionDuration = 100;
+function closeEmotionKeyboard() {
+	var button = document.getElementById("comment_emotion_btn");
+	var keyboard = document.getElementById("emotion_keyboard");
+	if (button) {
+		button.classList.remove("comment-emotion-keyboard-open");
+		button.setAttribute("aria-expanded", "false");
+	}
+	if (!keyboard) return;
+
+	if (emotionKeyboardOpenFrame) {
+		window.cancelAnimationFrame(emotionKeyboardOpenFrame);
+		emotionKeyboardOpenFrame = 0;
+	}
+	if (emotionKeyboardPositionAnimation) {
+		emotionKeyboardPositionAnimation.cancel();
+		emotionKeyboardPositionAnimation = null;
+	}
+	keyboard.setAttribute("aria-hidden", "true");
+	if (keyboard.classList.contains("emotion-keyboard-closing")) return;
+
+	var wasVisible = keyboard.classList.contains("comment-emotion-keyboard-open")
+		|| keyboard.classList.contains("emotion-keyboard-opening");
+	keyboard.classList.remove("emotion-keyboard-opening", "comment-emotion-keyboard-open");
+	emotionKeyboardCloseToken += 1;
+	if (!wasVisible || argonPrefersReducedMotion()) {
+		keyboard.classList.remove("emotion-keyboard-closing");
+		resetEmotionKeyboardSearch(false);
+		suspendAnimatedStickers(null);
+		return;
+	}
+
+	keyboard.classList.add("emotion-keyboard-closing");
+	var closeToken = emotionKeyboardCloseToken;
+	emotionKeyboardCloseTimer = window.setTimeout(function () {
+		finishEmotionKeyboardClose(closeToken);
+	}, emotionKeyboardCloseDuration + 30);
+}
+
+function openEmotionKeyboard() {
+	var button = document.getElementById("comment_emotion_btn");
+	var keyboard = document.getElementById("emotion_keyboard");
+	if (!button || !keyboard) return;
+
+	if (emotionKeyboardCloseTimer) {
+		window.clearTimeout(emotionKeyboardCloseTimer);
+		emotionKeyboardCloseTimer = 0;
+	}
+	emotionKeyboardCloseToken += 1;
+	if (emotionKeyboardOpenFrame) {
+		window.cancelAnimationFrame(emotionKeyboardOpenFrame);
+		emotionKeyboardOpenFrame = 0;
+	}
+	keyboard.classList.remove("emotion-keyboard-closing", "comment-emotion-keyboard-open");
+	keyboard.classList.add("emotion-keyboard-opening");
+	keyboard.setAttribute("aria-hidden", "false");
+	button.classList.add("comment-emotion-keyboard-open");
+	button.setAttribute("aria-expanded", "true");
+
+	lazyloadStickers();
+	argonBuildStickerMap();
+	positionEmotionKeyboard();
+	updateEmotionKeyboardScrollButtons();
+	if (!keyboard.classList.contains("emotion-keyboard-opening")) return;
+
+	var revealKeyboard = function () {
+		emotionKeyboardOpenFrame = 0;
+		keyboard.classList.remove("emotion-keyboard-opening");
+		keyboard.classList.add("comment-emotion-keyboard-open");
+	};
+	if (argonPrefersReducedMotion()) {
+		revealKeyboard();
+	} else {
+		emotionKeyboardOpenFrame = window.requestAnimationFrame(revealKeyboard);
+	}
+}
+
 function isCommentEmotionButtonVisible(btnRect, viewportTopOffset) {
 	return btnRect.bottom > viewportTopOffset
 		&& btnRect.top < window.innerHeight
@@ -3422,8 +3509,9 @@ function positionEmotionKeyboard() {
 	var positionChanged = !Number.isFinite(currentTop) || !Number.isFinite(currentLeft) || Math.abs(currentTop - top) > 0.5 || Math.abs(currentLeft - left) > 0.5;
 	if (!positionChanged) return;
 
-	var prefersReducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-	var canAnimatePosition = typeof keyboard.animate === "function" && !prefersReducedMotion;
+	var canAnimatePosition = keyboard.classList.contains("comment-emotion-keyboard-open")
+		&& typeof keyboard.animate === "function"
+		&& !argonPrefersReducedMotion();
 	if (canAnimatePosition) {
 		keyboard.classList.add("emotion-keyboard-position-flip");
 	}
@@ -3571,16 +3659,10 @@ function filterEmotionKeyboard(value) {
 
 $(document).on("click", "#comment_emotion_btn", function (e) {
 	e.stopPropagation();
-	var isOpen = $("#comment_emotion_btn").hasClass("comment-emotion-keyboard-open");
+	var $keyboard = $("#emotion_keyboard");
+	var isOpen = $keyboard.hasClass("comment-emotion-keyboard-open") || $keyboard.hasClass("emotion-keyboard-opening");
 	if (!isOpen) {
-		$("#comment_emotion_btn").addClass("comment-emotion-keyboard-open");
-		$("#emotion_keyboard").addClass("comment-emotion-keyboard-open");
-		lazyloadStickers();
-		argonBuildStickerMap();
-		setTimeout(function() {
-			positionEmotionKeyboard();
-			updateEmotionKeyboardScrollButtons();
-		}, 10);
+		openEmotionKeyboard();
 	} else {
 		closeEmotionKeyboard();
 	}
@@ -3622,6 +3704,15 @@ $(document).on("keydown", "#emotion_search_input", function (e) {
 
 $(document).on("pjax:beforeReplace", function () {
 	var keyboard = document.getElementById("emotion_keyboard");
+	if (emotionKeyboardOpenFrame) {
+		window.cancelAnimationFrame(emotionKeyboardOpenFrame);
+		emotionKeyboardOpenFrame = 0;
+	}
+	if (emotionKeyboardCloseTimer) {
+		window.clearTimeout(emotionKeyboardCloseTimer);
+		emotionKeyboardCloseTimer = 0;
+	}
+	emotionKeyboardCloseToken += 1;
 	if (keyboard && keyboard.parentElement === document.body) {
 		keyboard.remove();
 	}

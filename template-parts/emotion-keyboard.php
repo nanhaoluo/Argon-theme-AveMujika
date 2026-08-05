@@ -2,7 +2,7 @@
 	$emotionList = argon_get_emotion_list();
 	$stickerPlaceholder = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
 ?>
-<div id="emotion_keyboard" class="emotion-keyboard">
+<div id="emotion_keyboard" class="emotion-keyboard" aria-hidden="true">
 	<div class="emotion-keyboard-toolbar">
 		<label class="emotion-keyboard-search" for="emotion_search_input">
 			<i class="fa fa-search" aria-hidden="true"></i>
