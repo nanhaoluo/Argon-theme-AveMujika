@@ -7111,7 +7111,7 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 }
 
 .emotion-keyboard {
-	--emotion-keyboard-position-duration: 180ms;
+	--emotion-keyboard-position-duration: 100ms;
 
 	width: min(720px, calc(100vw - 24px));
 

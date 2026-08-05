@@ -3362,7 +3362,7 @@ function closeEmotionKeyboard() {
 }
 
 var emotionKeyboardPositionAnimation = null;
-var emotionKeyboardPositionDuration = 180;
+var emotionKeyboardPositionDuration = 100;
 function positionEmotionKeyboard() {
 	var btn = document.getElementById("comment_emotion_btn");
 	var keyboard = document.getElementById("emotion_keyboard");
