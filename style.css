@@ -7111,7 +7111,7 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 }
 
 .emotion-keyboard {
-	--emotion-keyboard-position-duration: 120ms;
+	--emotion-keyboard-position-duration: 180ms;
 
 	width: min(720px, calc(100vw - 24px));
 
@@ -7152,6 +7152,10 @@ html.darkmode #post_comment.post-comment-force-privatemode-off .comment-post-pri
 
 		0 12px 32px rgba(0, 0, 0, 0.08);
 
+}
+
+.emotion-keyboard.emotion-keyboard-position-flip {
+	transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease, opacity 0.3s ease;
 }
 
 .emotion-keyboard.comment-emotion-keyboard-open {

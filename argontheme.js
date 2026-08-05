@@ -3353,10 +3353,16 @@ function suspendAnimatedStickers(exceptGroup) {
 function closeEmotionKeyboard() {
 	$("#comment_emotion_btn").removeClass("comment-emotion-keyboard-open");
 	$("#emotion_keyboard").removeClass("comment-emotion-keyboard-open");
+	if (emotionKeyboardPositionAnimation) {
+		emotionKeyboardPositionAnimation.cancel();
+		emotionKeyboardPositionAnimation = null;
+	}
 	resetEmotionKeyboardSearch(false);
 	suspendAnimatedStickers(null);
 }
 
+var emotionKeyboardPositionAnimation = null;
+var emotionKeyboardPositionDuration = 180;
 function positionEmotionKeyboard() {
 	var btn = document.getElementById("comment_emotion_btn");
 	var keyboard = document.getElementById("emotion_keyboard");
@@ -3399,9 +3405,47 @@ function positionEmotionKeyboard() {
 	if (left + keyboardWidth > window.scrollX + window.innerWidth - 10) {
 		left = window.scrollX + window.innerWidth - keyboardWidth - 10;
 	}
-	
+
+	var currentTop = parseFloat(keyboard.style.top);
+	var currentLeft = parseFloat(keyboard.style.left);
+	var positionChanged = !Number.isFinite(currentTop) || !Number.isFinite(currentLeft) || Math.abs(currentTop - top) > 0.5 || Math.abs(currentLeft - left) > 0.5;
+	if (!positionChanged) return;
+
+	var prefersReducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+	var canAnimatePosition = typeof keyboard.animate === "function" && !prefersReducedMotion;
+	if (canAnimatePosition) {
+		keyboard.classList.add("emotion-keyboard-position-flip");
+	}
+	var previousRect = canAnimatePosition && Number.isFinite(currentTop) && Number.isFinite(currentLeft)
+		? keyboard.getBoundingClientRect()
+		: null;
+	if (emotionKeyboardPositionAnimation) {
+		emotionKeyboardPositionAnimation.cancel();
+		emotionKeyboardPositionAnimation = null;
+	}
 	keyboard.style.top = top + "px";
 	keyboard.style.left = left + "px";
+
+	if (previousRect) {
+		var nextRect = keyboard.getBoundingClientRect();
+		var deltaX = previousRect.left - nextRect.left;
+		var deltaY = previousRect.top - nextRect.top;
+		if (Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5) {
+			var animation = keyboard.animate([
+				{ transform: "translate3d(" + deltaX + "px, " + deltaY + "px, 0) scale(1)" },
+				{ transform: "translate3d(0, 0, 0) scale(1)" }
+			], {
+				duration: emotionKeyboardPositionDuration,
+				easing: "cubic-bezier(0.2, 0, 0, 1)"
+			});
+			emotionKeyboardPositionAnimation = animation;
+			animation.onfinish = animation.oncancel = function () {
+				if (emotionKeyboardPositionAnimation === animation) {
+					emotionKeyboardPositionAnimation = null;
+				}
+			};
+		}
+	}
 }
 
 var emotionKeyboardPositionFrame = 0;

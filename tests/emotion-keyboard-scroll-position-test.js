@@ -68,6 +68,59 @@ keyboardOpen = false;
 schedule();
 assert.strictEqual(pendingFrames.length, 0, 'closed keyboard must not schedule a position update');
 
+const positionSource = extractFunction('positionEmotionKeyboard');
+assert.ok(positionSource, 'keyboard position function is missing');
+
+const body = {};
+const animationRects = [
+	{ top: 300, left: 100 },
+	{ top: 50, left: 70 }
+];
+let positionAnimation = null;
+const keyboard = {
+	parentElement: body,
+	offsetHeight: 200,
+	offsetWidth: 300,
+	style: { top: '500px', left: '100px' },
+	classList: {
+		contains: (className) => className === 'comment-emotion-keyboard-open',
+		add: () => {}
+	},
+	getBoundingClientRect: () => animationRects.shift(),
+	animate: (frames, options) => {
+		positionAnimation = { frames, options, cancel: () => {} };
+		return positionAnimation;
+	}
+};
+const button = {
+	getBoundingClientRect: () => ({ top: 100, bottom: 140, left: 200, width: 40 })
+};
+const positionContext = {
+	emotionKeyboardPositionAnimation: null,
+	emotionKeyboardPositionDuration: 180,
+	document: {
+		body,
+		getElementById: (id) => {
+			if (id === 'comment_emotion_btn') return button;
+			if (id === 'emotion_keyboard') return keyboard;
+			return null;
+		}
+	},
+	window: {
+		innerHeight: 800,
+		innerWidth: 800,
+		scrollX: 0,
+		scrollY: 0,
+		matchMedia: () => ({ matches: false })
+	}
+};
+const position = vm.runInNewContext(`(${positionSource})`, positionContext);
+position();
+assert.ok(positionAnimation, 'a changed keyboard position must create an animation');
+assert.strictEqual(positionAnimation.options.duration, 180, 'position animation must remain quick but visible');
+assert.match(positionAnimation.frames[0].transform, /translate3d\(30px, 250px, 0\)/, 'animation must start from the previous visual position');
+assert.strictEqual(positionAnimation.frames[1].transform, 'translate3d(0, 0, 0) scale(1)', 'animation must finish at the calculated position');
+
 assert.match(
 	themeScript,
 	/window\.addEventListener\(\s*["']scroll["']\s*,\s*scheduleEmotionKeyboardPosition/,
@@ -80,8 +133,18 @@ assert.match(
 );
 assert.match(
 	stylesheet,
-	/\.emotion-keyboard\s*\{[^}]*--emotion-keyboard-position-duration:\s*120ms;[^}]*transition:[^}]*left\s+var\(--emotion-keyboard-position-duration\)/s,
+	/\.emotion-keyboard\s*\{[^}]*--emotion-keyboard-position-duration:\s*180ms;[^}]*transition:[^}]*left\s+var\(--emotion-keyboard-position-duration\)/s,
 	'keyboard horizontal movement must use the fast position transition'
+);
+assert.match(
+	themeScript,
+	/keyboard\.animate\(\[[\s\S]*translate3d\([\s\S]*duration:\s*emotionKeyboardPositionDuration/,
+	'keyboard position changes must use a visible transform animation'
+);
+assert.match(
+	stylesheet,
+	/\.emotion-keyboard\.emotion-keyboard-position-flip\s*\{[^}]*transition:[^}]*transform\s+0\.3s\s+ease/s,
+	'the transform animation mode must suppress competing top and left transitions'
 );
 
 process.stdout.write('emotion keyboard scroll positioning test passed.\n');
