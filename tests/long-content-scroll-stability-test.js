@@ -65,4 +65,17 @@ assert.ok(
     '虚拟化裁剪流程没有使用方向判定。'
 );
 
+assert.ok(
+    /function activateVirtualTailLock\(\)/.test(themeScript) &&
+        /tailLockActive/.test(themeScript) &&
+        /content\.getBoundingClientRect\(\)\.bottom <= window\.innerHeight \+ getVirtualTailBuffer\(\)/.test(themeScript),
+    '评论区边界缺少尾部虚拟化锁定，正文末尾仍可能继续扩张或裁剪。'
+);
+assert.ok(
+    /section\.tailLockedHeight = Math\.max\(/.test(themeScript) &&
+        /document\.documentElement/.test(themeScript) &&
+        /overflowAnchor = "none"/.test(themeScript),
+    '尾部锁定没有固定分段高度并抑制滚动锚定反馈。'
+);
+
 console.log('长文章虚拟化滚动稳定性测试通过。');

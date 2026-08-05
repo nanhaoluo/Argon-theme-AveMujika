@@ -4972,6 +4972,7 @@ function initArgonLongContentVirtualizer() {
 			maxPlainTextBlockLength: 2200,
 			maxNodesPerSection: 18,
 			keepRange: 2,
+			tailWindow: 8,
 			viewportBuffer: 900,
 			rootMargin: "1200px 0px 1200px 0px"
 		});
@@ -5087,6 +5088,94 @@ function createArgonLongContentVirtualizer(content, options) {
 	// 在更新后短暂冻结 scrollDirection，让 anchoring 位移不被当作用户滚动。
 	var virtualUpdateInProgress = false;
 	var virtualUpdateTimer = null;
+	var tailLockActive = false;
+	var tailLockStart = -1;
+	var tailLockWindow = Math.max(8, options.tailWindow || 0, (options.keepRange || 2) + 4);
+	var rootOverflowAnchorCaptured = false;
+	var previousRootOverflowAnchor = "";
+
+	function getVirtualTailBuffer() {
+		return Math.max(480, options.viewportBuffer || 900);
+	}
+
+	function isVirtualTailVisible() {
+		if (!content || !content.getBoundingClientRect) {
+			return false;
+		}
+		return content.getBoundingClientRect().bottom <= window.innerHeight + getVirtualTailBuffer();
+	}
+
+	function disableVirtualScrollAnchoring() {
+		var root = document.documentElement;
+		if (!root || !root.style) {
+			return;
+		}
+		if (!rootOverflowAnchorCaptured) {
+			previousRootOverflowAnchor = root.style.overflowAnchor || "";
+			rootOverflowAnchorCaptured = true;
+		}
+		root.style.overflowAnchor = "none";
+	}
+
+	function restoreVirtualScrollAnchoring() {
+		var root = document.documentElement;
+		if (!root || !root.style || !rootOverflowAnchorCaptured) {
+			return;
+		}
+		root.style.overflowAnchor = previousRootOverflowAnchor;
+		previousRootOverflowAnchor = "";
+		rootOverflowAnchorCaptured = false;
+	}
+
+	function activateVirtualTailLock() {
+		if (tailLockActive || destroyed || !sections.length) {
+			return;
+		}
+		tailLockActive = true;
+		tailLockStart = Math.max(0, sections.length - tailLockWindow);
+		disableVirtualScrollAnchoring();
+		for (var i = tailLockStart; i < sections.length; i++) {
+			mountSection(sections[i]);
+		}
+		for (var j = 0; j < tailLockStart; j++) {
+			if (sections[j].mounted) {
+				unmountSection(sections[j]);
+			}
+		}
+	}
+
+	function releaseVirtualTailLock() {
+		if (!tailLockActive) {
+			return;
+		}
+		var releasedTailStart = tailLockStart;
+		tailLockActive = false;
+		tailLockStart = -1;
+		restoreVirtualScrollAnchoring();
+		for (var i = releasedTailStart; i < sections.length; i++) {
+			sections[i].tailLockedHeight = null;
+			if (sections[i].mounted) {
+				sections[i].placeholder.style.minHeight = "";
+				updateSectionHeight(sections[i]);
+			}
+		}
+	}
+
+	function updateVirtualTailLock() {
+		if (!tailLockActive && isVirtualTailVisible()) {
+			activateVirtualTailLock();
+			return;
+		}
+		if (
+			tailLockActive &&
+			!virtualUpdateInProgress &&
+			scrollDirection === "up" &&
+			content.getBoundingClientRect().bottom > window.innerHeight + getVirtualTailBuffer() + Math.max(480, window.innerHeight)
+		) {
+			releaseVirtualTailLock();
+		}
+	}
+
 	function markVirtualUpdate() {
 		virtualUpdateInProgress = true;
 		if (virtualUpdateTimer) {
@@ -5369,11 +5458,14 @@ function createArgonLongContentVirtualizer(content, options) {
 					if (!section) {
 						continue;
 					}
-					if (entries[i].isIntersecting) {
+					if (entries[i].isIntersecting && !tailLockActive) {
 						renderAroundIndex(section.index);
 					}
 				}
-				pruneSections();
+				updateVirtualTailLock();
+				if (!tailLockActive) {
+					pruneSections();
+				}
 				markVirtualUpdate();
 			}, { rootMargin: options.rootMargin, threshold: 0 });
 
@@ -5387,6 +5479,7 @@ function createArgonLongContentVirtualizer(content, options) {
 				scrollDirection = getVirtualScrollDirection(lastScrollTop, currentScrollTop);
 			}
 			lastScrollTop = currentScrollTop;
+			updateVirtualTailLock();
 			scheduleUpdate();
 		}, 80);
 		window.addEventListener("scroll", scrollHandler, { passive: true });
@@ -5410,6 +5503,14 @@ function createArgonLongContentVirtualizer(content, options) {
 		scheduled = true;
 		requestAnimationFrame(function () {
 			scheduled = false;
+			updateVirtualTailLock();
+			if (tailLockActive) {
+				for (var tailIndex = tailLockStart; tailIndex < sections.length; tailIndex++) {
+					mountSection(sections[tailIndex]);
+				}
+				markVirtualUpdate();
+				return;
+			}
 			var index = getNearestVisibleSectionIndex();
 			renderAroundIndex(index);
 			pruneSections();
@@ -5434,6 +5535,9 @@ function createArgonLongContentVirtualizer(content, options) {
 	}
 
 	function renderAroundIndex(index, forceFirst) {
+		if (tailLockActive && !forceFirst) {
+			return;
+		}
 		var start = Math.max(0, index - options.keepRange);
 		var end = Math.min(sections.length - 1, index + options.keepRange);
 		var visibleRange = getViewportSectionRange();
@@ -5513,6 +5617,9 @@ function createArgonLongContentVirtualizer(content, options) {
 	}
 
 	function pruneSections() {
+		if (tailLockActive) {
+			return;
+		}
 		var visibleIndex = getNearestVisibleSectionIndex();
 		var keepStart = Math.max(0, visibleIndex - options.keepRange - 1);
 		var keepEnd = Math.min(sections.length - 1, visibleIndex + options.keepRange + 1);
@@ -5570,6 +5677,12 @@ function createArgonLongContentVirtualizer(content, options) {
 	function updateSectionHeight(section) {
 		var height = section.placeholder.scrollHeight;
 		if (height > 0) {
+			if (tailLockActive && section.index >= tailLockStart) {
+				section.tailLockedHeight = Math.max(section.tailLockedHeight || 0, section.estimatedHeight || 0, height);
+				section.estimatedHeight = section.tailLockedHeight;
+				section.placeholder.style.minHeight = section.tailLockedHeight + "px";
+				return;
+			}
 			section.estimatedHeight = Math.max(80, height);
 			if (section.mounted) {
 				section.placeholder.style.minHeight = "";
@@ -5614,6 +5727,7 @@ function createArgonLongContentVirtualizer(content, options) {
 		if (!section) {
 			return false;
 		}
+		releaseVirtualTailLock();
 		renderAroundIndex(section.index);
 		mountSection(section);
 		return true;
@@ -5640,6 +5754,13 @@ function createArgonLongContentVirtualizer(content, options) {
 
 	function destroy(restoreContent) {
 		destroyed = true;
+		if (virtualUpdateTimer) {
+			clearTimeout(virtualUpdateTimer);
+			virtualUpdateTimer = null;
+		}
+		restoreVirtualScrollAnchoring();
+		tailLockActive = false;
+		tailLockStart = -1;
 		if (observer) {
 			try {
 				observer.disconnect();

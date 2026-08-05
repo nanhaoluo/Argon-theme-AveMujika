@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ARGON-COMMENT-BOUNDARY-BOOTING</title>
+<style>
+	body {
+		margin: 0;
+		font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	}
+	#post_content,
+	#comments {
+		box-sizing: border-box;
+		max-width: 720px;
+		margin: 0 auto;
+	}
+	.fixture-section {
+		box-sizing: border-box;
+		margin: 0;
+		padding: 0;
+	}
+	#comments {
+		height: 0;
+		padding: 0;
+		background: #f3f4f6;
+		overflow: hidden;
+		overflow-anchor: none;
+	}
+	#after-content {
+		box-sizing: border-box;
+		height: 774px;
+		padding-top: 540px;
+		background: #fff;
+	}
+	#fixture-footer {
+		height: 234px;
+		background: #e5e7eb;
+		overflow-anchor: auto;
+	}
+	#probe-status {
+		position: fixed;
+		top: 12px;
+		left: 12px;
+		right: 12px;
+		z-index: 10;
+		max-height: 60vh;
+		overflow: auto;
+		padding: 12px;
+		background: #fff;
+		border: 1px solid #777;
+		white-space: pre-wrap;
+		font: 12px/1.5 Consolas, monospace;
+	}
+</style>
+</head>
+<body>
+<div id="probe-status">正在构造评论区边界...</div>
+<main id="post_content"></main>
+<section id="comments">评论区</section>
+<div id="after-content"><footer id="fixture-footer"></footer></div>
+
+<script src="../assets/vendor/jquery/jquery.min.js"></script>
+<script>
+window.ArgonDebug = { warn: function(){}, info: function(){}, error: function(){} };
+window.lazyloadInit = function(){};
+window.zoomifyInit = function(){};
+window.highlightJsRender = function(){};
+window.tippyInit = function(){};
+window.patchHeadIndexForVirtualContent = function(){};
+window.escapeJqueryId = function(id){ return id; };
+var zoomifyInstances = [];
+var highlightObserver = null;
+
+function wait(ms) {
+	return new Promise(function(resolve) { setTimeout(resolve, ms); });
+}
+
+function setResult(pass, message, detail) {
+	var status = document.getElementById('probe-status');
+	status.textContent = (pass ? 'PASS' : 'FAIL: ' + message) + '\n\n' + JSON.stringify(detail, null, 2);
+	status.style.borderColor = pass ? '#18864b' : '#c03434';
+	document.title = pass ? 'ARGON-COMMENT-BOUNDARY-PASS' : 'ARGON-COMMENT-BOUNDARY-FAIL:' + message;
+	window.__probeResult = { pass: pass, message: message, detail: detail };
+}
+
+function mountedIndexes() {
+	return Array.prototype.map.call(
+		document.querySelectorAll('#post_content .argon-virtual-section-mounted'),
+		function(node) { return Number(node.getAttribute('data-argon-virtual-index')); }
+	);
+}
+
+function startFixtureMeasurements(trailingActual, sectionStart) {
+	var loaded = {};
+	var startedAt = Date.now();
+	var pump = function() {
+		var now = Date.now() - startedAt;
+		var complete = true;
+		for (var i = 0; i < trailingActual.length; i++) {
+			var sectionIndex = sectionStart + i;
+			if (loaded[sectionIndex]) {
+				continue;
+			}
+			complete = false;
+			var media = document.querySelector('[data-fixture-media-index="' + sectionIndex + '"]');
+			if (!media || now < i * 90) {
+				continue;
+			}
+			media.style.height = trailingActual[i] + 'px';
+			loaded[sectionIndex] = true;
+			media.dispatchEvent(new Event('load'));
+		}
+		if (!complete && now < 2600) {
+			setTimeout(pump, 20);
+		}
+	};
+	pump();
+}
+
+async function runProbe() {
+	var source = await fetch('../argontheme.js', { cache: 'no-store' }).then(function(response) {
+		return response.text();
+	});
+	var start = source.indexOf('function getVirtualScrollDirection(previousScrollTop, currentScrollTop)');
+	var end = source.indexOf('function patchHeadIndexForVirtualContent()');
+	if (start < 0 || end <= start) {
+		return setResult(false, 'VIRTUALIZER_SOURCE_MISSING', { start: start, end: end });
+	}
+	var script = document.createElement('script');
+	script.textContent = source.slice(start, end);
+	document.body.appendChild(script);
+
+	// 末尾 16 段取自线上超长文章。估算高度与真实高度的累计偏差会在
+	// 评论区进入视口时集中兑现，是“向下滚动却被推回正文”的触发条件。
+	var trailingEstimated = [210, 494, 416, 462, 196, 462, 366, 138, 494, 448, 138, 184, 422, 274, 602, 292];
+	var trailingActual = [140, 803, 330, 775, 131, 775, 215, 80, 326, 338, 80, 80, 339, 163, 486, 221];
+	var sectionCount = 226;
+	var sourceSections = [];
+	for (var i = 0; i < sectionCount; i++) {
+		var trailingIndex = i - (sectionCount - trailingActual.length);
+		var actualHeight = trailingIndex >= 0 ? trailingActual[trailingIndex] : 360;
+		var estimatedHeight = trailingIndex >= 0 ? trailingEstimated[trailingIndex] : 360;
+		var sectionHtml = trailingIndex >= 0
+			? '<div class="fixture-section"><img alt="" data-fixture-media-index="' + i + '" style="display:block;width:1px;height:' + estimatedHeight + 'px"></div>'
+			: '<div class="fixture-section" style="height:' + actualHeight + 'px">分段 ' + i + '</div>';
+		sourceSections.push({
+			html: sectionHtml,
+			headers: [],
+			nodeIds: [],
+			textCount: 120,
+			estimatedHeight: estimatedHeight
+		});
+	}
+
+	var content = document.getElementById('post_content');
+	window.ArgonLongContentVirtualizer = createArgonLongContentVirtualizer(content, {
+		sourceSections: sourceSections,
+		targetTextLength: 1800,
+		maxPlainTextBlockLength: 2200,
+		maxNodesPerSection: 18,
+		keepRange: 2,
+		viewportBuffer: 900,
+		rootMargin: '1200px 0px 1200px 0px'
+	});
+	window.ArgonLongContentVirtualizer.init();
+	await wait(250);
+
+	var comments = document.getElementById('comments');
+	if (window.location.search === '?manual=1') {
+		// 直接拖到底部后持续向下滚轮，延迟媒体测量会模拟线上尾部分段的异步高度变化。
+		window.scrollTo(0, document.documentElement.scrollHeight);
+		startFixtureMeasurements(trailingActual, sectionCount - trailingActual.length);
+		await wait(250);
+		var manualEvents = [];
+		var manualFinished = false;
+		window.addEventListener('wheel', function(event) {
+			var before = Math.round(window.pageYOffset || 0);
+			var direction = event.deltaY;
+			setTimeout(function() {
+				var after = Math.round(window.pageYOffset || 0);
+				manualEvents.push({ direction: direction, before: before, after: after });
+				if (direction > 0 && !manualFinished) {
+					manualFinished = true;
+					var pass = after >= before - 40;
+					setResult(pass, pass ? '' : 'REVERSE_SCROLL_NEAR_COMMENTS', {
+						events: manualEvents,
+						mounted: mountedIndexes(),
+						commentsViewportTop: Math.round(comments.getBoundingClientRect().top)
+					});
+				}
+			}, 350);
+		}, { passive: true });
+		document.title = 'ARGON-COMMENT-BOUNDARY-READY';
+		document.getElementById('probe-status').textContent = 'READY\n\n保持向下滚轮，观察评论区边界是否稳定。';
+		return;
+	}
+
+	var commentsTop = comments.getBoundingClientRect().top + window.pageYOffset;
+	window.scrollTo(0, Math.max(0, commentsTop - window.innerHeight - 1200));
+	startFixtureMeasurements(trailingActual, sectionCount - trailingActual.length);
+	await wait(250);
+
+	var scrollEvents = [];
+	var capture = function() {
+		scrollEvents.push(Math.round(window.pageYOffset || document.documentElement.scrollTop || 0));
+	};
+	window.addEventListener('scroll', capture, { passive: true });
+	capture();
+
+	var trajectory = [];
+	for (var step = 0; step < 24; step++) {
+		var before = Math.round(window.pageYOffset || document.documentElement.scrollTop || 0);
+		window.scrollTo(0, before + 160);
+		await wait(120);
+		var after = Math.round(window.pageYOffset || document.documentElement.scrollTop || 0);
+		trajectory.push({
+			step: step,
+			before: before,
+			after: after,
+			delta: after - before,
+			commentsViewportTop: Math.round(comments.getBoundingClientRect().top),
+			mounted: mountedIndexes()
+		});
+	}
+	window.removeEventListener('scroll', capture);
+	await wait(200);
+
+	var maxReverse = 0;
+	for (var eventIndex = 1; eventIndex < scrollEvents.length; eventIndex++) {
+		maxReverse = Math.max(maxReverse, scrollEvents[eventIndex - 1] - scrollEvents[eventIndex]);
+	}
+	var reverseSteps = trajectory.filter(function(item) { return item.delta < -40; });
+	var detail = {
+		maxReverse: maxReverse,
+		reverseSteps: reverseSteps,
+		trajectoryHead: trajectory.slice(0, 8),
+		trajectoryTail: trajectory.slice(-6),
+		finalMounted: mountedIndexes(),
+		finalCommentsViewportTop: Math.round(comments.getBoundingClientRect().top)
+	};
+	if (maxReverse >= 80 || reverseSteps.length > 0) {
+		return setResult(false, 'REVERSE_SCROLL_NEAR_COMMENTS', detail);
+	}
+	setResult(true, '', detail);
+}
+
+window.addEventListener('load', function() {
+	runProbe().catch(function(error) {
+		setResult(false, 'PROBE_EXCEPTION', { message: error && error.message, stack: error && error.stack });
+	});
+});
+</script>
+</body>
+</html>
