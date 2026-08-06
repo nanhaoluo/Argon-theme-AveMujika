@@ -101,7 +101,6 @@ if ($rate_limit_check !== true) {
 	get_header();
 	argon_special_page_surface_open('ai-verify-page');
 	argon_special_page_surface_header(array(
-		'icon' => 'shield',
 		'title' => __('AI 内容查询', 'argon'),
 		'subtitle' => __('通过识别码查询 AI 生成内容的详细信息，确保内容可追溯', 'argon'),
 	));
@@ -375,7 +374,6 @@ argon_special_page_surface_open('ai-verify-page');
 
 <?php
 argon_special_page_surface_header(array(
-	'icon' => 'shield',
 	'title' => __('AI 内容查询', 'argon'),
 	'subtitle' => __('通过识别码查询 AI 生成内容的详细信息，确保内容可追溯', 'argon'),
 ));

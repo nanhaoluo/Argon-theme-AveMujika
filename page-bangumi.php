@@ -49,35 +49,30 @@ argon_special_page_surface_open('bangumi-page');
 		<?php
 		$bangumi_header_stats = array(
 			array(
-				'icon' => 'th-large',
 				'label' => __('共', 'argon'),
 				'value' => number_format_i18n((int)$bangumi_stats['total']),
 				'suffix' => __('部', 'argon'),
 				'value_id' => 'bangumi-stat-total',
 			),
 			array(
-				'icon' => 'eye',
 				'label' => __('在看', 'argon'),
 				'value' => number_format_i18n((int)$bangumi_stats['watching']),
 				'value_id' => 'bangumi-stat-watching',
 			),
 			array(
-				'icon' => 'bookmark-o',
 				'label' => __('想看', 'argon'),
 				'value' => number_format_i18n((int)$bangumi_stats['want']),
 				'value_id' => 'bangumi-stat-want',
 			),
 			array(
-				'icon' => 'check',
 				'label' => __('看过', 'argon'),
 				'value' => number_format_i18n((int)$bangumi_stats['watched']),
 				'value_id' => 'bangumi-stat-watched',
 			),
 		);
 		argon_special_page_surface_header(array(
-			'icon' => 'play-circle',
 			'title_id' => 'bangumi-page-title',
-			'title' => __('正在追番', 'argon'),
+			'title' => __('追番', 'argon'),
 			'stats' => $bangumi_header_stats,
 		));
 		?>

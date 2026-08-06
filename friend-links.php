@@ -615,18 +615,15 @@ $flink_slogan = get_option('argon_friend_link_slogan', __('海内存知己，天
 $flink_welcome = get_option('argon_friend_link_welcome', __('欢迎与我交换友链！如果您的网站已添加本站链接，填写友链页面地址可自动通过审核。', 'argon'));
 $flink_header_stats = array(
     array(
-        'icon' => 'heart',
         'text' => sprintf(__('%d 位朋友', 'argon'), $total_links),
     ),
 );
 if (count($links) > 1) {
     $flink_header_stats[] = array(
-        'icon' => 'folder-open',
         'text' => sprintf(__('%d 个分类', 'argon'), count($links)),
     );
 }
 argon_special_page_surface_header(array(
-    'icon' => 'link',
     'title' => __('友情链接', 'argon'),
     'subtitle' => $flink_slogan,
     'stats' => $flink_header_stats,

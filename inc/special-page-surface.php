@@ -110,40 +110,34 @@ html.darkmode body.argon-special-page {
 	--argon-special-page-warning-text: #facc15;
 }
 .argon-special-page-header {
-	text-align: center;
-	padding: 40px 24px 30px;
-	margin-bottom: 16px;
-	background: transparent !important;
-	box-shadow: none !important;
-}
-.argon-special-page-header-icon {
-	width: 64px;
-	height: 64px;
-	margin: 0 auto 20px;
-	background: var(--themecolor-gradient);
-	border-radius: var(--card-radius);
 	display: flex;
 	align-items: center;
-	justify-content: center;
-	font-size: 28px;
-	color: #fff;
-	box-shadow: 0 4px 12px rgba(var(--themecolor-rgbstr), 0.2);
-	transition: transform var(--animation-fast) var(--ease-standard);
+	justify-content: space-between;
+	gap: 32px;
+	padding: 22px 4px 20px;
+	margin-bottom: 16px;
+	border-bottom: 1px solid var(--color-border-on-foreground);
+	background: transparent !important;
+	box-shadow: none !important;
+	text-align: left;
 }
-.argon-special-page-header-icon:hover { transform: translateY(-2px); }
+.argon-special-page-header-copy { min-width: 0; flex: 1; }
 .argon-special-page-title {
-	font-size: 24px;
-	font-weight: 600;
-	margin: 0 0 12px;
+	margin: 0;
 	color: var(--color-text-deeper);
+	font-size: 25px;
+	font-weight: 650;
+	line-height: 1.25;
+	letter-spacing: 0;
 	background: none !important;
 }
 .argon-special-page-title::before,
 .argon-special-page-title::after { display: none !important; }
 .argon-special-page-subtitle {
-	font-size: 14px;
+	max-width: 640px;
+	margin: 6px 0 0;
 	color: var(--argon-special-page-text-muted);
-	margin: 0 0 20px;
+	font-size: 13px;
 	line-height: 1.6;
 }
 .argon-special-page-stats { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
@@ -162,6 +156,21 @@ html.darkmode body.argon-special-page {
 }
 .argon-special-page-stat-value { font-size: 1.05em; font-weight: 700; }
 .argon-special-page-stat:hover { background: rgba(var(--themecolor-rgbstr), 0.12); }
+.argon-special-page-header .argon-special-page-stats { align-items: center; justify-content: flex-end; flex-shrink: 0; gap: 0; flex-wrap: nowrap; }
+.argon-special-page-header .argon-special-page-stat {
+	align-items: baseline;
+	gap: 5px;
+	padding: 0 16px;
+	background: transparent;
+	border-radius: 0;
+	color: var(--argon-special-page-text-muted);
+	transition: color var(--animation-fast) var(--ease-standard);
+}
+.argon-special-page-header .argon-special-page-stat:first-child { padding-left: 0; }
+.argon-special-page-header .argon-special-page-stat:last-child { padding-right: 0; }
+.argon-special-page-header .argon-special-page-stat + .argon-special-page-stat { border-left: 1px solid var(--color-border-on-foreground); }
+.argon-special-page-header .argon-special-page-stat-value { color: var(--color-text-deeper); font-size: 18px; line-height: 1; }
+.argon-special-page-header .argon-special-page-stat:hover { background: transparent; color: var(--color-text-deeper); }
 .argon-special-page-list { display: flex; flex-direction: column; gap: 16px; margin-bottom: 16px; }
 .argon-special-page-card { margin-bottom: 16px; }
 .argon-special-page-section { padding: 0; overflow: hidden; }
@@ -225,7 +234,14 @@ html.darkmode body.argon-special-page {
 .argon-special-page-badge.is-deferred,
 .argon-special-page-badge.is-degraded { background: var(--argon-special-page-warning-bg); color: var(--argon-special-page-warning-text); }
 .argon-special-page-badge.is-error { background: var(--argon-special-page-danger-bg); color: var(--argon-special-page-danger-text); }
-.argon-special-page-live i { font-size: 9px; }
+.argon-special-page-header .argon-special-page-stat.argon-special-page-badge.is-online,
+.argon-special-page-header .argon-special-page-stat.argon-special-page-badge.is-ok,
+.argon-special-page-header .argon-special-page-stat.argon-special-page-badge.is-complete { color: var(--argon-special-page-success-text); }
+.argon-special-page-header .argon-special-page-stat.argon-special-page-badge.is-warning,
+.argon-special-page-header .argon-special-page-stat.argon-special-page-badge.is-running,
+.argon-special-page-header .argon-special-page-stat.argon-special-page-badge.is-deferred,
+.argon-special-page-header .argon-special-page-stat.argon-special-page-badge.is-degraded { color: var(--argon-special-page-warning-text); }
+.argon-special-page-header .argon-special-page-stat.argon-special-page-badge.is-error { color: var(--argon-special-page-danger-text); }
 .argon-special-page-meta { justify-content: flex-start; margin: 0 0 16px; }
 .argon-special-page-meta .argon-special-page-stat { color: var(--argon-special-page-text-muted); }
 .argon-special-page-metric {
@@ -286,7 +302,14 @@ html.darkmode body.argon-special-page .argon-special-page-details {
 	color: #dbeafe;
 }
 @media (max-width: 768px) {
-	.argon-special-page-header { padding: 30px 16px 24px; }
+	.argon-special-page-header { display: block; padding: 18px 2px 16px; margin-bottom: 12px; }
+	.argon-special-page-title { font-size: 22px; }
+	.argon-special-page-subtitle { margin-top: 5px; font-size: 12px; }
+	.argon-special-page-header .argon-special-page-stats { justify-content: flex-start; margin-top: 15px; }
+	.argon-special-page-header .argon-special-page-stat { padding-right: 12px; padding-left: 12px; font-size: 12px; }
+	.argon-special-page-header .argon-special-page-stat:first-child { padding-left: 0; }
+	.argon-special-page-header .argon-special-page-stat:last-child { padding-right: 0; }
+	.argon-special-page-header .argon-special-page-stat-value { font-size: 16px; }
 	.argon-special-page-list { gap: 12px; }
 	.argon-special-page-section-header { padding: 15px 16px; }
 	.argon-special-page-section-title { min-width: 0; font-size: 16px; }
@@ -339,24 +362,23 @@ if (!function_exists('argon_special_page_surface_header')) {
 	/**
 	 * 输出共享页头。
 	 *
-	 * @param array $args icon、title、subtitle 与 stats。
+	 * @param array $args title、subtitle 与 stats。
 	 */
 	function argon_special_page_surface_header($args = array()) {
-		$icon = isset($args['icon']) ? sanitize_html_class($args['icon']) : 'link';
 		$title = isset($args['title']) ? (string)$args['title'] : '';
 		$subtitle = isset($args['subtitle']) ? (string)$args['subtitle'] : '';
 		$title_id = isset($args['title_id']) ? sanitize_html_class($args['title_id']) : '';
 		$stats = isset($args['stats']) && is_array($args['stats']) ? $args['stats'] : array();
 		?>
 <header class="argon-special-page-header">
-	<div class="argon-special-page-header-icon"><i class="fa fa-<?php echo esc_attr($icon); ?>" aria-hidden="true"></i></div>
-	<h1 class="argon-special-page-title"<?php if ($title_id !== '') : ?> id="<?php echo esc_attr($title_id); ?>"<?php endif; ?>><?php echo esc_html($title); ?></h1>
-	<?php if ($subtitle !== '') : ?><p class="argon-special-page-subtitle"><?php echo esc_html($subtitle); ?></p><?php endif; ?>
+	<div class="argon-special-page-header-copy">
+		<h1 class="argon-special-page-title"<?php if ($title_id !== '') : ?> id="<?php echo esc_attr($title_id); ?>"<?php endif; ?>><?php echo esc_html($title); ?></h1>
+		<?php if ($subtitle !== '') : ?><p class="argon-special-page-subtitle"><?php echo esc_html($subtitle); ?></p><?php endif; ?>
+	</div>
 	<?php if ($stats) : ?>
 	<div class="argon-special-page-stats">
 		<?php foreach ($stats as $stat) :
 			$stat = is_array($stat) ? $stat : array('text' => $stat);
-			$stat_icon = isset($stat['icon']) ? sanitize_html_class($stat['icon']) : '';
 			$stat_id = isset($stat['id']) ? sanitize_html_class($stat['id']) : '';
 			$text_id = isset($stat['text_id']) ? sanitize_html_class($stat['text_id']) : '';
 			$value_id = isset($stat['value_id']) ? sanitize_html_class($stat['value_id']) : '';
@@ -370,7 +392,6 @@ if (!function_exists('argon_special_page_surface_header')) {
 			}
 			?>
 		<div class="<?php echo esc_attr(implode(' ', array_unique($classes))); ?>"<?php if ($stat_id !== '') : ?> id="<?php echo esc_attr($stat_id); ?>"<?php endif; ?><?php if (!empty($stat['aria_live'])) : ?> role="status" aria-live="<?php echo esc_attr($stat['aria_live']); ?>"<?php endif; ?>>
-			<?php if ($stat_icon !== '') : ?><i class="fa fa-<?php echo esc_attr($stat_icon); ?>" aria-hidden="true"></i><?php endif; ?>
 			<?php if ($has_value) : ?>
 				<?php if (isset($stat['label'])) : ?><span class="argon-special-page-stat-label"><?php echo esc_html($stat['label']); ?></span><?php endif; ?>
 				<strong class="argon-special-page-stat-value"<?php if ($value_id !== '') : ?> id="<?php echo esc_attr($value_id); ?>"<?php endif; ?>><?php echo esc_html($stat['value']); ?></strong>

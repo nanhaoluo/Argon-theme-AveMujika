@@ -26,12 +26,10 @@ argon_special_page_surface_open('worker-page');
 
 <?php
 argon_special_page_surface_header(array(
-    'icon' => 'cloud',
     'title' => __('友链 Worker 实时状态', 'argon'),
     'subtitle' => __('自动巡检、队列与实时探测状态，每秒更新两次', 'argon'),
     'stats' => array(
         array(
-            'icon' => 'circle',
             'text' => __('正在连接', 'argon'),
             'id' => 'argon-worker-live',
             'text_id' => 'argon-worker-live-text',

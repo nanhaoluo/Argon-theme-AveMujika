@@ -928,7 +928,6 @@ html.darkmode .feedback-image-viewer { --feedback-viewer-glass: rgba(16, 19, 29,
 <!-- 授权链接查看单个反馈 -->
 <?php
 argon_special_page_surface_header(array(
-	'icon' => 'commenting',
 	'title' => __('反馈详情', 'argon'),
 	'subtitle' => __('您可以在此查看反馈的详细信息和回复', 'argon'),
 ));
@@ -1015,19 +1014,16 @@ argon_special_page_surface_header(array(
 <?php
 $feedback_header_stats = array(
 	array(
-		'icon' => 'comments',
 		'text' => sprintf(__('%d 条公开反馈', 'argon'), count($public_feedbacks)),
 	),
 );
 if ($is_admin && $stats['pending'] > 0) {
 	$feedback_header_stats[] = array(
-		'icon' => 'clock-o',
 		'text' => sprintf(__('%d 条待处理', 'argon'), $stats['pending']),
 		'class' => 'argon-special-page-badge is-warning',
 	);
 }
 argon_special_page_surface_header(array(
-	'icon' => 'commenting',
 	'title' => __('问题反馈', 'argon'),
 	'subtitle' => __('有任何建议或问题？欢迎告诉我！', 'argon'),
 	'stats' => $feedback_header_stats,

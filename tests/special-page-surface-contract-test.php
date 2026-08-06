@@ -20,7 +20,10 @@ argon_special_surface_assert(
     && strpos($surface, 'overflow-wrap: break-word; word-break: normal;') !== false
     && strpos($surface, 'overflow-wrap: anywhere') === false
     && strpos($surface, '$value_id =') !== false
-    && strpos($surface, '$title_id =') !== false,
+    && strpos($surface, '$title_id =') !== false
+    && strpos($surface, 'class="argon-special-page-header-copy"') !== false
+    && strpos($surface, 'argon-special-page-header-icon') === false
+    && strpos($surface, '$stat_icon =') === false,
     'shared surface must provide non-destructive wrapping and reusable header slots'
 );
 
@@ -97,8 +100,10 @@ argon_special_surface_assert(
 
 argon_special_surface_assert(
     $bangumi !== false
-    && strpos($bangumi, "'subtitle' =>") === false,
-    'bangumi page header must not render the removed descriptive subtitle'
+    && strpos($bangumi, "'title' => __('追番', 'argon')") !== false
+    && strpos($bangumi, "'subtitle' =>") === false
+    && strpos($bangumi, "'icon' =>") === false,
+    'bangumi page header must use the direct title without a descriptive subtitle'
 );
 
 if ($failures) {
