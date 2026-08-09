@@ -21,6 +21,10 @@
 	var liveStatus = null;
 	var errorBox = null;
 	var searchInput = null;
+	var cardPreview = null;
+	var previewSource = null;
+	var previewFrame = 0;
+	var previewCloseTimer = 0;
 
 	function readPageState() {
 		configNode = document.getElementById('argon-bangumi-config');
@@ -109,7 +113,7 @@
 		var status = statusInfo(item.follow_status);
 		var progress = progressInfo(item);
 		var title = escapeHtml(item.title || '未命名番剧');
-		var cover = safeUrl(item.cover_local);
+		var cover = safeUrl(item.cover_local || item.cover);
 		var url = safeUrl(item.url);
 		var tags = Array.isArray(item.styles) ? item.styles.slice(0, 4) : [];
 		var tagHtml = tags.map(function (tag) { return '<span class="bangumi-tag">' + escapeHtml(tag) + '</span>'; }).join('');
@@ -117,7 +121,7 @@
 		var scoreHtml = score > 0 ? '<span class="bangumi-score"><i class="fa fa-star" aria-hidden="true"></i>' + score.toFixed(1) + '</span>' : '';
 		var imageHtml = cover ? '<img src="' + escapeHtml(cover) + '" alt="" loading="lazy" decoding="async" fetchpriority="' + (index < 6 ? 'high' : 'auto') + '">' : '';
 		var mediaClass = cover ? 'bangumi-card-media' : 'bangumi-card-media is-empty';
-		var cardOpen = url ? '<a class="bangumi-card" role="listitem" href="' + escapeHtml(url) + '" target="_blank" rel="noopener noreferrer" data-season-id="' + escapeHtml(item.season_id) + '">' : '<article class="bangumi-card" role="listitem" data-season-id="' + escapeHtml(item.season_id) + '">';
+		var cardOpen = url ? '<a class="bangumi-card" role="listitem" href="' + escapeHtml(url) + '" target="_blank" rel="noopener noreferrer" data-season-id="' + escapeHtml(item.season_id) + '">' : '<article class="bangumi-card" role="listitem" tabindex="0" data-season-id="' + escapeHtml(item.season_id) + '">';
 		var cardClose = url ? '</a>' : '</article>';
 		return cardOpen +
 			'<div class="' + mediaClass + '">' + imageHtml + '<span class="bangumi-status-badge ' + status.className + '">' + status.label + '</span></div>' +
@@ -128,6 +132,94 @@
 				(item.summary ? '<p class="bangumi-card-summary">' + escapeHtml(item.summary) + '</p>' : '') +
 				(tagHtml ? '<div class="bangumi-tags">' + tagHtml + '</div>' : '') +
 			'</div>' + cardClose;
+	}
+
+	function renderCardPreview(item) {
+		var status = statusInfo(item.follow_status);
+		var progress = progressInfo(item);
+		var cover = safeUrl(item.cover_local || item.cover);
+		var tags = Array.isArray(item.styles) ? item.styles.slice(0, 6) : [];
+		var tagHtml = tags.map(function (tag) { return '<span class="bangumi-tag">' + escapeHtml(tag) + '</span>'; }).join('');
+		var score = parseFloat(item.rating);
+		var scoreHtml = score > 0 ? '<span class="bangumi-score"><i class="fa fa-star" aria-hidden="true"></i>' + score.toFixed(1) + '</span>' : '';
+		var areas = Array.isArray(item.areas) && item.areas.length ? '<span>' + escapeHtml(item.areas.slice(0, 2).join(' / ')) + '</span>' : '';
+		var imageHtml = cover ? '<img src="' + escapeHtml(cover) + '" alt="" decoding="async">' : '';
+		return '<div class="bangumi-card-preview-media' + (cover ? '' : ' is-empty') + '">' + imageHtml + '<span class="bangumi-status-badge ' + status.className + '">' + status.label + '</span></div>' +
+			'<div class="bangumi-card-preview-body">' +
+				'<h2 class="bangumi-card-preview-title">' + escapeHtml(item.title || '未命名番剧') + '</h2>' +
+				'<div class="bangumi-card-preview-meta"><span class="bangumi-type-label">' + escapeHtml(typeLabel(item)) + '</span>' + scoreHtml + areas + '</div>' +
+				'<div class="bangumi-progress"><div class="bangumi-progress-text"><span>' + escapeHtml(progress.text) + '</span>' + (progress.hasProgress && item.total_count ? '<span>共 ' + escapeHtml(item.total_count) + ' 话</span>' : '') + '</div>' + progress.track + '</div>' +
+				'<p class="bangumi-card-preview-summary">' + escapeHtml(item.summary || '暂无简介') + '</p>' +
+				(tagHtml ? '<div class="bangumi-tags">' + tagHtml + '</div>' : '') +
+			'</div>';
+	}
+
+	function ensureCardPreview() {
+		if (cardPreview && cardPreview.isConnected) return cardPreview;
+		cardPreview = document.getElementById('bangumi-card-preview');
+		if (!cardPreview && document.body) {
+			cardPreview = document.createElement('div');
+			cardPreview.id = 'bangumi-card-preview';
+			cardPreview.className = 'bangumi-card-preview';
+			cardPreview.setAttribute('aria-hidden', 'true');
+			cardPreview.hidden = true;
+			document.body.appendChild(cardPreview);
+		}
+		return cardPreview;
+	}
+
+	function positionCardPreview(source) {
+		var preview = ensureCardPreview();
+		if (!preview || !source || preview.hidden) return;
+		var viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+		var viewportHeight = document.documentElement.clientHeight || window.innerHeight;
+		var margin = 12;
+		var sourceRect = source.getBoundingClientRect();
+		var width = Math.min(viewportWidth - margin * 2, viewportWidth <= 520 ? 360 : 440);
+		preview.style.width = Math.max(280, width) + 'px';
+		preview.style.minHeight = Math.min(viewportHeight - margin * 2, Math.max(480, sourceRect.height + 48)) + 'px';
+		preview.style.left = margin + 'px';
+		preview.style.top = margin + 'px';
+		var previewRect = preview.getBoundingClientRect();
+		var left = sourceRect.left + sourceRect.width / 2 - previewRect.width / 2;
+		var top = sourceRect.top + sourceRect.height / 2 - previewRect.height / 2;
+		left = Math.max(margin, Math.min(left, viewportWidth - previewRect.width - margin));
+		top = Math.max(margin, Math.min(top, viewportHeight - previewRect.height - margin));
+		preview.style.left = Math.round(left) + 'px';
+		preview.style.top = Math.round(top) + 'px';
+	}
+
+	function closeCardPreview(immediate) {
+		if (previewCloseTimer) window.clearTimeout(previewCloseTimer);
+		if (previewFrame) window.cancelAnimationFrame(previewFrame);
+		previewFrame = 0;
+		if (previewSource) previewSource.classList.remove('is-preview-source');
+		previewSource = null;
+		if (!cardPreview) return;
+		cardPreview.classList.remove('is-visible');
+		var finish = function () {
+			if (previewSource || !cardPreview) return;
+			cardPreview.hidden = true;
+			cardPreview.innerHTML = '';
+		};
+		if (immediate) finish();
+		else previewCloseTimer = window.setTimeout(finish, 180);
+	}
+
+	function showCardPreview(source, item) {
+		var preview = ensureCardPreview();
+		if (!preview || !source || !item) return;
+		if (previewCloseTimer) window.clearTimeout(previewCloseTimer);
+		if (previewSource && previewSource !== source) previewSource.classList.remove('is-preview-source');
+		previewSource = source;
+		previewSource.classList.add('is-preview-source');
+		preview.innerHTML = renderCardPreview(item);
+		preview.hidden = false;
+		positionCardPreview(source);
+		if (previewFrame) window.cancelAnimationFrame(previewFrame);
+		previewFrame = window.requestAnimationFrame(function () {
+			if (previewSource === source) preview.classList.add('is-visible');
+		});
 	}
 
 	function dedupeMerge(existing, items) {
@@ -178,6 +270,7 @@
 
 	function render(items) {
 		if (!grid) return;
+		closeCardPreview(true);
 		var visibleItems = items || filteredItems();
 		grid.innerHTML = visibleItems.map(renderCard).join('');
 		if (empty) empty.hidden = visibleItems.length !== 0;
@@ -187,6 +280,14 @@
 				if (media) media.classList.add('is-empty');
 				image.remove();
 			});
+		});
+		Array.prototype.forEach.call(grid.querySelectorAll('.bangumi-card'), function (card) {
+			var seasonId = card.getAttribute('data-season-id');
+			var item = visibleItems.find(function (candidate) { return String(candidate.season_id) === String(seasonId); });
+			card.addEventListener('mouseenter', function () { showCardPreview(card, item); });
+			card.addEventListener('mouseleave', function () { closeCardPreview(false); });
+			card.addEventListener('focusin', function () { showCardPreview(card, item); });
+			card.addEventListener('focusout', function () { closeCardPreview(false); });
 		});
 		prioritizeVisibleImages();
 		updateLoadButton();
@@ -219,6 +320,7 @@
 		if (state.status === String(status)) {
 			setError('');
 			setLive('正在读取追番数据…', 'loading');
+			if (empty && !(state.datasets[status] || []).length) empty.hidden = true;
 		}
 		updateLoadButton();
 		var body = new URLSearchParams();
@@ -232,8 +334,9 @@
 			.then(function (response) {
 				if (!response || !response.success) throw new Error(response && response.data && response.data.message ? response.data.message : '追番数据加载失败');
 				var data = response.data || {};
-				state.datasets[status] = dedupeMerge(state.datasets[status], data.items || []);
-				state.pages[status] = Number(data.page || page);
+				var responsePage = Number(data.page || page);
+				state.datasets[status] = responsePage === 1 ? (data.items || []).slice() : dedupeMerge(state.datasets[status], data.items || []);
+				state.pages[status] = responsePage;
 				state.hasMore[status] = !!data.has_more;
 				updateStats(data.stats);
 				if (state.status === String(status)) {
@@ -297,12 +400,14 @@
 	}
 
 	function init() {
+		var nextGrid = document.getElementById('bangumi-grid');
+		if (!nextGrid || nextGrid.getAttribute('data-argon-bangumi-bound') === 'true') return;
 		readPageState();
 		if (!grid) return;
 		ensureStylesheet();
-		if (grid.getAttribute('data-argon-bangumi-bound') === 'true') return;
 		grid.setAttribute('data-argon-bangumi-bound', 'true');
-		state.datasets[state.status] = Array.isArray(config.initialItems) ? config.initialItems : [];
+		var initialItems = Array.isArray(config.initialItems) ? config.initialItems : [];
+		state.datasets[state.status] = initialItems;
 		state.pages[state.status] = Number(config.initialPage || 1);
 		state.hasMore[state.status] = !!config.initialHasMore;
 		updateStats(config.stats);
@@ -313,6 +418,22 @@
 		Array.prototype.forEach.call(document.querySelectorAll('[data-bangumi-type]'), function (button) { button.addEventListener('click', function () { switchType(button.getAttribute('data-bangumi-type')); }); });
 		if (loadMoreButton) loadMoreButton.addEventListener('click', loadMore);
 		if (searchInput) searchInput.addEventListener('input', function () { search(searchInput.value); });
+		if (!initialItems.length || config.initialNeedsRefresh) requestPage(state.status, 1);
+		if (window.__argonBangumiPreviewScrollHandler) window.removeEventListener('scroll', window.__argonBangumiPreviewScrollHandler, true);
+		if (window.__argonBangumiPreviewResizeHandler) window.removeEventListener('resize', window.__argonBangumiPreviewResizeHandler);
+		window.__argonBangumiPreviewScrollHandler = function () { closeCardPreview(true); };
+		window.__argonBangumiPreviewResizeHandler = function () { closeCardPreview(true); };
+		window.addEventListener('scroll', window.__argonBangumiPreviewScrollHandler, true);
+		window.addEventListener('resize', window.__argonBangumiPreviewResizeHandler);
+		if (window.jQuery) {
+			window.jQuery(document)
+				.off('pjax:beforeReplace.argonBangumiPreview')
+				.on('pjax:beforeReplace.argonBangumiPreview', function () {
+					closeCardPreview(true);
+					if (cardPreview && cardPreview.parentNode) cardPreview.parentNode.removeChild(cardPreview);
+					cardPreview = null;
+				});
+		}
 		window.ArgonBangumi = {
 			init: init,
 			switchTab: switchTab,

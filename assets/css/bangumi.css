@@ -70,9 +70,16 @@
 .bangumi-live-status { min-height: 20px; margin: 0 2px 8px; color: var(--argon-special-page-text-soft); font-size: 12px; }
 .bangumi-live-status.is-loading { color: var(--themecolor); }
 .bangumi-live-status.is-error { color: var(--argon-special-page-danger-text); }
-.bangumi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(172px, 1fr)); gap: 14px; }
+.bangumi-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 156px), 1fr));
+	align-items: start;
+	gap: 14px;
+}
 .bangumi-card {
 	display: flex;
+	align-self: start;
+	width: 100%;
 	min-width: 0;
 	flex-direction: column;
 	overflow: hidden;
@@ -94,9 +101,9 @@
 .bangumi-status-badge.is-watching { background: #e58b16; }
 .bangumi-status-badge.is-want { background: #3b82f6; }
 .bangumi-status-badge.is-watched { background: #16a34a; }
-.bangumi-card-body { display: flex; min-width: 0; flex: 1; flex-direction: column; padding: 11px 12px 12px; }
-.bangumi-card-title { margin: 0; color: var(--color-text-deeper); font-size: 14px; font-weight: 600; line-height: 1.45; overflow-wrap: break-word; }
-.bangumi-card-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 7px; margin-top: 7px; color: var(--argon-special-page-text-soft); font-size: 10px; }
+.bangumi-card-body { display: flex; min-width: 0; height: 190px; flex-direction: column; overflow: hidden; padding: 11px 12px 12px; }
+.bangumi-card-title { display: -webkit-box; min-height: 2.9em; max-height: 2.9em; overflow: hidden; margin: 0; color: var(--color-text-deeper); font-size: 14px; font-weight: 600; line-height: 1.45; overflow-wrap: break-word; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.bangumi-card-meta { display: flex; align-items: center; flex-wrap: nowrap; gap: 4px 7px; min-height: 15px; overflow: hidden; margin-top: 7px; color: var(--argon-special-page-text-soft); font-size: 10px; white-space: nowrap; }
 .bangumi-card-meta .bangumi-type-label { color: var(--themecolor); }
 .bangumi-score { display: inline-flex; align-items: center; gap: 3px; color: #d97706; font-weight: 700; }
 .bangumi-score i { font-size: 10px; }
@@ -104,10 +111,43 @@
 .bangumi-progress-text { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--argon-special-page-text-muted); font-size: 11px; }
 .bangumi-progress-track { height: 4px; margin-top: 7px; overflow: hidden; border-radius: 4px; background: rgba(var(--themecolor-rgbstr), 0.12); }
 .bangumi-progress-track span { display: block; height: 100%; border-radius: inherit; background: var(--themecolor); }
-.bangumi-card-summary { display: -webkit-box; overflow: hidden; max-height: 3.1em; margin: 7px 0 0; color: var(--argon-special-page-text-muted); font-size: 10px; line-height: 1.55; -webkit-box-orient: vertical; -webkit-line-clamp: 2; transition: max-height var(--motion-fast-duration, 220ms) ease; }
-.bangumi-card:hover .bangumi-card-summary, .bangumi-card:focus-within .bangumi-card-summary { -webkit-line-clamp: 5; max-height: 7.75em; }
+.bangumi-card-summary { display: -webkit-box; min-height: 3.1em; max-height: 3.1em; overflow: hidden; margin: 7px 0 0; color: var(--argon-special-page-text-muted); font-size: 10px; line-height: 1.55; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .bangumi-tags { display: flex; overflow: hidden; gap: 4px; margin-top: 7px; white-space: nowrap; }
 .bangumi-tag { max-width: 80px; overflow: hidden; padding: 3px 5px; border-radius: 3px; background: rgba(var(--themecolor-rgbstr), 0.07); color: var(--argon-special-page-text-soft); font-size: 9px; text-overflow: ellipsis; }
+.bangumi-card-preview {
+	position: fixed;
+	z-index: 10050;
+	display: grid;
+	grid-template-columns: minmax(128px, 0.78fr) minmax(0, 1.22fr);
+	min-height: min(480px, calc(100vh - 24px));
+	max-width: calc(100vw - 24px);
+	max-height: calc(100vh - 24px);
+	overflow: hidden;
+	border: 1px solid rgba(var(--themecolor-rgbstr), 0.3);
+	border-radius: var(--card-radius, 4px);
+	background: var(--color-foreground);
+	box-shadow: 0 22px 54px rgba(17, 24, 39, 0.24);
+	color: var(--color-text-deeper);
+	opacity: 0;
+	pointer-events: none;
+	transform: translateY(8px) scale(0.98);
+	transform-origin: center;
+	transition: opacity 160ms ease, transform 180ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.bangumi-card-preview[hidden] { display: none !important; }
+.bangumi-card-preview.is-visible { opacity: 1; transform: translateY(0) scale(1); }
+.bangumi-card-preview-media { position: relative; min-height: 250px; overflow: hidden; background: rgba(var(--themecolor-rgbstr), 0.08); }
+.bangumi-card-preview-media img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.bangumi-card-preview-media.is-empty::before { content: '\f03e'; position: absolute; inset: 0; display: grid; place-items: center; color: var(--argon-special-page-text-faint); font: 24px/1 FontAwesome; }
+.bangumi-card-preview-body { display: flex; min-width: 0; flex-direction: column; padding: 18px; }
+.bangumi-card-preview-title { margin: 0; color: var(--color-text-deeper); font-size: 18px; font-weight: 700; line-height: 1.45; overflow-wrap: break-word; }
+.bangumi-card-preview-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin-top: 9px; color: var(--argon-special-page-text-soft); font-size: 11px; }
+.bangumi-card-preview-meta .bangumi-type-label { color: var(--themecolor); }
+.bangumi-card-preview-summary { display: -webkit-box; overflow: hidden; margin: 12px 0 0; color: var(--argon-special-page-text-muted); font-size: 12px; line-height: 1.65; -webkit-box-orient: vertical; -webkit-line-clamp: 6; }
+.bangumi-card-preview .bangumi-progress { margin-top: 14px; padding-top: 0; }
+.bangumi-card-preview .bangumi-tags { flex-wrap: wrap; overflow: visible; margin-top: auto; padding-top: 14px; white-space: normal; }
+.bangumi-card-preview .bangumi-tag { max-width: 112px; padding: 4px 7px; font-size: 10px; }
+.bangumi-card.is-preview-source { border-color: rgba(var(--themecolor-rgbstr), 0.38); box-shadow: 0 8px 20px rgba(31, 41, 55, 0.12); }
 .bangumi-empty { display: flex; align-items: center; flex-direction: column; gap: 7px; padding: 54px 20px; color: var(--argon-special-page-text-muted); text-align: center; }
 .bangumi-empty i { margin-bottom: 4px; color: var(--argon-special-page-text-faint); font-size: 27px; }
 .bangumi-empty strong { color: var(--color-text-deeper); font-size: 14px; }
@@ -123,16 +163,14 @@
 @keyframes bangumi-spin { to { transform: rotate(360deg); } }
 html.darkmode .bangumi-card { box-shadow: 0 3px 12px rgba(0, 0, 0, 0.16); }
 html.darkmode .bangumi-card:hover { box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28); }
+html.darkmode .bangumi-card-preview { box-shadow: 0 22px 54px rgba(0, 0, 0, 0.5); }
 @media (prefers-reduced-motion: reduce) {
-	.bangumi-card, .bangumi-card-media img, .bangumi-card-summary { transition: none; }
+	.bangumi-card, .bangumi-card-media img, .bangumi-card-preview { transition: none; }
 	.bangumi-card:hover, .bangumi-card:hover .bangumi-card-media img { transform: none; }
 }
 
 @media screen and (max-width: 991px) {
-	.bangumi-grid { display: flex; flex-direction: column; gap: 12px; }
-	.bangumi-card { display: grid; grid-template-columns: 132px minmax(0, 1fr); min-height: 178px; }
-	.bangumi-card-media { aspect-ratio: auto; min-height: 178px; }
-	.bangumi-card-body { padding: 13px 15px 13px 14px; }
+	.bangumi-grid { gap: 12px; }
 }
 @media screen and (max-width: 700px) {
 	.bangumi-page-surface { padding: 12px; }
@@ -143,9 +181,12 @@ html.darkmode .bangumi-card:hover { box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
 	.bangumi-search { width: auto; flex: 1; }
 }
 @media screen and (max-width: 460px) {
-	.bangumi-card { grid-template-columns: 104px minmax(0, 1fr); min-height: 154px; }
-	.bangumi-card-media { min-height: 154px; }
-	.bangumi-card-body { padding: 11px 12px; }
+	.bangumi-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 136px), 1fr)); gap: 10px; }
+	.bangumi-card-body { height: 174px; padding: 10px; }
 	.bangumi-card-title { font-size: 14px; }
-	.bangumi-card-summary { -webkit-line-clamp: 2; }
+	.bangumi-card-preview { grid-template-columns: minmax(108px, 0.7fr) minmax(0, 1.3fr); }
+	.bangumi-card-preview-media { min-height: 224px; }
+	.bangumi-card-preview-body { padding: 14px; }
+	.bangumi-card-preview-title { font-size: 16px; }
+	.bangumi-card-preview-summary { -webkit-line-clamp: 5; }
 }

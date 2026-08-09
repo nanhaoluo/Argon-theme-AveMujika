@@ -2,9 +2,8 @@
 /**
  * Bilibili bangumi data access, caching and cover localization.
  *
- * The browser only receives local cover URLs. Bilibili is contacted by the
- * WordPress server and the original cover URL is retained in the cached item
- * for future refreshes.
+ * Cached local covers are preferred. Until background localization finishes,
+ * the original cover URL is retained so the browser can display it directly.
  *
  * @package Argon
  */
@@ -70,6 +69,18 @@ if (!function_exists('argon_bangumi_extract_names')) {
 	}
 }
 
+if (!function_exists('argon_bangumi_local_cover_url')) {
+	function argon_bangumi_local_cover_url($season_id) {
+		$season_id = absint($season_id);
+		if ($season_id <= 0) return '';
+		$uploads = wp_upload_dir();
+		if (!empty($uploads['error']) || empty($uploads['basedir']) || empty($uploads['baseurl'])) return '';
+		$file = trailingslashit($uploads['basedir']) . 'bangumi-cache/' . $season_id . '.jpg';
+		if (!file_exists($file)) return '';
+		return set_url_scheme(trailingslashit($uploads['baseurl']) . 'bangumi-cache/' . $season_id . '.jpg');
+	}
+}
+
 if (!function_exists('argon_bangumi_normalize_item')) {
 	function argon_bangumi_normalize_item($item, $fallback_status = 2, $download_cover = true) {
 		if (!is_array($item)) {
@@ -89,6 +100,9 @@ if (!function_exists('argon_bangumi_normalize_item')) {
 		}
 		$cover = esc_url_raw($cover);
 		$local_cover = isset($item['cover_local']) ? esc_url_raw((string)$item['cover_local']) : '';
+		if ($local_cover === '') {
+			$local_cover = argon_bangumi_local_cover_url($season_id);
+		}
 		if ($download_cover && $cover !== '') {
 			$downloaded_cover = argon_download_bangumi_cover($cover, $season_id);
 			if ($downloaded_cover !== '') $local_cover = $downloaded_cover;
@@ -119,6 +133,34 @@ if (!function_exists('argon_bangumi_normalize_item')) {
 			'summary' => isset($item['summary']) ? wp_strip_all_tags((string)$item['summary']) : '',
 			'total_count' => isset($item['total_count']) ? absint($item['total_count']) : 0,
 		);
+	}
+}
+
+if (!function_exists('argon_bangumi_schedule_cover_localization')) {
+	function argon_bangumi_schedule_cover_localization($items) {
+		if (!function_exists('wp_schedule_single_event')) return;
+		$covers = array();
+		foreach ((array)$items as $item) {
+			if (!is_array($item)) continue;
+			$season_id = isset($item['season_id']) ? absint($item['season_id']) : 0;
+			$cover = isset($item['cover']) ? esc_url_raw((string)$item['cover']) : '';
+			if ($season_id <= 0 || $cover === '' || argon_bangumi_local_cover_url($season_id) !== '') continue;
+			$covers[$season_id] = $cover;
+		}
+		if (!$covers) return;
+		ksort($covers);
+		$args = array($covers);
+		if (!function_exists('wp_next_scheduled') || !wp_next_scheduled('argon_bangumi_localize_covers', $args)) {
+			wp_schedule_single_event(time() + 5, 'argon_bangumi_localize_covers', $args);
+		}
+	}
+}
+
+if (!function_exists('argon_bangumi_localize_covers')) {
+	function argon_bangumi_localize_covers($covers) {
+		foreach ((array)$covers as $season_id => $cover) {
+			argon_download_bangumi_cover($cover, $season_id);
+		}
 	}
 }
 
@@ -255,6 +297,18 @@ if (!function_exists('argon_bangumi_get_page')) {
 	}
 }
 
+if (!function_exists('argon_bangumi_get_cached_page')) {
+	function argon_bangumi_get_cached_page($type, $status, $pn, $download_cover = false) {
+		$type = absint($type);
+		$status = argon_bangumi_normalize_status($status);
+		$pn = max(1, absint($pn));
+		$cached = get_transient(argon_bangumi_cache_key($type, $status, $pn));
+		if (!is_array($cached) || !isset($cached['items'])) return false;
+		$cached['items'] = argon_bangumi_hydrate_items($cached['items'], $status, $download_cover);
+		return $cached;
+	}
+}
+
 if (!function_exists('argon_get_bangumi_list')) {
 	function argon_get_bangumi_list($type, $status, $pn, $force_refresh = false) {
 		$page = argon_bangumi_get_page($type, $status, $pn, $force_refresh, true);
@@ -279,43 +333,87 @@ if (!function_exists('argon_bangumi_interleave_items')) {
 }
 
 if (!function_exists('argon_bangumi_get_combined_page')) {
-	function argon_bangumi_get_combined_page($type, $status, $pn, $force_refresh = false, $download_cover = true) {
+	function argon_bangumi_get_combined_page($type, $status, $pn, $force_refresh = false, $download_cover = true, $cached_only = false) {
 		$type = argon_bangumi_normalize_type($type);
 		$types = $type === 'all' ? array(1, 4) : array(absint($type));
 		$pn = max(1, absint($pn));
 		$source_groups = array();
+		$source_totals = array();
 		$total = 0;
 		$has_more = false;
+		$needs_refresh = false;
 		$errors = array();
 		foreach ($types as $source_type) $source_groups[$source_type] = array();
 
-		// Build the merged sequence through the requested source page. The API
-		// still uses ps=30, while only the current global 30-item slice gets covers.
+		// Fetch only as many source pages as the requested merged slice needs.
 		for ($source_pn = 1; $source_pn <= $pn; $source_pn++) {
+			$loaded_source = false;
 			foreach ($types as $source_type) {
-				$page = argon_bangumi_get_page($source_type, $status, $source_pn, $force_refresh, false);
+				if (isset($source_totals[$source_type]) && count($source_groups[$source_type]) >= $source_totals[$source_type]) continue;
+				$page = $cached_only
+					? argon_bangumi_get_cached_page($source_type, $status, $source_pn, false)
+					: argon_bangumi_get_page($source_type, $status, $source_pn, $force_refresh, false);
+				if ($page === false) {
+					$needs_refresh = true;
+					continue;
+				}
+				$loaded_source = true;
 				$source_groups[$source_type] = array_merge($source_groups[$source_type], isset($page['items']) && is_array($page['items']) ? $page['items'] : array());
-				if ($source_pn === 1) $total += isset($page['total']) ? absint($page['total']) : count($page['items']);
+				if ($source_pn === 1) {
+					$source_totals[$source_type] = isset($page['total']) ? absint($page['total']) : count($page['items']);
+					$total += $source_totals[$source_type];
+				}
 				if (!empty($page['error'])) $errors[] = $page['error'];
 			}
+			$available_items = count(argon_bangumi_interleave_items($source_groups));
+			if (!$loaded_source || $available_items >= ($pn * 30) || ($total > 0 && $available_items >= $total)) break;
 		}
 		$merged_items = argon_bangumi_interleave_items($source_groups);
 		$items = array_slice($merged_items, ($pn - 1) * 30, 30);
 		if ($download_cover) $items = argon_bangumi_hydrate_items($items, $status, true);
 		$has_more = $total > ($pn * 30);
-		return array(
+		$result = array(
 			'items' => $items,
 			'total' => $total,
 			'page' => $pn,
 			'per_page' => 30,
 			'has_more' => $has_more,
+			'needs_refresh' => $cached_only && $needs_refresh,
 			'error' => !empty($errors) ? implode(' ', array_unique($errors)) : '',
 		);
+		return $result;
 	}
 }
 
 if (!function_exists('argon_bangumi_get_stats')) {
 	function argon_bangumi_get_stats($current_page = array(), $current_status = 2) {
+		$cache_key = 'argon_bangumi_stats_' . argon_bangumi_uid();
+		$stats = get_transient($cache_key);
+		$stats = is_array($stats) ? array_merge(array('total' => 0, 'watching' => 0, 'want' => 0, 'watched' => 0), $stats) : array('total' => 0, 'watching' => 0, 'want' => 0, 'watched' => 0);
+		$status_labels = array(1 => 'want', 2 => 'watching', 3 => 'watched');
+		$current_status = argon_bangumi_normalize_status($current_status);
+		if (is_array($current_page) && array_key_exists('total', $current_page) && empty($current_page['needs_refresh'])) {
+			$stats[$status_labels[$current_status]] = absint($current_page['total']);
+		}
+		$stats['total'] = $stats['watching'] + $stats['want'] + $stats['watched'];
+		set_transient($cache_key, $stats, 6 * HOUR_IN_SECONDS);
+		return $stats;
+	}
+}
+
+if (!function_exists('argon_bangumi_schedule_stats_refresh')) {
+	function argon_bangumi_schedule_stats_refresh() {
+		if (!function_exists('wp_schedule_single_event')) return;
+		$refresh_key = 'argon_bangumi_stats_refreshed_' . argon_bangumi_uid();
+		$lock_key = 'argon_bangumi_stats_refresh_lock_' . argon_bangumi_uid();
+		if (get_transient($refresh_key) !== false || get_transient($lock_key) !== false) return;
+		set_transient($lock_key, 1, 5 * MINUTE_IN_SECONDS);
+		wp_schedule_single_event(time() + 5, 'argon_bangumi_refresh_stats');
+	}
+}
+
+if (!function_exists('argon_bangumi_refresh_stats')) {
+	function argon_bangumi_refresh_stats() {
 		$stats = array('total' => 0, 'watching' => 0, 'want' => 0, 'watched' => 0);
 		foreach (array(1 => 'want', 2 => 'watching', 3 => 'watched') as $status => $label) {
 			foreach (array(1, 4) as $type) {
@@ -324,7 +422,9 @@ if (!function_exists('argon_bangumi_get_stats')) {
 			}
 		}
 		$stats['total'] = $stats['watching'] + $stats['want'] + $stats['watched'];
-		return $stats;
+		set_transient('argon_bangumi_stats_' . argon_bangumi_uid(), $stats, 6 * HOUR_IN_SECONDS);
+		set_transient('argon_bangumi_stats_refreshed_' . argon_bangumi_uid(), 1, HOUR_IN_SECONDS);
+		delete_transient('argon_bangumi_stats_refresh_lock_' . argon_bangumi_uid());
 	}
 }
 
@@ -353,7 +453,9 @@ if (!function_exists('argon_bangumi_ajax_handler')) {
 		$type = isset($_POST['type']) ? argon_bangumi_normalize_type(wp_unslash($_POST['type'])) : 'all';
 		$status = isset($_POST['status']) ? argon_bangumi_normalize_status(wp_unslash($_POST['status'])) : 2;
 		$pn = isset($_POST['pn']) ? min(30, max(1, absint($_POST['pn']))) : 1;
-		$page = argon_bangumi_get_combined_page($type, $status, $pn, false, true);
+		$page = argon_bangumi_get_combined_page($type, $status, $pn, false, false);
+		argon_bangumi_schedule_cover_localization($page['items']);
+		argon_bangumi_schedule_stats_refresh();
 		wp_send_json_success(array(
 			'items' => $page['items'],
 			'page' => $page['page'],
@@ -370,6 +472,8 @@ if (!function_exists('argon_register_bangumi_ajax')) {
 	function argon_register_bangumi_ajax() {
 		add_action('wp_ajax_argon_bangumi_load', 'argon_bangumi_ajax_handler');
 		add_action('wp_ajax_nopriv_argon_bangumi_load', 'argon_bangumi_ajax_handler');
+		add_action('argon_bangumi_localize_covers', 'argon_bangumi_localize_covers', 10, 1);
+		add_action('argon_bangumi_refresh_stats', 'argon_bangumi_refresh_stats');
 	}
 }
 argon_register_bangumi_ajax();

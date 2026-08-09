@@ -21,12 +21,14 @@ $bangumi_initial = array(
 );
 $bangumi_stats = array('total' => 0, 'watching' => 0, 'want' => 0, 'watched' => 0);
 if ($bangumi_enabled && function_exists('argon_bangumi_get_combined_page')) {
-	$bangumi_initial = argon_bangumi_get_combined_page('all', 2, 1);
+	$bangumi_initial = argon_bangumi_get_combined_page('all', 2, 1, false, false, true);
 	$bangumi_stats = function_exists('argon_bangumi_get_stats') ? argon_bangumi_get_stats($bangumi_initial) : $bangumi_stats;
+	if (function_exists('argon_bangumi_schedule_stats_refresh')) argon_bangumi_schedule_stats_refresh();
 }
 $bangumi_asset_version = function_exists('argon_get_asset_file_version') ? argon_get_asset_file_version('assets/js/bangumi.js') : $GLOBALS['theme_version'];
 $bangumi_style_url = add_query_arg('ver', function_exists('argon_get_asset_file_version') ? argon_get_asset_file_version('assets/css/bangumi.css') : $GLOBALS['theme_version'], get_template_directory_uri() . '/assets/css/bangumi.css');
 $bangumi_script_url = add_query_arg('ver', $bangumi_asset_version, get_template_directory_uri() . '/assets/js/bangumi.js');
+wp_enqueue_style('argon-bangumi', $bangumi_style_url, array(), null);
 
 $bangumi_config = array(
 	'ajaxUrl' => admin_url('admin-ajax.php'),
@@ -38,6 +40,7 @@ $bangumi_config = array(
 	'initialItems' => isset($bangumi_initial['items']) ? $bangumi_initial['items'] : array(),
 	'initialPage' => isset($bangumi_initial['page']) ? absint($bangumi_initial['page']) : 1,
 	'initialHasMore' => !empty($bangumi_initial['has_more']),
+	'initialNeedsRefresh' => !empty($bangumi_initial['needs_refresh']),
 	'initialError' => isset($bangumi_initial['error']) ? (string)$bangumi_initial['error'] : '',
 	'stats' => $bangumi_stats,
 );
@@ -58,11 +61,6 @@ argon_special_page_surface_open('bangumi-page');
 				'label' => __('在看', 'argon'),
 				'value' => number_format_i18n((int)$bangumi_stats['watching']),
 				'value_id' => 'bangumi-stat-watching',
-			),
-			array(
-				'label' => __('想看', 'argon'),
-				'value' => number_format_i18n((int)$bangumi_stats['want']),
-				'value_id' => 'bangumi-stat-want',
 			),
 			array(
 				'label' => __('看过', 'argon'),
