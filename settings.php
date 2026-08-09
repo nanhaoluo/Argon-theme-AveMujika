@@ -176,63 +176,6 @@ function themeoptions_page(){
 				max-height: 160px;
 				overflow: auto;
 			}
-			.argon-field-guide {
-				max-width: 720px;
-				margin-top: 12px;
-			}
-			.argon-field-guide > summary {
-				width: fit-content;
-				padding: 6px 8px;
-				border-radius: 4px;
-				color: var(--themecolor);
-				cursor: pointer;
-				font-weight: 600;
-				transition: background-color 150ms ease-out, color 150ms ease-out;
-			}
-			.argon-field-guide > summary:hover {
-				background: rgba(var(--themecolor-rgbstr), .08);
-				color: var(--themecolor-dark);
-			}
-			.argon-field-guide > summary:focus-visible {
-				outline: 2px solid var(--themecolor);
-				outline-offset: 2px;
-			}
-			.argon-field-guide__body {
-				margin-top: 6px;
-				padding: 14px 16px;
-				border: 1px solid var(--color-border, #dcdcde);
-				border-left: 3px solid var(--themecolor);
-				border-radius: 6px;
-				background: var(--color-widgets, #fff);
-				color: #525f7f;
-				line-height: 1.7;
-			}
-			.argon-field-guide__steps {
-				margin: 0;
-				padding-left: 22px;
-			}
-			.argon-field-guide__steps li + li {
-				margin-top: 8px;
-			}
-			.argon-field-guide__steps code,
-			.argon-field-guide__steps kbd {
-				overflow-wrap: anywhere;
-			}
-			.argon-field-guide__warning,
-			.argon-field-guide__troubleshooting {
-				margin: 12px 0 0;
-				padding: 8px 12px;
-			}
-			.argon-field-guide__warning {
-				border-left: 3px solid #dba617;
-				background: rgba(219, 166, 23, .08);
-			}
-			.argon-field-guide__troubleshooting {
-				border-top: 1px solid var(--color-border, #dcdcde);
-				padding-left: 0;
-				padding-right: 0;
-				padding-bottom: 0;
-			}
 
 			.gu-mirror{position:fixed!important;margin:0!important;z-index:9999!important;opacity:.8;-ms-filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";filter:alpha(opacity=80)}.gu-hide{display:none!important}.gu-unselectable{-webkit-user-select:none!important;-moz-user-select:none!important;-ms-user-select:none!important;user-select:none!important}.gu-transit{opacity:.2;-ms-filter:"progid:DXImageTransform.Microsoft.Alpha(Opacity=20)";filter:alpha(opacity=20)}
 
@@ -2804,56 +2747,6 @@ function themeoptions_page(){
 						<td>
 							<input name="argon_bangumi_uid" type="text" class="regular-text" inputmode="numeric" value="<?php echo esc_attr(get_option('argon_bangumi_uid', '349546967')); ?>">
 							<p class="description"><?php _e('填写要展示的 B 站用户 UID，默认值为 349546967。', 'argon');?></p>
-						</td>
-					</tr>
-
-					<tr>
-						<th><label><?php _e('B 站 SESSDATA', 'argon');?></label></th>
-						<td>
-							<input name="argon_bangumi_sessdata" type="password" class="regular-text" autocomplete="new-password" data-argon-sensitive placeholder="<?php esc_attr_e('留空保持现有值', 'argon'); ?>">
-							<label class="argon-sensitive-clear"><input name="argon_bangumi_clear_sessdata" type="checkbox" value="true" data-argon-sensitive> <?php _e('清除已保存的 SESSDATA', 'argon');?></label>
-							<p class="description"><?php _e('SESSDATA 用于读取追番进度等登录后数据；不需要这些数据时可以留空。它属于敏感登录凭证，仅应保存在自托管、可信的站点中。', 'argon');?></p>
-							<details class="argon-field-guide argon-sessdata-guide">
-								<summary><?php _e('如何获取 B 站 SESSDATA', 'argon');?></summary>
-								<div class="argon-field-guide__body">
-									<ol class="argon-field-guide__steps">
-										<li>
-											<strong><?php _e('登录 B 站：', 'argon');?></strong>
-											<?php _e('在你信任的桌面浏览器中打开', 'argon');?>
-											<a href="https://www.bilibili.com/" target="_blank" rel="noopener noreferrer">www.bilibili.com</a>
-											<?php _e('，登录需要展示追番记录的账号。', 'argon');?>
-										</li>
-										<li>
-											<strong><?php _e('打开开发者工具：', 'argon');?></strong>
-											<?php _e('按', 'argon');?> <kbd>F12</kbd> <?php _e('或', 'argon');?> <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>I</kbd><?php _e('。如果快捷键无效，也可从浏览器菜单进入“更多工具 → 开发者工具”。', 'argon');?>
-										</li>
-										<li>
-											<strong><?php _e('打开 Cookies：', 'argon');?></strong>
-											<?php _e('Chrome 或 Edge 选择“Application（应用）→ Storage（存储）→ Cookies”；Firefox 选择“Storage（存储）→ Cookies”。如果看不到 Application，请点击标签栏末尾的 »。', 'argon');?>
-										</li>
-										<li>
-											<strong><?php _e('找到 SESSDATA：', 'argon');?></strong>
-											<?php _e('在 Cookies 下选择', 'argon');?> <code>https://www.bilibili.com</code><?php _e('，在过滤框输入', 'argon');?> <code>SESSDATA</code><?php _e('，找到名称（Name）为 SESSDATA 的一行。', 'argon');?>
-										</li>
-										<li>
-											<strong><?php _e('复制 Value：', 'argon');?></strong>
-											<?php _e('双击该行的值（Value）并完整复制，原样粘贴到上方输入框。不要解码内容，也不要包含', 'argon');?> <code>SESSDATA=</code> <?php _e('前缀或末尾分号。', 'argon');?>
-										</li>
-										<li>
-											<strong><?php _e('保存并验证：', 'argon');?></strong>
-											<?php _e('粘贴后点击当前设置项右侧出现的“保存”，再打开追番页面检查进度是否显示。保存成功后输入框会自动清空，这是为了避免凭证继续显示在页面中。', 'argon');?>
-										</li>
-									</ol>
-									<p class="argon-field-guide__warning">
-										<strong><?php _e('安全提醒：', 'argon');?></strong>
-										<?php _e('SESSDATA 会保存在本站数据库中，拥有数据库或后台文件访问权限的人可能读取它。不要把它发到聊天、工单、截图、公开仓库或日志中。若怀疑泄漏，请立即在 B 站账号安全设置中下线可疑设备或修改密码，使旧凭证失效，然后重新获取。', 'argon');?>
-									</p>
-									<p class="argon-field-guide__troubleshooting">
-										<strong><?php _e('找不到或已经失效？', 'argon');?></strong>
-										<?php _e('确认网页已经登录，并且选择的是 bilibili.com 域名下的 Cookies。有效期请以 Cookies 表中的 Expires / Max-Age 为准；到期或退出登录后，重新登录并按上述步骤获取即可。', 'argon');?>
-									</p>
-								</div>
-							</details>
 						</td>
 					</tr>
 
@@ -7499,10 +7392,6 @@ window.pjaxLoaded = function(){
 				flex-wrap: wrap;
 			}
 
-			.argon-field-guide__body {
-				padding: 12px;
-			}
-
 		}
 
 	</style>
@@ -7982,39 +7871,6 @@ function argon_update_friend_link_worker_settings(){
 
 }
 
-function argon_clear_bangumi_cache() {
-	if (!function_exists('argon_bangumi_cache_key')) return;
-	for ($type = 1; $type <= 4; $type += 3) {
-		for ($status = 1; $status <= 3; $status++) {
-			for ($pn = 1; $pn <= 100; $pn++) {
-				delete_transient(argon_bangumi_cache_key($type, $status, $pn));
-			}
-		}
-	}
-}
-
-function argon_update_bangumi_sessdata() {
-	if (argon_is_partial_themeoptions_update() && !array_key_exists('argon_bangumi_sessdata', $_POST)) {
-		return;
-	}
-	if (!array_key_exists('argon_bangumi_sessdata', $_POST)) {
-		return;
-	}
-	$clear = isset($_POST['argon_bangumi_clear_sessdata'])
-		&& wp_unslash($_POST['argon_bangumi_clear_sessdata']) === 'true';
-	if ($clear) {
-		delete_option('argon_bangumi_sessdata');
-		argon_clear_bangumi_cache();
-		return;
-	}
-	$value = sanitize_text_field(wp_unslash($_POST['argon_bangumi_sessdata']));
-	if ($value !== '') {
-		$previous = (string)get_option('argon_bangumi_sessdata', '');
-		update_option('argon_bangumi_sessdata', $value, false);
-		if ($previous !== $value) argon_clear_bangumi_cache();
-	}
-}
-
 function argon_update_themeoptions(){
 
 	if (!isset($_POST['update_themeoptions'])){
@@ -8063,7 +7919,6 @@ function argon_update_themeoptions(){
 		argon_update_option('argon_duolingo_username');
 		argon_update_option('argon_bangumi_enabled');
 		argon_update_option('argon_bangumi_uid');
-		argon_update_bangumi_sessdata();
 		argon_update_option('argon_show_rss_link');
 
 		if (!argon_is_partial_themeoptions_update() || argon_themeoptions_request_has_any(array('argon_show_duolingo_streak', 'argon_duolingo_username'))) {

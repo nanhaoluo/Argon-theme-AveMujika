@@ -32,7 +32,7 @@ if (!function_exists('argon_bangumi_uid')) {
 
 if (!function_exists('argon_bangumi_cache_key')) {
 	function argon_bangumi_cache_key($type, $status, $pn) {
-		return 'argon_bangumi_' . argon_bangumi_uid() . '_' . absint($type) . '_' . absint($status) . '_' . absint($pn);
+		return 'argon_bangumi_v2_' . argon_bangumi_uid() . '_' . absint($type) . '_' . absint($status) . '_' . absint($pn);
 	}
 }
 
@@ -240,14 +240,10 @@ if (!function_exists('argon_bangumi_remote_page')) {
 			'pn' => absint($pn),
 			'ps' => 30,
 		), ARGON_BANGUMI_API_URL);
-		$sessdata = trim((string)get_option('argon_bangumi_sessdata', ''));
 		$headers = array(
 			'Accept' => 'application/json',
 			'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
 		);
-		if ($sessdata !== '') {
-			$headers['Cookie'] = 'SESSDATA=' . $sessdata;
-		}
 
 		$response = wp_remote_get($url, array('timeout' => 20, 'headers' => $headers));
 		if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {

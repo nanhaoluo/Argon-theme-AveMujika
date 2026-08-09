@@ -5311,6 +5311,16 @@ function argon_bangumi_maybe_flush_rewrite_rules() {
     update_option('argon_bangumi_rewrite_version', $rewrite_version, false);
 }
 
+// 缓存键已升级命名空间；这里只需删除旧凭证并记录清理版本。
+add_action('init', 'argon_cleanup_removed_bangumi_credentials', 5);
+function argon_cleanup_removed_bangumi_credentials() {
+    $cleanup_version = '1';
+    if (get_option('argon_bangumi_credentials_cleanup_version') === $cleanup_version) return;
+
+    delete_option('argon_bangumi_sessdata');
+    update_option('argon_bangumi_credentials_cleanup_version', $cleanup_version, true);
+}
+
 // 反馈页面 URL 重写
 add_action('init', 'argon_feedback_rewrite');
 function argon_feedback_rewrite() {
