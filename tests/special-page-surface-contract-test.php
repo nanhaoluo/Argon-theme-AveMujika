@@ -113,7 +113,7 @@ argon_special_surface_assert(
     && $bangumiJs !== false
     && $bangumiBackend !== false
     && strpos($bangumi, "argon_bangumi_get_combined_page('all', 2, 1, false, false, true)") !== false
-    && strpos($bangumi, "wp_enqueue_style('argon-bangumi'") !== false
+    && strpos($bangumi, "wp_enqueue_style('argon-bangumi'") === false
     && strpos($bangumiJs, 'item.cover_local || item.cover') !== false
     && strpos($bangumiJs, 'responsePage === 1 ? (data.items || []).slice()') !== false
     && strpos($bangumiJs, 'requestPage(state.status, 1);') !== false
@@ -131,11 +131,15 @@ argon_special_surface_assert(
     && $bangumiCss !== false
     && strpos($bangumiJs, 'function renderCardPreview(') !== false
     && strpos($bangumiJs, 'function positionCardPreview(') !== false
+    && strpos($bangumiJs, 'function destroy()') !== false
+    && strpos($bangumiJs, "body.set('action', 'argon_bangumi_stats')") !== false
+    && strpos($bangumiJs, 'visibleItems.find(') === false
     && strpos($bangumiJs, 'Math.max(480, sourceRect.height + 48)') !== false
     && strpos($bangumiJs, 'pjax:beforeReplace.argonBangumiPreview') !== false
     && strpos($bangumiJs, 'bangumi-card-preview') !== false
     && strpos($bangumiCss, '.bangumi-card-preview {') !== false
     && strpos($bangumiCss, 'position: fixed;') !== false
+    && strpos($bangumiCss, '.bangumi-card-preview.is-visible { opacity: 1; pointer-events: auto;') !== false
     && strpos($bangumiCss, 'grid-template-columns: minmax(128px, 0.78fr) minmax(0, 1.22fr);') !== false
     && strpos($bangumiCss, 'min-height: min(480px, calc(100vh - 24px));') !== false
     && $bangumi_title_rule_found

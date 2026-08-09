@@ -381,18 +381,31 @@ if (!function_exists('argon_bangumi_get_combined_page')) {
 	}
 }
 
+if (!function_exists('argon_bangumi_stats_cache_key')) {
+	function argon_bangumi_stats_cache_key() {
+		return 'argon_bangumi_stats_' . argon_bangumi_uid();
+	}
+}
+
+if (!function_exists('argon_bangumi_stats_are_ready')) {
+	function argon_bangumi_stats_are_ready() {
+		return is_array(get_transient(argon_bangumi_stats_cache_key()));
+	}
+}
+
 if (!function_exists('argon_bangumi_get_stats')) {
 	function argon_bangumi_get_stats($current_page = array(), $current_status = 2) {
-		$cache_key = 'argon_bangumi_stats_' . argon_bangumi_uid();
+		$cache_key = argon_bangumi_stats_cache_key();
 		$stats = get_transient($cache_key);
-		$stats = is_array($stats) ? array_merge(array('total' => 0, 'watching' => 0, 'want' => 0, 'watched' => 0), $stats) : array('total' => 0, 'watching' => 0, 'want' => 0, 'watched' => 0);
+		$has_complete_cache = is_array($stats);
+		$stats = $has_complete_cache ? array_merge(array('total' => 0, 'watching' => 0, 'want' => 0, 'watched' => 0), $stats) : array('total' => 0, 'watching' => 0, 'want' => 0, 'watched' => 0);
 		$status_labels = array(1 => 'want', 2 => 'watching', 3 => 'watched');
 		$current_status = argon_bangumi_normalize_status($current_status);
-		if (is_array($current_page) && array_key_exists('total', $current_page) && empty($current_page['needs_refresh'])) {
+		if ($has_complete_cache && is_array($current_page) && array_key_exists('total', $current_page) && empty($current_page['needs_refresh']) && empty($current_page['error'])) {
 			$stats[$status_labels[$current_status]] = absint($current_page['total']);
+			$stats['total'] = $stats['watching'] + $stats['want'] + $stats['watched'];
+			set_transient($cache_key, $stats, 6 * HOUR_IN_SECONDS);
 		}
-		$stats['total'] = $stats['watching'] + $stats['want'] + $stats['watched'];
-		set_transient($cache_key, $stats, 6 * HOUR_IN_SECONDS);
 		return $stats;
 	}
 }
@@ -411,16 +424,24 @@ if (!function_exists('argon_bangumi_schedule_stats_refresh')) {
 if (!function_exists('argon_bangumi_refresh_stats')) {
 	function argon_bangumi_refresh_stats() {
 		$stats = array('total' => 0, 'watching' => 0, 'want' => 0, 'watched' => 0);
+		$failed = false;
 		foreach (array(1 => 'want', 2 => 'watching', 3 => 'watched') as $status => $label) {
 			foreach (array(1, 4) as $type) {
 				$page = argon_bangumi_get_page($type, $status, 1, false, false);
-				$stats[$label] += isset($page['total']) ? absint($page['total']) : count($page['items']);
+				if (!is_array($page) || !empty($page['error']) || !array_key_exists('total', $page)) {
+					$failed = true;
+					break 2;
+				}
+				$stats[$label] += absint($page['total']);
 			}
 		}
-		$stats['total'] = $stats['watching'] + $stats['want'] + $stats['watched'];
-		set_transient('argon_bangumi_stats_' . argon_bangumi_uid(), $stats, 6 * HOUR_IN_SECONDS);
-		set_transient('argon_bangumi_stats_refreshed_' . argon_bangumi_uid(), 1, HOUR_IN_SECONDS);
+		if (!$failed) {
+			$stats['total'] = $stats['watching'] + $stats['want'] + $stats['watched'];
+			set_transient(argon_bangumi_stats_cache_key(), $stats, 6 * HOUR_IN_SECONDS);
+			set_transient('argon_bangumi_stats_refreshed_' . argon_bangumi_uid(), 1, HOUR_IN_SECONDS);
+		}
 		delete_transient('argon_bangumi_stats_refresh_lock_' . argon_bangumi_uid());
+		return !$failed;
 	}
 }
 
@@ -460,6 +481,27 @@ if (!function_exists('argon_bangumi_ajax_handler')) {
 			'has_more' => $page['has_more'],
 			'error' => $page['error'],
 			'stats' => argon_bangumi_get_stats($page, $status),
+			'stats_ready' => argon_bangumi_stats_are_ready(),
+		));
+	}
+}
+
+if (!function_exists('argon_bangumi_stats_ajax_handler')) {
+	function argon_bangumi_stats_ajax_handler() {
+		if (!argon_bangumi_is_enabled()) {
+			wp_send_json_error(array('message' => __('追番页面未启用或 UID 无效', 'argon')), 403);
+		}
+		if (argon_bangumi_ajax_is_rate_limited()) {
+			wp_send_json_error(array('message' => __('请求过于频繁，请稍后再试', 'argon')), 429);
+		}
+		if (!isset($_POST['nonce']) || wp_unslash($_POST['nonce']) === '' || !wp_verify_nonce(wp_unslash($_POST['nonce']), 'argon_bangumi_load')) {
+			wp_send_json_error(array('message' => __('安全验证失败，请刷新页面后重试', 'argon')), 403);
+		}
+		$ready = argon_bangumi_stats_are_ready();
+		if (!$ready) argon_bangumi_schedule_stats_refresh();
+		wp_send_json_success(array(
+			'ready' => $ready,
+			'stats' => argon_bangumi_get_stats(),
 		));
 	}
 }
@@ -468,6 +510,8 @@ if (!function_exists('argon_register_bangumi_ajax')) {
 	function argon_register_bangumi_ajax() {
 		add_action('wp_ajax_argon_bangumi_load', 'argon_bangumi_ajax_handler');
 		add_action('wp_ajax_nopriv_argon_bangumi_load', 'argon_bangumi_ajax_handler');
+		add_action('wp_ajax_argon_bangumi_stats', 'argon_bangumi_stats_ajax_handler');
+		add_action('wp_ajax_nopriv_argon_bangumi_stats', 'argon_bangumi_stats_ajax_handler');
 		add_action('argon_bangumi_localize_covers', 'argon_bangumi_localize_covers', 10, 1);
 		add_action('argon_bangumi_refresh_stats', 'argon_bangumi_refresh_stats');
 	}

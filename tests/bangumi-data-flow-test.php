@@ -7,6 +7,7 @@ define('MINUTE_IN_SECONDS', 60);
 $GLOBALS['argon_bangumi_test_transients'] = array();
 $GLOBALS['argon_bangumi_test_reads'] = array();
 $GLOBALS['argon_bangumi_test_failures'] = array();
+$GLOBALS['argon_bangumi_test_remote_pages'] = array();
 
 function get_option($key, $default = false) {
 	return $key === 'argon_bangumi_uid' ? '123456' : $default;
@@ -59,6 +60,13 @@ function delete_transient($key) {
 
 function add_action($hook, $callback, $priority = 10, $accepted_args = 1) {
 	return true;
+}
+
+function argon_bangumi_get_page($type = 1, $status = 2, $pn = 1, $force_refresh = false, $download_cover = true) {
+	$key = (int)$type . ':' . (int)$status;
+	return isset($GLOBALS['argon_bangumi_test_remote_pages'][$key])
+		? $GLOBALS['argon_bangumi_test_remote_pages'][$key]
+		: array('items' => array(), 'total' => 0, 'error' => 'missing test response');
 }
 
 function __($text, $domain = 'default') {
@@ -122,6 +130,42 @@ unset($GLOBALS['argon_bangumi_test_transients'][$type_one_key]);
 $empty_page = argon_bangumi_get_combined_page('all', 2, 1, false, false, true);
 argon_bangumi_test_assert(!empty($empty_page['needs_refresh']), 'an empty cache should request an asynchronous refresh');
 argon_bangumi_test_assert($empty_page['items'] === array(), 'an empty cache should return immediately without remote data');
+
+$stats_key = 'argon_bangumi_stats_' . argon_bangumi_uid();
+$refresh_key = 'argon_bangumi_stats_refreshed_' . argon_bangumi_uid();
+$lock_key = 'argon_bangumi_stats_refresh_lock_' . argon_bangumi_uid();
+$old_stats = array('total' => 60, 'watching' => 20, 'want' => 10, 'watched' => 30);
+$GLOBALS['argon_bangumi_test_transients'][$stats_key] = $old_stats;
+$stats_after_page_error = argon_bangumi_get_stats(array(
+	'total' => 999,
+	'needs_refresh' => false,
+	'error' => 'upstream failed',
+), 2);
+argon_bangumi_test_assert($stats_after_page_error === $old_stats, 'an errored current page must not overwrite cached statistics');
+
+foreach (array(1, 2, 3) as $status) {
+	foreach (array(1, 4) as $type) {
+		$GLOBALS['argon_bangumi_test_remote_pages'][$type . ':' . $status] = array(
+			'items' => array(),
+			'total' => ($status * 10) + $type,
+			'error' => '',
+		);
+	}
+}
+$GLOBALS['argon_bangumi_test_remote_pages']['4:2']['error'] = 'temporary upstream failure';
+$GLOBALS['argon_bangumi_test_transients'][$lock_key] = 1;
+argon_bangumi_refresh_stats();
+argon_bangumi_test_assert($GLOBALS['argon_bangumi_test_transients'][$stats_key] === $old_stats, 'a partial statistics refresh must preserve the previous cache');
+argon_bangumi_test_assert(get_transient($refresh_key) === false, 'a failed statistics refresh must not set the refreshed marker');
+argon_bangumi_test_assert(get_transient($lock_key) === false, 'a failed statistics refresh must release its lock');
+
+$GLOBALS['argon_bangumi_test_remote_pages']['4:2']['error'] = '';
+$GLOBALS['argon_bangumi_test_transients'][$lock_key] = 1;
+argon_bangumi_refresh_stats();
+$expected_stats = array('total' => 135, 'watching' => 45, 'want' => 25, 'watched' => 65);
+argon_bangumi_test_assert($GLOBALS['argon_bangumi_test_transients'][$stats_key] === $expected_stats, 'a complete statistics refresh should replace the cache');
+argon_bangumi_test_assert(get_transient($refresh_key) === 1, 'a complete statistics refresh should set the refreshed marker');
+argon_bangumi_test_assert(get_transient($lock_key) === false, 'a complete statistics refresh must release its lock');
 
 if ($GLOBALS['argon_bangumi_test_failures']) {
 	fwrite(STDERR, "Bangumi data flow test failed:\n- " . implode("\n- ", $GLOBALS['argon_bangumi_test_failures']) . "\n");

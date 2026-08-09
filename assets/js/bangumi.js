@@ -25,6 +25,16 @@
 	var previewSource = null;
 	var previewFrame = 0;
 	var previewCloseTimer = 0;
+	var statsPollTimer = 0;
+	var statsPollAttempts = 0;
+	var statsRequest = null;
+	var itemIndex = {};
+	var listeners = [];
+	var imageObserver = null;
+	var lifecycleId = 0;
+	var initialized = false;
+	var lastPointerWasTouch = false;
+	var suppressNextFocusPreview = false;
 
 	function readPageState() {
 		configNode = document.getElementById('argon-bangumi-config');
@@ -138,19 +148,23 @@
 		var status = statusInfo(item.follow_status);
 		var progress = progressInfo(item);
 		var cover = safeUrl(item.cover_local || item.cover);
+		var url = safeUrl(item.url);
 		var tags = Array.isArray(item.styles) ? item.styles.slice(0, 6) : [];
 		var tagHtml = tags.map(function (tag) { return '<span class="bangumi-tag">' + escapeHtml(tag) + '</span>'; }).join('');
 		var score = parseFloat(item.rating);
 		var scoreHtml = score > 0 ? '<span class="bangumi-score"><i class="fa fa-star" aria-hidden="true"></i>' + score.toFixed(1) + '</span>' : '';
 		var areas = Array.isArray(item.areas) && item.areas.length ? '<span>' + escapeHtml(item.areas.slice(0, 2).join(' / ')) + '</span>' : '';
 		var imageHtml = cover ? '<img src="' + escapeHtml(cover) + '" alt="" decoding="async">' : '';
-		return '<div class="bangumi-card-preview-media' + (cover ? '' : ' is-empty') + '">' + imageHtml + '<span class="bangumi-status-badge ' + status.className + '">' + status.label + '</span></div>' +
+		var openLink = url ? '<a class="bangumi-card-preview-open" href="' + escapeHtml(url) + '" target="_blank" rel="noopener noreferrer"><span>打开详情</span><i class="fa fa-external-link" aria-hidden="true"></i></a>' : '';
+		return '<button type="button" class="bangumi-card-preview-close" aria-label="关闭预览" title="关闭预览"><i class="fa fa-times" aria-hidden="true"></i></button>' +
+			'<div class="bangumi-card-preview-media' + (cover ? '' : ' is-empty') + '">' + imageHtml + '<span class="bangumi-status-badge ' + status.className + '">' + status.label + '</span></div>' +
 			'<div class="bangumi-card-preview-body">' +
 				'<h2 class="bangumi-card-preview-title">' + escapeHtml(item.title || '未命名番剧') + '</h2>' +
 				'<div class="bangumi-card-preview-meta"><span class="bangumi-type-label">' + escapeHtml(typeLabel(item)) + '</span>' + scoreHtml + areas + '</div>' +
 				'<div class="bangumi-progress"><div class="bangumi-progress-text"><span>' + escapeHtml(progress.text) + '</span>' + (progress.hasProgress && item.total_count ? '<span>共 ' + escapeHtml(item.total_count) + ' 话</span>' : '') + '</div>' + progress.track + '</div>' +
 				'<p class="bangumi-card-preview-summary">' + escapeHtml(item.summary || '暂无简介') + '</p>' +
 				(tagHtml ? '<div class="bangumi-tags">' + tagHtml + '</div>' : '') +
+				(openLink ? '<div class="bangumi-card-preview-actions">' + openLink + '</div>' : '') +
 			'</div>';
 	}
 
@@ -161,6 +175,8 @@
 			cardPreview = document.createElement('div');
 			cardPreview.id = 'bangumi-card-preview';
 			cardPreview.className = 'bangumi-card-preview';
+			cardPreview.setAttribute('role', 'dialog');
+			cardPreview.setAttribute('aria-label', '番剧详情预览');
 			cardPreview.setAttribute('aria-hidden', 'true');
 			cardPreview.hidden = true;
 			document.body.appendChild(cardPreview);
@@ -197,6 +213,7 @@
 		previewSource = null;
 		if (!cardPreview) return;
 		cardPreview.classList.remove('is-visible');
+		cardPreview.setAttribute('aria-hidden', 'true');
 		var finish = function () {
 			if (previewSource || !cardPreview) return;
 			cardPreview.hidden = true;
@@ -214,6 +231,7 @@
 		previewSource = source;
 		previewSource.classList.add('is-preview-source');
 		preview.innerHTML = renderCardPreview(item);
+		preview.setAttribute('aria-hidden', 'false');
 		preview.hidden = false;
 		positionCardPreview(source);
 		if (previewFrame) window.cancelAnimationFrame(previewFrame);
@@ -254,41 +272,136 @@
 		});
 	}
 
+	function bind(element, type, handler, options) {
+		if (!element || !element.addEventListener) return;
+		element.addEventListener(type, handler, options);
+		listeners.push({ element: element, type: type, handler: handler, options: options });
+	}
+
+	function unbindAll() {
+		listeners.forEach(function (listener) {
+			listener.element.removeEventListener(listener.type, listener.handler, listener.options);
+		});
+		listeners = [];
+	}
+
+	function closestCard(target) {
+		if (!grid || !target || !target.closest) return null;
+		var card = target.closest('.bangumi-card');
+		return card && grid.contains(card) ? card : null;
+	}
+
+	function itemForCard(card) {
+		return card ? itemIndex[String(card.getAttribute('data-season-id') || '')] : null;
+	}
+
+	function supportsHover() {
+		return !window.matchMedia || window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+	}
+
+	function clearPreviewCloseTimer() {
+		if (!previewCloseTimer) return;
+		window.clearTimeout(previewCloseTimer);
+		previewCloseTimer = 0;
+	}
+
+	function onGridMouseOver(event) {
+		if (!supportsHover()) return;
+		var card = closestCard(event.target);
+		if (!card || card.contains(event.relatedTarget)) return;
+		showCardPreview(card, itemForCard(card));
+	}
+
+	function onGridMouseOut(event) {
+		if (!supportsHover()) return;
+		var card = closestCard(event.target);
+		if (!card || card.contains(event.relatedTarget)) return;
+		if (cardPreview && event.relatedTarget && cardPreview.contains(event.relatedTarget)) return;
+		closeCardPreview(false);
+	}
+
+	function onGridFocusIn(event) {
+		if (suppressNextFocusPreview) {
+			suppressNextFocusPreview = false;
+			return;
+		}
+		var card = closestCard(event.target);
+		if (card) showCardPreview(card, itemForCard(card));
+	}
+
+	function onGridFocusOut(event) {
+		var card = closestCard(event.target);
+		if (!card || card.contains(event.relatedTarget)) return;
+		closeCardPreview(false);
+	}
+
+	function onGridPointerDown(event) {
+		lastPointerWasTouch = event.pointerType === 'touch' || event.pointerType === 'pen';
+	}
+
+	function onGridClick(event) {
+		var card = closestCard(event.target);
+		if (!card) return;
+		var shouldOpenPreview = lastPointerWasTouch || !supportsHover();
+		lastPointerWasTouch = false;
+		if (!shouldOpenPreview) return;
+		event.preventDefault();
+		showCardPreview(card, itemForCard(card));
+	}
+
+	function onGridImageError(event) {
+		var image = event.target;
+		if (!image || image.tagName !== 'IMG') return;
+		var media = image.parentNode;
+		if (media) media.classList.add('is-empty');
+		image.remove();
+	}
+
+	function onPreviewClick(event) {
+		var closeButton = event.target.closest ? event.target.closest('.bangumi-card-preview-close') : null;
+		if (!closeButton) return;
+		var source = previewSource;
+		closeCardPreview(true);
+		if (source && source.focus) {
+			suppressNextFocusPreview = true;
+			source.focus({ preventScroll: true });
+		}
+	}
+
+	function onDocumentPointerDown(event) {
+		if (!previewSource || !cardPreview || cardPreview.hidden) return;
+		if (cardPreview.contains(event.target) || previewSource.contains(event.target) || closestCard(event.target)) return;
+		closeCardPreview(true);
+	}
+
+	function onDocumentKeyDown(event) {
+		if (event.key === 'Escape') closeCardPreview(true);
+	}
+
 	function prioritizeVisibleImages() {
+		if (imageObserver) imageObserver.disconnect();
+		imageObserver = null;
 		if (!grid || !window.IntersectionObserver) return;
-		var observer = new IntersectionObserver(function (entries) {
+		imageObserver = new IntersectionObserver(function (entries) {
 			entries.forEach(function (entry) {
 				if (!entry.isIntersecting) return;
 				var image = entry.target;
 				image.fetchPriority = 'high';
 				image.loading = 'eager';
-				observer.unobserve(image);
+				imageObserver.unobserve(image);
 			});
 		}, { rootMargin: '320px 0px' });
-		Array.prototype.forEach.call(grid.querySelectorAll('img[loading="lazy"]'), function (image) { observer.observe(image); });
+		Array.prototype.forEach.call(grid.querySelectorAll('img[loading="lazy"]'), function (image) { imageObserver.observe(image); });
 	}
 
 	function render(items) {
 		if (!grid) return;
 		closeCardPreview(true);
 		var visibleItems = items || filteredItems();
+		itemIndex = {};
+		visibleItems.forEach(function (item) { itemIndex[String(item.season_id || '')] = item; });
 		grid.innerHTML = visibleItems.map(renderCard).join('');
 		if (empty) empty.hidden = visibleItems.length !== 0;
-		Array.prototype.forEach.call(grid.querySelectorAll('img'), function (image) {
-			image.addEventListener('error', function () {
-				var media = image.parentNode;
-				if (media) media.classList.add('is-empty');
-				image.remove();
-			});
-		});
-		Array.prototype.forEach.call(grid.querySelectorAll('.bangumi-card'), function (card) {
-			var seasonId = card.getAttribute('data-season-id');
-			var item = visibleItems.find(function (candidate) { return String(candidate.season_id) === String(seasonId); });
-			card.addEventListener('mouseenter', function () { showCardPreview(card, item); });
-			card.addEventListener('mouseleave', function () { closeCardPreview(false); });
-			card.addEventListener('focusin', function () { showCardPreview(card, item); });
-			card.addEventListener('focusout', function () { closeCardPreview(false); });
-		});
 		prioritizeVisibleImages();
 		updateLoadButton();
 	}
@@ -313,9 +426,32 @@
 		loadMoreButton.classList.toggle('is-loading', state.loading);
 	}
 
+	function createRequestToken() {
+		return {
+			controller: window.AbortController ? new window.AbortController() : null,
+			lifecycle: lifecycleId
+		};
+	}
+
+	function isRequestCurrent(token) {
+		return initialized && token && token.lifecycle === lifecycleId && grid && grid.isConnected;
+	}
+
+	function fetchOptions(body, token) {
+		var options = {
+			method: 'POST',
+			credentials: 'same-origin',
+			headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+			body: body.toString()
+		};
+		if (token.controller) options.signal = token.controller.signal;
+		return options;
+	}
+
 	function requestPage(status, page) {
 		if (!config.ajaxUrl || state.pending[status]) return Promise.resolve(false);
-		state.pending[status] = true;
+		var requestToken = createRequestToken();
+		state.pending[status] = requestToken;
 		state.loading = true;
 		if (state.status === String(status)) {
 			setError('');
@@ -329,9 +465,10 @@
 		body.set('status', status);
 		body.set('pn', page);
 		if (config.nonce) body.set('nonce', config.nonce);
-		return fetch(config.ajaxUrl, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: body.toString() })
+		return fetch(config.ajaxUrl, fetchOptions(body, requestToken))
 			.then(function (response) { return response.json(); })
 			.then(function (response) {
+				if (!isRequestCurrent(requestToken)) return false;
 				if (!response || !response.success) throw new Error(response && response.data && response.data.message ? response.data.message : '追番数据加载失败');
 				var data = response.data || {};
 				var responsePage = Number(data.page || page);
@@ -339,6 +476,7 @@
 				state.pages[status] = responsePage;
 				state.hasMore[status] = !!data.has_more;
 				updateStats(data.stats);
+				if (data.stats_ready === false) scheduleStatsPoll();
 				if (state.status === String(status)) {
 					setLive('');
 					setError(data.error || '');
@@ -347,6 +485,7 @@
 				return true;
 			})
 			.catch(function (error) {
+				if (!isRequestCurrent(requestToken) || (error && error.name === 'AbortError')) return false;
 				if (state.status === String(status)) {
 					setLive('');
 					setError(error && error.message ? error.message : '追番数据加载失败');
@@ -354,9 +493,49 @@
 				return false;
 			})
 			.finally(function () {
+				if (!isRequestCurrent(requestToken) || state.pending[status] !== requestToken) return;
 				delete state.pending[status];
 				state.loading = Object.keys(state.pending).length > 0;
 				updateLoadButton();
+			});
+	}
+
+	function scheduleStatsPoll() {
+		if (!config.ajaxUrl || statsPollTimer || statsPollAttempts >= 3) return;
+		var delays = [2000, 3000, 4000];
+		var delay = delays[statsPollAttempts] || delays[delays.length - 1];
+		statsPollAttempts += 1;
+		statsPollTimer = window.setTimeout(function () {
+			statsPollTimer = 0;
+			requestStats();
+		}, delay);
+	}
+
+	function requestStats() {
+		if (!config.ajaxUrl || statsRequest) return Promise.resolve(false);
+		var requestToken = createRequestToken();
+		statsRequest = requestToken;
+		var body = new URLSearchParams();
+		body.set('action', 'argon_bangumi_stats');
+		if (config.nonce) body.set('nonce', config.nonce);
+		return fetch(config.ajaxUrl, fetchOptions(body, requestToken))
+			.then(function (response) { return response.json(); })
+			.then(function (response) {
+				if (!isRequestCurrent(requestToken) || !response || !response.success) return false;
+				var data = response.data || {};
+				if (data.ready) {
+					updateStats(data.stats);
+					return true;
+				}
+				scheduleStatsPoll();
+				return false;
+			})
+			.catch(function (error) {
+				if (isRequestCurrent(requestToken) && (!error || error.name !== 'AbortError')) scheduleStatsPoll();
+				return false;
+			})
+			.finally(function () {
+				if (statsRequest === requestToken) statsRequest = null;
 			});
 	}
 
@@ -399,11 +578,84 @@
 		render();
 	}
 
+	function bindPageEvents() {
+		Array.prototype.forEach.call(document.querySelectorAll('[data-bangumi-status]'), function (button) {
+			bind(button, 'click', function () { switchTab(button.getAttribute('data-bangumi-status')); });
+		});
+		Array.prototype.forEach.call(document.querySelectorAll('[data-bangumi-type]'), function (button) {
+			bind(button, 'click', function () { switchType(button.getAttribute('data-bangumi-type')); });
+		});
+		bind(loadMoreButton, 'click', loadMore);
+		bind(searchInput, 'input', function () { search(searchInput.value); });
+		bind(grid, 'mouseover', onGridMouseOver);
+		bind(grid, 'mouseout', onGridMouseOut);
+		bind(grid, 'focusin', onGridFocusIn);
+		bind(grid, 'focusout', onGridFocusOut);
+		bind(grid, 'pointerdown', onGridPointerDown);
+		bind(grid, 'click', onGridClick);
+		bind(grid, 'error', onGridImageError, true);
+		bind(cardPreview, 'mouseenter', clearPreviewCloseTimer);
+		bind(cardPreview, 'mouseleave', function (event) {
+			if (previewSource && event.relatedTarget && previewSource.contains(event.relatedTarget)) return;
+			closeCardPreview(false);
+		});
+		bind(cardPreview, 'focusin', clearPreviewCloseTimer);
+		bind(cardPreview, 'focusout', function (event) {
+			if (cardPreview && cardPreview.contains(event.relatedTarget)) return;
+			closeCardPreview(false);
+		});
+		bind(cardPreview, 'click', onPreviewClick);
+		bind(document, 'pointerdown', onDocumentPointerDown, true);
+		bind(document, 'keydown', onDocumentKeyDown);
+		bind(window, 'scroll', function () { closeCardPreview(true); }, true);
+		bind(window, 'resize', function () { closeCardPreview(true); });
+		if (window.jQuery) {
+			window.jQuery(document)
+				.off('pjax:beforeReplace.argonBangumiPreview')
+				.on('pjax:beforeReplace.argonBangumiPreview', destroy);
+		}
+	}
+
+	function destroy() {
+		lifecycleId += 1;
+		initialized = false;
+		if (statsPollTimer) window.clearTimeout(statsPollTimer);
+		statsPollTimer = 0;
+		statsPollAttempts = 0;
+		if (statsRequest && statsRequest.controller) statsRequest.controller.abort();
+		statsRequest = null;
+		Object.keys(state.pending || {}).forEach(function (status) {
+			var pending = state.pending[status];
+			if (pending && pending.controller) pending.controller.abort();
+		});
+		state.pending = {};
+		state.loading = false;
+		if (imageObserver) imageObserver.disconnect();
+		imageObserver = null;
+		unbindAll();
+		if (window.jQuery) window.jQuery(document).off('pjax:beforeReplace.argonBangumiPreview');
+		if (grid) grid.removeAttribute('data-argon-bangumi-bound');
+		closeCardPreview(true);
+		if (cardPreview && cardPreview.parentNode) cardPreview.parentNode.removeChild(cardPreview);
+		cardPreview = null;
+		previewSource = null;
+		itemIndex = {};
+		grid = null;
+		empty = null;
+		loadMoreButton = null;
+		liveStatus = null;
+		errorBox = null;
+		searchInput = null;
+	}
+
 	function init() {
 		var nextGrid = document.getElementById('bangumi-grid');
 		if (!nextGrid || nextGrid.getAttribute('data-argon-bangumi-bound') === 'true') return;
+		if (initialized) destroy();
 		readPageState();
 		if (!grid) return;
+		lifecycleId += 1;
+		initialized = true;
 		ensureStylesheet();
 		grid.setAttribute('data-argon-bangumi-bound', 'true');
 		var initialItems = Array.isArray(config.initialItems) ? config.initialItems : [];
@@ -412,39 +664,28 @@
 		state.hasMore[state.status] = !!config.initialHasMore;
 		updateStats(config.stats);
 		if (config.initialError) setError(config.initialError);
+		ensureCardPreview();
+		bindPageEvents();
 		render();
 		if (!config.enabled) return;
-		Array.prototype.forEach.call(document.querySelectorAll('[data-bangumi-status]'), function (button) { button.addEventListener('click', function () { switchTab(button.getAttribute('data-bangumi-status')); }); });
-		Array.prototype.forEach.call(document.querySelectorAll('[data-bangumi-type]'), function (button) { button.addEventListener('click', function () { switchType(button.getAttribute('data-bangumi-type')); }); });
-		if (loadMoreButton) loadMoreButton.addEventListener('click', loadMore);
-		if (searchInput) searchInput.addEventListener('input', function () { search(searchInput.value); });
 		if (!initialItems.length || config.initialNeedsRefresh) requestPage(state.status, 1);
-		if (window.__argonBangumiPreviewScrollHandler) window.removeEventListener('scroll', window.__argonBangumiPreviewScrollHandler, true);
-		if (window.__argonBangumiPreviewResizeHandler) window.removeEventListener('resize', window.__argonBangumiPreviewResizeHandler);
-		window.__argonBangumiPreviewScrollHandler = function () { closeCardPreview(true); };
-		window.__argonBangumiPreviewResizeHandler = function () { closeCardPreview(true); };
-		window.addEventListener('scroll', window.__argonBangumiPreviewScrollHandler, true);
-		window.addEventListener('resize', window.__argonBangumiPreviewResizeHandler);
-		if (window.jQuery) {
-			window.jQuery(document)
-				.off('pjax:beforeReplace.argonBangumiPreview')
-				.on('pjax:beforeReplace.argonBangumiPreview', function () {
-					closeCardPreview(true);
-					if (cardPreview && cardPreview.parentNode) cardPreview.parentNode.removeChild(cardPreview);
-					cardPreview = null;
-				});
-		}
-		window.ArgonBangumi = {
-			init: init,
-			switchTab: switchTab,
-			switchType: switchType,
-			loadMore: loadMore,
-			render: render,
-			search: search
-		};
+		if (config.statsReady === false) scheduleStatsPoll();
 	}
 
-	window.ArgonBangumi = window.ArgonBangumi || { init: init, switchTab: switchTab, switchType: switchType, loadMore: loadMore, render: render, search: search };
+	if (window.ArgonBangumi && window.ArgonBangumi.__argonBangumiController) {
+		window.ArgonBangumi.init();
+		return;
+	}
+	window.ArgonBangumi = {
+		__argonBangumiController: true,
+		init: init,
+		destroy: destroy,
+		switchTab: switchTab,
+		switchType: switchType,
+		loadMore: loadMore,
+		render: render,
+		search: search
+	};
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
 	else init();
 }(window, document));

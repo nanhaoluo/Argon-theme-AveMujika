@@ -28,7 +28,6 @@ if ($bangumi_enabled && function_exists('argon_bangumi_get_combined_page')) {
 $bangumi_asset_version = function_exists('argon_get_asset_file_version') ? argon_get_asset_file_version('assets/js/bangumi.js') : $GLOBALS['theme_version'];
 $bangumi_style_url = add_query_arg('ver', function_exists('argon_get_asset_file_version') ? argon_get_asset_file_version('assets/css/bangumi.css') : $GLOBALS['theme_version'], get_template_directory_uri() . '/assets/css/bangumi.css');
 $bangumi_script_url = add_query_arg('ver', $bangumi_asset_version, get_template_directory_uri() . '/assets/js/bangumi.js');
-wp_enqueue_style('argon-bangumi', $bangumi_style_url, array(), null);
 
 $bangumi_config = array(
 	'ajaxUrl' => admin_url('admin-ajax.php'),
@@ -43,6 +42,7 @@ $bangumi_config = array(
 	'initialNeedsRefresh' => !empty($bangumi_initial['needs_refresh']),
 	'initialError' => isset($bangumi_initial['error']) ? (string)$bangumi_initial['error'] : '',
 	'stats' => $bangumi_stats,
+	'statsReady' => function_exists('argon_bangumi_stats_are_ready') && argon_bangumi_stats_are_ready(),
 );
 
 get_header();
