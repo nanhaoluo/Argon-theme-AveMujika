@@ -98,6 +98,21 @@ argon_special_surface_assert(
     'bangumi desktop grid must derive dense card columns from its container width'
 );
 
+$bangumi_title_rule = array();
+$bangumi_title_rule_found = $bangumiCss !== false && preg_match('/\.bangumi-card-title\s*\{[^}]*\}/', $bangumiCss, $bangumi_title_rule) === 1;
+
+argon_special_surface_assert(
+    $bangumiJs !== false
+    && $bangumiCss !== false
+    && strpos($bangumiJs, 'bangumi-card-popover') === false
+    && strpos($bangumiCss, 'bangumi-card-popover') === false
+    && strpos($bangumiCss, '.bangumi-card:hover .bangumi-card-summary') !== false
+    && strpos($bangumiCss, 'max-height: 3.1em') !== false
+    && $bangumi_title_rule_found
+    && strpos($bangumi_title_rule[0], '-webkit-line-clamp') === false,
+    'bangumi cards must keep long titles visible and expand summaries smoothly in place on hover'
+);
+
 argon_special_surface_assert(
     $bangumi !== false
     && strpos($bangumi, "'title' => __('追番', 'argon')") !== false
