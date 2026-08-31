@@ -8,7 +8,7 @@ Author URI: https://solstice23.top/
 
 Description: 杞荤泩銆佺畝娲併€佺編瑙傜殑 Wordpress 涓婚
 
-Version: 1.5.12
+Version: 1.5.13
 
 License: GNU General Public License v3.0
 
@@ -4368,7 +4368,11 @@ article.post-preview-layout-2 .post-header.post-header-with-thumbnail {
 
 	width: 300px;
 
-	height: 200px;
+	height: auto;
+
+	min-height: 200px;
+
+	align-self: stretch;
 
 	flex-shrink: 0;
 
@@ -4380,9 +4384,9 @@ article.post-preview-layout-2 .post-thumbnail {
 
 	width: 100%;
 
-	height: 200px !important;
+	height: 100% !important;
 
-	max-height: 200px !important;
+	max-height: none !important;
 
 	object-fit: cover;
 
@@ -12453,6 +12457,7 @@ html.darkmode.amoled-dark #content:after {
 	article.post-preview-layout-2 .post-header.post-header-with-thumbnail {
 		width: 100%;
 		height: 200px;
+		min-height: 0;
 		border-radius: var(--card-radius) var(--card-radius) 0 0;
 	}
 
@@ -12483,6 +12488,7 @@ html.darkmode.amoled-dark #content:after {
 	html.mobile-layout-2 article.post-preview-layout-2 .post-header.post-header-with-thumbnail {
 		width: 100%;
 		height: 140px;
+		min-height: 0;
 		border-radius: var(--card-radius) var(--card-radius) 0 0;
 	}
 
@@ -12514,11 +12520,13 @@ html.darkmode.amoled-dark #content:after {
 	html.mobile-layout-3 article.post-preview-layout-2 {
 		flex-direction: row;
 		max-height: 120px;
+		min-height: 0;
 	}
 
 	html.mobile-layout-3 article.post-preview-layout-2 .post-header.post-header-with-thumbnail {
 		width: 120px;
 		height: 120px;
+		min-height: 0;
 		border-radius: var(--card-radius) 0 0 var(--card-radius);
 		flex-shrink: 0;
 	}

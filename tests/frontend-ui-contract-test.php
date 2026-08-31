@@ -61,6 +61,19 @@ argon_frontend_ui_assert(
 	'评论区高度过渡仍会暴露溢出内容、参与滚动锚定，或遗留覆盖后续折叠动画的内联高度。'
 );
 
+argon_frontend_ui_assert(
+	preg_match('/article\.post-preview-layout-2 \.post-header\.post-header-with-thumbnail\s*\{[^}]*height:\s*auto;[^}]*min-height:\s*200px;[^}]*align-self:\s*stretch;/s', $style) === 1
+	&& preg_match('/article\.post-preview-layout-2 \.post-thumbnail\s*\{[^}]*height:\s*100%\s*!important;[^}]*max-height:\s*none\s*!important;/s', $style) === 1,
+	'layout-2 预览卡片头图未随卡片高度拉伸：header 需 height:auto + min-height:200px + align-self:stretch，缩略图需 height:100%。'
+);
+
+argon_frontend_ui_assert(
+	preg_match('/html\.mobile-layout-2 article\.post-preview-layout-2 \.post-header\.post-header-with-thumbnail\s*\{[^}]*min-height:\s*0;/s', $style) === 1
+	&& preg_match('/html\.mobile-layout-3 article\.post-preview-layout-2 \.post-header\.post-header-with-thumbnail\s*\{[^}]*min-height:\s*0;/s', $style) === 1
+	&& preg_match('/html\.mobile-layout-3 article\.post-preview-layout-2\s*\{[^}]*min-height:\s*0;/s', $style) === 1,
+	'移动端 layout-2 卡片未重置 min-height，紧凑/横向模式会被桌面端 200px 高度下限撑破。'
+);
+
 if ($failures) {
 	fwrite(STDERR, "前台组件测试失败：\n- " . implode("\n- ", $failures) . "\n");
 	exit(1);
