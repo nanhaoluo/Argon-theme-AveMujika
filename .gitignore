@@ -3,6 +3,8 @@
 .learnings/
 .workbuddy/
 .vscode/
+.zcode/
+node_modules/
 tmp/
 
 *-analysis.md
@@ -15,5 +17,8 @@ duolingo.py
 reorganize_settings*.py
 test_*.php
 test_*.py
+temp_*.php
+temp_*.py
+_deploy_latest.py
 footer.html
 easter-eggs-examples.php

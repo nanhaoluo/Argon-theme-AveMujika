@@ -296,40 +296,40 @@
 
 	<?php endif; ?>
 
-	<?php
-		// 获取资源版本号（支持强制刷新）
-		$assets_version = function_exists('argon_get_assets_version') ? argon_get_assets_version() : $GLOBALS['theme_version'];
-		
-		// CSS 加载 - 添加 media 属性确保移动端正确加载
-		wp_enqueue_style("argon_css_merged", $GLOBALS['assets_path'] . "/assets/argon_css_merged.css", array(), $assets_version, 'all');
-		wp_enqueue_style("style", $GLOBALS['assets_path'] . "/style.css", array('argon_css_merged'), $assets_version, 'all');
-		
-		// 集成外部资源备用机制
-		wp_enqueue_script("resource_loader", $GLOBALS['assets_path'] . "/assets/vendor/external/resource-loader.js", array(), $assets_version, false);
-		wp_enqueue_script("argon_motion", $GLOBALS['assets_path'] . "/assets/js/argon-motion.js", array(), $assets_version, false);
+		<?php
+			// 获取资源版本号（支持文件修改时间自动突破缓存）
+			$assets_version = function_exists('argon_get_assets_version') ? argon_get_assets_version() : $GLOBALS['theme_version'];
+			$style_version = function_exists('argon_get_asset_file_version') ? argon_get_asset_file_version('style.css') : $assets_version;
+			$merged_css_version = function_exists('argon_get_asset_file_version') ? argon_get_asset_file_version('assets/argon_css_merged.css') : $assets_version;
+			
+			// CSS 加载 - 添加 media 属性确保移动端正确加载
+			wp_enqueue_style("argon_css_merged", $GLOBALS['assets_path'] . "/assets/argon_css_merged.css", array(), $merged_css_version, 'all');
+			wp_enqueue_style("style", $GLOBALS['assets_path'] . "/style.css", array('argon_css_merged'), $style_version, 'all');
+			
+			// 集成外部资源备用机制
+			wp_enqueue_script("resource_loader", $GLOBALS['assets_path'] . "/assets/vendor/external/resource-loader.js", array(), $assets_version, false);
+			wp_enqueue_script("argon_motion", $GLOBALS['assets_path'] . "/assets/js/argon-motion.js", array(), $assets_version, false);
 
-		if (get_option('argon_disable_googlefont') != 'true') {
-			// 使用备用机制加载Google Fonts
-			echo '<script>
-				document.addEventListener("DOMContentLoaded", function() {
-					if (typeof ArgonResourceLoader !== "undefined") {
-						ArgonResourceLoader.smartLoad("//fonts.googleapis.com/css?family=Open+Sans:300,400,600,700|Noto+Serif+SC:300,600&display=swap", "css");
-					}
-				});
-			</script>';
+			if (get_option('argon_disable_googlefont') != 'true') {
+				// 使用备用机制加载Google Fonts
+				echo '<script>
+					document.addEventListener("DOMContentLoaded", function() {
+						if (typeof ArgonResourceLoader !== "undefined") {
+							ArgonResourceLoader.smartLoad("//fonts.googleapis.com/css?family=Open+Sans:300,400,600,700|Noto+Serif+SC:300,600&display=swap", "css");
+						}
+					});
+				</script>';
+			}
+
+			// 加载 argon_js_merged（包含 jQuery 和其他库）- 在头部同步加载以确保后续脚本可用
+			wp_enqueue_script("argon_js_merged", $GLOBALS['assets_path'] . "/assets/argon_js_merged.js", array('argon_motion'), $assets_version, false);
+
+		// 加载 Prism.js 代码高亮库（样式在 head 中载入，脚本在 footer 底部核心脚本前载入）
+		if (get_option('argon_enable_code_highlight') == 'true') {
+			$prism_theme_ver = function_exists('argon_get_asset_file_version') ? argon_get_asset_file_version('assets/vendor/prism/themes/prism-okaidia.min.css') : $assets_version;
+			wp_enqueue_style("prism_theme", $GLOBALS['assets_path'] . "/assets/vendor/prism/themes/prism-okaidia.min.css", array(), $prism_theme_ver);
+			wp_enqueue_style("prism_line_numbers_css", $GLOBALS['assets_path'] . "/assets/vendor/prism/plugins/line-numbers/prism-line-numbers.min.css", array('prism_theme'), $assets_version);
 		}
-
-		// 加载 argon_js_merged（包含 jQuery 和其他库）- 在头部同步加载以确保后续脚本可用
-		wp_enqueue_script("argon_js_merged", $GLOBALS['assets_path'] . "/assets/argon_js_merged.js", array('argon_motion'), $assets_version, false);
-
-	// 加载 Prism.js 代码高亮库
-	if (get_option('argon_enable_code_highlight') == 'true') {
-		wp_enqueue_style("prism_theme", $GLOBALS['assets_path'] . "/assets/vendor/prism/themes/prism-okaidia.min.css", array(), $assets_version);
-		wp_enqueue_style("prism_line_numbers_css", $GLOBALS['assets_path'] . "/assets/vendor/prism/plugins/line-numbers/prism-line-numbers.min.css", array('prism_theme'), $assets_version);
-		wp_enqueue_script("prism_core", $GLOBALS['assets_path'] . "/assets/vendor/prism/prism.min.js", array(), $assets_version, true);
-		wp_enqueue_script("prism_line_numbers", $GLOBALS['assets_path'] . "/assets/vendor/prism/plugins/line-numbers/prism-line-numbers.min.js", array('prism_core'), $assets_version, true);
-		wp_enqueue_script("prism_autoloader", $GLOBALS['assets_path'] . "/assets/vendor/prism/plugins/autoloader/prism-autoloader.min.js", array('prism_core'), $assets_version, true);
-	}
 	
 	// 加载 Mermaid 图表库
 	if (get_option('argon_enable_code_highlight') == 'true') {
@@ -441,23 +441,7 @@
 
 			dateFormat: "<?php echo esc_js(get_option('argon_dateformat', 'YMD')); ?>",
 
-			<?php if (get_option('argon_enable_zoomify') == 'true'){ ?>
-
-				zoomify: {
-
-					duration: <?php echo intval(get_option('argon_zoomify_duration', 200)); ?>,
-
-					easing: "<?php echo esc_js(get_option('argon_zoomify_easing', 'cubic-bezier(0.4,0,0,1)')); ?>",
-
-					scale: <?php echo floatval(get_option('argon_zoomify_scale', 0.9)); ?>
-
-				},
-
-			<?php } else { ?>
-
-				zoomify: false,
-
-			<?php } ?>
+			imageViewer: <?php echo get_option('argon_enable_fancybox', 'true') != 'false' ? 'true' : 'false'; ?>,
 
 			pangu: "<?php echo esc_js(get_option('argon_enable_pangu', 'false')); ?>",
 

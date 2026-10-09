@@ -245,6 +245,12 @@
 		}
 	?>
 
+	<?php
+		if (function_exists('argon_render_post_attachments')){
+			argon_render_post_attachments(get_the_ID());
+		}
+	?>
+
 	<?php if (has_tag()) { ?>
 		<div class="post-tags">
 			<i class="fa fa-tags" aria-hidden="true"></i>

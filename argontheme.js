@@ -70,33 +70,6 @@ if (typeof jQuery !== 'undefined') {
 			$.fn.init.prototype = $.fn;
 		}
 
-		// 确保 zoomify 插件存在
-		if (typeof $.fn.zoomify === 'undefined') {
-			$.fn.zoomify = function () { return this; };
-		}
-
-		// 确保 fancybox 存在
-		if (typeof $.fancybox === 'undefined') {
-			$.fancybox = {
-				defaults: {
-					transitionEffect: 'slide',
-					buttons: [],
-					lang: 'zh_CN',
-					i18n: {}
-				},
-				open: function () { },
-				close: function () { }
-			};
-		}
-		if (typeof $.fancybox.defaults === 'undefined') {
-			$.fancybox.defaults = {
-				transitionEffect: 'slide',
-				buttons: [],
-				lang: 'zh_CN',
-				i18n: {}
-			};
-		}
-
 		// 确保 pjax 存在
 		if (typeof $.pjax === 'undefined') {
 			$.pjax = function () { };
@@ -702,6 +675,36 @@ $(document).on("change", ".search-filter", function (e) {
 	});
 });
 
+/*左侧栏 part2/part3 高度分配（纯函数，sticky 布局与回归测试共用）
+ * 不变量：part2Height <= budget 且 part2Height + part3MaxHeight <= budget 恒成立。
+ * - 空间足够（p2n + p3n <= budget）：都按自然高度，clamp=false（调用方输出 'none'，
+ *   不施加钳制，取整误差不会再造成假性滚动条）。
+ * - 空间不足：通常为 TODO 预留预算的 40%，短 TODO 按自然高度保留，其余给目录；
+ *   任一侧内容较短时把剩余空间让给另一侧，超矮视口按保底比例压缩，避免 TODO 消失。
+ */
+function computeLeftbarHeightAllocation(options) {
+	var budget = Math.max(0, options.budget || 0);
+	var p2n = Math.max(0, options.part2NaturalHeight || 0);
+	var p3n = Math.max(0, options.part3NaturalHeight || 0);
+	var minPart2Height = options.minPart2Height || 150;
+	var minPart3Height = options.minPart3Height || 100;
+
+	if (p2n + p3n <= budget) {
+		return { part2Height: p2n, part3MaxHeight: p3n, clamp: false };
+	}
+	var p2Floor = Math.min(p2n, minPart2Height);
+	var p3Floor = Math.min(p3n, minPart3Height);
+	var todoShare = Math.min(budget - p2Floor, Math.max(p3Floor, budget * 0.4));
+	if (p2Floor + p3Floor > budget) {
+		todoShare = budget * p3Floor / (p2Floor + p3Floor);
+	}
+	var reservedPart3Height = Math.min(p3n, todoShare);
+	var part2Height = Math.min(p2n, Math.max(0, budget - reservedPart3Height));
+	var part3MaxHeight = Math.max(0, Math.min(p3n, budget - part2Height));
+	return { part2Height: part2Height, part3MaxHeight: part3MaxHeight, clamp: true };
+}
+window.argonComputeLeftbarHeightAllocation = computeLeftbarHeightAllocation;
+
 /*左侧栏随页面滚动浮动*/
 !function () {
 	if ($("#leftbar").length == 0) {
@@ -950,54 +953,45 @@ $(document).on("change", ".search-filter", function (e) {
 
 			// 计算可用空间并分配给 part2 和 part3
 			let viewportHeight = window.innerHeight;
-			let topOffset = argonConfig.headroom !== 'absolute' ? 90 : 20;
+			// topOffset 必须与 sticky 卡片的实际 top 一致：普通模式 CSS top 为 80px
+			//（+10px margin 约 90）；Headroom 收起（unpinned）或 navbar-absolute 模式下
+			// CSS top 变为 10px（约 20）。固定取 90 会让导航栏收起后的预算比实际可用
+			// 空间小约 70px——目录被多钳出滚动条，而视口下方空着。
+			let headroomUnpinned = document.body.classList.contains('leftbar-can-headroom') &&
+				document.body.classList.contains('headroom---unpinned');
+			let topOffset = (argonConfig.headroom === 'absolute' || headroomUnpinned) ? 20 : 90;
 			let availableHeight = viewportHeight - topOffset - 20; // 20px 底部边距
 			let gapBetweenParts = leftbarPart3 ? 10 : 0;
-
-			// 最小高度限制
-			let minPart2Height = 150;
-			let minPart3Height = 100;
 
 			let catalogActive = isLeftbarCatalogActive();
 			leftbarPart2.classList.toggle('leftbar-tab-catalog-active', catalogActive);
 
 			// 两侧的自然内容高度（带缓存，避免滚动时反复强制同步布局）
 			let naturalHeights = getLeftbarNaturalHeights(catalogActive);
-			let part2NaturalHeight = naturalHeights.part2;
+			let part2NaturalHeight = naturalHeights.part2 || leftbarPart2.offsetHeight;
 			let part3NaturalHeight = naturalHeights.part3;
 
-			let sharedHeight = Math.max(minPart2Height, availableHeight - gapBetweenParts);
-			let part2Height, part3MaxHeight;
+			// 分配值作用于 card-body，卡片自身的边框/额外间距不能占用这份内容预算。
+			let part2Inner = leftbarPart2.querySelector("#leftbar_part2_inner");
+			let part3Body = leftbarPart3 ? leftbarPart3.querySelector(".card-body") : null;
+			let part2ChromeHeight = part2Inner ? Math.max(0, leftbarPart2.offsetHeight - part2Inner.offsetHeight) : 0;
+			let part3ChromeHeight = part3Body ? Math.max(0, leftbarPart3.offsetHeight - part3Body.offsetHeight) : 0;
+			let allocation = computeLeftbarHeightAllocation({
+				budget: Math.floor(availableHeight - gapBetweenParts - part2ChromeHeight - part3ChromeHeight),
+				part2NaturalHeight: part2NaturalHeight,
+				part3NaturalHeight: part3NaturalHeight,
+				minPart2Height: 150,
+				minPart3Height: 100
+			});
 
-			if (!catalogActive) {
-				// 其余标签页不需要滚动，直接按内容高度显示
-				part2Height = part2NaturalHeight || leftbarPart2.offsetHeight;
-				part3MaxHeight = Math.min(part3NaturalHeight, Math.max(minPart3Height, availableHeight - part2Height - gapBetweenParts));
-			} else if (part2NaturalHeight + part3NaturalHeight <= sharedHeight) {
-				// 空间足够：两者都按自然高度显示。
-				// 关键修复：目录高度以内容为准，不再把剩余空间全部吃掉导致占满整屏。
-				part2Height = part2NaturalHeight;
-				part3MaxHeight = part3NaturalHeight;
+			if (allocation.clamp) {
+				setLeftbarRootProperty('--leftbar-part2-inner-height', Math.ceil(allocation.part2Height) + 'px');
+				setLeftbarRootProperty('--leftbar-part3-max-height', Math.floor(allocation.part3MaxHeight) + 'px');
 			} else {
-				// 空间不足：先按 part2 60% / part3 40% 预分配，再把任一侧的富余让给另一侧
-				let part2Share = Math.max(minPart2Height, sharedHeight * 0.6);
-				let part3Share = Math.max(minPart3Height, sharedHeight - part2Share);
-				if (part2NaturalHeight <= part2Share) {
-					part2Height = part2NaturalHeight;
-					part3MaxHeight = Math.min(part3NaturalHeight, Math.max(minPart3Height, sharedHeight - part2Height));
-				} else if (part3NaturalHeight <= part3Share) {
-					part3MaxHeight = part3NaturalHeight;
-					part2Height = Math.min(part2NaturalHeight, Math.max(minPart2Height, sharedHeight - part3MaxHeight));
-				} else {
-					part2Height = part2Share;
-					part3MaxHeight = part3Share;
-				}
+				setLeftbarRootProperty('--leftbar-part2-inner-height', 'none');
+				setLeftbarRootProperty('--leftbar-part3-max-height', 'none');
 			}
-
-			setLeftbarRootProperty('--leftbar-part2-inner-height', catalogActive ? Math.round(part2Height) + 'px' : 'auto');
-			setLeftbarRootProperty('--leftbar-part2-height', Math.round(part2Height + gapBetweenParts) + 'px');
-			setLeftbarRootProperty('--leftbar-part3-height', Math.round(part3MaxHeight) + 'px');
-			setLeftbarRootProperty('--leftbar-part3-max-height', Math.round(part3MaxHeight) + 'px');
+			setLeftbarRootProperty('--leftbar-part2-height', Math.ceil(allocation.part2Height + part2ChromeHeight + gapBetweenParts) + 'px');
 		} else {
 			//滚动条在顶部 不浮动状态
 			if (leftbarPart2.classList.contains('sticky')) {
@@ -1656,10 +1650,14 @@ function bindArgonPostActionEvents() {
 			e.preventDefault();
 			window.ArgonMotion.fast(document.getElementById('share_container'), true, { className: 'opened' });
 		})
-		.on('click.argonPostActions', '#share_copy_link', function (e) {
-			e.preventDefault();
-			copyArgonPostLink();
-		})
+			.on('click.argonPostActions', '#share_copy_link', function (e) {
+				var shareContainer = document.getElementById('share_container');
+				if (!shareContainer || !shareContainer.classList.contains('opened')) {
+					return;
+				}
+				e.preventDefault();
+				copyArgonPostLink();
+			})
 		.on('click.argonPostActions', '#comments_toggle', function (e) {
 			e.preventDefault();
 			toggleArgonPostComments();
@@ -3899,7 +3897,7 @@ function showCommentEditHistory(id) {
 	let requestID = parseInt(new Date().getTime());
 	$("#comment_edit_history").data("request-id", requestID);
 	$("#comment_edit_history .modal-title").html(__("评论 #") + id + " " + __("的编辑记录"));
-	$("#comment_edit_history .modal-body").html("<div class='comment-history-loading'><span class='spinner-border text-primary'></span><span style='display: inline-block;transform: translateY(-4px);margin-left: 15px;font-size: 18px;'>加载中/span></div>");
+	$("#comment_edit_history .modal-body").html("<div class='comment-history-loading'><span class='spinner-border text-primary'></span><span style='display: inline-block;transform: translateY(-4px);margin-left: 15px;font-size: 18px;'>加载中</span></div>");
 	$("#comment_edit_history").modal(null);
 	$.ajax({
 		type: 'POST',
@@ -3907,7 +3905,8 @@ function showCommentEditHistory(id) {
 		dataType: "json",
 		data: {
 			action: "get_comment_edit_history",
-			id: id
+			id: id,
+			nonce: $("#argon_comment_nonce").val()
 		},
 		success: function (result) {
 			if ($("#comment_edit_history").data("request-id") != requestID) {
@@ -4133,82 +4132,406 @@ function showPostOutdateToast() {
 }
 showPostOutdateToast();
 
-/*Zoomify*/
-// 全局 Zoomify 实例数组，用于清理
-var zoomifyInstances = [];
+/*图片查看器（文章 / 说说 / 评论 / 反馈页共用）
+ * 查看器标记由 footer.php 输出，位于 PJAX 容器之外，跨页面存活；
+ * 通过 document 事件委托识别触发源，PJAX 切换与长文虚拟滚动挂载均无需重新初始化。
+ */
+var ArgonImageViewer = (function () {
+	var PLACEHOLDER_PREFIX = 'data:image/svg+xml;base64,PCEtLUFyZ29uTG9hZGluZy0tPg';
+	var IMAGE_HREF_PATTERN = /\.(png|jpe?g|gif|webp|avif|bmp|svg|jfif)(\?|#|$)/i;
+	var viewer = null;
+	var stage, image, loading, loadingIcon, loadingText, counter, imageName, resolution, zoomText;
+	var closeButton, previousButton, nextButton, zoomInButton, zoomOutButton, resetButton;
+	var texts = { loading: '图片加载中…', error: '图片加载失败', defaultName: '图片' };
+	var state = {
+		items: [], index: 0, scale: 1, fitScale: 1, x: 0, y: 0,
+		dragging: false, pointerId: null, startX: 0, startY: 0,
+		loadId: 0, closeTimer: null, lastFocused: null
+	};
 
-function zoomifyInit(scope) {
-	var scopedRoot = scope || null;
-	// 清理旧的 Zoomify 实例
-	if (!scopedRoot && zoomifyInstances.length > 0) {
-		zoomifyInstances.forEach(function (instance) {
-			try {
-				if (instance && typeof instance.destroy === 'function') {
-					instance.destroy();
-				}
-			} catch (e) { }
-		});
-		zoomifyInstances = [];
+	function isPlaceholder(src) {
+		return !src || src.indexOf(PLACEHOLDER_PREFIX) === 0;
 	}
 
-	if (argonConfig.zoomify == false) {
-		return;
+	function articlesEnabled() {
+		return !(typeof argonConfig !== 'undefined' && (argonConfig.imageViewer === false || argonConfig.imageViewer === 'false'));
 	}
-	if (typeof $.fn.zoomify === 'function') {
-		var zoomifyOptions = $.extend({}, argonConfig.zoomify, {
-			duration: window.ArgonMotion.duration('zoom'),
-			easing: window.ArgonMotion.easing('enter')
-		});
-		var $images = scopedRoot ? $(scopedRoot).find("img:not(.zoomify-initialized)") : $("article img:not(.zoomify-initialized)");
-		$images.each(function () {
-			let $img = $(this);
-			$img.addClass('zoomify-initialized');
-			try {
-				let instance = $img.zoomify(zoomifyOptions).data('zoomify');
-				if (instance) {
-					zoomifyInstances.push(instance);
-				}
-			} catch (e) { }
-		});
+
+	// 取图片真实地址：优先图片直链 href，其次懒加载 data-src，最后 src
+	function resolveContentImageSrc(img) {
+		var link = img.closest ? img.closest('a[href]') : null;
+		if (link && IMAGE_HREF_PATTERN.test(link.getAttribute('href') || '')) {
+			return link.getAttribute('href');
+		}
+		var dataSrc = img.getAttribute('data-src');
+		if (!isPlaceholder(dataSrc)) {
+			return dataSrc;
+		}
+		var src = img.currentSrc || img.getAttribute('src');
+		return isPlaceholder(src) ? '' : src;
 	}
+
+	function resolveItemName(node, src) {
+		var alt = (node.getAttribute('alt') || '').trim();
+		if (alt) return alt;
+		try {
+			var pathname = new URL(src, window.location.href).pathname;
+			var filename = decodeURIComponent(pathname.split('/').filter(Boolean).pop() || '');
+			if (filename) return filename;
+		} catch (error) { }
+		return texts.defaultName;
+	}
+
+	function buildItems(nodes, activeNode, srcResolver) {
+		var items = [];
+		nodes.forEach(function (node) {
+			var src = srcResolver(node);
+			if (!src) return;
+			items.push({ node: node, src: src, name: resolveItemName(node, src) });
+		});
+		var index = items.findIndex(function (item) { return item.node === activeNode; });
+		if (!items.length || index < 0) return null;
+		return { items: items, index: index };
+	}
+
+	// 识别点击目标所属的画廊：反馈附件 > 评论图片 > 文章/说说正文图片
+	function resolveGallery(target) {
+		if (!target || !target.closest) return null;
+
+		var feedbackImg = target.closest('[data-feedback-preview], .feedback-image-item img');
+		if (feedbackImg) {
+			var feedbackGallery = feedbackImg.closest('.feedback-images-display, .feedback-image-preview');
+			var feedbackNodes = feedbackGallery ? Array.from(feedbackGallery.querySelectorAll('[data-feedback-preview], .feedback-image-item img')) : [feedbackImg];
+			return buildItems(feedbackNodes, feedbackImg, function (node) {
+				var src = node.getAttribute('data-src');
+				if (isPlaceholder(src)) src = node.currentSrc || node.getAttribute('src');
+				return isPlaceholder(src) ? '' : src;
+			});
+		}
+
+		var commentLink = target.closest('a.comment-image');
+		if (commentLink) {
+			var comment = commentLink.closest('.comment-item');
+			var commentLinks = comment ? Array.from(comment.querySelectorAll('a.comment-image')) : [commentLink];
+			return buildItems(commentLinks, commentLink, function (node) {
+				return node.getAttribute('href') || '';
+			});
+		}
+
+		if (!articlesEnabled()) return null;
+		var contentImg = target.closest('#post_content img, .shuoshuo-content img');
+		if (!contentImg) {
+			// 点击落在包裹图片的链接本体（而非图片）上时，取链接内的图片
+			var imgLink = target.closest('#post_content a[href], .shuoshuo-content a[href]');
+			if (imgLink && IMAGE_HREF_PATTERN.test(imgLink.getAttribute('href') || '')) {
+				contentImg = imgLink.querySelector('img');
+			}
+		}
+		if (!contentImg || contentImg.closest('.no-image-viewer, [data-no-image-viewer]')) return null;
+		var container = contentImg.closest('#post_content, .shuoshuo-content');
+		if (!container) return null;
+		return buildItems(Array.from(container.querySelectorAll('img')), contentImg, resolveContentImageSrc);
+	}
+
+	function setLoading(mode) {
+		loading.classList.toggle('is-visible', mode !== 'done');
+		if (mode === 'error') {
+			loadingIcon.className = 'fa fa-exclamation-circle';
+			loadingText.textContent = texts.error;
+		} else {
+			loadingIcon.className = 'fa fa-spinner fa-spin';
+			loadingText.textContent = texts.loading;
+		}
+	}
+
+	// 绝对缩放比例 = transform 倍数 × 适应缩放（图片适配窗口时相对原始尺寸的缩小比）
+	function absoluteScale() {
+		return state.scale * state.fitScale;
+	}
+
+	function setAbsoluteScale(target) {
+		target = Math.max(0.05, Math.min(8, target));
+		state.scale = state.fitScale > 0 ? target / state.fitScale : target;
+		if (state.scale <= 1) {
+			state.x = 0;
+			state.y = 0;
+		}
+		updateTransform();
+	}
+
+	// 测量当前图片的适应缩放比（显示尺寸 / 原始尺寸），缩放百分比据此显示真实数据
+	function measureFitScale() {
+		var natural = image.naturalWidth || 0;
+		var displayed = image.offsetWidth || 0;
+		state.fitScale = natural > 0 && displayed > 0 ? displayed / natural : 1;
+	}
+
+	function updateTransform() {
+		if (state.scale <= 1) {
+			state.x = 0;
+			state.y = 0;
+		}
+		image.style.setProperty('--argon-image-viewer-x', state.x + 'px');
+		image.style.setProperty('--argon-image-viewer-y', state.y + 'px');
+		image.style.setProperty('--argon-image-viewer-scale', state.scale);
+		image.classList.toggle('is-zoomed', state.scale > 1);
+		zoomText.textContent = Math.round(absoluteScale() * 100) + '%';
+	}
+
+	function resetTransform() {
+		state.scale = 1;
+		state.x = 0;
+		state.y = 0;
+		state.dragging = false;
+		image.classList.remove('is-dragging', 'is-zoomed');
+		updateTransform();
+	}
+
+	function renderCurrentImage() {
+		if (!state.items.length) return;
+		state.loadId++;
+		var activeLoadId = state.loadId;
+		var item = state.items[state.index];
+		resetTransform();
+		image.classList.remove('is-ready');
+		image.removeAttribute('src');
+		setLoading('loading');
+		zoomText.textContent = '—';
+		counter.textContent = (state.index + 1) + ' / ' + state.items.length;
+		imageName.textContent = item.name;
+		resolution.textContent = '—';
+		var hasMultiple = state.items.length > 1;
+		previousButton.hidden = !hasMultiple;
+		nextButton.hidden = !hasMultiple;
+
+		var preload = new Image();
+		preload.onload = function () {
+			if (activeLoadId !== state.loadId) return;
+			image.src = item.src;
+			image.alt = item.name;
+			resolution.textContent = preload.naturalWidth + ' × ' + preload.naturalHeight;
+			setLoading('done');
+			requestAnimationFrame(function () {
+				if (activeLoadId === state.loadId) image.classList.add('is-ready');
+			});
+		};
+		preload.onerror = function () {
+			if (activeLoadId !== state.loadId) return;
+			resolution.textContent = texts.error;
+			setLoading('error');
+		};
+		preload.src = item.src;
+	}
+
+	function openViewer(gallery) {
+		if (!viewer || !gallery || !gallery.items.length) return;
+		clearTimeout(state.closeTimer);
+		state.items = gallery.items;
+		state.index = gallery.index;
+		state.lastFocused = document.activeElement;
+		viewer.classList.remove('is-closing');
+		viewer.classList.add('is-open');
+		viewer.setAttribute('aria-hidden', 'false');
+		document.body.classList.add('argon-image-viewer-open');
+		renderCurrentImage();
+		closeButton.focus({ preventScroll: true });
+	}
+
+	function getCloseDelay() {
+		if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 0;
+		var rawDuration = getComputedStyle(viewer).getPropertyValue('--argon-image-viewer-duration').trim();
+		var duration = parseFloat(rawDuration);
+		if (!Number.isFinite(duration)) return 360;
+		return rawDuration.indexOf('ms') !== -1 ? duration : duration * 1000;
+	}
+
+	function closeViewer(immediate) {
+		if (!viewer || (!viewer.classList.contains('is-open') && !viewer.classList.contains('is-closing'))) return;
+		state.loadId++;
+		clearTimeout(state.closeTimer);
+		document.body.classList.remove('argon-image-viewer-open');
+		viewer.setAttribute('aria-hidden', 'true');
+		if (immediate) {
+			viewer.classList.remove('is-open', 'is-closing');
+			image.classList.remove('is-ready');
+			image.removeAttribute('src');
+			return;
+		}
+		viewer.classList.add('is-closing');
+		state.closeTimer = setTimeout(function () {
+			viewer.classList.remove('is-open', 'is-closing');
+			image.classList.remove('is-ready');
+			image.removeAttribute('src');
+			if (state.lastFocused && document.contains(state.lastFocused)) state.lastFocused.focus();
+		}, getCloseDelay());
+	}
+
+	function move(step) {
+		if (state.items.length < 2) return;
+		state.index = (state.index + step + state.items.length) % state.items.length;
+		renderCurrentImage();
+	}
+
+	function zoom(multiplier) {
+		setAbsoluteScale(absoluteScale() * multiplier);
+	}
+
+	function handleDocumentClick(event) {
+		var gallery = resolveGallery(event.target);
+		if (!gallery) return;
+		// 捕获阶段拦截：阻止链接默认跳转，并阻止 PJAX 等后续处理器接管本次点击
+		event.preventDefault();
+		event.stopPropagation();
+		openViewer(gallery);
+	}
+
+	function handleTriggerKeydown(event) {
+		if (event.key !== 'Enter' && event.key !== ' ') return;
+		var gallery = resolveGallery(event.target);
+		if (!gallery) return;
+		var activeNode = gallery.items[gallery.index].node;
+		if (activeNode !== event.target && !(event.target.contains && event.target.contains(activeNode))) return;
+		event.preventDefault();
+		openViewer(gallery);
+	}
+
+	function handleViewerKeydown(event) {
+		if (!viewer.classList.contains('is-open')) return;
+		if (event.key === 'Escape') closeViewer(false);
+		else if (event.key === 'ArrowLeft') move(-1);
+		else if (event.key === 'ArrowRight') move(1);
+		else if (event.key === '+' || event.key === '=') zoom(1.2);
+		else if (event.key === '-') zoom(1 / 1.2);
+		else if (event.key === '0') resetTransform();
+		else if (event.key === 'Tab') {
+			var controls = Array.from(viewer.querySelectorAll('button:not([hidden])'));
+			if (!controls.length) return;
+			var first = controls[0];
+			var last = controls[controls.length - 1];
+			if (event.shiftKey && document.activeElement === first) {
+				event.preventDefault(); last.focus();
+			} else if (!event.shiftKey && document.activeElement === last) {
+				event.preventDefault(); first.focus();
+			}
+		}
+	}
+
+	function handlePointerDown(event) {
+		if (event.target !== image || state.scale <= 1) return;
+		state.dragging = true;
+		state.pointerId = event.pointerId;
+		state.startX = event.clientX - state.x;
+		state.startY = event.clientY - state.y;
+		image.classList.add('is-dragging');
+		image.setPointerCapture(event.pointerId);
+	}
+
+	function handlePointerMove(event) {
+		if (!state.dragging || event.pointerId !== state.pointerId) return;
+		state.x = event.clientX - state.startX;
+		state.y = event.clientY - state.startY;
+		updateTransform();
+	}
+
+	function handlePointerUp(event) {
+		if (event.pointerId !== state.pointerId) return;
+		state.dragging = false;
+		state.pointerId = null;
+		image.classList.remove('is-dragging');
+	}
+
+	function init() {
+		viewer = document.getElementById('argon-image-viewer');
+		if (!viewer || viewer.dataset.viewerReady === 'true') return;
+		stage = document.getElementById('argon-image-viewer-stage');
+		image = document.getElementById('argon-image-viewer-image');
+		loading = document.getElementById('argon-image-viewer-loading');
+		counter = document.getElementById('argon-image-viewer-counter');
+		imageName = document.getElementById('argon-image-viewer-name');
+		resolution = document.getElementById('argon-image-viewer-resolution');
+		zoomText = document.getElementById('argon-image-viewer-zoom');
+		closeButton = document.getElementById('argon-image-viewer-close');
+		previousButton = document.getElementById('argon-image-viewer-prev');
+		nextButton = document.getElementById('argon-image-viewer-next');
+		zoomInButton = document.getElementById('argon-image-viewer-zoom-in');
+		zoomOutButton = document.getElementById('argon-image-viewer-zoom-out');
+		resetButton = document.getElementById('argon-image-viewer-reset');
+		if (!stage || !image || !loading || !closeButton) return;
+		viewer.dataset.viewerReady = 'true';
+		loadingIcon = loading.querySelector('i');
+		loadingText = loading.querySelector('span');
+		texts.loading = viewer.getAttribute('data-text-loading') || texts.loading;
+		texts.error = viewer.getAttribute('data-text-error') || texts.error;
+		texts.defaultName = viewer.getAttribute('data-text-default-name') || texts.defaultName;
+
+		if (articlesEnabled()) {
+			document.body.classList.add('argon-image-viewer-enabled');
+		}
+
+		document.addEventListener('click', handleDocumentClick, true);
+		document.addEventListener('keydown', handleTriggerKeydown);
+		document.addEventListener('keydown', handleViewerKeydown);
+		closeButton.addEventListener('click', function () { closeViewer(false); });
+		previousButton.addEventListener('click', function () { move(-1); });
+		nextButton.addEventListener('click', function () { move(1); });
+		zoomInButton.addEventListener('click', function () { zoom(1.2); });
+		zoomOutButton.addEventListener('click', function () { zoom(1 / 1.2); });
+		resetButton.addEventListener('click', resetTransform);
+		stage.addEventListener('click', function (event) {
+			if (event.target !== stage) return;
+			if (window.ArgonMotion && typeof window.ArgonMotion.isOutsideClick === 'function') {
+				if (window.ArgonMotion.isOutsideClick(event, image)) closeViewer(false);
+			} else {
+				closeViewer(false);
+			}
+		});
+		stage.addEventListener('wheel', function (event) {
+			event.preventDefault();
+			zoom(event.deltaY < 0 ? 1.12 : 1 / 1.12);
+		}, { passive: false });
+		image.addEventListener('dblclick', function () {
+			if (state.scale === 1) {
+				// 大图双击切换到实际像素（100%），小图双击放大两倍
+				setAbsoluteScale(state.fitScale < 1 ? 1 : 2);
+			} else {
+				state.scale = 1;
+				state.x = 0;
+				state.y = 0;
+				updateTransform();
+			}
+		});
+		image.addEventListener('load', function () {
+			measureFitScale();
+			updateTransform();
+		});
+		window.addEventListener('resize', function () {
+			if (!viewer.classList.contains('is-open')) return;
+			measureFitScale();
+			updateTransform();
+		});
+		image.addEventListener('pointerdown', handlePointerDown);
+		image.addEventListener('pointermove', handlePointerMove);
+		image.addEventListener('pointerup', handlePointerUp);
+		image.addEventListener('pointercancel', handlePointerUp);
+
+		// PJAX 切换页面前立即关闭查看器
+		if (typeof jQuery !== 'undefined') {
+			jQuery(document).on('pjax:send.argonImageViewer', function () { closeViewer(true); });
+		}
+	}
+
+	return {
+		init: init,
+		open: openViewer,
+		close: closeViewer
+	};
+})();
+
+if (document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', function () { ArgonImageViewer.init(); });
+} else {
+	ArgonImageViewer.init();
 }
-zoomifyInit();
-
-/*Fancybox*/
-$.fancybox.defaults.transitionEffect = "slide";
-$.fancybox.defaults.animationEffect = "zoom-in-out";
-$.fancybox.defaults.animationDuration = window.ArgonMotion.duration('zoom');
-$.fancybox.defaults.transitionDuration = window.ArgonMotion.duration('zoom');
-$.fancybox.defaults.buttons = ["zoom", "fullScreen", "thumbs", "close"];
-$.fancybox.defaults.lang = argonConfig.language;
-$.fancybox.defaults.i18n = {
-	en_US: {
-		CLOSE: "Close",
-		NEXT: "Next",
-		PREV: "Previous",
-		ERROR: "The requested content cannot be loaded. <br/> Please try again later.",
-		PLAY_START: "Start slideshow",
-		PLAY_STOP: "Pause slideshow",
-		FULL_SCREEN: "Full screen",
-		THUMBS: "Thumbnails",
-		DOWNLOAD: "Download",
-		SHARE: "Share",
-		ZOOM: "Zoom"
-	},
-	zh_CN: {
-		CLOSE: "关闭",
-		NEXT: "下一个",
-		PREV: "上一个",
-		ERROR: "图片加载失败",
-		PLAY_START: "开始幻灯片展示",
-		PLAY_STOP: "暂停幻灯片展示",
-		FULL_SCREEN: "全屏",
-		THUMBS: "缩略图",
-		DOWNLOAD: "下载",
-		SHARE: "分享",
-		ZOOM: "缩放"
-	}
-};
 
 /* Special inline text effects (spoiler / curtain / blur / huhua). */
 function initArgonSpecialText(scope) {
@@ -4718,30 +5041,6 @@ function cleanupLazyloadObserver() {
 }
 
 /**
- * 清理 Zoomify 实例
- * @returns {void}
- */
-function cleanupZoomifyInstances() {
-	if (zoomifyInstances && zoomifyInstances.length > 0) {
-		let cleanedCount = 0;
-		zoomifyInstances.forEach(function (instance) {
-			try {
-				if (instance && typeof instance.destroy === 'function') {
-					instance.destroy();
-					cleanedCount++;
-				}
-			} catch (e) {
-				ArgonDebug.warn('销毁 Zoomify 实例失败:', e);
-			}
-		});
-		zoomifyInstances = [];
-		ArgonDebug.log(`已清理 ${cleanedCount} 个 Zoomify 实例`);
-	}
-	// 移除初始化标记
-	$('img.zoomify-initialized').removeClass('zoomify-initialized');
-}
-
-/**
  * 清理 Tippy 实例
  * @returns {void}
  */
@@ -4827,7 +5126,6 @@ function cleanupEventListeners() {
  * 
  * 清理内容包括：
  * - Lazyload Observer
- * - Zoomify 实例
  * - Tippy 实例
  * - 动态 style 标签
  * - 动态 script 标签
@@ -4846,7 +5144,6 @@ function cleanupPjaxResources() {
 		window.ArgonLongContentVirtualizer.destroy(false);
 		window.ArgonLongContentVirtualizer = null;
 	}
-	cleanupZoomifyInstances();
 	cleanupTippyInstances(); cleanupDynamicStyles();
 	cleanupDynamicScripts();
 	cleanupEventListeners();
@@ -5752,9 +6049,6 @@ function createArgonLongContentVirtualizer(content, options) {
 			if (typeof lazyloadInit === "function") {
 				lazyloadInit(section.placeholder);
 			}
-			if (typeof zoomifyInit === "function") {
-				zoomifyInit(section.placeholder);
-			}
 			if (typeof highlightJsRender === "function") {
 				highlightJsRender(section.placeholder);
 			}
@@ -6011,27 +6305,6 @@ function throttleVirtualUpdate(callback, wait) {
 			root._argonLazyloadObserver.disconnect();
 		} catch (e) { }
 		root._argonLazyloadObserver = null;
-	}
-	var zoomImages = root.querySelectorAll("img.zoomify-initialized");
-	for (var z = 0; z < zoomImages.length; z++) {
-		try {
-			var instance = $(zoomImages[z]).data("zoomify");
-			if (instance && typeof instance.destroy === "function") {
-				instance.destroy();
-			}
-			$(zoomImages[z]).removeData("zoomify");
-			zoomImages[z].classList.remove("zoomify-initialized");
-		} catch (e) { }
-	}
-	if (zoomImages.length && zoomifyInstances && zoomifyInstances.length) {
-		zoomifyInstances = zoomifyInstances.filter(function (instance) {
-			for (var i = 0; i < zoomImages.length; i++) {
-				if (instance && instance.$element && instance.$element[0] === zoomImages[i]) {
-					return false;
-				}
-			}
-			return true;
-		});
 	}
 	if (highlightObserver) {
 		var codeBlocks = root.querySelectorAll("pre > code");
@@ -7634,7 +7907,6 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 				function () { syncPjaxPrimaryClasses(); },
 				function () { initArgonSpecialText(); },
 				function () { lazyloadInit(); },
-				function () { zoomifyInit(); },
 				function () { highlightJsRender(); },
 				function () { panguInit(); },
 				function () { clampInit(); },
@@ -9228,7 +9500,136 @@ if ($(".hitokoto").length > 0) {
 	});
 }
 
-/*Highlight.js*/
+/*Highlight.js / Prism.js 代码高亮*/
+var argonLanguageAliases = {
+	"js": "javascript",
+	"ts": "typescript",
+	"py": "python",
+	"python3": "python",
+	"python2": "python",
+	"rb": "ruby",
+	"sh": "bash",
+	"shell": "bash",
+	"bash": "bash",
+	"zsh": "bash",
+	"console": "bash",
+	"shell-session": "shell-session",
+	"c++": "cpp",
+	"cplusplus": "cpp",
+	"cpp": "cpp",
+	"c": "c",
+	"c#": "csharp",
+	"cs": "csharp",
+	"c-sharp": "csharp",
+	"csharp": "csharp",
+	"golang": "go",
+	"go": "go",
+	"rs": "rust",
+	"rust": "rust",
+	"yml": "yaml",
+	"yaml": "yaml",
+	"dockerfile": "docker",
+	"docker": "docker",
+	"proto": "protobuf",
+	"proto3": "protobuf",
+	"protobuf": "protobuf",
+	"tex": "latex",
+	"latex": "latex",
+	"kt": "kotlin",
+	"kts": "kotlin",
+	"kotlin": "kotlin",
+	"md": "markdown",
+	"mdown": "markdown",
+	"markdown": "markdown",
+	"objc": "objectivec",
+	"obj-c": "objectivec",
+	"objectivec": "objectivec",
+	"gql": "graphql",
+	"graphql": "graphql",
+	"htm": "markup",
+	"html": "markup",
+	"xml": "markup",
+	"svg": "markup",
+	"vue": "markup",
+	"bat": "batch",
+	"cmd": "batch",
+	"batch": "batch",
+	"ps": "powershell",
+	"ps1": "powershell",
+	"powershell": "powershell",
+	"asm": "nasm",
+	"x86": "nasm",
+	"x86asm": "nasm",
+	"x86-asm": "nasm",
+	"x64": "nasm",
+	"x64asm": "nasm",
+	"nasm": "nasm",
+	"assembly": "nasm",
+	"s": "armasm",
+	"arm": "armasm",
+	"armasm": "armasm",
+	"wasm": "wasm",
+	"styl": "stylus",
+	"stylus": "stylus",
+	"sol": "solidity",
+	"solidity": "solidity",
+	"f90": "fortran",
+	"f95": "fortran",
+	"for": "fortran",
+	"fortran": "fortran",
+	"hs": "haskell",
+	"haskell": "haskell",
+	"erl": "erlang",
+	"erlang": "erlang",
+	"ex": "elixir",
+	"exs": "elixir",
+	"elixir": "elixir",
+	"clj": "clojure",
+	"clojure": "clojure",
+	"lisp": "lisp",
+	"scm": "scheme",
+	"scheme": "scheme",
+	"jl": "julia",
+	"julia": "julia",
+	"ml": "ocaml",
+	"ocaml": "ocaml",
+	"v": "verilog",
+	"verilog": "verilog",
+	"vhd": "vhdl",
+	"vhdl": "vhdl",
+	"sv": "systemverilog",
+	"systemverilog": "systemverilog",
+	"tf": "hcl",
+	"terraform": "hcl",
+	"hcl": "hcl",
+	"zig": "zig",
+	"cmake": "cmake",
+	"txt": "none",
+	"text": "none",
+	"plain": "none",
+	"plaintext": "none"
+};
+
+var argonLanguageDisplayNames = {
+	"cpp": "C++",
+	"csharp": "C#",
+	"fsharp": "F#",
+	"javascript": "JAVASCRIPT",
+	"typescript": "TYPESCRIPT",
+	"python": "PYTHON",
+	"markup": "HTML/XML",
+	"markdown": "MARKDOWN",
+	"powershell": "POWERSHELL",
+	"protobuf": "PROTOBUF",
+	"graphql": "GRAPHQL",
+	"objectivec": "OBJECTIVE-C",
+	"docker": "DOCKERFILE",
+	"shell-session": "TERMINAL",
+	"nasm": "X86 ASM",
+	"armasm": "ARM ASM",
+	"none": "TEXT"
+};
+
 function randomString(len) {
 	len = len || 32;
 	let chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -9268,147 +9669,232 @@ function shouldSkipHighlightJsBlock(block) {
 		return false;
 	}
 	return $block.is("[hljs-codeblock-inner]") ||
-		$pre.hasClass("hljs-codeblock") ||
 		$pre.hasClass("argon-codeblock") ||
 		$block.find("table.hljs-ln").length > 0 ||
-		$pre.children(".hljs-control").length > 0 ||
-		$pre.children(".argon-code-control").length > 0 ||
-		$pre.closest(".code-toolbar").length > 0 ||
-		$pre.siblings(".toolbar").length > 0 ||
-		$pre.find(".line-numbers-rows").length > 0;
+		$pre.children(".argon-code-control").length > 0;
 }
-
 
 function renderArgonCodeBlock(block) {
 	if ($(block).hasClass("no-hljs")) {
 		return;
 	}
-	if ($(block).attr("hljs-codeblock-inner") !== undefined || $(block).parent().hasClass("hljs-codeblock") || $(block).parent().hasClass("argon-codeblock")) {
-		return;
-	}
-	if (shouldSkipHighlightJsBlock(block)) {
-		return;
-	}
-	let $pre = $(block).parent();
 	let $code = $(block);
+	let $pre = $code.is("pre") ? $code : $code.closest("pre");
+	if ($pre.length === 0 || $pre.children(".argon-code-control").length > 0) {
+		return;
+	}
 	if (typeof (Prism) != "undefined" && Prism.plugins && Prism.plugins.autoloader) {
 		$pre.attr("data-manual", "");
 	}
-	$pre.attr("id", randomString());
+	if (!$pre.attr("id")) {
+		$pre.attr("id", randomString());
+	}
 	$pre.addClass("argon-codeblock hljs-codeblock line-numbers");
-	let languageClass = ($code.attr("class") || "").match(/\blang(?:uage)?-([\w-]+)/);
-	if (languageClass && !$code.hasClass("language-" + languageClass[1])) {
-		$code.addClass("language-" + languageClass[1]);
+	
+	// 从 pre 与 code 上的 class 统一提取语言标识
+	let combinedClass = ($code.attr("class") || "") + " " + ($pre.attr("class") || "");
+	let rawLangMatch = combinedClass.match(/\blang(?:uage)?-([\w#+.-]+)/i);
+	let rawLang = rawLangMatch ? rawLangMatch[1].toLowerCase() : "";
+	let resolvedLang = rawLang;
+	if (argonLanguageAliases[rawLang]) {
+		resolvedLang = argonLanguageAliases[rawLang];
 	}
+	if (resolvedLang && resolvedLang !== "none") {
+		// 移除不规范的 class 并添加合规的 language-{lang}
+		if (rawLang && rawLang !== resolvedLang) {
+			$code.removeClass("language-" + rawLang).removeClass("lang-" + rawLang);
+			$pre.removeClass("language-" + rawLang).removeClass("lang-" + rawLang);
+		}
+		$code.addClass("language-" + resolvedLang);
+		$pre.addClass("language-" + resolvedLang);
+	}
+	$code.attr("hljs-codeblock-inner", "");
 	if (typeof (Prism) != "undefined" && Prism.highlightElement) {
-		Prism.highlightElement(block);
+		try {
+			Prism.highlightElement(block);
+		} catch (e) {}
 	}
-	if (argonConfig.code_highlight.hide_linenumber) {
+	if (typeof (argonConfig) !== "undefined" && argonConfig.code_highlight && argonConfig.code_highlight.hide_linenumber) {
 		$pre.addClass("argon-hide-linenumber hljs-hide-linenumber");
 	}
-	if (argonConfig.code_highlight.break_line) {
+	if (typeof (argonConfig) !== "undefined" && argonConfig.code_highlight && argonConfig.code_highlight.break_line) {
 		$pre.addClass("argon-break-line hljs-break-line");
 	}
-	if (argonConfig.code_highlight.transparent_linenumber) {
+	if (typeof (argonConfig) !== "undefined" && argonConfig.code_highlight && argonConfig.code_highlight.transparent_linenumber) {
 		$pre.addClass("argon-transparent-linenumber hljs-transparent-linenumber");
 	}
 	$code.attr("hljs-codeblock-inner", "");
 	let copyBtnID = "copy_btn_" + randomString();
-	let language = (($code.attr("class") || "").match(/\blanguage-([\w-]+)/) || [])[1] || "code";
-	language = $('<div>').text(language).html();
+	let displayLang = resolvedLang ? (argonLanguageDisplayNames[resolvedLang] || resolvedLang.toUpperCase()) : "CODE";
+	displayLang = $('<div>').text(displayLang).html();
+	let hideLineNumberText = "隐藏行号";
+	let showLineNumberText = "显示行号";
+	let enableBreaklineText = "开启折行";
+	let disableBreaklineText = "关闭折行";
+	let copyText = "复制";
+	try {
+		if (typeof __ === 'function') {
+			hideLineNumberText = __("隐藏行号");
+			showLineNumberText = __("显示行号");
+			enableBreaklineText = __("开启折行");
+			disableBreaklineText = __("关闭折行");
+			copyText = __("复制");
+		}
+	} catch (e) {}
 	$pre.append(`<div class="argon-code-control hljs-control hljs hljs-title">
-			<span class="argon-code-language">` + language + `</span>
-			<div class="argon-code-control-btn argon-code-toggle-linenumber hljs-control-btn hljs-control-toggle-linenumber" tooltip-hide-linenumber="` + __("隐藏行号") + `" tooltip-show-linenumber="` + __("显示行号") + `">
+			<span class="argon-code-language">` + displayLang + `</span>
+			<div class="argon-code-control-btn argon-code-toggle-linenumber hljs-control-btn hljs-control-toggle-linenumber" tooltip-hide-linenumber="` + hideLineNumberText + `" tooltip-show-linenumber="` + showLineNumberText + `">
 				<i class="fa fa-list"></i>
 			</div>
-			<div class="argon-code-control-btn argon-code-toggle-break-line hljs-control-btn hljs-control-toggle-break-line" tooltip-enable-breakline="` + __("开启折行") + `" tooltip-disable-breakline="` + __("关闭折行") + `">
+			<div class="argon-code-control-btn argon-code-toggle-break-line hljs-control-btn hljs-control-toggle-break-line" tooltip-enable-breakline="` + enableBreaklineText + `" tooltip-disable-breakline="` + disableBreaklineText + `">
 				<i class="fa fa-align-left"></i>
 			</div>
-			<div class="argon-code-control-btn argon-code-copy hljs-control-btn hljs-control-copy" id=` + copyBtnID + ` tooltip="` + __("复制") + `">
+			<div class="argon-code-control-btn argon-code-copy hljs-control-btn hljs-control-copy" id=` + copyBtnID + ` tooltip="` + copyText + `">
 				<i class="fa fa-clipboard"></i>
 			</div>
 		</div>`);
-	let clipboard = new ClipboardJS("#" + copyBtnID, {
-		text: function (trigger) {
-			return getCodeFromBlock($(block).parent()[0]);
+	if (typeof ClipboardJS !== "undefined") {
+		let clipboard = new ClipboardJS("#" + copyBtnID, {
+			text: function (trigger) {
+				return getCodeFromBlock($pre[0]);
+			}
+		});
+		var copyButton = document.getElementById(copyBtnID);
+		if (copyButton) {
+			copyButton._clipboard = clipboard;
 		}
-	});
-	var copyButton = document.getElementById(copyBtnID);
-	if (copyButton) {
-		copyButton._clipboard = clipboard;
+		clipboard.on('success', function (e) {
+			if (typeof iziToast !== "undefined") {
+				let copySuccessTitle = "复制成功";
+				let copySuccessMsg = "代码已复制到剪贴板";
+				try {
+					if (typeof __ === 'function') {
+						copySuccessTitle = __("复制成功");
+						copySuccessMsg = __("代码已复制到剪贴板");
+					}
+				} catch (err) {}
+				iziToast.show({
+					title: copySuccessTitle,
+					message: copySuccessMsg,
+					class: 'shadow',
+					position: 'topRight',
+					backgroundColor: '#2dce89',
+					titleColor: '#ffffff',
+					messageColor: '#ffffff',
+					iconColor: '#ffffff',
+					progressBarColor: '#ffffff',
+					icon: 'fa fa-check',
+					timeout: 5000
+				});
+			}
+		});
+		clipboard.on('error', function (e) {
+			if (typeof iziToast !== "undefined") {
+				let copyFailTitle = "复制失败";
+				let copyFailMsg = "请手动复制代码";
+				try {
+					if (typeof __ === 'function') {
+						copyFailTitle = __("复制失败");
+						copyFailMsg = __("请手动复制代码");
+					}
+				} catch (err) {}
+				iziToast.show({
+					title: copyFailTitle,
+					message: copyFailMsg,
+					class: 'shadow',
+					position: 'topRight',
+					backgroundColor: '#f5365c',
+					titleColor: '#ffffff',
+					messageColor: '#ffffff',
+					iconColor: '#ffffff',
+					progressBarColor: '#ffffff',
+					icon: 'fa fa-close',
+					timeout: 5000
+				});
+			}
+		});
 	}
-	clipboard.on('success', function (e) {
-		iziToast.show({
-			title: __("复制成功"),
-			message: __("代码已复制到剪贴板"),
-			class: 'shadow',
-			position: 'topRight',
-			backgroundColor: '#2dce89',
-			titleColor: '#ffffff',
-			messageColor: '#ffffff',
-			iconColor: '#ffffff',
-			progressBarColor: '#ffffff',
-			icon: 'fa fa-check',
-			timeout: 5000
-		});
-	});
-	clipboard.on('error', function (e) {
-		iziToast.show({
-			title: __("复制失败"),
-			message: __("请手动复制代码"),
-			class: 'shadow',
-			position: 'topRight',
-			backgroundColor: '#f5365c',
-			titleColor: '#ffffff',
-			messageColor: '#ffffff',
-			iconColor: '#ffffff',
-			progressBarColor: '#ffffff',
-			icon: 'fa fa-close',
-			timeout: 5000
-		});
-	});
+}
+
+function configurePrismAutoloader() {
+	if (typeof (Prism) !== "undefined" && Prism.plugins && Prism.plugins.autoloader) {
+		var autoloader = Prism.plugins.autoloader;
+		// 确保语言组件路径指向主题自带的完整 298 语言组件库
+		var themeComponentsBase = (window.argonConfig && window.argonConfig.wp_path ? window.argonConfig.wp_path : '') + '/wp-content/themes/argon/assets/vendor/prism/components/';
+		if (window.location && window.location.origin) {
+			themeComponentsBase = window.location.origin + themeComponentsBase;
+		}
+		autoloader.languages_path = themeComponentsBase;
+
+		if (!autoloader._argonConfigured) {
+			autoloader._argonConfigured = true;
+			var cdnFallbackBase = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/';
+			if (typeof autoloader.loadLanguages === 'function') {
+				var origLoad = autoloader.loadLanguages;
+				autoloader.loadLanguages = function (languages, success, error) {
+					return origLoad.call(this, languages, function (lang) {
+						if (typeof success === 'function') {
+							success(lang);
+						}
+					}, function (lang) {
+						var script = document.createElement('script');
+						script.src = cdnFallbackBase + 'prism-' + lang + '.min.js';
+						script.async = true;
+						script.onload = function () {
+							if (typeof success === 'function') {
+								success(lang);
+							}
+						};
+						script.onerror = function () {
+							if (typeof error === 'function') {
+								error(lang);
+							}
+						};
+						document.head.appendChild(script);
+					});
+				};
+			}
+		}
+	}
 }
 
 function highlightJsRender(scope) {
-	if (typeof (argonConfig.code_highlight.enable) == "undefined") {
+	if (typeof (argonConfig) !== "undefined" && argonConfig.code_highlight && argonConfig.code_highlight.enable === false) {
 		return;
 	}
-	if (!argonConfig.code_highlight.enable) {
-		return;
-	}
+	configurePrismAutoloader();
 	var $scope = scope ? $(scope) : $("article");
 	$scope.find("pre.code").addBack("pre.code").each(function (index, block) {
 		if ($(block).hasClass("no-hljs")) {
 			return;
 		}
-		if (shouldSkipHighlightJsBlock(block) || $(block).children("code").length > 0) {
-			return;
+		if ($(block).children("code").length === 0) {
+			$(block).html("<code>" + $(block).html() + "</code>");
 		}
-		$(block).html("<code>" + $(block).html() + "</code>");
 	});
 	var blocks = $scope.find("pre > code").addBack("pre > code").filter(function () {
 		return !$(this).hasClass("no-hljs");
 	});
-	if (!scope && window.ArgonLongContentVirtualizer && window.ArgonLongContentVirtualizer.isReady && window.ArgonLongContentVirtualizer.isReady() && "IntersectionObserver" in window) {
-		if (!highlightObserver) {
-			highlightObserver = new IntersectionObserver(function (entries) {
-				entries.forEach(function (entry) {
-					if (entry.isIntersecting) {
-						renderArgonCodeBlock(entry.target);
-						highlightObserver.unobserve(entry.target);
-					}
-				});
-			}, { rootMargin: "800px 0px 800px 0px", threshold: 0 });
-		}
-		blocks.each(function (index, block) {
-			highlightObserver.observe(block);
-		});
-		return;
-	}
 	blocks.each(function (index, block) {
 		renderArgonCodeBlock(block);
 	});
 }
+
+// 确保 DOM 准备完毕及异步加载完成后均执行一次高亮初始化
+$(document).ready(function () {
+	highlightJsRender();
+});
+window.addEventListener("load", function () {
+	highlightJsRender();
+});
+
+// 确保 DOM 准备完毕及异步加载完成后均执行一次高亮初始化
+$(document).ready(function () {
+	highlightJsRender();
+});
+window.addEventListener("load", function () {
+	highlightJsRender();
+});
 $(document).ready(function () {
 	// ==========================================================================
 	// 初始化性能优化模块
@@ -9490,16 +9976,27 @@ $(document).on("click", ".hljs-control-toggle-linenumber", function () {
 	block.toggleClass("argon-hide-linenumber hljs-hide-linenumber");
 });
 
-// 首页文章卡片整体可点击
-$(document).on("click", ".post-preview-layout-2", function (e) {
-	// 如果点击的是链接或链接内的元素，不做处理
-	if (!$(e.target).is("a") && !$(e.target).closest("a").length) {
-		const href = $(this).find(".post-title").attr("href");
-		if (href) {
-			window.location.href = href;
+	// 首页文章卡片整体可点击
+	$(document).on("click", ".post-preview-layout-2", function (e) {
+		// 如果点击的是链接或链接内的元素，不做处理
+		if (!$(e.target).is("a") && !$(e.target).closest("a").length) {
+			const href = $(this).find(".post-title").attr("href");
+			if (href) {
+				window.location.href = href;
+			}
 		}
-	}
-});
+	});
+
+		// 全局模态弹出式窗口与背景锁定联动（严格排除表情键盘、下拉菜单等局部弹出式菜单）
+		$(document).on('show.bs.modal shown.bs.modal', '.modal', function () {
+			document.documentElement.classList.add('argon-modal-locked');
+			document.body.style.paddingRight = '0px';
+		}).on('hidden.bs.modal', '.modal', function () {
+			if ($('.modal.show').length === 0 && !document.querySelector('.argon-attachment-preview-modal.is-open') && !document.querySelector('.feedback-modal-overlay.show') && !document.querySelector('.flink-modal-overlay.show') && !document.querySelector('.ai-modal.active')) {
+				document.documentElement.classList.remove('argon-modal-locked');
+			}
+			document.body.style.paddingRight = '';
+		});
 
 /*时间差计算/
 function addPreZero(num, n) {

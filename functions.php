@@ -15,6 +15,7 @@ require_once get_template_directory() . '/inc/ai-spam-prompts.php';
 require_once get_template_directory() . '/inc/ai-summary-prompt.php';
 require_once get_template_directory() . '/inc/friend-link-algorithms.php';
 require_once get_template_directory() . '/inc/bangumi.php';
+require_once get_template_directory() . '/inc/attachments.php';
 
 function argon_register_bangumi_template($templates) {
 	$templates['page-bangumi.php'] = __('追番展示页', 'argon');
@@ -2104,7 +2105,7 @@ function can_visit_comment_edit_history($id){
 }
 //获取评论编辑记录
 function get_comment_edit_history(){
-	check_ajax_referer('argon_comment_nonce', 'nonce');
+	check_ajax_referer('argon_comment', 'nonce');
 	$id = absint($_POST['id']);
 	if ($id === 0) {
 		wp_send_json_error(array('msg' => __('无效的评论 ID', 'argon')));
@@ -2116,10 +2117,15 @@ function get_comment_edit_history(){
 		));
 	}
 	$editHistory = json_decode(get_comment_meta($id, "comment_edit_history", true));
+	if (is_null($editHistory)){
+		$editHistory = array();
+	}
 	$editHistory = array_reverse($editHistory);
 	$res = "";
 	$position = count($editHistory) + 1;
-	date_default_timezone_set(get_option('timezone_string'));
+	if (get_option('timezone_string') != ""){
+		date_default_timezone_set(get_option('timezone_string'));
+	}
 	foreach ($editHistory as $edition){
 		$position -= 1;
 		$res .= "<div class='comment-edit-history-item'>
@@ -2169,7 +2175,7 @@ function argon_get_comment_text($comment_ID = 0, $args = array()) {
 	);
 	$comment_text = preg_replace(
 		'/<img src="(.*?)" alt="(.*?)" \/>/',
-		'<a href="$1" title="$2" data-fancybox="comment-' . $comment -> comment_ID . '-image" class="comment-image" rel="nofollow">
+		'<a href="$1" title="$2" class="comment-image" rel="nofollow">
 			<i class="fa fa-image" aria-hidden="true"></i>
 			' . __('查看图片', 'argon') . '
 			<img src="" alt="$2" class="comment-image-preview">
@@ -2813,20 +2819,24 @@ function argon_ip_in_range($ip, $cidr) {
  */
 function argon_verify_captcha($context = 'comment') {
     // 根据场景检查是否需要验证码
-    if ($context === 'todo') {
-        if (!argon_is_todo_captcha_enabled()) {
-            return array('success' => true, 'error' => null);
-        }
-    } elseif ($context === 'flink') {
-        // 友链申请使用评论验证码设置
-        if (!argon_is_captcha_enabled()) {
-            return array('success' => true, 'error' => null);
-        }
-    } else {
-        if (!argon_is_comment_captcha_enabled()) {
-            return array('success' => true, 'error' => null);
-        }
-    }
+	    if ($context === 'todo') {
+	        if (!argon_is_todo_captcha_enabled()) {
+	            return array('success' => true, 'error' => null);
+	        }
+	    } elseif ($context === 'flink') {
+	        // 友链申请使用评论验证码设置
+	        if (!argon_is_captcha_enabled()) {
+	            return array('success' => true, 'error' => null);
+	        }
+	    } elseif ($context === 'attachment') {
+	        if (function_exists('argon_attachment_is_captcha_enabled') && !argon_attachment_is_captcha_enabled()) {
+	            return array('success' => true, 'error' => null);
+	        }
+	    } else {
+	        if (!argon_is_comment_captcha_enabled()) {
+	            return array('success' => true, 'error' => null);
+	        }
+	    }
     
     // 管理员跳过验证码
     if (current_user_can('moderate_comments')) {
@@ -3211,6 +3221,30 @@ function argon_apply_comment_macros($text){
 		return '<span class="color-curtain"' . (strlen($tip) ? ' title="' . htmlspecialchars($tip, ENT_QUOTES) . '"' : '') . ' style="' . $style . '">' . htmlspecialchars($content) . '</span>';
 	}, $text);
 	return $text;
+}
+//列表卡片摘要的纯文本化：附件短代码降级为文件名而非整段消失，其余短代码剥离；
+//标签相邻处补空格，避免剥标签后表格单元格首尾粘连（如 "155cm2 月 14 日"）
+function argon_preview_plain_text($content){
+	$content = preg_replace_callback('/\[attachment\s+([^\]]*)\]/i', function($m){
+		$attr = shortcode_parse_atts($m[1]);
+		$uuid = isset($attr['id']) ? sanitize_text_field($attr['id']) : '';
+		if ($uuid !== ''){
+			if (!function_exists('argon_attachments_locate')){
+				return '';
+			}
+			$located = argon_attachments_locate($uuid);
+			if ($located === null){
+				return '';
+			}
+			return $located[1]['name'];
+		}
+		//name 软引用：文件名本身即摘要文本（剥掉 #N 消歧后缀）
+		$name = isset($attr['name']) ? sanitize_text_field($attr['name']) : '';
+		return preg_replace('/#\d+$/', '', $name);
+	}, $content);
+	$content = strip_shortcodes($content);
+	$content = preg_replace('/>\s*</', '> <', $content);
+	return $content;
 }
 function argon_extend_comment_allowed_tags($tags, $context){
 	if ($context !== 'comment') { return $tags; }
@@ -4089,19 +4123,10 @@ function argon_lazyload($content){
 	}
 	return $content;
 }
-function argon_fancybox($content){
-	if(!is_feed() && !is_robots() && !is_home()){
-		$content = preg_replace('/<img(.*?)src=[\'"](.*?)[\'"](.*?)((\/>)|>|(<\/img>))/i',"<div class='fancybox-wrapper' data-fancybox='post-images' href='$2'>$0</div>" , $content);
-	}
-	return $content;
-}
 function the_content_filter($content){
 	// 根据设置决定是否启用懒加载
 	if (get_option('argon_enable_lazyload') !== 'false') {
 		$content = argon_lazyload($content);
-	}
-	if (get_option('argon_enable_fancybox') != 'false' && get_option('argon_enable_zoomify') == 'false'){
-		$content = argon_fancybox($content);
 	}
 	global $post;
 	$custom_css = get_post_meta($post->ID, 'argon_custom_css', true);

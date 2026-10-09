@@ -114,8 +114,11 @@
 		setTimeout(initQRCode, 100);
 	});
 
-	$("#share_copy_link")[0].onclick = function() {
-		let input = document.createElement('input');
+		$("#share_copy_link")[0].onclick = function(e) {
+			if (!$("#share_container").hasClass("opened")) {
+				return;
+			}
+			let input = document.createElement('input');
 		document.body.appendChild(input);
 		input.setAttribute("value", window.location.href);
 		input.setAttribute("readonly", "readonly");

@@ -1,17 +1,63 @@
 /* Argon 附件管理（文章编辑页 meta box） */
-(function ($) {
+jQuery(function ($) {
 	"use strict";
 
 	var config = window.argonAttachmentsAdmin || {};
 	var i18n = config.i18n || {};
-	var $manager = $("#argon-attachments-manager");
-	if (!$manager.length) {
-		return;
+
+	function getManager() {
+		return $("#argon-attachments-manager");
 	}
-	var postId = $manager.data("post-id");
-	var $list = $("#argon-attachments-admin-list");
+
+	function getPostId() {
+		var $m = getManager();
+		var id = $m.data("post-id");
+		if (id) {
+			return id;
+		}
+		if (window.wp && wp.data && wp.data.select && wp.data.select("core/editor")) {
+			var editorPostId = wp.data.select("core/editor").getCurrentPostId();
+			if (editorPostId) {
+				return editorPostId;
+			}
+		}
+		return 0;
+	}
+
+	function getList() {
+		return $("#argon-attachments-admin-list");
+	}
+
+	function showInlineNotice(type, message) {
+		var $notice = $(".argon-attachments-admin-notice");
+		if (!$notice.length) {
+			return;
+		}
+		var typeClass = type === "error" ? "notice-error" : (type === "success" ? "notice-success" : "notice-info");
+		$notice.removeClass("notice-error notice-success notice-info")
+			.addClass(typeClass)
+			.text(message)
+			.stop(true, true)
+			.slideDown(150);
+
+		if (type === "success") {
+			setTimeout(function () {
+				$notice.slideUp(200);
+			}, 4000);
+		}
+	}
+
+	function clearInlineNotice() {
+		var $notice = $(".argon-attachments-admin-notice");
+		if ($notice.length) {
+			$notice.stop(true, true).slideUp(100).empty();
+		}
+	}
 
 	function notify(type, message) {
+		// 先在 meta box 内部显式展示就地提示，避免古腾堡下通知在视口角落容易被忽视
+		showInlineNotice(type, message);
+
 		try {
 			if (window.wp && wp.data && wp.data.dispatch) {
 				var dispatcher = wp.data.dispatch("core/notices");
@@ -21,9 +67,12 @@
 				}
 			}
 		} catch (e) {
-			// 经典编辑器下 core/notices store 未注册会抛错，落到 alert 兜底
+			// 经典编辑器下 core/notices store 未注册会抛错
 		}
-		alert(message);
+		// 若未能展示任何就地通知，则降级使用 alert
+		if (!$(".argon-attachments-admin-notice").length && type === "error") {
+			alert(message);
+		}
 	}
 
 	// AJAX 失败时尽量给出可操作的原因：服务端校验失败（HTTP 4xx/5xx + JSON message）
@@ -51,7 +100,7 @@
 	function post(action, data, done, fail) {
 		data.action = action;
 		data.nonce = config.nonce;
-		data.post_id = postId;
+		data.post_id = getPostId();
 		$.ajax({
 			url: config.ajaxurl,
 			type: "POST",
@@ -72,7 +121,7 @@
 	function collectState() {
 		var order = [];
 		var names = {};
-		$list.find(".argon-att-admin-row").each(function () {
+		getList().find(".argon-att-admin-row").each(function () {
 			var uuid = $(this).data("uuid");
 			order.push(uuid);
 			names[uuid] = $(this).find(".argon-att-admin-name").val();
@@ -86,7 +135,7 @@
 			// 服务端对同名展示名自动追加 -N 后缀，把最终名回写到输入框
 			if (data && data.names) {
 				var renamed = [];
-				$list.find(".argon-att-admin-row").each(function () {
+				getList().find(".argon-att-admin-row").each(function () {
 					var uuid = $(this).data("uuid");
 					if (data.names[uuid] !== undefined) {
 						$(this).find(".argon-att-admin-name").val(data.names[uuid]);
@@ -116,48 +165,85 @@
 	}
 
 	function refreshEmptyState() {
-		$list.find(".argon-attachments-admin-empty").toggle($list.find(".argon-att-admin-row").length === 0);
+		var $l = getList();
+		$l.find(".argon-attachments-admin-empty").toggle($l.find(".argon-att-admin-row").length === 0);
 	}
 
-	/* 上传 */
-	var $fileInput = $("#argon-attachment-file-input");
-	var $uploadBtn = $("#argon-attachment-upload-btn");
-	var $progress = $(".argon-attachments-admin-progress");
-	var $progressBar = $(".argon-attachments-admin-progress-bar");
+	function initSortable() {
+		if ($.fn.sortable) {
+			var $l = getList();
+			if ($l.length && !$l.data("ui-sortable")) {
+				$l.sortable({
+					items: ".argon-att-admin-row",
+					handle: ".argon-att-admin-drag",
+					axis: "y",
+					stop: function () {
+						syncState();
+					}
+				});
+			}
+		}
+	}
 
-	$uploadBtn.data("label", $uploadBtn.html());
+	/* 事件委托：确保 Gutenberg 异步加载或组件重新渲染时不丢失事件绑定 */
 
-	$uploadBtn.on("click", function () {
-		$fileInput.trigger("click");
+	// 1. 点击上传按钮：重置 input 并打开系统文件选择框
+	$(document).on("click", "#argon-attachment-upload-btn", function (e) {
+		e.preventDefault();
+		clearInlineNotice();
+		var input = document.getElementById("argon-attachment-file-input");
+		if (input) {
+			input.value = "";
+			input.click();
+		}
 	});
 
-	$fileInput.on("change", function () {
+	// 2. 选择文件后的 change 事件
+	$(document).on("change", "#argon-attachment-file-input", function () {
 		var file = this.files && this.files[0];
 		if (!file) {
 			return;
 		}
+
+		clearInlineNotice();
+
 		var ext = (file.name.split(".").pop() || "").toLowerCase();
-		if (config.allowedExt && config.allowedExt.indexOf(ext) === -1) {
-			notify("error", i18n.badExt);
-			this.value = "";
-			return;
-		}
-		if (config.maxSize && file.size > config.maxSize) {
-			var tooBigMsg = i18n.tooBig || "";
-			if (tooBigMsg.indexOf("%s") !== -1) {
-				tooBigMsg = tooBigMsg.replace("%s", formatSize(config.maxSize));
-			}
-			notify("error", tooBigMsg);
+		var isAllowed = !config.allowedExt ||
+			config.allowedExt.length === 0 ||
+			config.allowedExt.indexOf("*") !== -1 ||
+			config.allowedExt.indexOf("all") !== -1 ||
+			config.allowedExt.indexOf(ext) !== -1;
+
+		if (!isAllowed) {
+			notify("error", i18n.badExt || "不允许上传该格式的文件");
 			this.value = "";
 			return;
 		}
 
+		if (config.maxSize && config.maxSize > 0 && file.size > config.maxSize) {
+			var tooBigMsg = i18n.tooBig || "";
+			if (tooBigMsg.indexOf("%s") !== -1) {
+				tooBigMsg = tooBigMsg.replace("%s", formatSize(config.maxSize));
+			}
+			notify("error", tooBigMsg || "文件超过大小上限");
+			this.value = "";
+			return;
+		}
+
+		var postId = getPostId();
 		var formData = new FormData();
 		formData.append("action", "argon_attachment_upload");
 		formData.append("nonce", config.nonce);
 		formData.append("post_id", postId);
 		formData.append("file", file);
 
+		var $uploadBtn = $("#argon-attachment-upload-btn");
+		var $progress = $(".argon-attachments-admin-progress");
+		var $progressBar = $(".argon-attachments-admin-progress-bar");
+
+		if (!$uploadBtn.data("label")) {
+			$uploadBtn.data("label", $uploadBtn.html());
+		}
 		$uploadBtn.prop("disabled", true).text(i18n.uploading);
 		$progress.show();
 		$progressBar.css("width", "0%");
@@ -179,9 +265,10 @@
 			},
 			success: function (resp) {
 				if (resp && resp.success && resp.data) {
-					$list.append(buildRow(resp.data));
+					getList().append(buildRow(resp.data));
 					refreshEmptyState();
-					notify("success", resp.data.name + " ✓");
+					initSortable();
+					notify("success", (resp.data.name || "") + " ✓");
 				} else {
 					notify("error", (resp && resp.data && resp.data.message) || i18n.uploadFailed);
 				}
@@ -192,13 +279,16 @@
 			complete: function () {
 				$uploadBtn.prop("disabled", false).html($uploadBtn.data("label"));
 				$progress.hide();
-				$fileInput.val("");
+				var input = document.getElementById("argon-attachment-file-input");
+				if (input) {
+					input.value = "";
+				}
 			}
 		});
 	});
 
-	/* 删除 */
-	$list.on("click", ".argon-att-admin-delete", function () {
+	// 3. 删除
+	$(document).on("click", ".argon-att-admin-delete", function () {
 		var $row = $(this).closest(".argon-att-admin-row");
 		if (!window.confirm(i18n.deleteConfirm)) {
 			return;
@@ -213,26 +303,14 @@
 		});
 	});
 
-	/* 改名（失焦保存） */
+	// 4. 改名（失焦保存）
 	var nameTimer = null;
-	$list.on("change input", ".argon-att-admin-name", function () {
+	$(document).on("change input", ".argon-att-admin-name", function () {
 		clearTimeout(nameTimer);
 		nameTimer = setTimeout(syncState, 600);
 	});
 
-	/* 拖动排序 */
-	if ($.fn.sortable) {
-		$list.sortable({
-			items: ".argon-att-admin-row",
-			handle: ".argon-att-admin-drag",
-			axis: "y",
-			stop: function () {
-				syncState();
-			}
-		});
-	}
-
-	/* 复制文本（下载链接与短代码兜底共用） */
+	// 5. 复制文本（下载链接与短代码兜底共用）
 	function copyText(text, successMsg) {
 		if (navigator.clipboard && navigator.clipboard.writeText) {
 			navigator.clipboard.writeText(text).then(function () {
@@ -253,13 +331,12 @@
 		}
 	}
 
-	/* 复制下载链接 */
-	$list.on("click", ".argon-att-admin-copy", function () {
+	// 6. 复制下载链接
+	$(document).on("click", ".argon-att-admin-copy", function () {
 		copyText($(this).data("url"), i18n.copied);
 	});
 
-	/* 插入附件短代码到编辑器：Gutenberg → TinyMCE → 文本域光标 → 兜底复制。
-	 * 始终写 UUID（稳定引用），用户无需关心附件 ID。 */
+	// 7. 插入附件短代码到编辑器：Gutenberg → TinyMCE → 文本域光标 → 兜底复制
 	function insertAttachment(uuid, style) {
 		var shortcode = '[attachment id="' + uuid + '"' + (style === "link" ? ' style="link"' : "") + "]";
 		if (window.wp && wp.data && wp.data.dispatch && wp.blocks && wp.blocks.createBlock
@@ -286,9 +363,11 @@
 		copyText(shortcode, i18n.insertCopied);
 	}
 
-	$list.on("click", ".argon-att-admin-insert", function () {
+	$(document).on("click", ".argon-att-admin-insert", function () {
 		var $row = $(this).closest(".argon-att-admin-row");
 		insertAttachment($row.data("uuid"), $(this).data("style"));
 	});
 
-})(jQuery);
+	// 初始化排序
+	initSortable();
+});

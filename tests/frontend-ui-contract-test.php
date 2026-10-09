@@ -60,6 +60,66 @@ argon_frontend_ui_assert(
 	&& strpos($themejs, '$commentsArea.css({"max-height": "none"') === false,
 	'评论区高度过渡仍会暴露溢出内容、参与滚动锚定，或遗留覆盖后续折叠动画的内联高度。'
 );
+$functionsSource = file_get_contents($root . '/functions.php');
+foreach (array('template-parts/content-preview-1.php', 'template-parts/content-preview-2.php', 'template-parts/content-preview-3.php') as $tpl) {
+	$previewSource = file_get_contents($root . '/' . $tpl);
+	argon_frontend_ui_assert(
+		strpos($previewSource, "argon_preview_plain_text(get_the_content('...'))") !== false,
+		$tpl . ' 摘要生成没有走 argon_preview_plain_text，短代码原文或粘连文本会混成卡片正文的一坨。'
+	);
+}
+argon_frontend_ui_assert(
+	strpos($functionsSource, 'function argon_preview_plain_text') !== false
+	&& strpos($functionsSource, 'strip_shortcodes') !== false
+	&& strpos($functionsSource, '/>\s*</') !== false
+	&& strpos($functionsSource, 'argon_attachments_locate') !== false
+	&& strpos($functionsSource, '/\[attachment\s+') !== false
+	&& strpos($functionsSource, '[argon_attachment') === false,
+	'argon_preview_plain_text 缺少短代码剥离、标签边界补空格，或未将无前缀 [attachment] 短代码（含 name 软引用）降级为文件名。'
+);
+
+// 多语言代码块高亮契约测试
+argon_frontend_ui_assert(
+	strpos($themejs, 'var argonLanguageAliases = {') !== false
+	&& strpos($themejs, '"x86asm": "nasm"') !== false
+	&& strpos($themejs, '"c++": "cpp"') !== false
+	&& strpos($themejs, '"proto": "protobuf"') !== false
+	&& strpos($themejs, '"golang": "go"') !== false
+	&& strpos($themejs, '"shell": "bash"') !== false
+	&& strpos($themejs, '"zsh": "bash"') !== false,
+	'语言别名映射表缺少常见语言规范化（如 x86asm/c++/proto/go/bash/zsh）。'
+);
+
+argon_frontend_ui_assert(
+	strpos($themejs, 'autoloader.languages_path') !== false
+	&& strpos($themejs, 'Prism.plugins.autoloader') !== false
+	&& strpos($themejs, 'argon-code-language') !== false,
+	'代码块渲染函数缺少 Autoloader 路径加固或语言徽标注入逻辑。'
+);
+
+argon_frontend_ui_assert(
+	preg_match('/article pre code,\s*article pre code \*\s*\{[^}]*background:\s*transparent\s*!important;/s', $style) === 1,
+	'style.css 缺少代码块内行内代码残留背景与边框的全局重置。'
+);
+
+argon_frontend_ui_assert(
+	preg_match('/html\s*\{[^}]*overflow-y:\s*scroll;/s', $style) === 1
+	&& preg_match('/html\.argon-modal-locked\s+body\s*,\s*body\.modal-open[^}]*padding-right:\s*0\s*!important/s', $style) === 1,
+	'模态窗口打开时缺少 html 滚动条轨道常驻与禁止 padding-right 导致的背景卡片左移补偿保护。'
+);
+
+argon_frontend_ui_assert(
+	preg_match('/\.modal-backdrop\s*\{[^}]*backdrop-filter:\s*blur\(var\(--card-blur[^}]*opacity:\s*0;/s', $style) === 1
+	&& preg_match('/\.modal-backdrop\.show\s*\{[^}]*opacity:\s*1\s*!important;/s', $style) === 1,
+	'模态窗口遮罩层缺少完整的 backdrop-filter 模糊规范或不透明度被默认淡化覆盖。'
+);
+
+$emotionKeyboardTpl = file_get_contents($root . '/template-parts/emotion-keyboard.php');
+argon_frontend_ui_assert(
+	strpos($emotionKeyboardTpl, 'id="emotion_keyboard"') !== false
+	&& preg_match('/<div[^>]*id="emotion_keyboard"[^>]*class="[^"]*\bmodal\b/i', $emotionKeyboardTpl) === 0,
+	'表情键盘错误使用了模态窗口类，应作为局部弹出式菜单处理。'
+);
 
 argon_frontend_ui_assert(
 	preg_match('/article\.post-preview-layout-2 \.post-header\.post-header-with-thumbnail\s*\{[^}]*height:\s*auto;[^}]*min-height:\s*200px;[^}]*align-self:\s*stretch;/s', $style) === 1

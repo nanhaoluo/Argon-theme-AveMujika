@@ -45,8 +45,53 @@
 
 		</div>
 
-		<!-- 加载主题核心 JS -->
-		<script src="<?php echo esc_url($GLOBALS['assets_path'] . '/argontheme.js?v=' . argon_get_asset_file_version('argontheme.js')); ?>"></script>
+		<!-- 统一图片查看器（文章 / 说说 / 评论 / 反馈页共用，位于 PJAX 容器之外） -->
+		<div class="argon-image-viewer" id="argon-image-viewer" role="dialog" aria-modal="true" aria-hidden="true" aria-label="<?php esc_attr_e('图片预览', 'argon'); ?>"
+			data-text-loading="<?php esc_attr_e('图片加载中…', 'argon'); ?>"
+			data-text-error="<?php esc_attr_e('图片加载失败', 'argon'); ?>"
+			data-text-default-name="<?php esc_attr_e('图片', 'argon'); ?>">
+			<div class="argon-image-viewer-topbar">
+				<div class="argon-image-viewer-title">
+					<i class="fa fa-picture-o"></i>
+					<div class="argon-image-viewer-details">
+						<span class="argon-image-viewer-name" id="argon-image-viewer-name"></span>
+						<span class="argon-image-viewer-meta"><span id="argon-image-viewer-counter">1 / 1</span><span class="argon-image-viewer-meta-separator">·</span><span id="argon-image-viewer-resolution">—</span></span>
+					</div>
+				</div>
+				<button type="button" class="argon-image-viewer-close" id="argon-image-viewer-close" aria-label="<?php esc_attr_e('关闭预览', 'argon'); ?>"><i class="fa fa-times"></i></button>
+			</div>
+			<div class="argon-image-viewer-stage" id="argon-image-viewer-stage">
+				<button type="button" class="argon-image-viewer-nav argon-image-viewer-prev" id="argon-image-viewer-prev" aria-label="<?php esc_attr_e('上一张', 'argon'); ?>"><i class="fa fa-angle-left"></i></button>
+				<div class="argon-image-viewer-loading" id="argon-image-viewer-loading"><i class="fa fa-spinner fa-spin"></i><span></span></div>
+				<img class="argon-image-viewer-image" id="argon-image-viewer-image" alt="" draggable="false">
+				<button type="button" class="argon-image-viewer-nav argon-image-viewer-next" id="argon-image-viewer-next" aria-label="<?php esc_attr_e('下一张', 'argon'); ?>"><i class="fa fa-angle-right"></i></button>
+			</div>
+			<div class="argon-image-viewer-controls" aria-label="<?php esc_attr_e('图片缩放控件', 'argon'); ?>">
+				<button type="button" class="argon-image-viewer-control" id="argon-image-viewer-zoom-out" aria-label="<?php esc_attr_e('缩小', 'argon'); ?>"><i class="fa fa-search-minus"></i></button>
+				<button type="button" class="argon-image-viewer-control" id="argon-image-viewer-reset" aria-label="<?php esc_attr_e('重置缩放', 'argon'); ?>"><i class="fa fa-refresh"></i></button>
+				<span class="argon-image-viewer-zoom" id="argon-image-viewer-zoom">100%</span>
+				<button type="button" class="argon-image-viewer-control" id="argon-image-viewer-zoom-in" aria-label="<?php esc_attr_e('放大', 'argon'); ?>"><i class="fa fa-search-plus"></i></button>
+			</div>
+		</div>
+
+				<!-- 加载主题核心 JS -->
+				<?php if (get_option('argon_enable_code_highlight') == 'true') : ?>
+					<script id="prism_core-js" src="<?php echo esc_url($GLOBALS['assets_path'] . '/assets/vendor/prism/prism.min.js?ver=' . argon_get_asset_file_version('assets/vendor/prism/prism.min.js')); ?>"></script>
+					<script id="prism_line_numbers-js" src="<?php echo esc_url($GLOBALS['assets_path'] . '/assets/vendor/prism/plugins/line-numbers/prism-line-numbers.min.js?ver=' . argon_get_asset_file_version('assets/vendor/prism/plugins/line-numbers/prism-line-numbers.min.js')); ?>"></script>
+					<script id="prism_autoloader-js" src="<?php echo esc_url($GLOBALS['assets_path'] . '/assets/vendor/prism/plugins/autoloader/prism-autoloader.min.js?ver=' . argon_get_asset_file_version('assets/vendor/prism/plugins/autoloader/prism-autoloader.min.js')); ?>"></script>
+					<script id="prism_lang_clike-js" src="<?php echo esc_url($GLOBALS['assets_path'] . '/assets/vendor/prism/components/prism-clike.min.js?ver=' . argon_get_asset_file_version('assets/vendor/prism/components/prism-clike.min.js')); ?>"></script>
+					<script id="prism_lang_c-js" src="<?php echo esc_url($GLOBALS['assets_path'] . '/assets/vendor/prism/components/prism-c.min.js?ver=' . argon_get_asset_file_version('assets/vendor/prism/components/prism-c.min.js')); ?>"></script>
+					<script id="prism_lang_cpp-js" src="<?php echo esc_url($GLOBALS['assets_path'] . '/assets/vendor/prism/components/prism-cpp.min.js?ver=' . argon_get_asset_file_version('assets/vendor/prism/components/prism-cpp.min.js')); ?>"></script>
+					<script id="prism_lang_csharp-js" src="<?php echo esc_url($GLOBALS['assets_path'] . '/assets/vendor/prism/components/prism-csharp.min.js?ver=' . argon_get_asset_file_version('assets/vendor/prism/components/prism-csharp.min.js')); ?>"></script>
+					<script id="prism_lang_bash-js" src="<?php echo esc_url($GLOBALS['assets_path'] . '/assets/vendor/prism/components/prism-bash.min.js?ver=' . argon_get_asset_file_version('assets/vendor/prism/components/prism-bash.min.js')); ?>"></script>
+					<script id="prism_lang_python-js" src="<?php echo esc_url($GLOBALS['assets_path'] . '/assets/vendor/prism/components/prism-python.min.js?ver=' . argon_get_asset_file_version('assets/vendor/prism/components/prism-python.min.js')); ?>"></script>
+					<script id="prism_lang_go-js" src="<?php echo esc_url($GLOBALS['assets_path'] . '/assets/vendor/prism/components/prism-go.min.js?ver=' . argon_get_asset_file_version('assets/vendor/prism/components/prism-go.min.js')); ?>"></script>
+					<script id="prism_lang_rust-js" src="<?php echo esc_url($GLOBALS['assets_path'] . '/assets/vendor/prism/components/prism-rust.min.js?ver=' . argon_get_asset_file_version('assets/vendor/prism/components/prism-rust.min.js')); ?>"></script>
+					<script id="prism_lang_nasm-js" src="<?php echo esc_url($GLOBALS['assets_path'] . '/assets/vendor/prism/components/prism-nasm.min.js?ver=' . argon_get_asset_file_version('assets/vendor/prism/components/prism-nasm.min.js')); ?>"></script>
+					<script id="prism_lang_protobuf-js" src="<?php echo esc_url($GLOBALS['assets_path'] . '/assets/vendor/prism/components/prism-protobuf.min.js?ver=' . argon_get_asset_file_version('assets/vendor/prism/components/prism-protobuf.min.js')); ?>"></script>
+					<script id="prism_lang_zig-js" src="<?php echo esc_url($GLOBALS['assets_path'] . '/assets/vendor/prism/components/prism-zig.min.js?ver=' . argon_get_asset_file_version('assets/vendor/prism/components/prism-zig.min.js')); ?>"></script>
+				<?php endif; ?>
+				<script src="<?php echo esc_url($GLOBALS['assets_path'] . '/argontheme.js?v=' . argon_get_asset_file_version('argontheme.js')); ?>"></script>
 
 		<?php if (get_option('argon_math_render') == 'mathjax3') { /*Mathjax V3*/?>
 

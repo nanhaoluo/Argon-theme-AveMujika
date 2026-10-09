@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>移动端溢出测试</title>
+<link rel="stylesheet" href="../assets/argon_css_merged.css">
+<link rel="stylesheet" href="../style.css">
+<style>
+	/* 模拟主题内联变量与页面骨架 */
+	:root {
+		--color-border-on-foreground: #e9ecef;
+		--color-border-on-foreground-deeper: #dee2e6;
+		--themecolor: #e7728b;
+		--themecolor-rgbstr: 231, 114, 139;
+		--themecolor-light: #f2a0b1;
+		--m3-shape-sm: 8px;
+		--m3-shape-md: 12px;
+		--m3-surface-2: #f4f4f6;
+		--card-radius: 12px;
+		--card-radius-sm: 8px;
+	}
+	body { background: #f4f5f7; padding: 0; }
+	#maincontent { max-width: 100%; }
+</style>
+</head>
+<body>
+<div id="maincontent" class="container">
+	<article class="post post-full card bg-white shadow-sm border-0">
+		<div class="card-body">
+			<div class="post-content" id="post_content">
+				<h2>宽表格测试</h2>
+				<p>下面是一个很宽的表格，修复前会在手机上溢出卡片：</p>
+				<table>
+					<thead>
+						<tr><th>角色</th><th>乐队职务</th><th>就读学校</th><th>身高</th><th>生日</th><th>代表色</th><th>备注说明（很长的列）</th></tr>
+					</thead>
+					<tbody>
+						<tr><td>丰川祥子</td><td>键盘手</td><td>羽丘女子学园</td><td>155cm</td><td>2月14日</td><td>#7799CC</td><td>Oblivionis，Ave Mujica 的键盘手与领袖</td></tr>
+						<tr><td>三角初华</td><td>吉他手/主唱</td><td>花咲川女子学园</td><td>160cm</td><td>6月26日</td><td>#F2B8C6</td><td>Doloris，sumimi 成员，负责主唱</td></tr>
+						<tr><td>八幡海铃</td><td>贝斯手</td><td>花咲川女子学园</td><td>158cm</td><td>4月7日</td><td>#71A6D2</td><td>Timoris，冷静可靠的贝斯手</td></tr>
+						<tr><td>祐天寺若麦</td><td>鼓手</td><td>羽丘女子学园</td><td>150cm</td><td>12月25日</td><td>#B68EC9</td><td>Amoris，网络偶像喵梦</td></tr>
+						<tr><td>若叶睦</td><td>吉他手</td><td>羽丘女子学园</td><td>156cm</td><td>10月8日</td><td>#81C784</td><td>Mortis，沉默寡言的吉他手</td></tr>
+					</tbody>
+				</table>
+
+				<h2>Gutenberg 表格（figure 包裹）</h2>
+				<figure class="wp-block-table">
+					<table>
+						<thead>
+							<tr><th>编号</th><th>一个很长的表头文字用于测试</th><th>另一个长表头</th><th>第三列</th><th>第四列</th></tr>
+						</thead>
+						<tbody>
+							<tr><td>1</td><td>内容内容内容内容内容内容</td><td>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</td><td>foo</td><td>bar</td></tr>
+							<tr><td>2</td><td>https://example.com/very/long/url/that/cannot/be/broken/easily/aaaaaaaaaaaaaaaaaaaaaaaa</td><td>y</td><td>foo</td><td>bar</td></tr>
+						</tbody>
+					</table>
+				</figure>
+
+				<h2>普通 pre（非代码块）</h2>
+				<pre>这是一行非常非常非常长的 pre 文本 This is a very long preformatted line that should scroll horizontally instead of overflowing the card boundary on mobile devices 0123456789</pre>
+
+				<h2>长英文串（标题与列表）</h2>
+				<h3>SupercalifragilisticexpialidociousAntidisestablishmentarianismPneumonoultramicroscopicsilicovolcanoconiosis</h3>
+				<ul>
+					<li>https://example.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</li>
+				</ul>
+
+				<h2>窄表格（不应被拉宽变形）</h2>
+				<table>
+					<tbody>
+						<tr><td>键</td><td>值</td></tr>
+						<tr><td>foo</td><td>bar</td></tr>
+					</tbody>
+				</table>
+
+				<p>结尾段落，检查正文排版不受影响。</p>
+			</div>
+		</div>
+	</article>
+</div>
+</body>
+</html>

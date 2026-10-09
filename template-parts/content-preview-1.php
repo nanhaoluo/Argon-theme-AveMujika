@@ -97,7 +97,7 @@
 
 				}else{
 
-					$preview = wp_trim_words(get_the_content('...'), $trim_words_count);
+					$preview = wp_trim_words(argon_preview_plain_text(get_the_content('...')), $trim_words_count);
 
 				}
 

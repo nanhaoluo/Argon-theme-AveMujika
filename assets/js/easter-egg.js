@@ -48,6 +48,7 @@
             
             setTimeout(function() {
                 badBtn.style.transition = '';
+                document.documentElement.classList.add('argon-modal-locked');
                 window.ArgonMotion.fast(overlay, true, { className: 'show' });
                 overlay.setAttribute('aria-hidden', 'false');
                 startTracking();
@@ -61,6 +62,7 @@
             window.ArgonMotion.fast(overlay, false, { className: 'show' });
             overlay.setAttribute('aria-hidden', 'true');
         }
+        document.documentElement.classList.remove('argon-modal-locked');
         stopTracking();
     }
     

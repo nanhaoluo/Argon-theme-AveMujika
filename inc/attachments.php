@@ -29,16 +29,34 @@ require_once get_template_directory() . '/inc/attachment-preview.php';
 function argon_attachments_allowed_extensions() {
 	$raw = get_option('argon_attachment_allowed_extensions', '');
 	if ($raw === '') {
-		$raw = 'zip,rar,7z,tar,gz,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,md,apk,ipsw,mp3,flac,mp4,mkv,jpg,jpeg,png,gif,webp,epub,mobi';
+		// 默认包含通配符 '*'（不限制格式），以及兼容测试与展示的主流格式列表
+		$raw = '*,zip,rar,7z,tar,gz,bz2,xz,iso,dmg,pkg,deb,rpm,apk,ipsw,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,md,json,xml,yaml,yml,sql,log,ini,conf,toml,csv,tsv,torrent,bin,mp3,flac,wav,ogg,opus,m4a,aac,mp4,mkv,avi,mov,wmv,webm,jpg,jpeg,png,gif,webp,bmp,ico,epub,mobi,azw3';
 	}
 	$list = array_filter(array_map('trim', explode(',', strtolower($raw))));
 	return array_values(array_unique($list));
 }
 
+function argon_attachments_is_allowed_extension($ext) {
+	$ext = strtolower(trim((string)$ext));
+	if ($ext === '') {
+		return false;
+	}
+	// 硬性安全黑名单：可被服务器直接作为脚本执行或同域脚本渲染的格式始终禁止
+	if (in_array($ext, argon_attachments_denied_extensions(), true)) {
+		return false;
+	}
+	$allowed = argon_attachments_allowed_extensions();
+	if (empty($allowed) || in_array('*', $allowed, true) || in_array('all', $allowed, true)) {
+		return true;
+	}
+	return in_array($ext, $allowed, true);
+}
+
 function argon_attachments_max_size() {
-	$mb = absint(get_option('argon_attachment_max_size', 50));
+	$raw = get_option('argon_attachment_max_size', '0');
+	$mb = absint($raw);
 	if ($mb <= 0) {
-		$mb = 50;
+		return 0; // 0 表示不设人为上限，完全由服务器 PHP 物理配置决定
 	}
 	return $mb * 1024 * 1024;
 }
@@ -354,14 +372,15 @@ function argon_attachment_ajax_upload() {
 
 	$original_name = sanitize_text_field($file['name']);
 	$ext = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
-	if ($ext === '' || !in_array($ext, argon_attachments_allowed_extensions(), true)) {
+	if (!argon_attachments_is_allowed_extension($ext)) {
+		if (in_array($ext, argon_attachments_denied_extensions(), true)) {
+			wp_send_json_error(array('message' => sprintf(__('.%s 格式存在安全风险，禁止作为附件上传', 'argon'), $ext)), 400);
+		}
 		wp_send_json_error(array('message' => sprintf(__('不允许上传 .%s 格式的文件', 'argon'), $ext)), 400);
 	}
-	if (in_array($ext, argon_attachments_denied_extensions(), true)) {
-		wp_send_json_error(array('message' => sprintf(__('.%s 格式存在安全风险，禁止作为附件上传', 'argon'), $ext)), 400);
-	}
-	if ($file['size'] > argon_attachments_max_size()) {
-		wp_send_json_error(array('message' => sprintf(__('文件超过大小上限 %s', 'argon'), size_format(argon_attachments_max_size(), 0))), 400);
+	$max_size = argon_attachments_max_size();
+	if ($max_size > 0 && $file['size'] > $max_size) {
+		wp_send_json_error(array('message' => sprintf(__('文件超过大小上限 %s', 'argon'), size_format($max_size, 0))), 400);
 	}
 
 	$dir = argon_attachments_post_dir($post_id);
@@ -826,17 +845,33 @@ function argon_attachments_meta_box_html($post) {
 			<input type="file" id="argon-attachment-file-input" style="display:none;"/>
 			<button type="button" class="button button-primary" id="argon-attachment-upload-btn"><i class="fa fa-upload" aria-hidden="true"></i> <?php _e('上传附件', 'argon'); ?></button>
 			<span class="argon-attachments-admin-hint">
-				<?php printf(__('允许格式：%s', 'argon'), esc_html(implode(', ', argon_attachments_allowed_extensions()))); ?>
 				<?php
+				$argon_att_allowed = argon_attachments_allowed_extensions();
+				if (in_array('*', $argon_att_allowed, true) || empty($argon_att_allowed)) {
+					_e('支持所有常规文件格式', 'argon');
+				} else {
+					printf(__('允许格式：%s', 'argon'), esc_html(implode(', ', $argon_att_allowed)));
+				}
+				echo ' | ';
 				$argon_att_php_max = function_exists('wp_max_upload_size') ? wp_max_upload_size() : 0;
-				$argon_att_effective_max = $argon_att_php_max > 0 ? min(argon_attachments_max_size(), $argon_att_php_max) : argon_attachments_max_size();
-				printf(__('单文件上限：%s', 'argon'), esc_html(size_format($argon_att_effective_max, 0)));
-				if ($argon_att_php_max > 0 && $argon_att_php_max < argon_attachments_max_size()) {
+				$argon_att_theme_max = argon_attachments_max_size();
+				if ($argon_att_theme_max > 0) {
+					$argon_att_effective_max = $argon_att_php_max > 0 ? min($argon_att_theme_max, $argon_att_php_max) : $argon_att_theme_max;
+				} else {
+					$argon_att_effective_max = $argon_att_php_max;
+				}
+				if ($argon_att_effective_max > 0) {
+					printf(__('单文件上限：%s', 'argon'), esc_html(size_format($argon_att_effective_max, 0)));
+				} else {
+					_e('单文件上限：无限制', 'argon');
+				}
+				if ($argon_att_theme_max > 0 && $argon_att_php_max > 0 && $argon_att_php_max < $argon_att_theme_max) {
 					echo esc_html__('（受服务器 PHP 上传限制约束）', 'argon');
 				}
 				?>
 			</span>
 			<div class="argon-attachments-admin-progress" style="display:none;"><div class="argon-attachments-admin-progress-bar"></div></div>
+			<div class="argon-attachments-admin-notice" style="display:none;" role="alert"></div>
 		</div>
 		<p class="description"><?php _e('附件在文章页文底自动展示；点「插入卡片」「插入链接」可把附件嵌入正文光标处，无需关心附件 ID。也支持手写短代码 <code>[attachment name="文件名.pdf"]</code>（重名时命中排序最靠前的一个，可用 <code>#2</code> 后缀指定第二个；name 是软引用，附件改名后需同步修改），<code>[attachments]</code> 输出本文全部附件列表。「复制链接」得到的是站内下载页地址。', 'argon'); ?></p>
 	</div>
@@ -857,7 +892,12 @@ function argon_attachments_admin_assets($hook) {
 	// maxSize 取主题设置与服务器 PHP 限制（upload_max_filesize/post_max_size）的较小值，
 	// 否则主题设 50MB 而 PHP 只允许 2MB 时，超限文件要到服务端才被拒，白白传一轮
 	$php_max_size = function_exists('wp_max_upload_size') ? wp_max_upload_size() : 0;
-	$effective_max_size = $php_max_size > 0 ? min(argon_attachments_max_size(), $php_max_size) : argon_attachments_max_size();
+	$theme_max_size = argon_attachments_max_size();
+	if ($theme_max_size > 0) {
+		$effective_max_size = $php_max_size > 0 ? min($theme_max_size, $php_max_size) : $theme_max_size;
+	} else {
+		$effective_max_size = $php_max_size > 0 ? $php_max_size : 0;
+	}
 	wp_localize_script('argon-attachments-admin', 'argonAttachmentsAdmin', array(
 		'ajaxurl'    => admin_url('admin-ajax.php'),
 		'nonce'      => wp_create_nonce('argon_attachment_manage'),
@@ -888,6 +928,112 @@ function argon_attachments_admin_assets($hook) {
 	));
 	wp_enqueue_style('argon-attachments-admin', get_template_directory_uri() . '/assets/css/attachments-admin.css', array(), argon_get_asset_file_version('assets/css/attachments-admin.css'));
 }
+/* ---------------------------------------------------------------------------
+ * 扩展 WordPress 核心媒体库允许的附件类型
+ *
+ * 许多作者在「写文章」时会使用原生「添加媒体」或古腾堡「文件」区块上传附件。
+ * 默认 WP 严格限制 MIME，会拦截 .rar, .7z, .gz, .tar, .apk, .md 等常见附件格式。
+ * 仅对具有 upload_files 权限的登录用户放行，保障安全。
+ * ------------------------------------------------------------------------- */
+
+add_filter('upload_mimes', 'argon_attachments_upload_mimes');
+function argon_attachments_upload_mimes($mimes) {
+	if (!current_user_can('upload_files')) {
+		return $mimes;
+	}
+	$custom_mimes = array(
+		'rar'     => 'application/x-rar-compressed',
+		'7z'      => 'application/x-7z-compressed',
+		'7zip'    => 'application/x-7z-compressed',
+		'gz'      => 'application/gzip',
+		'tar'     => 'application/x-tar',
+		'tgz'     => 'application/x-tar',
+		'bz2'     => 'application/x-bz2',
+		'xz'      => 'application/x-xz',
+		'zst'     => 'application/zstd',
+		'zipx'    => 'application/x-zip-compressed',
+		'iso'     => 'application/x-iso9660-image',
+		'dmg'     => 'application/x-apple-diskimage',
+		'pkg'     => 'application/octet-stream',
+		'deb'     => 'application/vnd.debian.binary-package',
+		'rpm'     => 'application/x-rpm',
+		'apk'     => 'application/vnd.android.package-archive',
+		'aab'     => 'application/octet-stream',
+		'ipa'     => 'application/octet-stream',
+		'ipsw'    => 'application/octet-stream',
+		'bin'     => 'application/octet-stream',
+		'exe'     => 'application/x-msdownload',
+		'msi'     => 'application/x-msi',
+		'whl'     => 'application/octet-stream',
+		'wasm'    => 'application/wasm',
+		'md'      => 'text/markdown',
+		'json'    => 'application/json',
+		'xml'     => 'application/xml',
+		'yaml'    => 'text/yaml',
+		'yml'     => 'text/yaml',
+		'sql'     => 'application/sql',
+		'sqlite'  => 'application/x-sqlite3',
+		'db'      => 'application/octet-stream',
+		'log'     => 'text/plain',
+		'ini'     => 'text/plain',
+		'conf'    => 'text/plain',
+		'cfg'     => 'text/plain',
+		'toml'    => 'text/plain',
+		'csv'     => 'text/csv',
+		'tsv'     => 'text/tab-separated-values',
+		'torrent' => 'application/x-bittorrent',
+		'flac'    => 'audio/flac',
+		'wav'     => 'audio/wav',
+		'ogg'     => 'audio/ogg',
+		'opus'    => 'audio/opus',
+		'm4a'     => 'audio/mp4',
+		'aac'     => 'audio/aac',
+		'mkv'     => 'video/x-matroska',
+		'avi'     => 'video/x-msvideo',
+		'mov'     => 'video/quicktime',
+		'wmv'     => 'video/x-ms-wmv',
+		'webm'    => 'video/webm',
+		'bmp'     => 'image/bmp',
+		'ico'     => 'image/x-icon',
+		'epub'    => 'application/epub+zip',
+		'mobi'    => 'application/x-mobipocket-ebook',
+		'azw3'    => 'application/vnd.amazon.ebook',
+	);
+	foreach ($custom_mimes as $ext => $mime) {
+		if (!isset($mimes[$ext])) {
+			$mimes[$ext] = $mime;
+		}
+	}
+	return $mimes;
+}
+
+add_filter('wp_check_filetype_and_ext', 'argon_attachments_check_filetype_and_ext', 10, 4);
+function argon_attachments_check_filetype_and_ext($data, $file, $filename, $mimes) {
+	if (!empty($data['ext']) && !empty($data['type'])) {
+		return $data;
+	}
+	if (!current_user_can('upload_files')) {
+		return $data;
+	}
+	$ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+	if ($ext === '') {
+		return $data;
+	}
+	// 硬性安全防护：可直接在服务端被 Web 进程执行的脚本（如 php 等）始终拦截
+	if (in_array($ext, argon_attachments_denied_extensions(), true)) {
+		return $data;
+	}
+
+	$all_mimes = function_exists('wp_get_mime_types') ? wp_get_mime_types() : array();
+	$type = isset($all_mimes[$ext]) ? $all_mimes[$ext] : 'application/octet-stream';
+
+	$data['ext']             = $ext;
+	$data['type']            = $type;
+	$data['proper_filename'] = false;
+
+	return $data;
+}
+
 
 /* ---------------------------------------------------------------------------
  * 前端资源

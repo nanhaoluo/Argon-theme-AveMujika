@@ -512,7 +512,7 @@ argon_special_page_surface_open('flinks-page');
 .flinks-add-form .form-actions .btn { display: inline-flex; align-items: center; justify-content: center; text-align: center; }
 
 /* 编辑弹窗 */
-.flink-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9998; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--motion-popup-duration) var(--motion-ease-exit), visibility 0s linear var(--motion-popup-duration); }
+.flink-modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(var(--card-blur, 16px)); -webkit-backdrop-filter: blur(var(--card-blur, 16px)); z-index: 9998; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--motion-popup-duration) var(--motion-ease-exit), visibility 0s linear var(--motion-popup-duration); }
 .flink-modal-overlay.show { opacity: 1; visibility: visible; pointer-events: auto; transition-timing-function: var(--motion-ease-enter), linear; transition-delay: 0s; }
 .flink-modal { background: var(--color-foreground); border-radius: var(--card-radius); padding: 20px; width: 90%; max-width: 560px; max-height: 90vh; overflow-y: auto; color: var(--argon-special-page-text-main); box-shadow: 0 24px 80px rgba(0,0,0,0.28); opacity: 0; transform: translateY(var(--motion-popup-offset)) scale(var(--motion-popup-scale)); transition: opacity var(--motion-popup-duration) var(--motion-ease-exit), transform var(--motion-popup-duration) var(--motion-ease-exit); }
 .flink-modal-overlay.show .flink-modal { opacity: 1; transform: translateY(0) scale(1); transition-timing-function: var(--motion-ease-enter); }
@@ -556,6 +556,7 @@ argon_special_page_surface_open('flinks-page');
 
 html.darkmode .flink-card { background: transparent; }
 html.darkmode .flink-card:hover { background: rgba(255, 255, 255, 0.05); }
+html.darkmode .flink-modal-overlay { background: rgba(0, 0, 0, 0.65); }
 html.darkmode .flink-modal { background: var(--color-background); }
 html.darkmode .flinks-add-form input { background: var(--color-background); }
 
@@ -1636,7 +1637,10 @@ if (typeof initGeetest4 === 'function') {
             var button = document.getElementById(buttonId);
             if (button) button.disabled = true;
         });
-        if (modal) window.ArgonMotion.fast(modal, true, { className: 'show' });
+        if (modal) {
+            document.documentElement.classList.add('argon-modal-locked');
+            window.ArgonMotion.fast(modal, true, { className: 'show' });
+        }
         flinkAction('get', { id: id }, function(res) {
             if (contextSequence !== editContextSequence) return;
             if (res.success && res.data) {
@@ -1687,6 +1691,7 @@ if (typeof initGeetest4 === 'function') {
         editDetectSequence++;
         editBacklinkSequence++;
         window.ArgonMotion.fast(document.getElementById('edit-modal'), false, { className: 'show' });
+        document.documentElement.classList.remove('argon-modal-locked');
         clearMessage();
     };
 

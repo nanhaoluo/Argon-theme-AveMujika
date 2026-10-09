@@ -787,7 +787,8 @@ if (current_user_can('manage_options')):
 	.ai-record-title { display: block; min-width: 0; color: var(--color-text); font-weight: 500; overflow-wrap: break-word; word-break: normal; }
 	.ai-record-title:hover { color: var(--themecolor); }
 	
-	.ai-modal { display: flex; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.5); overflow: auto; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--motion-layer-duration) var(--motion-ease-exit), visibility 0s linear var(--motion-layer-duration); }
+		.ai-modal { display: flex; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(var(--card-blur, 16px)); -webkit-backdrop-filter: blur(var(--card-blur, 16px)); overflow: auto; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--motion-layer-duration) var(--motion-ease-exit), visibility 0s linear var(--motion-layer-duration); }
+		html.darkmode .ai-modal { background: rgba(0, 0, 0, 0.65); }
 	.ai-modal.active { opacity: 1; visibility: visible; pointer-events: auto; transition-timing-function: var(--motion-ease-enter), linear; transition-delay: 0s; }
 	.ai-modal-content { background: var(--color-foreground); border-radius: var(--card-radius); max-width: 800px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); opacity: 0; transform: translateY(var(--motion-popup-offset)) scale(var(--motion-popup-scale)); transition: opacity var(--motion-layer-duration) var(--motion-ease-exit), transform var(--motion-layer-duration) var(--motion-ease-exit); }
 	.ai-modal.active .ai-modal-content { opacity: 1; transform: translateY(0) scale(1); transition-timing-function: var(--motion-ease-enter); }
@@ -861,9 +862,10 @@ if (current_user_can('manage_options')):
 	const modalBody = document.getElementById('aiModalBody');
 	const modalContent = modal.querySelector('.ai-modal-content');
 	
-	window.closeAIModal = function() {
-		window.ArgonMotion.fast(modal, false, { className: 'active' });
-	};
+		window.closeAIModal = function() {
+			window.ArgonMotion.fast(modal, false, { className: 'active' });
+			document.documentElement.classList.remove('argon-modal-locked');
+		};
 	
 	// 点击背景关闭
 	modal.addEventListener('click', function(e) {
@@ -1047,8 +1049,9 @@ if (current_user_can('manage_options')):
 			`;
 		}
 		
-		modalBody.innerHTML = html;
-		window.ArgonMotion.fast(modal, true, { className: 'active' });
+			modalBody.innerHTML = html;
+			document.documentElement.classList.add('argon-modal-locked');
+			window.ArgonMotion.fast(modal, true, { className: 'active' });
 	}
 	
 	function escapeHtml(text) {

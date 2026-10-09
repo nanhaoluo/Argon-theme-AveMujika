@@ -24,8 +24,7 @@
 		'.ai-modal-content',
 		'.git-easter-egg-modal',
 		'.pcr-app',
-		'.fancybox-content',
-		'.feedback-viewer-image'
+		'.argon-image-viewer'
 	].join(',');
 	var durationTokens = {
 		fast: ['--motion-fast-duration', 150],

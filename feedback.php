@@ -770,7 +770,8 @@ html.darkmode .feedback-admin-stat .stat-label { color: #aaa; }
 .feedback-admin-title { font-size: 16px; font-weight: 600; color: var(--themecolor); margin: 0 0 16px; display: flex; align-items: center; gap: 10px; }
 
 /* 弹窗样式 */
-.feedback-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); z-index: 9998; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--motion-layer-duration) var(--motion-ease-exit), visibility 0s linear var(--motion-layer-duration); }
+.feedback-modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(var(--card-blur, 16px)); -webkit-backdrop-filter: blur(var(--card-blur, 16px)); z-index: 9998; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--motion-layer-duration) var(--motion-ease-exit), visibility 0s linear var(--motion-layer-duration); }
+html.darkmode .feedback-modal-overlay { background: rgba(0, 0, 0, 0.65); }
 .feedback-modal-overlay.show { opacity: 1; visibility: visible; pointer-events: auto; transition-timing-function: var(--motion-ease-enter), linear; transition-delay: 0s; }
 .feedback-modal { background: var(--color-foreground); border-radius: var(--card-radius); padding: 0; width: 90%; max-width: 600px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.2); opacity: 0; transform: translateY(var(--motion-popup-offset)) scale(var(--motion-popup-scale)); transition: opacity var(--motion-layer-duration) var(--motion-ease-exit), transform var(--motion-layer-duration) var(--motion-ease-exit); }
 .feedback-modal-overlay.show .feedback-modal { opacity: 1; transform: translateY(0) scale(1); transition-timing-function: var(--motion-ease-enter); }
@@ -800,51 +801,6 @@ html.darkmode .feedback-admin-stat .stat-label { color: #aaa; }
 .feedback-auth-view { padding: 20px 24px; }
 .feedback-auth-notice { padding: 12px 16px; background: rgba(var(--themecolor-rgbstr), 0.1); border-radius: var(--card-radius); margin-bottom: 16px; font-size: 13px; color: var(--themecolor); display: flex; align-items: center; gap: 8px; }
 
-/* 本页图片预览 */
-body.feedback-viewer-open { overflow: hidden !important; }
-.feedback-image-viewer { --feedback-viewer-duration: var(--motion-zoom-duration, 360ms); --feedback-viewer-easing: var(--motion-ease-enter, cubic-bezier(.16, 1, .3, 1)); --feedback-viewer-glass: rgba(18, 23, 36, .52); --feedback-viewer-glass-hover: rgba(31, 38, 55, .68); position: fixed; inset: 0; z-index: 10050; display: block; padding: 0; background: rgba(8, 11, 18, .88); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--feedback-viewer-duration) var(--feedback-viewer-easing), visibility var(--feedback-viewer-duration) var(--feedback-viewer-easing); }
-.feedback-image-viewer.is-open { opacity: 1; visibility: visible; pointer-events: auto; }
-.feedback-image-viewer.is-closing { opacity: 0; pointer-events: none; }
-.feedback-viewer-topbar { position: absolute; top: max(16px, env(safe-area-inset-top)); left: 16px; right: 16px; z-index: 4; margin: 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; color: #fff; pointer-events: none; transform: translateY(-10px); transition: transform var(--feedback-viewer-duration) var(--feedback-viewer-easing); }
-.feedback-image-viewer.is-open .feedback-viewer-topbar { transform: translateY(0); }
-.feedback-image-viewer.is-closing .feedback-viewer-topbar { transform: translateY(-10px); }
-.feedback-viewer-title { min-width: 0; max-width: min(560px, calc(100vw - 88px)); min-height: 42px; padding: 8px 14px; display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; background: var(--feedback-viewer-glass); border: 1px solid rgba(255, 255, 255, .14); border-radius: var(--card-radius); box-shadow: 0 10px 28px rgba(0, 0, 0, .18); -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%); pointer-events: auto; }
-.feedback-viewer-title i { color: rgba(255, 255, 255, .9); }
-.feedback-viewer-details { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.feedback-viewer-name { overflow: hidden; color: #fff; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
-.feedback-viewer-meta { display: flex; align-items: center; gap: 6px; color: rgba(255, 255, 255, .66); font-size: 11px; font-weight: 500; line-height: 1.35; }
-.feedback-viewer-meta-separator { opacity: .55; }
-.feedback-viewer-close,
-.feedback-viewer-nav,
-.feedback-viewer-control { width: 42px; height: 42px; padding: 0; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 42px; border: 1px solid rgba(255, 255, 255, .14); border-radius: 999px; color: #fff; background: var(--feedback-viewer-glass); -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%); cursor: pointer; pointer-events: auto; transition: color 120ms ease, border-color 120ms ease, background-color 120ms ease, transform 120ms ease; }
-.feedback-viewer-close:hover,
-.feedback-viewer-nav:hover,
-.feedback-viewer-control:hover { color: #fff; border-color: rgba(255, 255, 255, .28); background: var(--feedback-viewer-glass-hover); }
-.feedback-viewer-close:active,
-.feedback-viewer-nav:active,
-.feedback-viewer-control:active { transform: scale(.94); }
-.feedback-viewer-close:focus-visible,
-.feedback-viewer-nav:focus-visible,
-.feedback-viewer-control:focus-visible { outline: 2px solid rgba(var(--themecolor-rgbstr), .48); outline-offset: 2px; }
-.feedback-viewer-stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: none; }
-.feedback-viewer-image { --feedback-viewer-x: 0px; --feedback-viewer-y: 0px; --feedback-viewer-scale: 1; display: block; max-width: 100vw; max-height: 100vh; object-fit: contain; border: 0; border-radius: 0; box-shadow: none; opacity: 0; transform: translate3d(var(--feedback-viewer-x), var(--feedback-viewer-y), 0) scale(var(--feedback-viewer-scale)) scale(.985); cursor: zoom-in; user-select: none; -webkit-user-drag: none; will-change: transform, opacity; transition: opacity var(--feedback-viewer-duration) var(--feedback-viewer-easing), transform var(--feedback-viewer-duration) var(--feedback-viewer-easing); }
-.feedback-viewer-image.is-ready { opacity: 1; transform: translate3d(var(--feedback-viewer-x), var(--feedback-viewer-y), 0) scale(var(--feedback-viewer-scale)); }
-.feedback-viewer-image.is-zoomed { cursor: grab; }
-.feedback-viewer-image.is-dragging { cursor: grabbing; transition: none; }
-.feedback-image-viewer.is-closing .feedback-viewer-image { transform: translate3d(var(--feedback-viewer-x), var(--feedback-viewer-y), 0) scale(var(--feedback-viewer-scale)) scale(.985); }
-.feedback-viewer-loading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: rgba(255, 255, 255, .78); font-size: 13px; opacity: 0; pointer-events: none; }
-.feedback-viewer-loading.is-visible { opacity: 1; }
-.feedback-viewer-loading i { font-size: 25px; color: var(--themecolor); }
-.feedback-viewer-nav { position: absolute; top: 50%; z-index: 3; transform: translateY(-50%); }
-.feedback-viewer-nav:active { transform: translateY(-50%) scale(.94); }
-.feedback-viewer-prev { left: 8px; }
-.feedback-viewer-next { right: 8px; }
-.feedback-viewer-nav[hidden] { display: none !important; }
-.feedback-viewer-controls { position: absolute; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); z-index: 4; width: max-content; max-width: calc(100vw - 32px); margin: 0; padding: 0; display: flex; align-items: center; gap: 7px; background: transparent; border: 0; box-shadow: none; transform: translate(-50%, 12px); transition: transform var(--feedback-viewer-duration) var(--feedback-viewer-easing); }
-.feedback-image-viewer.is-open .feedback-viewer-controls { transform: translate(-50%, 0); }
-.feedback-image-viewer.is-closing .feedback-viewer-controls { transform: translate(-50%, 12px); }
-.feedback-viewer-zoom { min-width: 66px; height: 42px; padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; color: rgba(255, 255, 255, .82); background: var(--feedback-viewer-glass); border: 1px solid rgba(255, 255, 255, .14); border-radius: 999px; -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%); font-size: 12px; text-align: center; font-variant-numeric: tabular-nums; }
-
 /* 响应式 */
 @media (max-width: 768px) {
 	.feedback-form .form-row { grid-template-columns: 1fr; }
@@ -863,13 +819,6 @@ body.feedback-viewer-open { overflow: hidden !important; }
 	.feedback-modal-footer .btn { flex: 1; min-width: 70px; }
 	.feedback-image-item, .feedback-image-add-btn { width: 80px; height: 80px; }
 	.feedback-images-display img { width: 88px; height: 88px; }
-	.feedback-viewer-topbar { top: max(10px, env(safe-area-inset-top)); left: 10px; right: 10px; }
-	.feedback-viewer-title { max-width: calc(100vw - 72px); }
-	.feedback-viewer-image { max-width: 100vw; max-height: 100vh; }
-	.feedback-viewer-nav { top: 50%; bottom: auto; }
-	.feedback-viewer-prev { left: 8px; }
-	.feedback-viewer-next { right: 8px; }
-	.feedback-viewer-controls { bottom: max(10px, env(safe-area-inset-bottom)); max-width: calc(100vw - 20px); }
 }
 @media (max-width: 420px) {
 	.feedback-form-card { padding: 20px 18px; }
@@ -914,14 +863,7 @@ html.darkmode .feedback-image-item { border-color: #555; }
 html.darkmode .feedback-image-add-btn { border-color: #555; color: #aaa; }
 html.darkmode .feedback-images-display img { border-color: #555; }
 html.darkmode .feedback-list-tools { background: transparent; }
-html.darkmode .feedback-image-viewer { --feedback-viewer-glass: rgba(16, 19, 29, .58); --feedback-viewer-glass-hover: rgba(40, 46, 63, .72); }
 
-@media (prefers-reduced-motion: reduce) {
-	.feedback-image-viewer,
-	.feedback-viewer-topbar,
-	.feedback-viewer-controls,
-	.feedback-viewer-image { transition: none !important; }
-}
 </style>
 
 <?php if ($is_auth_view && $single_feedback) : ?>
@@ -1370,30 +1312,7 @@ argon_special_page_surface_header(array(
 
 <?php endif; // end normal page ?>
 
-<div class="feedback-image-viewer" id="feedback-image-viewer" role="dialog" aria-modal="true" aria-hidden="true" aria-label="<?php esc_attr_e('图片预览', 'argon'); ?>">
-	<div class="feedback-viewer-topbar">
-		<div class="feedback-viewer-title">
-			<i class="fa fa-picture-o"></i>
-			<div class="feedback-viewer-details">
-				<span class="feedback-viewer-name" id="feedback-viewer-name"><?php _e('反馈附件图片', 'argon'); ?></span>
-				<span class="feedback-viewer-meta"><span id="feedback-viewer-counter">1 / 1</span><span class="feedback-viewer-meta-separator">·</span><span id="feedback-viewer-resolution">—</span></span>
-			</div>
-		</div>
-		<button type="button" class="feedback-viewer-close" id="feedback-viewer-close" aria-label="<?php esc_attr_e('关闭预览', 'argon'); ?>"><i class="fa fa-times"></i></button>
-	</div>
-	<div class="feedback-viewer-stage" id="feedback-viewer-stage">
-		<button type="button" class="feedback-viewer-nav feedback-viewer-prev" id="feedback-viewer-prev" aria-label="<?php esc_attr_e('上一张', 'argon'); ?>"><i class="fa fa-angle-left"></i></button>
-		<div class="feedback-viewer-loading" id="feedback-viewer-loading"><i class="fa fa-spinner fa-spin"></i><span><?php _e('图片加载中…', 'argon'); ?></span></div>
-		<img class="feedback-viewer-image" id="feedback-viewer-image" alt="" draggable="false">
-		<button type="button" class="feedback-viewer-nav feedback-viewer-next" id="feedback-viewer-next" aria-label="<?php esc_attr_e('下一张', 'argon'); ?>"><i class="fa fa-angle-right"></i></button>
-	</div>
-	<div class="feedback-viewer-controls" aria-label="<?php esc_attr_e('图片缩放控件', 'argon'); ?>">
-		<button type="button" class="feedback-viewer-control" id="feedback-viewer-zoom-out" aria-label="<?php esc_attr_e('缩小', 'argon'); ?>"><i class="fa fa-search-minus"></i></button>
-		<button type="button" class="feedback-viewer-control" id="feedback-viewer-reset" aria-label="<?php esc_attr_e('重置缩放', 'argon'); ?>"><i class="fa fa-refresh"></i></button>
-		<span class="feedback-viewer-zoom" id="feedback-viewer-zoom">100%</span>
-		<button type="button" class="feedback-viewer-control" id="feedback-viewer-zoom-in" aria-label="<?php esc_attr_e('放大', 'argon'); ?>"><i class="fa fa-search-plus"></i></button>
-	</div>
-</div>
+
 
 <script data-pjax>
 var feedbackNonce = '<?php echo wp_create_nonce('argon_feedback_manage'); ?>';
@@ -1429,304 +1348,6 @@ function showFeedbackNotice(type, title, message) {
 		return;
 	}
 	alert(message ? title + '\n' + message : title);
-}
-
-function initFeedbackImageViewer() {
-	let viewer = document.getElementById('feedback-image-viewer');
-	let main = document.getElementById('main');
-	if (!viewer || !main) return;
-	if (viewer.dataset.viewerReady === 'true' && window.__argonFeedbackViewerController) return;
-
-	if (window.__argonFeedbackViewerController && typeof window.__argonFeedbackViewerController.destroy === 'function') {
-		window.__argonFeedbackViewerController.destroy();
-	}
-	viewer.dataset.viewerReady = 'true';
-
-	let stage = document.getElementById('feedback-viewer-stage');
-	let image = document.getElementById('feedback-viewer-image');
-	let loading = document.getElementById('feedback-viewer-loading');
-	let loadingIcon = loading ? loading.querySelector('i') : null;
-	let loadingText = loading ? loading.querySelector('span') : null;
-	let counter = document.getElementById('feedback-viewer-counter');
-	let imageName = document.getElementById('feedback-viewer-name');
-	let resolution = document.getElementById('feedback-viewer-resolution');
-	let zoomText = document.getElementById('feedback-viewer-zoom');
-	let closeButton = document.getElementById('feedback-viewer-close');
-	let previousButton = document.getElementById('feedback-viewer-prev');
-	let nextButton = document.getElementById('feedback-viewer-next');
-	let zoomInButton = document.getElementById('feedback-viewer-zoom-in');
-	let zoomOutButton = document.getElementById('feedback-viewer-zoom-out');
-	let resetButton = document.getElementById('feedback-viewer-reset');
-	if (!stage || !image || !loading || !closeButton) return;
-
-	let state = {
-		items: [], index: 0, scale: 1, x: 0, y: 0,
-		dragging: false, pointerId: null, startX: 0, startY: 0,
-		loadId: 0, closeTimer: null, lastFocused: null
-	};
-
-	function setLoading(mode) {
-		loading.classList.toggle('is-visible', mode !== 'done');
-		if (!loadingIcon || !loadingText) return;
-		if (mode === 'error') {
-			loadingIcon.className = 'fa fa-exclamation-circle';
-			loadingText.textContent = '<?php echo esc_js(__('图片加载失败', 'argon')); ?>';
-		} else {
-			loadingIcon.className = 'fa fa-spinner fa-spin';
-			loadingText.textContent = '<?php echo esc_js(__('图片加载中…', 'argon')); ?>';
-		}
-	}
-
-	function updateTransform() {
-		if (state.scale <= 1) {
-			state.scale = 1;
-			state.x = 0;
-			state.y = 0;
-		}
-		image.style.setProperty('--feedback-viewer-x', state.x + 'px');
-		image.style.setProperty('--feedback-viewer-y', state.y + 'px');
-		image.style.setProperty('--feedback-viewer-scale', state.scale);
-		image.classList.toggle('is-zoomed', state.scale > 1);
-		if (zoomText) zoomText.textContent = Math.round(state.scale * 100) + '%';
-	}
-
-	function resetTransform() {
-		state.scale = 1;
-		state.x = 0;
-		state.y = 0;
-		state.dragging = false;
-		image.classList.remove('is-dragging', 'is-zoomed');
-		updateTransform();
-	}
-
-	function collectItems(trigger) {
-		let gallery = trigger.closest('.feedback-images-display, .feedback-image-preview');
-		let nodes = gallery ? Array.from(gallery.querySelectorAll('[data-feedback-preview], .feedback-image-item img')) : [trigger];
-		let items = nodes.map(function(node) {
-			let src = node.currentSrc || node.getAttribute('src') || node.getAttribute('data-src') || '';
-			let name = '';
-			try {
-				let pathname = new URL(src, window.location.href).pathname;
-				name = decodeURIComponent(pathname.split('/').filter(Boolean).pop() || '');
-			} catch (error) {}
-			return {
-				node: node,
-				src: src,
-				name: name || node.getAttribute('alt') || '<?php echo esc_js(__('反馈附件图片', 'argon')); ?>',
-				alt: node.getAttribute('alt') || name || '<?php echo esc_js(__('反馈附件图片', 'argon')); ?>'
-			};
-		}).filter(function(item) { return item.src !== ''; });
-		let index = items.findIndex(function(item) { return item.node === trigger; });
-		return { items: items, index: index >= 0 ? index : 0 };
-	}
-
-	function renderCurrentImage() {
-		if (!state.items.length) return;
-		state.loadId++;
-		let activeLoadId = state.loadId;
-		let item = state.items[state.index];
-		resetTransform();
-		image.classList.remove('is-ready');
-		image.removeAttribute('src');
-		setLoading('loading');
-		if (counter) counter.textContent = (state.index + 1) + ' / ' + state.items.length;
-		if (imageName) imageName.textContent = item.name;
-		if (resolution) resolution.textContent = '—';
-		let hasMultiple = state.items.length > 1;
-		if (previousButton) previousButton.hidden = !hasMultiple;
-		if (nextButton) nextButton.hidden = !hasMultiple;
-
-		let preload = new Image();
-		preload.onload = function() {
-			if (activeLoadId !== state.loadId) return;
-			image.src = item.src;
-			image.alt = item.alt;
-			if (resolution) resolution.textContent = preload.naturalWidth + ' × ' + preload.naturalHeight;
-			setLoading('done');
-			requestAnimationFrame(function() {
-				if (activeLoadId === state.loadId) image.classList.add('is-ready');
-			});
-		};
-		preload.onerror = function() {
-			if (activeLoadId !== state.loadId) return;
-			if (resolution) resolution.textContent = '<?php echo esc_js(__('加载失败', 'argon')); ?>';
-			setLoading('error');
-		};
-		preload.src = item.src;
-	}
-
-	function openViewer(trigger) {
-		let gallery = collectItems(trigger);
-		if (!gallery.items.length) return;
-		clearTimeout(state.closeTimer);
-		state.items = gallery.items;
-		state.index = gallery.index;
-		state.lastFocused = document.activeElement;
-		viewer.classList.remove('is-closing');
-		viewer.classList.add('is-open');
-		viewer.setAttribute('aria-hidden', 'false');
-		document.body.classList.add('feedback-viewer-open');
-		renderCurrentImage();
-		closeButton.focus({ preventScroll: true });
-	}
-
-	function getCloseDelay() {
-		if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 0;
-		let rawDuration = getComputedStyle(viewer).getPropertyValue('--feedback-viewer-duration').trim();
-		let duration = parseFloat(rawDuration);
-		if (!Number.isFinite(duration)) return 360;
-		return rawDuration.indexOf('ms') !== -1 ? duration : duration * 1000;
-	}
-
-	function closeViewer(immediate) {
-		if (!viewer.classList.contains('is-open') && !viewer.classList.contains('is-closing')) return;
-		state.loadId++;
-		clearTimeout(state.closeTimer);
-		document.body.classList.remove('feedback-viewer-open');
-		viewer.setAttribute('aria-hidden', 'true');
-		if (immediate) {
-			viewer.classList.remove('is-open', 'is-closing');
-			image.classList.remove('is-ready');
-			image.removeAttribute('src');
-			return;
-		}
-		viewer.classList.add('is-closing');
-		state.closeTimer = setTimeout(function() {
-			viewer.classList.remove('is-open', 'is-closing');
-			image.classList.remove('is-ready');
-			image.removeAttribute('src');
-			if (state.lastFocused && document.contains(state.lastFocused)) state.lastFocused.focus();
-		}, getCloseDelay());
-	}
-
-	function move(step) {
-		if (state.items.length < 2) return;
-		state.index = (state.index + step + state.items.length) % state.items.length;
-		renderCurrentImage();
-	}
-
-	function zoom(multiplier) {
-		state.scale = Math.max(1, Math.min(5, state.scale * multiplier));
-		updateTransform();
-	}
-
-	function handleMainClick(event) {
-		let trigger = event.target.closest('[data-feedback-preview], .feedback-image-item img');
-		if (!trigger || !main.contains(trigger)) return;
-		event.preventDefault();
-		event.stopPropagation();
-		openViewer(trigger);
-	}
-
-	function handleMainKeydown(event) {
-		if (event.key !== 'Enter' && event.key !== ' ') return;
-		let trigger = event.target.closest('[data-feedback-preview], .feedback-image-item img');
-		if (!trigger || !main.contains(trigger)) return;
-		event.preventDefault();
-		event.stopPropagation();
-		openViewer(trigger);
-	}
-
-	function handleDocumentKeydown(event) {
-		if (!viewer.classList.contains('is-open')) return;
-		if (event.key === 'Escape') closeViewer(false);
-		else if (event.key === 'ArrowLeft') move(-1);
-		else if (event.key === 'ArrowRight') move(1);
-		else if (event.key === '+' || event.key === '=') zoom(1.2);
-		else if (event.key === '-') zoom(1 / 1.2);
-		else if (event.key === '0') resetTransform();
-		else if (event.key === 'Tab') {
-			let controls = Array.from(viewer.querySelectorAll('button:not([hidden])'));
-			if (!controls.length) return;
-			let first = controls[0];
-			let last = controls[controls.length - 1];
-			if (event.shiftKey && document.activeElement === first) {
-				event.preventDefault(); last.focus();
-			} else if (!event.shiftKey && document.activeElement === last) {
-				event.preventDefault(); first.focus();
-			}
-		}
-	}
-
-	function handlePointerDown(event) {
-		if (event.target !== image || state.scale <= 1) return;
-		state.dragging = true;
-		state.pointerId = event.pointerId;
-		state.startX = event.clientX - state.x;
-		state.startY = event.clientY - state.y;
-		image.classList.add('is-dragging');
-		image.setPointerCapture(event.pointerId);
-	}
-
-	function handlePointerMove(event) {
-		if (!state.dragging || event.pointerId !== state.pointerId) return;
-		state.x = event.clientX - state.startX;
-		state.y = event.clientY - state.startY;
-		updateTransform();
-	}
-
-	function handlePointerUp(event) {
-		if (event.pointerId !== state.pointerId) return;
-		state.dragging = false;
-		state.pointerId = null;
-		image.classList.remove('is-dragging');
-	}
-
-	function handlePjaxSend() {
-		destroyController();
-	}
-
-	function destroyController() {
-		closeViewer(true);
-		document.removeEventListener('keydown', handleDocumentKeydown);
-		if (typeof jQuery !== 'undefined') {
-			jQuery(document).off('pjax:send.feedbackViewer', handlePjaxSend);
-		} else {
-			document.removeEventListener('pjax:send', handlePjaxSend);
-		}
-		main.removeEventListener('click', handleMainClick, true);
-		main.removeEventListener('keydown', handleMainKeydown, true);
-		clearTimeout(state.closeTimer);
-		viewer.dataset.viewerReady = 'false';
-		if (window.__argonFeedbackViewerController && window.__argonFeedbackViewerController.destroy === destroyController) {
-			window.__argonFeedbackViewerController = null;
-		}
-	}
-
-	main.addEventListener('click', handleMainClick, true);
-	main.addEventListener('keydown', handleMainKeydown, true);
-	document.addEventListener('keydown', handleDocumentKeydown);
-	if (typeof jQuery !== 'undefined') {
-		jQuery(document).off('pjax:send.feedbackViewer', handlePjaxSend).on('pjax:send.feedbackViewer', handlePjaxSend);
-	} else {
-		document.addEventListener('pjax:send', handlePjaxSend);
-	}
-	closeButton.addEventListener('click', function() { closeViewer(false); });
-	if (previousButton) previousButton.addEventListener('click', function() { move(-1); });
-	if (nextButton) nextButton.addEventListener('click', function() { move(1); });
-	if (zoomInButton) zoomInButton.addEventListener('click', function() { zoom(1.2); });
-	if (zoomOutButton) zoomOutButton.addEventListener('click', function() { zoom(1 / 1.2); });
-	if (resetButton) resetButton.addEventListener('click', resetTransform);
-	stage.addEventListener('click', function(event) {
-		if (event.target === stage && window.ArgonMotion.isOutsideClick(event, image)) closeViewer(false);
-	});
-	stage.addEventListener('wheel', function(event) {
-		event.preventDefault();
-		zoom(event.deltaY < 0 ? 1.12 : 1 / 1.12);
-	}, { passive: false });
-	image.addEventListener('dblclick', function() {
-		state.scale = state.scale > 1 ? 1 : 2;
-		updateTransform();
-	});
-	image.addEventListener('pointerdown', handlePointerDown);
-	image.addEventListener('pointermove', handlePointerMove);
-	image.addEventListener('pointerup', handlePointerUp);
-	image.addEventListener('pointercancel', handlePointerUp);
-
-	window.__argonFeedbackViewerController = {
-		close: closeViewer,
-		destroy: destroyController
-	};
 }
 
 function refreshFeedbackCaptcha() {
@@ -2548,7 +2169,6 @@ initFeedbackDropUpload();
 <?php endif; ?>
 
 initFeedbackListFilters();
-initFeedbackImageViewer();
 
 <?php if ($is_admin) : ?>
 var typeLabels = <?php echo json_encode($type_labels); ?>;
@@ -2563,11 +2183,12 @@ function openFeedbackDetail(id) {
 	
 	fetch(feedbackAjaxUrl, { method: 'POST', body: formData })
 		.then(function(r) { return r.json(); })
-		.then(function(res) {
-			if (res.success) {
-				renderFeedbackDetail(res.data);
-				window.ArgonMotion.fast(document.getElementById('feedback-detail-modal'), true, { className: 'show' });
-			} else {
+			.then(function(res) {
+				if (res.success) {
+					renderFeedbackDetail(res.data);
+					document.documentElement.classList.add('argon-modal-locked');
+					window.ArgonMotion.fast(document.getElementById('feedback-detail-modal'), true, { className: 'show' });
+				} else {
 				showFeedbackNotice('error', res.message || '<?php _e('反馈不存在', 'argon'); ?>');
 			}
 		})
@@ -2686,6 +2307,7 @@ function formatTime(timestamp) {
 
 function closeFeedbackDetail() {
 	window.ArgonMotion.fast(document.getElementById('feedback-detail-modal'), false, { className: 'show' });
+	document.documentElement.classList.remove('argon-modal-locked');
 	currentFeedbackId = null;
 }
 

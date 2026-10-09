@@ -23,7 +23,7 @@ if (!function_exists('argon_special_page_surface_open')) {
 		?>
 <div class="page-information-card-container"></div>
 		<?php get_sidebar(); ?>
-<div id="primary" class="content-area" data-argon-special-page data-page-class="<?php echo esc_attr($page_class); ?>">
+<div id="primary" class="content-area">
 <style id="argon-special-page-surface-style">
 @media screen and (min-width: 901px) {
 	body.argon-special-page #leftbar_part,
@@ -317,6 +317,7 @@ html.darkmode body.argon-special-page .argon-special-page-details {
 	.argon-special-page-meta { justify-content: center; }
 }
 </style>
+	<main id="main" class="site-main" role="main" data-argon-special-page data-page-class="<?php echo esc_attr($page_class); ?>">
 <script data-pjax>
 (function() {
 	'use strict';
@@ -353,7 +354,6 @@ html.darkmode body.argon-special-page .argon-special-page-details {
 	}
 })();
 </script>
-	<main id="main" class="site-main" role="main">
 		<?php
 	}
 }
@@ -430,7 +430,6 @@ if (!function_exists('argon_special_page_surface_close')) {
 	function argon_special_page_surface_close() {
 		?>
 	</main>
-</div>
-		<?php
+	<?php
 	}
 }

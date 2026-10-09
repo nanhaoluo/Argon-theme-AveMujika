@@ -1,0 +1,944 @@
+/* Argon 附件下载卡片（玻璃拟态，对齐主题 --card-opacity/--card-blur 体系） */
+.argon-attachments {
+	margin: 20px 0;
+	padding: 16px 18px;
+	border: 1px solid var(--color-border-on-foreground);
+	border-radius: var(--card-radius, 4px);
+	background: rgba(255, 255, 255, var(--card-opacity, 0.85));
+	-webkit-backdrop-filter: blur(var(--card-blur, 8px)) saturate(var(--card-saturate, 130%));
+	backdrop-filter: blur(var(--card-blur, 8px)) saturate(var(--card-saturate, 130%));
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+html.darkmode .argon-attachments {
+	background: rgba(66, 66, 66, var(--card-opacity, 0.85));
+}
+
+html.darkmode.amoled-dark .argon-attachments {
+	background: rgba(0, 0, 0, var(--card-opacity, 0.85));
+}
+
+.argon-attachments-single {
+	padding: 8px;
+}
+
+.argon-attachments-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 12px;
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--color-text-deeper);
+}
+
+.argon-attachments-header > i {
+	color: var(--themecolor);
+}
+
+.argon-attachments-count {
+	margin-left: auto;
+	font-size: 12px;
+	font-weight: normal;
+	color: var(--color-text, #8898aa);
+}
+
+.argon-attachments-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.argon-attachment-item {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 10px 14px;
+	border: 1px solid var(--color-border-on-foreground);
+	border-radius: var(--card-radius, 4px);
+	background: rgba(255, 255, 255, 0.35);
+	transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+html.darkmode .argon-attachment-item {
+	background: rgba(255, 255, 255, 0.06);
+}
+
+.argon-attachment-item:hover {
+	border-color: rgba(var(--themecolor-rgbstr), 0.4);
+	box-shadow: 0 4px 16px rgba(var(--themecolor-rgbstr), 0.12);
+	transform: translateY(-1px);
+}
+
+.argon-attachment-icon {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	border-radius: var(--card-radius, 4px);
+	background: rgba(var(--themecolor-rgbstr), 0.08);
+	color: var(--themecolor);
+	font-size: 18px;
+}
+
+.argon-attachment-info {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.argon-attachment-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--color-text-deeper);
+}
+
+.argon-attachment-meta {
+	margin-top: 2px;
+	font-size: 12px;
+	color: var(--color-text, #8898aa);
+}
+
+.argon-attachment-item .argon-attachment-download {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 14px;
+	border: 1px solid rgba(var(--themecolor-rgbstr), 0.35);
+	border-radius: var(--card-radius, 4px);
+	background: rgba(var(--themecolor-rgbstr), 0.06);
+	color: var(--themecolor) !important;
+	font: inherit;
+	font-size: 13px;
+	cursor: pointer;
+	transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+
+.argon-attachment-item .argon-attachment-download:hover {
+	background: var(--themecolor);
+	color: #fff !important;
+	box-shadow: 0 4px 12px rgba(var(--themecolor-rgbstr), 0.35);
+}
+
+.argon-attachment-item .argon-attachment-download.is-issuing {
+	opacity: 0.6;
+	cursor: wait;
+}
+
+/* 行内链接样式（[argon_attachment style="link"]） */
+.argon-attachment-inline-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 2px 10px;
+	border: 1px solid rgba(var(--themecolor-rgbstr), 0.3);
+	border-radius: 999px;
+	background: rgba(var(--themecolor-rgbstr), 0.06);
+	color: var(--themecolor) !important;
+	font: inherit;
+	font-size: 0.92em;
+	cursor: pointer;
+	transition: background 0.18s ease, color 0.18s ease;
+}
+
+.argon-attachment-inline-link:hover {
+	background: var(--themecolor);
+	color: #fff !important;
+}
+
+.argon-attachment-inline-size {
+	opacity: 0.75;
+	font-size: 0.86em;
+}
+
+.argon-attachment-missing {
+	color: #c53030;
+	font-size: 0.9em;
+}
+
+@media (max-width: 576px) {
+	.argon-attachment-download span {
+		display: none;
+	}
+}
+
+/* ---------------- 预览入口 ---------------- */
+
+.argon-attachment-previewable {
+	cursor: pointer;
+}
+
+/* ---------------- 预览弹窗 ---------------- */
+
+.argon-attachment-preview-dialog-wrap {
+	max-width: 960px;
+	width: calc(100% - 32px);
+	margin: 1.75rem auto;
+}
+
+.argon-attachment-preview-dialog {
+	height: min(84vh, 860px);
+	display: flex;
+	flex-direction: column;
+	border-radius: var(--card-radius, 6px);
+	overflow: hidden;
+	background: #fff;
+	border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+html.darkmode .argon-attachment-preview-dialog {
+	background: #1e1e2e;
+	border-color: rgba(255, 255, 255, 0.1);
+	color: #e2e8f0;
+}
+
+html.darkmode.amoled-dark .argon-attachment-preview-dialog {
+	background: #000000;
+	border-color: #222222;
+}
+
+.argon-attachment-preview-header {
+	display: flex;
+	align-items: center;
+	padding: 14px 20px;
+	border-bottom: 1px solid var(--color-border-on-foreground);
+	background: #fff;
+}
+
+html.darkmode .argon-attachment-preview-header {
+	background: #1e1e2e;
+	border-bottom-color: rgba(255, 255, 255, 0.08);
+	color: #e2e8f0;
+}
+
+html.darkmode.amoled-dark .argon-attachment-preview-header {
+	background: #000000;
+	border-bottom-color: #222222;
+}
+
+.argon-attachment-preview-title {
+	font-size: 16px;
+	font-weight: 600;
+	margin: 0;
+	color: var(--color-text-deeper);
+}
+
+html.darkmode .argon-attachment-preview-title {
+	color: #e2e8f0;
+}
+
+.argon-attachment-preview-close {
+	padding: 0;
+	background: transparent;
+	border: 0;
+	font-size: 24px;
+	line-height: 1;
+	color: #000;
+	opacity: 0.5;
+	transition: opacity 0.15s ease, color 0.15s ease;
+	cursor: pointer;
+}
+
+.argon-attachment-preview-close:hover {
+	opacity: 0.85;
+}
+
+html.darkmode .argon-attachment-preview-close {
+	color: #e2e8f0;
+	text-shadow: none;
+	opacity: 0.7;
+}
+
+html.darkmode .argon-attachment-preview-close:hover {
+	color: #ffffff;
+	opacity: 1;
+	text-shadow: none;
+}
+
+.argon-attachment-preview-footer {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px;
+	padding: 12px 20px;
+	border-top: 1px solid var(--color-border-on-foreground);
+	background: #f8fafc;
+}
+
+html.darkmode .argon-attachment-preview-footer {
+	background: #1a1a28;
+	border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+html.darkmode.amoled-dark .argon-attachment-preview-footer {
+	background: #080808;
+	border-top-color: #222222;
+}
+
+.argon-attachment-preview-footer .btn {
+	min-width: 90px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+}
+
+html.darkmode .argon-attachment-preview-footer .btn-secondary {
+	background: rgba(255, 255, 255, 0.08);
+	border-color: rgba(255, 255, 255, 0.15);
+	color: #cbd5e1;
+}
+
+html.darkmode .argon-attachment-preview-footer .btn-secondary:hover {
+	background: rgba(255, 255, 255, 0.15);
+	color: #ffffff;
+	border-color: rgba(255, 255, 255, 0.25);
+}
+
+.argon-attachment-preview-body {
+	flex: 1 1 auto;
+	min-height: 0;
+	position: relative;
+	padding: 0 !important;
+	background: #fff;
+	overflow: hidden;
+}
+
+html.darkmode .argon-attachment-preview-body {
+	background: #1e1e2e;
+}
+
+html.darkmode.amoled-dark .argon-attachment-preview-body {
+	background: #000000;
+}
+
+.argon-attachment-preview-loading,
+.argon-attachment-preview-unsupported {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	color: var(--color-text, #8898aa);
+	font-size: 15px;
+	padding: 24px;
+	text-align: center;
+	background: transparent;
+}
+
+html.darkmode .argon-attachment-preview-loading,
+html.darkmode .argon-attachment-preview-unsupported {
+	color: #94a3b8;
+}
+
+.argon-attachment-preview-loading[hidden],
+.argon-attachment-preview-unsupported[hidden] {
+	display: none;
+}
+
+.argon-attachment-preview-loading > i {
+	font-size: 28px;
+}
+
+.argon-attachment-preview-frame {
+	width: 100%;
+	height: 100%;
+	border: 0;
+	display: block;
+	background: #fff;
+}
+
+html.darkmode .argon-attachment-preview-frame {
+	background: #1e1e2e;
+}
+
+html.darkmode.amoled-dark .argon-attachment-preview-frame {
+	background: #000000;
+}
+
+/* 纯净精简 PDF 预览器 */
+.argon-attachment-preview-pdf {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	height: 100%;
+	background: #525659;
+}
+
+html.darkmode .argon-attachment-preview-pdf {
+	background: #181824;
+}
+
+html.darkmode.amoled-dark .argon-attachment-preview-pdf {
+	background: #000000;
+}
+
+.argon-pdf-toolbar {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 8px 16px;
+	background: rgba(255, 255, 255, 0.92);
+	border-bottom: 1px solid var(--color-border-on-foreground);
+	-webkit-backdrop-filter: blur(10px);
+	backdrop-filter: blur(10px);
+	z-index: 2;
+}
+
+html.darkmode .argon-pdf-toolbar {
+	background: rgba(30, 30, 42, 0.92);
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+html.darkmode.amoled-dark .argon-pdf-toolbar {
+	background: rgba(0, 0, 0, 0.92);
+	border-bottom-color: #222222;
+}
+
+.argon-pdf-toolbar-group {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.argon-pdf-page-num,
+.argon-pdf-scale-text {
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--color-text-deeper);
+	min-width: 50px;
+	text-align: center;
+	user-select: none;
+}
+
+html.darkmode .argon-pdf-page-num,
+html.darkmode .argon-pdf-scale-text {
+	color: #e2e8f0;
+}
+
+html.darkmode .argon-pdf-toolbar .btn-outline-primary {
+	color: #8a98eb;
+	border-color: rgba(138, 152, 235, 0.4);
+}
+
+html.darkmode .argon-pdf-toolbar .btn-outline-primary:hover {
+	background: #5e72e4;
+	border-color: #5e72e4;
+	color: #fff;
+}
+
+html.darkmode .argon-pdf-toolbar .btn-outline-secondary {
+	color: #cbd5e1;
+	border-color: rgba(203, 213, 225, 0.25);
+}
+
+html.darkmode .argon-pdf-toolbar .btn-outline-secondary:hover {
+	background: rgba(255, 255, 255, 0.1);
+	border-color: rgba(203, 213, 225, 0.5);
+	color: #fff;
+}
+
+.argon-pdf-viewer-wrap {
+	flex: 1 1 auto;
+	overflow: auto;
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	padding: 24px;
+	background: #525659;
+}
+
+html.darkmode .argon-pdf-viewer-wrap {
+	background: #11111b;
+}
+
+html.darkmode.amoled-dark .argon-pdf-viewer-wrap {
+	background: #000000;
+}
+
+.argon-pdf-viewer-wrap::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+}
+
+.argon-pdf-viewer-wrap::-webkit-scrollbar-thumb {
+	background: rgba(0, 0, 0, 0.25);
+	border-radius: 3px;
+}
+
+html.darkmode .argon-pdf-viewer-wrap::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.18);
+}
+
+.argon-pdf-canvas {
+	box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+	border-radius: 4px;
+	background: #fff;
+	max-width: none;
+	transition: filter 0.2s ease;
+}
+
+/* 深色模式下的 PDF 护眼高对比暗色滤镜，彻底消除刺眼白底闪光弹 */
+html.darkmode .argon-pdf-canvas {
+	filter: invert(0.88) hue-rotate(180deg) contrast(1.1) brightness(0.95);
+	box-shadow: 0 8px 30px rgba(0, 0, 0, 0.65);
+}
+
+@media (max-width: 576px) {
+	.argon-pdf-toolbar {
+		padding: 6px 10px;
+	}
+	.argon-pdf-toolbar-group {
+		gap: 4px;
+	}
+	.argon-pdf-toolbar-group .argon-pdf-fit {
+		display: none;
+	}
+	.argon-pdf-viewer-wrap {
+		padding: 10px;
+	}
+}
+
+/* 现代 ZIP 文件资源管理器 */
+.argon-attachment-preview-zip {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	background: transparent;
+	overflow: hidden;
+}
+
+.argon-zip-explorer {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	width: 100%;
+}
+
+.argon-zip-toolbar {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 10px 18px;
+	background: rgba(255, 255, 255, 0.88);
+	border-bottom: 1px solid var(--color-border-on-foreground);
+	-webkit-backdrop-filter: blur(10px);
+	backdrop-filter: blur(10px);
+}
+
+html.darkmode .argon-zip-toolbar {
+	background: rgba(30, 30, 42, 0.88);
+	border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+html.darkmode.amoled-dark .argon-zip-toolbar {
+	background: rgba(0, 0, 0, 0.92);
+	border-bottom-color: #222222;
+}
+
+.argon-zip-toolbar .btn-outline-primary {
+	transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+html.darkmode .argon-zip-toolbar .btn-outline-primary {
+	color: #8a98eb;
+	border-color: rgba(138, 152, 235, 0.4);
+}
+
+html.darkmode .argon-zip-toolbar .btn-outline-primary:hover {
+	background: #5e72e4;
+	border-color: #5e72e4;
+	color: #fff;
+}
+
+html.darkmode .argon-zip-up:disabled {
+	opacity: 0.4;
+	color: #64748b !important;
+	border-color: rgba(255, 255, 255, 0.1) !important;
+	background: transparent !important;
+}
+
+html.darkmode .argon-attachment-preview-footer .btn-outline-warning {
+	color: #fbbf24;
+	border-color: rgba(251, 191, 36, 0.4);
+}
+
+html.darkmode .argon-attachment-preview-footer .btn-outline-warning:hover {
+	background: #f59e0b;
+	border-color: #f59e0b;
+	color: #fff;
+}
+
+.argon-zip-breadcrumb {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex: 1;
+	overflow-x: auto;
+	white-space: nowrap;
+	font-size: 13px;
+	color: var(--color-text-deeper);
+}
+
+html.darkmode .argon-zip-breadcrumb {
+	color: #e2e8f0;
+}
+
+.argon-zip-crumb {
+	cursor: pointer;
+	padding: 3px 8px;
+	border-radius: 4px;
+	color: var(--themecolor);
+	transition: background 0.15s ease;
+}
+
+.argon-zip-crumb:hover {
+	background: rgba(var(--themecolor-rgbstr), 0.12);
+}
+
+.argon-zip-crumb:last-child {
+	color: var(--color-text-deeper);
+	cursor: default;
+	pointer-events: none;
+	font-weight: 600;
+}
+
+html.darkmode .argon-zip-crumb:last-child {
+	color: #e2e8f0;
+}
+
+.argon-zip-crumb-sep {
+	color: var(--color-text, #8898aa);
+	user-select: none;
+}
+
+.argon-zip-body {
+	flex: 1 1 auto;
+	overflow-y: auto;
+	padding: 12px 18px;
+}
+
+.argon-zip-body::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+}
+
+.argon-zip-body::-webkit-scrollbar-thumb {
+	background: rgba(0, 0, 0, 0.18);
+	border-radius: 3px;
+}
+
+html.darkmode .argon-zip-body::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.18);
+}
+
+.argon-zip-items {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.argon-zip-item {
+	display: flex;
+	align-items: center;
+	padding: 10px 14px;
+	border-radius: var(--card-radius, 6px);
+	border: 1px solid transparent;
+	transition: background 0.15s ease, border-color 0.15s ease;
+	user-select: none;
+}
+
+.argon-zip-item.is-dir {
+	cursor: pointer;
+}
+
+.argon-zip-item:hover {
+	background: rgba(var(--themecolor-rgbstr), 0.08);
+	border-color: rgba(var(--themecolor-rgbstr), 0.18);
+}
+
+html.darkmode .argon-zip-item:hover {
+	background: rgba(255, 255, 255, 0.06);
+	border-color: rgba(255, 255, 255, 0.1);
+}
+
+.argon-zip-item-icon {
+	flex: 0 0 auto;
+	width: 28px;
+	font-size: 16px;
+	text-align: center;
+	margin-right: 8px;
+}
+
+.argon-zip-item.is-dir .argon-zip-item-icon {
+	color: #eab308;
+}
+
+.argon-zip-item.is-file .argon-zip-item-icon {
+	color: var(--color-text, #8898aa);
+}
+
+.argon-zip-item-name {
+	flex: 1 1 auto;
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--color-text-deeper);
+	word-break: break-all;
+}
+
+html.darkmode .argon-zip-item-name {
+	color: #e2e8f0;
+}
+
+.argon-zip-item-meta {
+	flex: 0 0 auto;
+	margin-left: auto;
+	padding-left: 12px;
+	font-size: 12px;
+	color: var(--color-text, #8898aa);
+}
+
+html.darkmode .argon-zip-item-meta {
+	color: #94a3b8;
+}
+
+.argon-zip-empty {
+	padding: 36px 12px;
+	text-align: center;
+	color: var(--color-text, #8898aa);
+	font-size: 14px;
+}
+
+html.darkmode .argon-zip-empty {
+	color: #94a3b8;
+}
+
+.argon-zip-footer {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 8px 18px;
+	font-size: 12px;
+	color: var(--color-text, #8898aa);
+	border-top: 1px solid var(--color-border-on-foreground);
+	background: rgba(0, 0, 0, 0.02);
+}
+
+html.darkmode .argon-zip-footer {
+	border-top-color: rgba(255, 255, 255, 0.08);
+	background: rgba(0, 0, 0, 0.2);
+	color: #94a3b8;
+}
+
+html.darkmode.amoled-dark .argon-zip-footer {
+	background: #080808;
+	border-top-color: #222222;
+}
+
+@media (max-width: 576px) {
+	.argon-attachment-preview-dialog-wrap {
+		width: calc(100% - 16px);
+		margin: 0.5rem auto;
+	}
+	.argon-attachment-preview-dialog {
+		height: 90vh;
+	}
+}
+
+/* ---------------- 居中验证码弹窗 ---------------- */
+
+.argon-attachment-captcha-modal {
+	position: fixed;
+	inset: 0;
+	z-index: 100001;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 20px;
+	pointer-events: none;
+	visibility: hidden;
+	opacity: 0;
+	transition: opacity var(--motion-layer-duration, 150ms) var(--motion-ease-exit, cubic-bezier(0.4, 0, 1, 1)),
+	            visibility 0s linear var(--motion-layer-duration, 150ms);
+	-webkit-transform: translateZ(0);
+	transform: translateZ(0);
+	will-change: opacity;
+}
+
+.argon-attachment-captcha-modal.is-open {
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+	transition: opacity var(--motion-layer-duration, 150ms) var(--motion-ease-enter, cubic-bezier(0.16, 1, 0.3, 1)),
+	            visibility 0s linear 0s;
+}
+
+.argon-attachment-captcha-mask {
+	position: absolute;
+	inset: 0;
+	background: rgba(15, 23, 42, 0.55);
+	-webkit-backdrop-filter: blur(8px);
+	backdrop-filter: blur(8px);
+	-webkit-transform: translateZ(0);
+	transform: translateZ(0);
+}
+
+.argon-attachment-captcha-dialog {
+	position: relative;
+	z-index: 1;
+	width: min(380px, 100%);
+	border: 1px solid var(--color-border-on-foreground);
+	border-radius: var(--card-radius, 8px);
+	background: var(--color-foreground, #fff);
+	box-shadow: 0 18px 60px rgba(0, 0, 0, 0.28);
+	overflow: hidden;
+	transform: translateY(calc(var(--motion-popup-offset, 10px) * -1)) scale(var(--motion-popup-scale, 0.96));
+	opacity: 0;
+	transition: transform var(--motion-layer-duration, 150ms) var(--motion-ease-exit, cubic-bezier(0.4, 0, 1, 1)),
+	            opacity var(--motion-layer-duration, 150ms) var(--motion-ease-exit, cubic-bezier(0.4, 0, 1, 1));
+	-webkit-transform: translateY(calc(var(--motion-popup-offset, 10px) * -1)) scale(var(--motion-popup-scale, 0.96));
+	will-change: transform, opacity;
+}
+
+.argon-attachment-captcha-modal.is-open .argon-attachment-captcha-dialog {
+	transform: scale(1) translateY(0);
+	-webkit-transform: scale(1) translateY(0);
+	opacity: 1;
+	transition-timing-function: var(--motion-ease-enter, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+html.darkmode .argon-attachment-captcha-dialog {
+	background: var(--color-foreground, #2b2b2b);
+}
+
+html.darkmode.amoled-dark .argon-attachment-captcha-dialog {
+	background: #000;
+}
+
+.argon-attachment-captcha-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 14px 18px;
+	border-bottom: 1px solid var(--color-border-on-foreground);
+}
+
+.argon-attachment-captcha-title {
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--color-text-deeper);
+}
+
+.argon-attachment-captcha-close {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: 0;
+	border-radius: var(--card-radius, 4px);
+	background: transparent;
+	color: var(--color-text, #8898aa);
+	font-size: 14px;
+	cursor: pointer;
+	transition: background 0.18s ease, color 0.18s ease;
+}
+
+.argon-attachment-captcha-close:hover {
+	background: rgba(0, 0, 0, 0.06);
+	color: var(--color-text-deeper);
+}
+
+html.darkmode .argon-attachment-captcha-close:hover {
+	background: rgba(255, 255, 255, 0.08);
+}
+
+.argon-attachment-captcha-body {
+	padding: 20px 22px;
+}
+
+.argon-att-captcha-tip {
+	font-size: 13px;
+	color: var(--color-text, #8898aa);
+	margin: 0 0 14px;
+}
+
+.argon-att-math-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 16px;
+}
+
+.argon-att-math-expr {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 100px;
+	padding: 8px 12px;
+	background: rgba(var(--themecolor-rgbstr), 0.08);
+	border: 1px solid rgba(var(--themecolor-rgbstr), 0.2);
+	border-radius: var(--card-radius, 4px);
+	color: var(--themecolor);
+	font-size: 15px;
+	font-weight: 600;
+	letter-spacing: 1px;
+}
+
+.argon-att-math-input {
+	flex: 1 1 auto;
+	min-width: 0;
+	padding: 8px 12px;
+	border: 1px solid var(--color-border-on-foreground);
+	border-radius: var(--card-radius, 4px);
+	background: transparent;
+	color: var(--color-text-deeper);
+	font-size: 14px;
+	outline: none;
+	transition: border-color 0.18s ease;
+}
+
+.argon-att-math-input:focus {
+	border-color: var(--themecolor);
+}
+
+.argon-att-captcha-submit {
+	width: 100%;
+	padding: 10px 16px;
+	border: 0;
+	border-radius: var(--card-radius, 4px);
+	background: var(--themecolor);
+	color: #fff !important;
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.argon-att-captcha-submit:hover {
+	background: var(--themecolor-dark);
+	transform: translateY(-1px);
+}
+
+.argon-att-captcha-error {
+	margin-top: 12px;
+	padding: 6px 10px;
+	border-radius: 4px;
+	background: rgba(245, 54, 92, 0.1);
+	border: 1px solid rgba(245, 54, 92, 0.25);
+	color: #f5365c;
+	font-size: 12px;
+}
+
+
