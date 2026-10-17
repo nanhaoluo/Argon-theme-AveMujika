@@ -13,6 +13,7 @@
 require_once get_template_directory() . '/easter-eggs.php';
 require_once get_template_directory() . '/inc/ai-spam-prompts.php';
 require_once get_template_directory() . '/inc/ai-summary-prompt.php';
+require_once get_template_directory() . '/inc/ai-seo.php';
 require_once get_template_directory() . '/inc/friend-link-algorithms.php';
 require_once get_template_directory() . '/inc/bangumi.php';
 require_once get_template_directory() . '/inc/attachments.php';
@@ -1344,6 +1345,12 @@ session_init();
 function get_seo_description(){
 	global $post;
 	if (is_single() || is_page()){
+		if (!empty($post->ID)){
+			$custom_desc = get_post_meta($post->ID, 'argon_post_seo_description', true);
+			if (!empty($custom_desc)){
+				return esc_html($custom_desc);
+			}
+		}
 		if (get_the_excerpt() != ""){
 			return preg_replace('/ \[&hellip;]$/', '&hellip;', get_the_excerpt());
 		}
@@ -1358,18 +1365,26 @@ function get_seo_description(){
 }
 //页面 Keywords
 function get_seo_keywords(){
-	if (is_single()){
+	if (is_single() || is_page()){
 		global $post;
-		$tags = get_the_tags('', ',', '', $post -> ID);
-		if ($tags != null){
-			$res = "";
-			foreach ($tags as $tag){
-				if ($res != ""){
-					$res .= ",";
-				}
-				$res .= $tag -> name;
+		if (!empty($post->ID)){
+			$custom_keywords = get_post_meta($post->ID, 'argon_post_seo_keywords', true);
+			if (!empty($custom_keywords)){
+				return esc_html($custom_keywords);
 			}
-			return $res;
+		}
+		if (is_single()){
+			$tags = get_the_tags('', ',', '', $post -> ID);
+			if ($tags != null){
+				$res = "";
+				foreach ($tags as $tag){
+					if ($res != ""){
+						$res .= ",";
+					}
+					$res .= $tag -> name;
+				}
+				return $res;
+			}
 		}
 	}
 	if (is_category()){
@@ -8003,7 +8018,12 @@ function argon_ai_query($scenario, $prompt, $content, $context = []) {
 	// 优先使用场景化的 API 配置（新系统）
 	$config = null;
 	$provider = '';
-	$config_scenario = ($scenario === 'summary') ? 'summary' : 'spam';
+	$config_scenario = 'summary';
+	if ($scenario === 'spam') {
+		$config_scenario = 'spam';
+	} elseif ($scenario === 'seo') {
+		$config_scenario = 'seo';
+	}
 
 	// 如果 context 中指定了完整配置，优先使用，避免同 provider 多 API 时误取第一项。
 	if (isset($context['api_config']) && is_array($context['api_config'])) {
@@ -8787,8 +8807,9 @@ function argon_delete_api($api_id) {
 	// 检查是否是当前使用的 API
 	$summary_active = get_option('argon_ai_summary_active_api', '');
 	$spam_active = get_option('argon_ai_spam_active_api', '');
+	$seo_active = get_option('argon_ai_seo_active_api', '');
 	
-	if ($api_id === $summary_active || $api_id === $spam_active) {
+	if ($api_id === $summary_active || $api_id === $spam_active || $api_id === $seo_active) {
 		return false; // 不允许删除正在使用的 API
 	}
 	
@@ -8805,7 +8826,7 @@ function argon_delete_api($api_id) {
 
 /**
  * 为指定场景设置活动的 API
- * @param string $scenario 场景 ('summary' 或 'spam')
+ * @param string $scenario 场景 ('summary', 'spam' 或 'seo')
  * @param string $api_id API ID
  * @return bool 是否成功
  */
@@ -8830,6 +8851,8 @@ function argon_set_active_api_for_scenario($scenario, $api_id) {
 		update_option('argon_ai_summary_active_api', $api_id);
 	} elseif ($scenario === 'spam') {
 		update_option('argon_ai_spam_active_api', $api_id);
+	} elseif ($scenario === 'seo') {
+		update_option('argon_ai_seo_active_api', $api_id);
 	} else {
 		return false;
 	}
@@ -8839,7 +8862,7 @@ function argon_set_active_api_for_scenario($scenario, $api_id) {
 
 /**
  * 获取指定场景的活动 API 配置
- * @param string $scenario 场景 ('summary' 或 'spam')
+ * @param string $scenario 场景 ('summary', 'spam' 或 'seo')
  * @return array ['api_key' => string, 'api_endpoint' => string, 'model' => string, 'provider' => string]
  */
 function argon_get_active_api_config($scenario = 'summary') {
@@ -8849,6 +8872,11 @@ function argon_get_active_api_config($scenario = 'summary') {
 		$api_id = get_option('argon_ai_summary_active_api', '');
 	} elseif ($scenario === 'spam') {
 		$api_id = get_option('argon_ai_spam_active_api', '');
+	} elseif ($scenario === 'seo') {
+		$api_id = get_option('argon_ai_seo_active_api', '');
+		if (empty($api_id)) {
+			$api_id = get_option('argon_ai_summary_active_api', '');
+		}
 	}
 	
 	if (empty($api_id)) {
@@ -10683,11 +10711,13 @@ function argon_ajax_get_all_unified_apis() {
 	$apis = argon_get_all_apis();
 	$summary_active = get_option('argon_ai_summary_active_api', '');
 	$spam_active = get_option('argon_ai_spam_active_api', '');
+	$seo_active = get_option('argon_ai_seo_active_api', '');
 	
 	wp_send_json_success([
 		'apis' => $apis,
 		'summary_active' => $summary_active,
-		'spam_active' => $spam_active
+		'spam_active' => $spam_active,
+		'seo_active' => $seo_active
 	]);
 }
 add_action('wp_ajax_argon_get_all_unified_apis', 'argon_ajax_get_all_unified_apis');

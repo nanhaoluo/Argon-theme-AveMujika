@@ -3432,6 +3432,7 @@ function themeoptions_page(){
 						$all_apis = argon_get_all_apis();
 						$summary_active_api = get_option('argon_ai_summary_active_api', '');
 						$spam_active_api = get_option('argon_ai_spam_active_api', '');
+						$seo_active_api = get_option('argon_ai_seo_active_api', '');
 						
 						// 提供商列表
 						$providers = [
@@ -3464,15 +3465,19 @@ function themeoptions_page(){
 												<td><code><?php echo esc_html(substr($api['api_key'], 0, 12)); ?>...</code></td>
 												<td><?php echo !empty($api['api_endpoint']) ? '<code>' . esc_html($api['api_endpoint']) . '</code>' : ''; ?></td>
 												<td>
-													<?php if ($api['id'] === $summary_active_api): ?>
-														<span><?php _e('文章摘要', 'argon'); ?></span>
-													<?php endif; ?>
-													<?php if ($api['id'] === $spam_active_api): ?>
-														<?php if ($api['id'] === $summary_active_api): ?>
-															&nbsp;|&nbsp;
-														<?php endif; ?>
-														<span><?php _e('评论审核', 'argon'); ?></span>
-													<?php endif; ?>
+													<?php
+													$usages = [];
+													if ($api['id'] === $summary_active_api) {
+														$usages[] = __('文章摘要', 'argon');
+													}
+													if ($api['id'] === $spam_active_api) {
+														$usages[] = __('评论审核', 'argon');
+													}
+													if ($api['id'] === $seo_active_api) {
+														$usages[] = __('SEO 优化', 'argon');
+													}
+													echo esc_html(implode(' | ', $usages));
+													?>
 												</td>
 												<td>
 													<button type="button" class="button button-small argon-test-unified-api" data-api-id="<?php echo esc_attr($api['id']); ?>">
@@ -3640,6 +3645,85 @@ function themeoptions_page(){
 					</td>
 				</tr>
 				
+				<!-- ========== 文章 SEO 优化 ========== -->
+				<tr><th class="subtitle"><h3 id="ai-seo"><?php _e('文章 SEO 优化', 'argon');?></h3></th></tr>
+
+				<tr>
+					<th><label><?php _e('启用 AI SEO 优化', 'argon');?></label></th>
+					<td>
+						<select name="argon_ai_seo_enable">
+							<?php $argon_ai_seo_enable = get_option('argon_ai_seo_enable', 'false'); ?>
+							<option value="true" <?php if ($argon_ai_seo_enable=='true'){echo 'selected';} ?>><?php _e('启用', 'argon');?></option>
+							<option value="false" <?php if ($argon_ai_seo_enable=='false'){echo 'selected';} ?>><?php _e('禁用', 'argon');?></option>
+						</select>
+						<p class="description"><?php _e('开启后，可使用 AI 为文章自动分析生成针对搜索引擎优化的描述（Description）和关键词（Keywords），并在文章编辑页提供独立卡片进行一键优化与微调。', 'argon');?></p>
+					</td>
+				</tr>
+
+				<tr>
+					<th><label><?php _e('默认使用 API', 'argon');?></label></th>
+					<td>
+						<select name="argon_ai_seo_active_api">
+							<option value=""><?php _e('复用文章摘要 API（默认）', 'argon'); ?></option>
+							<?php foreach ($all_apis as $api): ?>
+								<option value="<?php echo esc_attr($api['id']); ?>" <?php selected($seo_active_api, $api['id']); ?>>
+									<?php $provider_key = argon_normalize_ai_provider(isset($api['provider']) ? $api['provider'] : 'openai_compatible'); ?>
+									<?php echo esc_html($api['name']); ?> (<?php echo esc_html(isset($providers[$provider_key]) ? $providers[$provider_key] : argon_get_ai_provider_label($provider_key)); ?>)
+								</option>
+							<?php endforeach; ?>
+						</select>
+						<p class="description"><?php _e('选择用于文章 SEO 优化的 API 配置。留空时自动复用文章摘要的活动 API。', 'argon');?></p>
+					</td>
+				</tr>
+
+				<tr>
+					<th><label><?php _e('自动生成时机', 'argon');?></label></th>
+					<td>
+						<?php $argon_ai_seo_auto_mode = get_option('argon_ai_seo_auto_mode', 'empty_only'); ?>
+						<select name="argon_ai_seo_auto_mode">
+							<option value="empty_only" <?php selected($argon_ai_seo_auto_mode, 'empty_only'); ?>><?php _e('发布/保存时若未填写 SEO 则自动补充（推荐）', 'argon');?></option>
+							<option value="always" <?php selected($argon_ai_seo_auto_mode, 'always'); ?>><?php _e('发布/保存时始终自动重新生成（覆盖已有）', 'argon');?></option>
+							<option value="manual" <?php selected($argon_ai_seo_auto_mode, 'manual'); ?>><?php _e('仅在编辑页手动点击生成（不自动触发）', 'argon');?></option>
+						</select>
+						<p class="description"><?php _e('控制在后台保存或发布公开文章时，是否由系统自动调用 AI 补全 SEO 信息。', 'argon');?></p>
+					</td>
+				</tr>
+
+				<tr>
+					<th><label><?php _e('自动联动与补充', 'argon');?></label></th>
+					<td>
+						<?php 
+						$argon_ai_seo_sync_excerpt = get_option('argon_ai_seo_sync_excerpt', 'true');
+						$argon_ai_seo_sync_tags = get_option('argon_ai_seo_sync_tags', 'false');
+						?>
+						<label style="display: block; margin-bottom: 8px;">
+							<input type="checkbox" name="argon_ai_seo_sync_excerpt" value="true" <?php if ($argon_ai_seo_sync_excerpt=='true'){echo 'checked';}?>/>
+							<?php _e('文章未填写摘要时，自动同步 SEO 描述为文章摘要（Excerpt）', 'argon');?>
+						</label>
+						<label style="display: block;">
+							<input type="checkbox" name="argon_ai_seo_sync_tags" value="true" <?php if ($argon_ai_seo_sync_tags=='true'){echo 'checked';}?>/>
+							<?php _e('自动将生成的 SEO 关键词追加为文章标签（Tags）', 'argon');?>
+						</label>
+						<p class="description"><?php _e('可选择让 AI 生成的 SEO 成果自动反哺 WordPress 原生摘要与标签系统。', 'argon');?></p>
+					</td>
+				</tr>
+
+				<tr>
+					<th><label><?php _e('关键词数量上限', 'argon');?></label></th>
+					<td>
+						<input type="number" min="1" max="15" step="1" class="small-text" name="argon_ai_seo_max_keywords" value="<?php echo esc_attr(get_option('argon_ai_seo_max_keywords', '5')); ?>"/>
+						<p class="description"><?php _e('AI 生成的 SEO 关键词数量（建议 3-8 个之间）。', 'argon');?></p>
+					</td>
+				</tr>
+
+				<tr>
+					<th><label><?php _e('SEO 提示词模板', 'argon');?></label></th>
+					<td>
+						<textarea name="argon_ai_seo_custom_prompt" rows="12" cols="70" style="font-family: monospace;"><?php echo esc_textarea(function_exists('argon_get_ai_seo_prompt') ? argon_get_ai_seo_prompt() : get_option('argon_ai_seo_custom_prompt', '')); ?></textarea>
+						<p class="description"><?php _e('AI 生成 SEO 描述与关键词时使用的提示词。系统会自动将标题、文章内容及分类作为上下文拼接到提示词中。留空可使用主题内置的针对性 SEO 提示词。', 'argon');?></p>
+					</td>
+				</tr>
+
 				<!-- ========== 评论审核 ========== -->
 				<tr><th class="subtitle"><h3 id="ai-spam-detection"><?php _e('评论审核', 'argon');?></h3></th></tr>
 				<tr class="argon-spam-section-heading" id="argon-spam-section-api">
@@ -8237,6 +8321,15 @@ function argon_update_themeoptions(){
 	argon_update_option('argon_ai_summary_prompt');
 	argon_update_option('argon_ai_summary_thinking_mode');
 	argon_update_option('argon_ai_summary_exclude_posts');
+
+	//AI 文章 SEO 优化
+	argon_update_option_checkbox('argon_ai_seo_enable');
+	argon_update_option('argon_ai_seo_active_api');
+	argon_update_option('argon_ai_seo_auto_mode');
+	argon_update_option_checkbox('argon_ai_seo_sync_excerpt');
+	argon_update_option_checkbox('argon_ai_seo_sync_tags');
+	argon_update_option('argon_ai_seo_max_keywords');
+	argon_update_option_allow_tags('argon_ai_seo_custom_prompt');
 	
 	//AI 垃圾评论识别
 	argon_update_option_checkbox('argon_comment_spam_detection_enable');
