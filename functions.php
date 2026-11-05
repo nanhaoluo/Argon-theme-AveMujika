@@ -14,6 +14,7 @@ require_once get_template_directory() . '/easter-eggs.php';
 require_once get_template_directory() . '/inc/ai-spam-prompts.php';
 require_once get_template_directory() . '/inc/ai-summary-prompt.php';
 require_once get_template_directory() . '/inc/ai-seo.php';
+require_once get_template_directory() . '/inc/ai-tags.php';
 require_once get_template_directory() . '/inc/friend-link-algorithms.php';
 require_once get_template_directory() . '/inc/bangumi.php';
 require_once get_template_directory() . '/inc/attachments.php';
