@@ -1,0 +1,14 @@
+# Apply inside this WordPress site's existing server block (not the global http block).
+# Keep the site's existing PHP handler and certificate settings.
+# BaoTa may enable interception globally; allow WordPress theme errors through here.
+fastcgi_intercept_errors off;
+
+# Use this only when the site has no existing WordPress rewrite rule.
+# If WordPress is installed in a subdirectory, adapt /index.php to its actual URI.
+location / {
+    try_files $uri $uri/ /index.php?$args;
+}
+
+# After changing the site's config, run nginx -t before reloading.
+# Validate a missing pretty URL AND /index.php?name=a-missing-post:
+# both must return HTTP 404 with the theme body, while the homepage remains HTTP 200.

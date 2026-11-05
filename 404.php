@@ -3,21 +3,14 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<script>
-		// 备用字体加载
-		(function() {
-			var link = document.createElement('link');
-			link.href = 'https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700';
-			link.rel = 'stylesheet';
-			link.onerror = function() {
-				document.body.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
-			};
-			document.head.appendChild(link);
-		})();
-	</script>
+	<link href="<?php bloginfo('template_url'); ?>/assets/vendor/external/fonts/open-sans.css" rel="stylesheet">
 	<link href="<?php bloginfo('template_url'); ?>/assets/vendor/nucleo/css/nucleo.css" rel="stylesheet">
 	<link href="<?php bloginfo('template_url'); ?>/assets/vendor/font-awesome/css/font-awesome.min.css" rel="stylesheet">
 	<link type="text/css" href="<?php bloginfo('template_url'); ?>/assets/css/argon.min.css" rel="stylesheet">
+	<?php
+		argon_enqueue_aurora_background();
+		wp_print_styles(array('argon-aurora'));
+	?>
 	<script src="<?php bloginfo('template_url'); ?>/assets/vendor/jquery/jquery.min.js"></script>
 	<script src="<?php bloginfo('template_url'); ?>/assets/vendor/bootstrap/bootstrap.min.js"></script>
 	<script src="<?php bloginfo('template_url'); ?>/assets/js/argon.min.js"></script>
@@ -98,67 +91,25 @@
 		}
 	</script>
 </head>
-<body>
-	<div class="position-relative">
-		<section class="section section-lg section-shaped pb-250" style="height: 100vh !important;">
-			<div class="shape shape-style-1 shape-default">
-				<span></span>
-				<span></span>
-				<span></span>
-				<span></span>
-				<span></span>
-				<span></span>
-				<span></span>
-				<span></span>
-				<span></span>
+<body class="argon-404">
+	<?php argon_render_aurora_background(); ?>
+	<main class="argon-error-content">
+		<div class="argon-error-group">
+			<div class="argon-error-copy">
+				<h1>404</h1>
+				<p class="argon-error-message">Page not found.<br><?php _e("这个页面不见了:(", "argon"); ?></p>
 			</div>
-			<div class="container py-lg-md d-flex">
-				<div class="col px-0">
-					<div class="row">
-						<div class="col-lg-6 col-sm-12">
-							<div class="display-1 text-white">404</div>
-							<p class="lead text-white">Page not found.<br><?php _e("这个页面不见了:(", "argon"); ?></p>
-							<div class="btn-wrapper">
-								<a href="javascript:window.history.back(-1);" ondragstart="return false;" class="btn btn-info btn-icon mb-3 mb-sm-0">
-									<span class="btn-inner--icon"><i class="fa fa-chevron-left"></i></span>
-									<span class="btn-inner--text"><?php _e("返回上一页", "argon"); ?></span>
-								</a>
-								<a href="<?php bloginfo('url'); ?>" class="btn btn-white btn-icon mb-3 mb-sm-0">
-									<span class="btn-inner--icon"><i class="fa fa-home"></i></span>
-									<span class="btn-inner--text"><?php _e("回到首页", "argon"); ?></span>
-								</a>
-							</div>
-							<?php echo apply_filters('argon_404page_extra_html', ''); ?>
-						</div>
-					</div>
-				</div>
+			<div class="argon-error-actions">
+				<a href="javascript:window.history.back();" class="btn btn-primary">
+					<i class="fa fa-chevron-left" aria-hidden="true"></i><?php _e("返回上一页", "argon"); ?>
+				</a>
+				<a href="<?php bloginfo('url'); ?>" class="btn btn-outline-primary">
+					<i class="fa fa-home" aria-hidden="true"></i><?php _e("回到首页", "argon"); ?>
+				</a>
 			</div>
-		</section>
-	</div>
+		</div>
+		<?php echo apply_filters('argon_404page_extra_html', ''); ?>
+	</main>
+	<?php wp_print_scripts(array('argon-aurora')); ?>
 </body>
 </html>
-
-<style>
-	body{
-		overflow: hidden;
-	}
-	html.darkmode .section-shaped .shape {
-		background: #262626;
-	}
-	html.darkmode .text-white {
-		opacity: .75;
-	}
-	html.darkmode .btn-white {
-		background: #424242;
-		border-color: #424242;
-		color: #eee;
-	}
-	html.darkmode .btn-info {
-		background: #0a7f94;
-		border-color: #0a7f94;
-		color: #eee;
-	}
-	html.darkmode.amoled-dark .section-shaped .shape {
-		background: #000;
-	}
-</style>

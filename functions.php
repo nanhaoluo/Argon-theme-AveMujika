@@ -15,6 +15,8 @@ require_once get_template_directory() . '/inc/ai-spam-prompts.php';
 require_once get_template_directory() . '/inc/ai-summary-prompt.php';
 require_once get_template_directory() . '/inc/ai-seo.php';
 require_once get_template_directory() . '/inc/ai-tags.php';
+require_once get_template_directory() . '/inc/aurora-background.php';
+require_once get_template_directory() . '/inc/login-page.php';
 require_once get_template_directory() . '/inc/friend-link-algorithms.php';
 require_once get_template_directory() . '/inc/bangumi.php';
 require_once get_template_directory() . '/inc/attachments.php';
@@ -5548,14 +5550,6 @@ add_filter('pre_get_posts', 'search_filter');
 
 /*恢复链接管理器*/
 add_filter('pre_option_link_manager_enabled', '__return_true');
-
-/*登录界面 CSS*/
-function argon_login_page_style() {
-	wp_enqueue_style("argon_login_css", $GLOBALS['assets_path'] . "/login.css", null, $GLOBALS['theme_version']);
-}
-if (get_option('argon_enable_login_css') == 'true'){
-	add_action('login_head', 'argon_login_page_style');
-}
 
 // 修复 wp_mail 的 Date 头：确保使用 WordPress 时区的本地时间
 add_action('phpmailer_init', function($phpmailer) {

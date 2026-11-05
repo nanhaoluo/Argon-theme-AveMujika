@@ -1,0 +1,200 @@
+/* The standalone screens share the main site's accent, M3 shapes and short control transitions. */
+body.argon-404, body.login {
+	isolation: isolate;
+	color-scheme: light;
+	--aurora-color: var(--themecolor, #5e72e4);
+	--aurora-paper: light-dark(#f7f7fa, #1b1c22);
+	--aurora-text: light-dark(#30313c, #f3f2f5);
+	--aurora-muted: light-dark(#565763, #c6c5ce);
+	--aurora-field: light-dark(#fff, #202127);
+	--aurora-accent-ink: color-mix(in srgb, var(--aurora-color) 38%, var(--aurora-text));
+	--aurora-card: color-mix(in srgb, light-dark(white, #292a32) 83%, transparent);
+	--aurora-border: color-mix(in srgb, var(--aurora-text) 17%, transparent);
+	--aurora-button-radius: 28px;
+	--aurora-focus: color-mix(in srgb, var(--aurora-color) 66%, var(--aurora-text));
+	background-color: var(--aurora-paper);
+	color: var(--aurora-text);
+	font-family: "Open Sans", -apple-system, system-ui, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+@supports not (color: light-dark(white, black)) {
+	body.argon-404, body.login {
+		--aurora-paper: Canvas;
+		--aurora-text: CanvasText;
+		--aurora-muted: color-mix(in srgb, CanvasText 72%, Canvas);
+		--aurora-field: Field;
+		--aurora-card: color-mix(in srgb, Canvas 85%, transparent);
+	}
+}
+body.login { color-scheme: light dark; }
+html.darkmode body.argon-404 { color-scheme: dark; }
+html.darkmode.amoled-dark body.argon-404 { --aurora-paper: #08090d; }
+
+.argon-aurora {
+	--aurora-frost: color-mix(in srgb, var(--aurora-paper) 75%, #777);
+	position: fixed;
+	inset: 0;
+	z-index: -1;
+	overflow: hidden;
+	pointer-events: none;
+	background-color: color-mix(in srgb, var(--aurora-color) 28%, var(--aurora-frost));
+	background-image:
+		radial-gradient(ellipse at 78% 33%, color-mix(in srgb, var(--aurora-paper) 18%, transparent), transparent 62%),
+		radial-gradient(ellipse at 12% 85%, color-mix(in srgb, var(--aurora-color) 15%, transparent), transparent 64%);
+}
+.argon-aurora::before,
+.argon-aurora::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+}
+.argon-aurora::before {
+	/* Smoked glass caps overlapping peaks behind light text in dark mode. */
+	background: light-dark(transparent, rgb(8 6 10 / 46%));
+}
+.argon-aurora::after {
+	background: url("../img/ill/frost-grain.svg") repeat;
+	opacity: .065;
+}
+.argon-aurora-stream {
+	position: absolute;
+	width: var(--stream-width);
+	height: var(--stream-height);
+	translate: -50% -50%;
+	color: var(--stream-tint, var(--aurora-color));
+}
+.argon-aurora-stream::before,
+.argon-aurora-stream:not(.is-diffuse)::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	transform: rotate(var(--stream-tilt)) scaleX(var(--stream-facing));
+	--tint: currentColor;
+	--glow: color-mix(in srgb, var(--tint) 80%, white);
+	--highlight: color-mix(in srgb, var(--aurora-paper) 24%, color-mix(in srgb, var(--tint) 30%, white));
+}
+.argon-aurora-stream::before {
+	background:
+		radial-gradient(ellipse 42% 38% at 47% 49%, color-mix(in srgb, var(--highlight) 56%, transparent), transparent 100%),
+		radial-gradient(ellipse 48% 44% at 49% 52%, color-mix(in srgb, var(--glow) 47%, transparent), transparent 100%),
+		radial-gradient(ellipse 30% 31% at 67% 38%, color-mix(in srgb, var(--glow) 23%, transparent), transparent 100%);
+	filter: blur(clamp(20px, 3vmin, 40px));
+}
+
+.argon-aurora-stream.is-diffuse::before {
+	opacity: .56;
+	filter: blur(clamp(38px, 5.5vmin, 74px));
+}
+
+/* A feathered fold moves within the halo while its parent follows a straight line. */
+.argon-aurora-stream:not(.is-diffuse)::after {
+	background: linear-gradient(95deg, transparent 3%, color-mix(in srgb, var(--highlight) 40%, transparent) 34%,
+		color-mix(in srgb, var(--glow) 32%, transparent) 64%, transparent 97%);
+	-webkit-mask: url("../img/ill/aurora-wave.svg") center / 100% 100% no-repeat;
+	mask: url("../img/ill/aurora-wave.svg") center / 100% 100% no-repeat;
+}
+@media (prefers-reduced-motion: no-preference) {
+	.argon-aurora-stream.has-tint {
+		transition: color 2.4s cubic-bezier(.32, 0, .32, 1);
+	}
+	.argon-aurora-stream:not(.is-diffuse)::after {
+		animation: var(--wave-motion, none);
+		animation-play-state: var(--wave-play-state, running);
+	}
+}
+@keyframes argon-aurora-wave {
+	0% { transform: rotate(var(--stream-tilt)) scaleX(var(--stream-facing)) translateX(-5%) skewY(-3deg) scaleY(.84); }
+	52% { transform: rotate(var(--stream-tilt)) scaleX(var(--stream-facing)) translateX(1%) skewY(3deg) scaleY(1.12); }
+	100% { transform: rotate(var(--stream-tilt)) scaleX(var(--stream-facing)) translateX(6%) skewY(-1deg) scaleY(.93); }
+}
+
+body.argon-404 {
+	min-height: 100vh;
+	min-height: 100svh;
+	display: grid;
+	align-items: center;
+	margin: 0;
+}
+.argon-error-content {
+	box-sizing: border-box;
+	max-width: 100%;
+	justify-self: start;
+	text-align: start;
+	padding: clamp(36px, 7vw, 96px);
+}
+.argon-error-group {
+	display: grid;
+	width: fit-content;
+	max-width: 100%;
+	justify-items: center;
+}
+.argon-error-content h1 {
+	margin: 0;
+	color: var(--aurora-text);
+	font-size: clamp(4rem, 7vw, 6rem);
+	font-weight: 600;
+	line-height: 1;
+	letter-spacing: -.055em;
+}
+.argon-error-message {
+	margin: 1.25rem 0 1.75rem;
+	color: var(--aurora-muted);
+	font-size: 1.1rem;
+	line-height: 1.65;
+}
+.argon-error-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; }
+.argon-error-actions .btn, .login .button.button-primary {
+	box-sizing: border-box;
+	min-height: 44px;
+	padding: 10px 20px;
+	border: 1px solid transparent;
+	border-radius: var(--aurora-button-radius);
+	font-family: inherit;
+	font-size: 14px;
+	font-weight: 500;
+	letter-spacing: -.01em;
+	line-height: 1.5;
+	text-decoration: none;
+	text-transform: none;
+	text-shadow: none;
+	transition: background-color 150ms, border-color 150ms, box-shadow 150ms;
+}
+.argon-error-actions .btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	margin: 0;
+}
+.argon-error-actions .btn-primary, .login .button.button-primary {
+	background: var(--aurora-color);
+	color: var(--argon-on-accent, #fff);
+	box-shadow: 0 1px 3px color-mix(in srgb, var(--aurora-color) 22%, transparent);
+}
+.argon-error-actions .btn-outline-primary {
+	color: var(--aurora-accent-ink);
+	border-color: color-mix(in srgb, var(--aurora-color) 62%, var(--aurora-paper));
+	background: transparent;
+	box-shadow: none;
+}
+.argon-error-actions .btn:hover, .argon-error-actions .btn:active { transform: none; }
+.argon-error-actions .btn-primary:is(:hover, :active), .login .button.button-primary:is(:hover, :active) {
+	background: color-mix(in srgb, var(--aurora-color) 94%, var(--argon-on-accent, white));
+	color: var(--argon-on-accent, #fff);
+	box-shadow: 0 2px 6px color-mix(in srgb, var(--aurora-color) 30%, transparent);
+}
+.argon-error-actions .btn-outline-primary:is(:hover, :active) {
+	background: color-mix(in srgb, var(--aurora-color) 12%, transparent);
+	color: var(--aurora-accent-ink);
+}
+.argon-error-actions .btn:focus-visible, .login .button.button-primary:focus-visible {
+	outline: 2px solid var(--aurora-focus);
+	outline-offset: 3px;
+}
+@media (max-width: 768px) {
+	body.argon-404, body.login { --aurora-button-radius: 12px; }
+	.argon-error-content { padding-inline: clamp(20px, 6vw, 44px); }
+}
+@media (prefers-reduced-motion: reduce) {
+	.argon-error-actions .btn { transition: none; }
+}

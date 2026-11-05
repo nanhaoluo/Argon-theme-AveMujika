@@ -26,6 +26,9 @@
   - 12 个功能分类提供全局搜索、分类目录和待保存筛选；切换分类保留修改，支持逐项撤销与离开提醒。
   - 字段模板位于 `inc/admin/settings/`，分类与资源注册位于 `inc/admin/settings-layout.php`，公共交互和样式位于 `assets/js/settings-admin.js`、`assets/css/settings-admin.css`。
   - JSON 备份排除敏感字段，支持复选框数组和动态日期范围；导入只填入界面，确认后逐项保存。
+- **登录与错误页面**：
+  - 登录、注册和找回密码保留 WordPress 原生流程，提供站点名称、明暗配色、键盘焦点和手机布局。
+  - 宝塔站点若以服务器错误页替换 WordPress 404，可参考 `config/nginx-wordpress-404.conf.example` 在该站点覆盖 FastCGI 错误拦截；修改后先校验 Nginx 配置，再核对响应内容和 HTTP 状态码。
 - **PJAX 页面无刷新与事件深度保活**：
   - 彻底攻克传统 PJAX 页面切换时 Prism/Highlight.js 代码高亮失效、MathJax 数学公式不重绘、Aplayer 音乐播放中断的顽疾。
   - 优化说说评论区预览机制（`comments-shuoshuo-preview.php`），确保局部刷新时不丢失输入框状态。
