@@ -11,7 +11,10 @@ const start = source.indexOf('function runArgonPjaxInitTasks');
 const end = source.indexOf('\nfunction renderPjaxMath', start);
 assert.ok(start >= 0 && end > start, 'PJAX 初始化任务调度器不存在');
 assert.ok(
-    source.indexOf('function () { return executePjaxScripts(pjaxContainers); }') >= 0,
+    /return executePjaxScripts\(pjaxContainers\);/.test(source.slice(
+        source.indexOf('function initializeArgonPjaxPage('),
+        source.indexOf('$.pjax.defaults.executeScripts')
+    )),
     'PJAX 页面初始化没有使用可等待的脚本执行器'
 );
 assert.match(
@@ -66,7 +69,31 @@ function run() {
     });
 }
 
-run().catch(function(error) {
+async function verifyCancellation() {
+    let resumeTask, markStarted;
+    const started = new Promise(resolve => { markStarted = resolve; });
+    const calls = [];
+    const cancel = context.runArgonPjaxInitTasks([
+        function () {
+            markStarted();
+            return new Promise(resolve => { resumeTask = resolve; });
+        },
+        function () { calls.push('obsolete init'); }
+    ], function () { calls.push('obsolete finish'); });
+    await started;
+    cancel();
+    resumeTask();
+    await new Promise(resolve => setTimeout(resolve, 10));
+    assert.deepStrictEqual(calls, [], '取消导航后不能继续初始化或结束新页面的进度条');
+    context.runArgonPjaxInitTasks([
+        function () { calls.push('stale generation'); }
+    ], function () { calls.push('stale finish'); }, function () { return false; });
+    await new Promise(resolve => setTimeout(resolve, 10));
+    assert.deepStrictEqual(calls, [], '失效的页面代数不能开始执行任务');
+    console.log('PJAX 初始化取消与页面代数测试通过。');
+}
+
+run().then(verifyCancellation).catch(function(error) {
     console.error(error.stack || error.message || error);
     process.exitCode = 1;
 });

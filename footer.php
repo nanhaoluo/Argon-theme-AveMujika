@@ -179,7 +179,10 @@
 
 		<?php if (get_option('argon_math_render') == 'katex') { /*Katex*/?>
 
-			<link rel="stylesheet" href="<?php echo esc_url(get_option('argon_katex_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/katex@0.11.1/dist/' : get_option('argon_katex_cdn_url')); ?>katex.min.css">
+			<?php
+			$katex_style_url = (get_option('argon_katex_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/katex@0.11.1/dist/' : get_option('argon_katex_cdn_url')) . 'katex.min.css';
+			echo argon_nonblocking_listing_stylesheet('<link rel="stylesheet" href="' . esc_url($katex_style_url) . '" media="all">', 'argon_katex');
+			?>
 
 		<script src="<?php echo esc_url(get_option('argon_katex_cdn_url') == '' ? '//cdn.jsdelivr.net/npm/katex@0.11.1/dist/' : get_option('argon_katex_cdn_url')); ?>katex.min.js"></script>
 

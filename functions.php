@@ -17,6 +17,7 @@ require_once get_template_directory() . '/inc/ai-seo.php';
 require_once get_template_directory() . '/inc/friend-link-algorithms.php';
 require_once get_template_directory() . '/inc/bangumi.php';
 require_once get_template_directory() . '/inc/attachments.php';
+require_once get_template_directory() . '/inc/frontend-assets.php';
 
 function argon_register_bangumi_template($templates) {
 	$templates['page-bangumi.php'] = __('追番展示页', 'argon');

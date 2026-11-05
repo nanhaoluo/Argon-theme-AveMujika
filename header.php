@@ -301,6 +301,7 @@
 			$assets_version = function_exists('argon_get_assets_version') ? argon_get_assets_version() : $GLOBALS['theme_version'];
 			$style_version = function_exists('argon_get_asset_file_version') ? argon_get_asset_file_version('style.css') : $assets_version;
 			$merged_css_version = function_exists('argon_get_asset_file_version') ? argon_get_asset_file_version('assets/argon_css_merged.css') : $assets_version;
+			$merged_js_version = function_exists('argon_get_asset_file_version') ? argon_get_asset_file_version('assets/argon_js_merged.js') : $assets_version;
 			
 			// CSS 加载 - 添加 media 属性确保移动端正确加载
 			wp_enqueue_style("argon_css_merged", $GLOBALS['assets_path'] . "/assets/argon_css_merged.css", array(), $merged_css_version, 'all');
@@ -322,7 +323,7 @@
 			}
 
 			// 加载 argon_js_merged（包含 jQuery 和其他库）- 在头部同步加载以确保后续脚本可用
-			wp_enqueue_script("argon_js_merged", $GLOBALS['assets_path'] . "/assets/argon_js_merged.js", array('argon_motion'), $assets_version, false);
+			wp_enqueue_script("argon_js_merged", $GLOBALS['assets_path'] . "/assets/argon_js_merged.js", array('argon_motion'), $merged_js_version, false);
 
 		// 加载 Prism.js 代码高亮库（样式在 head 中载入，脚本在 footer 底部核心脚本前载入）
 		if (get_option('argon_enable_code_highlight') == 'true') {
@@ -331,10 +332,7 @@
 			wp_enqueue_style("prism_line_numbers_css", $GLOBALS['assets_path'] . "/assets/vendor/prism/plugins/line-numbers/prism-line-numbers.min.css", array('prism_theme'), $assets_version);
 		}
 	
-	// 加载 Mermaid 图表库
-	if (get_option('argon_enable_code_highlight') == 'true') {
-		wp_enqueue_script("mermaid", $GLOBALS['assets_path'] . "/assets/vendor/mermaid/mermaid.min.js", array(), $assets_version, true);
-	}
+	// Mermaid is loaded by diagram blocks or the content loader, independently of code highlighting.
 ?>
 	
 	<?php wp_head(); ?>

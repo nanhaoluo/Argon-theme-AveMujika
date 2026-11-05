@@ -18879,8 +18879,24 @@ html.darkmode .article-skeleton-thumb {
 	transform: scale(0.95);
 }
 
-.pagination .page-link {
+/* Pagination shares the global card surface in desktop and mobile layouts. */
+.pagination .page-item .page-link {
+	background: rgba(255, 255, 255, var(--card-opacity, 0.7));
+	-webkit-backdrop-filter: blur(var(--card-blur, 20px)) saturate(var(--card-saturate, 180%));
+	backdrop-filter: blur(var(--card-blur, 20px)) saturate(var(--card-saturate, 180%));
+	background-clip: padding-box;
 	transition: background-color var(--animation-fast) var(--ease-standard), color var(--animation-fast) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), transform var(--animation-fast) var(--ease-standard), opacity var(--animation-fast) var(--ease-standard);
+}
+
+html.darkmode .pagination .page-link {
+	background: rgba(66, 66, 66, var(--card-opacity, 0.7));
+}
+
+.pagination .page-item:not(.active):not(.disabled) .page-link:hover,
+.pagination .page-item:not(.active):not(.disabled) .page-link:focus-visible,
+.pagination .page-item.active .page-link {
+	background: rgba(var(--themecolor-rgbstr), var(--card-opacity, 0.7));
+	color: #fff;
 }
 
 .pagination .page-link:active {

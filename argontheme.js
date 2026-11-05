@@ -5001,6 +5001,10 @@ if ($("html").hasClass("banner-as-cover")) {
 
 /*Pjax*/
 var pjaxScrollTop = 0, pjaxLoading = false, pjaxCompleteRan = false;
+var argonPjaxPageGeneration = 0;
+var argonPjaxRequestId = 0;
+var argonPjaxDomReplaced = false;
+var argonPjaxCancelInit = null;
 
 // ==========================================================================
 // 统一的资源清理管理器
@@ -5089,6 +5093,7 @@ function cleanupDynamicStyles() {
  * @returns {void}
  */
 function cleanupDynamicScripts() {
+	cancelPjaxScriptLoads();
 	try {
 		// 只清理标记为动态的脚本
 		const dynamicScripts = document.querySelectorAll('script[data-dynamic="true"]');
@@ -5176,157 +5181,22 @@ function cleanupPageSpecificState() {
 	});
 }
 
-/**
- * 同步执行单个脚本元素（不使用 Promise）
- * 用于 pjax:complete 中需要在模块初始化之前执行的场景
- *
- * @param {HTMLScriptElement} oldScript - 原始脚本元素
- * @returns {boolean} 是否执行成功
- */
-function executeScriptSync(oldScript) {
-	try {
-		var newScript = document.createElement('script');
-		var hasSrc = !!oldScript.src;
-		var scriptType = (oldScript.getAttribute('type') || '').toLowerCase();
-
-		// 复制脚本内容
-		if (oldScript.textContent && !hasSrc) {
-			newScript.textContent = oldScript.textContent;
-		}
-
-		// 复制所有属性
-		Array.from(oldScript.attributes).forEach(function (attr) {
-			if (attr.name !== 'data-pjax-executed') {
-				newScript.setAttribute(attr.name, attr.value);
-			}
-		});
-		newScript.setAttribute('data-dynamic', 'true');
-		newScript.setAttribute('data-pjax-dynamic', 'true');
-
-		// 外部脚本
-		if (hasSrc) {
-			if (isPjaxScriptAlreadyLoaded(oldScript)) {
-				ArgonDebug.log('External script already loaded, skipped:', oldScript.src);
-				return true;
-			}
-			if (!oldScript.hasAttribute('async') && !oldScript.hasAttribute('defer')) {
-				newScript.async = false;
-			}
-			document.head.appendChild(newScript);
-			return true;
-		}
-
-		// 内联脚本：同步执行
-		withPjaxReadyReplay(function () {
-			document.head.appendChild(newScript);
-		});
-
-		if (scriptType !== 'module') {
-			document.head.removeChild(newScript);
-		}
-
-		ArgonDebug.log('Sync script executed:', oldScript.textContent.substring(0, 50) + '...');
-		return true;
-	} catch (error) {
-		ArgonDebug.error('Sync script execution failed:', error);
-		return false;
-	}
-}
-
-/**
- * 同步执行容器内所有脚本
- *
- * @param {HTMLElement} container - 容器元素
- * @returns {number} 成功执行的脚本数量
- */
-function executeInlineScriptsSync(container) {
-	if (!container) return 0;
-	var scripts = container.querySelectorAll('script');
-	var count = 0;
-
-	scripts.forEach(function (script) {
-		if (script.getAttribute('data-pjax-executed') === 'true') return;
-
-		var scriptType = (script.getAttribute('type') || '').toLowerCase();
-		if (scriptType && scriptType !== 'text/javascript' && scriptType !== 'application/javascript' && scriptType !== 'module') return;
-
-		if (script.src || (script.textContent && script.textContent.trim() !== '')) {
-			if (!script.src && (!script.textContent || script.textContent.trim() === '')) return;
-
-			var success = executeScriptSync(script);
-			if (success) {
-				script.setAttribute('data-pjax-executed', 'true');
-				count++;
-			}
-		}
-	});
-
-	return count;
-}
-
-/**
- * 同步执行所有 pjax 容器中的脚本
- * 在 pjax:complete 中使用，确保脚本在模块初始化之前执行
- *
- * @param {Array} containers - 容器选择器数组
- * @returns {number} 成功执行的脚本总数
- */
-function executePjaxScriptsSync(containers) {
-	var total = 0;
-	(containers && containers.length ? containers : ['#primary']).forEach(function (selector) {
-		var container = document.querySelector(selector);
-		if (container) {
-			total += (executeInlineScriptsSync(container) || 0);
-		}
-	});
-	ArgonDebug.log('Sync PJAX script execution completed, total:', total);
-	return total;
-}
-
-/**
- * 重新激活页面脚本（用于 popstate/浏览器后退前进场景）
- * 清除 data-pjax-executed 标记，重新执行 <script data-pjax> 脚本
- * 解决浏览器后退/前进时 pjax:complete 不触发导致脚本不执行的问题
- */
+/** 恢复历史缓存中的页面脚本，再交给统一执行器按顺序执行。 */
 function reActivatePageScripts() {
-	var scripts = [];
 	pjaxContainers.forEach(function (selector) {
 		var container = document.querySelector(selector);
 		if (!container) return;
-
-		// 清除 data-pjax-executed 标记（缓存的 DOM 会保留此标记）
-		container.querySelectorAll('script[data-pjax]').forEach(function (script) {
+		container.querySelectorAll('script[data-pjax-executed]').forEach(function (script) {
 			script.removeAttribute('data-pjax-executed');
-			scripts.push(script);
-		});
-
-		// 重新执行 <script data-pjax> 脚本（页面特定的生命周期脚本）
-	});
-
-	// 后退/前进同样需要等待外部脚本，避免页面内联初始化抢跑。
-	var executedCount = 0;
-	var chain = Promise.resolve();
-	scripts.forEach(function (script) {
-		chain = chain.then(function () {
-			return executeScript(script).then(function (success) {
-				if (!success) return;
-				script.setAttribute('data-pjax-executed', 'true');
-				executedCount++;
-			});
 		});
 	});
-	return chain.then(function () {
-		if (executedCount > 0) {
-			ArgonDebug.log('reActivatePageScripts: re-executed', executedCount, 'scripts');
-		}
-		return executedCount;
-	});
+	return executePjaxScripts(pjaxContainers);
 }
 
 /**
  * 重置 GT4 验证码
  * 清理状态变量、隐藏字段和容器，然后重新初始化
- * 在 pjax:end 事件中调用
+ * 在页面脚本完成后的初始化队列中调用
  */
 function resetGT4Captcha() {
 	try {
@@ -6718,7 +6588,7 @@ initArgonLongContentVirtualizer();
 var argonPjaxReadyReplayDepth = 0;
 var argonPjaxOriginalDocumentAddEventListener = null;
 
-function beginPjaxReadyReplay() {
+function beginPjaxReadyReplay(isCurrent) {
 	if (!document || document.readyState === 'loading' || !document.addEventListener) {
 		return function () { };
 	}
@@ -6727,6 +6597,7 @@ function beginPjaxReadyReplay() {
 		document.addEventListener = function (type, listener, options) {
 			if (String(type).toLowerCase() === 'domcontentloaded' && listener) {
 				window.setTimeout(function () {
+					if (isCurrent && !isCurrent()) return;
 					try {
 						var event = new Event('DOMContentLoaded');
 						if (typeof listener === 'function') {
@@ -6758,8 +6629,8 @@ function beginPjaxReadyReplay() {
 	};
 }
 
-function withPjaxReadyReplay(callback) {
-	var endReplay = beginPjaxReadyReplay();
+function withPjaxReadyReplay(callback, isCurrent) {
+	var endReplay = beginPjaxReadyReplay(isCurrent);
 	try {
 		return callback();
 	} finally {
@@ -6767,114 +6638,117 @@ function withPjaxReadyReplay(callback) {
 	}
 }
 
-function isPjaxScriptAlreadyLoaded(oldScript) {
-	if (!oldScript || !oldScript.src) {
-		return false;
+// 已完成的外部依赖跨页面复用；DOM 中尚未执行的占位脚本不能算作已加载。
+var argonPjaxLoadedScripts = Object.create(null);
+var argonPjaxScriptCleanups = [];
+var argonPjaxModuleCompletions = Object.create(null);
+var argonPjaxModuleId = 0;
+document.querySelectorAll('script[src]').forEach(function (script) {
+	// 核心脚本之前的同步依赖已由解析器执行，恢复首页缓存时也应复用。
+	if (!script.async && !script.defer && script.type !== 'module') {
+		argonPjaxLoadedScripts[script.src] = true;
+	} else {
+		script.addEventListener('load', function () { argonPjaxLoadedScripts[script.src] = true; }, { once: true });
 	}
-	try {
-		var scripts = document.querySelectorAll('script[src]');
-		for (var i = 0; i < scripts.length; i++) {
-			if (scripts[i] !== oldScript && scripts[i].src === oldScript.src) {
-				return true;
-			}
+});
+
+function cancelPjaxScriptLoads() {
+	argonPjaxScriptCleanups.slice().forEach(function (cancel) { cancel(); });
+}
+
+function isPjaxScriptAlreadyLoaded(oldScript) {
+	if (!oldScript || !oldScript.src) return false;
+	if (argonPjaxLoadedScripts[oldScript.src]) return true;
+	var scripts = document.querySelectorAll('script[src]');
+	for (var i = 0; i < scripts.length; i++) {
+		if (scripts[i] !== oldScript && scripts[i].src === oldScript.src &&
+			!scripts[i].hasAttribute('data-argon-pjax-inert') &&
+			!scripts[i].hasAttribute('data-pjax-dynamic')) {
+			return true;
 		}
-	} catch (err) { }
+	}
 	return false;
 }
 
-/**
- * 执行单个脚本元素
- * 需求 4.4: 脚本执行失败时捕获错误并记录日志，不中断其他脚本执行
- * 
- * @param {HTMLScriptElement} oldScript - 原始脚本元素
- * @returns {Promise<boolean>} 是否执行成功
- */
-function executeScript(oldScript) {
+/** 等待外部脚本加载和内联 module 执行；失败的依赖允许下次重试。 */
+function executeScript(oldScript, isCurrent) {
 	return new Promise(function (resolve) {
-	try {
-		// 创建新的 script 元素
-		const newScript = document.createElement('script');
-		const hasSrc = !!oldScript.src;
-		const scriptType = (oldScript.getAttribute('type') || '').toLowerCase();
-
-		// 复制脚本内容
-		if (oldScript.textContent && !hasSrc) {
-			newScript.textContent = oldScript.textContent;
-		}
-
-		// 复制所有属性（包括 type, async, defer 等）
-		// 需求 4.5: 尊重 async 和 defer 属性的执行时机
-		Array.from(oldScript.attributes).forEach(function (attr) {
-			if (attr.name !== 'data-pjax-executed') {
-				newScript.setAttribute(attr.name, attr.value);
-			}
-		});
-		newScript.setAttribute('data-dynamic', 'true');
-		newScript.setAttribute('data-pjax-dynamic', 'true');
-
-		// 将脚本添加到 head 并立即执行
-		if (hasSrc) {
-			if (isPjaxScriptAlreadyLoaded(oldScript)) {
-				ArgonDebug.log('External script already loaded, skipped:', oldScript.src);
-				resolve(true);
-				return;
-			}
-			if (!oldScript.hasAttribute('async') && !oldScript.hasAttribute('defer')) {
-				newScript.async = false;
-			}
-			var endReadyReplay = beginPjaxReadyReplay();
-			let settled = false;
-			let timeout = window.setTimeout(function () {
-				if (settled) {
-					return;
-				}
-				settled = true;
-				endReadyReplay();
-				ArgonDebug.warn('Script load timeout:', oldScript.src);
-				resolve(false);
-			}, 10000);
-
-			newScript.onload = function () {
-				if (settled) {
-					return;
-				}
-				settled = true;
-				endReadyReplay();
-				window.clearTimeout(timeout);
-				ArgonDebug.log('External script loaded:', oldScript.src);
-				resolve(true);
-			};
-			newScript.onerror = function (error) {
-				if (settled) {
-					return;
-				}
-				settled = true;
-				endReadyReplay();
-				window.clearTimeout(timeout);
-				ArgonDebug.error('External script load failed:', oldScript.src, error);
-				resolve(false);
-			};
-			document.head.appendChild(newScript);
+		if (oldScript.noModule) {
+			resolve(true);
 			return;
 		}
-
-		withPjaxReadyReplay(function () {
-			document.head.appendChild(newScript);
-		});
-
-		// 执行后立即移除，避免污染 DOM
-		if (scriptType !== 'module') {
-			document.head.removeChild(newScript);
+		if ((isCurrent && !isCurrent()) || oldScript.isConnected === false) {
+			resolve(false);
+			return;
 		}
-
-		ArgonDebug.log('Script executed successfully:', oldScript.textContent.substring(0, 50) + '...');
-		resolve(true);
-	} catch (error) {
-		// 需求 4.4: 捕获错误并记录日志
-		ArgonDebug.error('Script execution failed:', error);
-		ArgonDebug.error('Failed script content:', oldScript.textContent);
-		resolve(false);
-	}
+		if (isPjaxScriptAlreadyLoaded(oldScript)) {
+			resolve(true);
+			return;
+		}
+		var newScript = null;
+		var timeout = null;
+		var settled = false;
+		var moduleId = null;
+		var endReadyReplay = function () {};
+		function finish(success) {
+			if (settled) return;
+			settled = true;
+			window.clearTimeout(timeout);
+			endReadyReplay();
+			if (moduleId !== null) delete argonPjaxModuleCompletions[moduleId];
+			argonPjaxScriptCleanups = argonPjaxScriptCleanups.filter(function (cancel) { return cancel !== cancelLoad; });
+			if (newScript) {
+				newScript.onload = newScript.onerror = null;
+				if (!success || !oldScript.src) newScript.remove();
+			}
+			if (success && oldScript.src) argonPjaxLoadedScripts[oldScript.src] = true;
+			resolve(success);
+		}
+		function cancelLoad() { finish(false); }
+		try {
+			newScript = document.createElement('script');
+			var hasSrc = !!oldScript.src;
+			var isModule = (oldScript.getAttribute('type') || '').toLowerCase() === 'module';
+			Array.from(oldScript.attributes).forEach(function (attr) {
+				if (attr.name !== 'data-pjax-executed' && attr.name !== 'data-argon-pjax-inert') {
+					newScript.setAttribute(attr.name, attr.value);
+				}
+			});
+			newScript.setAttribute('data-dynamic', 'true');
+			newScript.setAttribute('data-pjax-dynamic', 'true');
+			if (!hasSrc) {
+				newScript.textContent = oldScript.textContent;
+				if (isModule) {
+					// 内联 module 不触发 load；末尾回调也会等待顶层 await 完成。
+					moduleId = ++argonPjaxModuleId;
+					argonPjaxModuleCompletions[moduleId] = function () { finish(true); };
+					var completion = 'window.argonPjaxModuleCompletions[' + moduleId + ']';
+					newScript.textContent += '\n;' + completion + ' && ' + completion + '();';
+				}
+			}
+			if (hasSrc || isModule) {
+				// 串行执行器负责依赖顺序，不能由动态 script 的默认 async 抢跑。
+				newScript.async = false;
+				argonPjaxScriptCleanups.push(cancelLoad);
+				endReadyReplay = beginPjaxReadyReplay(isCurrent);
+				timeout = window.setTimeout(function () {
+					ArgonDebug.warn('Script load timeout:', oldScript.src);
+					finish(false);
+				}, 10000);
+				newScript.onload = function () { finish(true); };
+				newScript.onerror = function () {
+					ArgonDebug.warn('Script load failed:', oldScript.src);
+					finish(false);
+				};
+				document.head.appendChild(newScript);
+			} else {
+				withPjaxReadyReplay(function () { document.head.appendChild(newScript); }, isCurrent);
+				finish(true);
+			}
+		} catch (error) {
+			ArgonDebug.error('Script execution failed:', error);
+			finish(false);
+		}
 	});
 }
 
@@ -6888,7 +6762,7 @@ function executeScript(oldScript) {
  * @param {HTMLElement|Document} container - 新页面的容器元素或文档对象
  * @returns {Promise<Object>} 执行结果统计 {total, success, failed}
  */
-function executeInlineScripts(container) {
+function executeInlineScripts(container, isCurrent) {
 	// 如果没有传入容器，使用整个文档
 	if (!container) {
 		container = document;
@@ -6918,7 +6792,7 @@ function executeInlineScripts(container) {
 			ArgonDebug.log(`Script ${index + 1}: Data script (${scriptType}), skipped`);
 			return;
 		}
-		// 需求 4.2: 只执行内联脚本（没有 src 属性的脚本）
+		// 外部依赖与内联初始化共用同一条顺序执行链。
 		if (script.src || (script.textContent && script.textContent.trim() !== '')) {
 			// 跳过空脚本
 			if (!script.src && (!script.textContent || script.textContent.trim() === '')) {
@@ -6930,8 +6804,9 @@ function executeInlineScripts(container) {
 
 			// 需求 4.4: 错误隔离 - 单个脚本失败不影响其他脚本
 			chain = chain.then(function () {
+				if (isCurrent && !isCurrent()) return;
 				ArgonDebug.log(`Executing script ${index + 1}/${scripts.length}`);
-				return executeScript(script).then(function (success) {
+				return executeScript(script, isCurrent).then(function (success) {
 					if (success) {
 						script.setAttribute('data-pjax-executed', 'true');
 						successCount++;
@@ -6941,7 +6816,7 @@ function executeInlineScripts(container) {
 				});
 			});
 		} else {
-			// 外部脚本由浏览器自动加载，不需要手动执行
+			// 空脚本无需执行。
 			ArgonDebug.log(`Script ${index + 1}: Empty, skipped`);
 		}
 	});
@@ -6959,14 +6834,17 @@ function executeInlineScripts(container) {
 }
 
 function executePjaxScripts(containers) {
-	let chain = Promise.resolve();
-	(containers && containers.length ? containers : ['#primary']).forEach(function (selector) {
+	var generation = argonPjaxPageGeneration;
+	var isCurrent = function () { return generation === argonPjaxPageGeneration; };
+	// 固定本次替换的节点，异步依赖完成后不能重新查询并误执行下一页脚本。
+	var roots = (containers && containers.length ? containers : ['#primary']).map(function (selector) {
+		return document.querySelector(selector);
+	});
+	var chain = Promise.resolve();
+	roots.forEach(function (container) {
 		chain = chain.then(function () {
-			var container = document.querySelector(selector);
-			if (!container) {
-				return null;
-			}
-			return executeInlineScripts(container);
+			if (!container || !isCurrent()) return;
+			return executeInlineScripts(container, isCurrent);
 		});
 	});
 	return chain;
@@ -7058,6 +6936,7 @@ function syncPjaxPrimaryClasses() {
 var ArgonPjaxPrefetch = (function () {
 	var CACHE_TTL = 45000;
 	var MAX_CACHE_ITEMS = 8;
+	var MAX_PREFETCH_REQUESTS = 2;
 	var cache = {};
 	var cacheOrder = [];
 	var inflight = {};
@@ -7098,6 +6977,16 @@ var ArgonPjaxPrefetch = (function () {
 		}
 	}
 
+	// Speculation is only safe for public, query-free content links.
+	function canPrefetch(url) {
+		var parsed = new URL(url, window.location.href);
+		var connection = window.navigator && window.navigator.connection;
+		if (connection && (connection.saveData || /(^|-)2g$/.test(connection.effectiveType || ''))) return false;
+		return !parsed.search && !parsed.username && !parsed.password &&
+			!/(?:^|\/)(?:wp-admin|wp-login\.php|wp-json|wp-cron\.php|download)(?:\/|$)/i.test(parsed.pathname) &&
+			!/\.(?:zip|pdf|png|jpe?g|gif|webp|svg|mp4|mp3|xml|json)$/i.test(parsed.pathname);
+	}
+
 	function readCache(key) {
 		var item = cache[key];
 		if (!item) {
@@ -7127,20 +7016,47 @@ var ArgonPjaxPrefetch = (function () {
 		}
 		transportInstalled = true;
 		jQuery.ajaxTransport('+html', function (options) {
-			if (!options || (options.type || 'GET').toUpperCase() !== 'GET') {
-				return;
-			}
-			var cached = readCache(normalizeUrl(options.url));
-			if (!cached) {
-				return;
-			}
+			if (!options || options.argonSkipPrefetch || !options.container || !options.fragment ||
+				(options.type || 'GET').toUpperCase() !== 'GET' || options.cache === false ||
+				options.push === false || options.replace === true) return;
+			var key = normalizeUrl(options.url);
+			// Refreshes must not replay an earlier speculative response.
+			if (key === normalizeUrl(window.location.href) || !canPrefetch(key)) return;
+			if ([].concat(options.container).join(',') !== getPjaxContainers().join(',') ||
+				[].concat(options.fragment).join(',') !== getPjaxContainers().join(',')) return;
+			var cached = readCache(key);
+			var request = inflight[key];
+			if (!cached && !request) return;
+			var aborted = false, timer = null, fallback = null;
 			return {
 				send: function (headers, complete) {
-					window.setTimeout(function () {
-						complete(cached.status || 200, cached.statusText || 'success', { text: cached.html }, cached.headers || 'Content-Type: text/html');
-					}, 0);
+					function deliver(item) {
+						if (!aborted) complete(item.status || 200, item.statusText || 'success', { text: item.html }, item.headers || 'Content-Type: text/html');
+					}
+					if (cached) {
+						timer = window.setTimeout(function () { deliver(cached); }, 0);
+					} else {
+						request.done(function (html, status, xhr) {
+							deliver({ html: html, status: xhr.status, statusText: xhr.statusText, headers: xhr.getAllResponseHeaders() });
+						}).fail(function () {
+							if (aborted) return;
+							// A failed speculative request must not force a full-page reload.
+							fallback = jQuery.ajax(jQuery.extend({}, options, {
+								argonSkipPrefetch: true, global: false, headers: headers,
+								beforeSend: null, success: null, error: null, complete: null
+							})).done(function (html, status, xhr) {
+								deliver({ html: html, status: xhr.status, statusText: xhr.statusText, headers: xhr.getAllResponseHeaders() });
+							}).fail(function (xhr, status) {
+								if (!aborted) complete(xhr.status || 0, status);
+							});
+						});
+					}
 				},
-				abort: function () { }
+				abort: function () {
+					aborted = true;
+					window.clearTimeout(timer);
+					if (fallback) fallback.abort();
+				}
 			};
 		});
 	}
@@ -7168,7 +7084,8 @@ var ArgonPjaxPrefetch = (function () {
 			startPageExitTransition();
 		}
 		if (typeof PageLoader !== 'undefined') {
-			PageLoader.show(root || document);
+			// 请求期间仅显示进度，待新 DOM 到位后再追踪资源，避免扫描旧页面。
+			PageLoader.show(root || document, false);
 		}
 		setTopProgress(progress || 12);
 	}
@@ -7200,7 +7117,7 @@ var ArgonPjaxPrefetch = (function () {
 			return null;
 		}
 		var url = getSameOriginUrl(input);
-		if (!url) {
+		if (!url || !canPrefetch(url) || normalizeUrl(url) === normalizeUrl(window.location.href)) {
 			return null;
 		}
 		installTransport();
@@ -7214,6 +7131,7 @@ var ArgonPjaxPrefetch = (function () {
 		if (inflight[key]) {
 			return inflight[key];
 		}
+		if (Object.keys(inflight).length >= MAX_PREFETCH_REQUESTS) return null;
 		var request = jQuery.ajax({
 			url: key,
 			type: 'GET',
@@ -7287,17 +7205,9 @@ var ArgonPjaxPrefetch = (function () {
 			runPjax();
 			return true;
 		}
-		var request = prefetch(url);
-		if (request && request.done) {
-			setTopProgress(28);
-			request.done(function () {
-				setTopProgress(46);
-			}).fail(function () {
-				setTopProgress(34);
-			}).always(runPjax);
-		} else {
-			runPjax();
-		}
+		// Start real navigation immediately; the transport reuses any in-flight hover request.
+		// Cold clicks no longer perform a speculative GET before the actual PJAX request.
+		runPjax();
 		return true;
 	}
 
@@ -7385,7 +7295,9 @@ var PageLoader = (function () {
 		trackedTotal: 0,
 		trackedDone: 0,
 		trackId: 0,
-		trackedNodes: []
+		trackedNodes: [],
+		resourceCleanups: [],
+		fadeTimer: null
 	};
 
 	function createElement() {
@@ -7444,12 +7356,18 @@ var PageLoader = (function () {
 	}
 
 	function bindResource(node, trackId) {
-		var done = false;
-		function onDone() {
-			if (done) return;
+		var done = false, timeout = null, readyTimer = null;
+		function cleanup() {
 			done = true;
+			clearTimeout(timeout);
+			clearTimeout(readyTimer);
 			node.removeEventListener('load', onDone);
 			node.removeEventListener('error', onDone);
+		}
+		state.resourceCleanups.push(cleanup);
+		function onDone() {
+			if (done) return;
+			cleanup();
 			if (trackId !== state.trackId) {
 				return;
 			}
@@ -7461,17 +7379,22 @@ var PageLoader = (function () {
 		node.addEventListener('load', onDone);
 		node.addEventListener('error', onDone);
 		if (isResourceReady(node)) {
-			setTimeout(onDone, 0);
+			readyTimer = setTimeout(onDone, 0);
 		}
-		setTimeout(onDone, CONFIG.RESOURCE_TIMEOUT);
+		timeout = setTimeout(onDone, CONFIG.RESOURCE_TIMEOUT);
 	}
 
 	function isImagePending(img) {
-		return img && !img.complete && img.getAttribute && img.getAttribute('loading') !== 'lazy';
+		if (!img || img.complete || !img.getAttribute || img.getAttribute('loading') === 'lazy') return false;
+		// Below-the-fold eager images must not hold the first-screen loading indicator.
+		var rect = img.getBoundingClientRect();
+		var viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+		return rect.bottom > 0 && rect.top < viewportHeight && rect.width > 0 && rect.height > 0;
 	}
 
 	function isStylePending(node) {
-		return node && node.tagName === 'LINK' && node.rel && node.rel.toLowerCase().indexOf('stylesheet') > -1;
+		return node && !node.disabled && node.tagName === 'LINK' && node.rel && node.rel.toLowerCase().indexOf('stylesheet') > -1 &&
+			(!node.media || !window.matchMedia || window.matchMedia(node.media).matches);
 	}
 
 	function collectPreloadResources(root) {
@@ -7485,29 +7408,23 @@ var PageLoader = (function () {
 		}
 		var styles = document.querySelectorAll('link[rel~="stylesheet"]');
 		for (var j = 0; j < styles.length; j++) {
-			if (!styles[j].sheet && !styles[j].getAttribute('data-argon-preload-seen') && isStylePending(styles[j])) {
+			if (!styles[j].sheet && isStylePending(styles[j])) {
 				nodes.push(styles[j]);
 			}
 		}
-		var loader = getElement();
-		var bgUrls = [];
-		if (loader.getAttribute('data-page-bg')) {
-			bgUrls.push(loader.getAttribute('data-page-bg'));
-		}
-		if (document.documentElement.classList.contains('darkmode') && loader.getAttribute('data-page-bg-dark')) {
-			bgUrls.push(loader.getAttribute('data-page-bg-dark'));
-		}
-		for (var k = 0; k < bgUrls.length; k++) {
-			var preloadImg = new Image();
-			preloadImg.src = bgUrls[k];
-			if (!preloadImg.complete) {
-				nodes.push(preloadImg);
-			}
-		}
+		// 装饰背景由 CSS / preload 自行加载；随机图片 API 的重定向与下载
+		// 不能拖住首屏进度，也不应在每次 PJAX 时额外创建 Image 请求。
 		return nodes;
 	}
 
+	function clearResourceTracking() {
+		state.resourceCleanups.forEach(function (cleanup) { cleanup(); });
+		state.resourceCleanups = [];
+		state.trackedNodes = [];
+	}
+
 	function trackResources(root) {
+		clearResourceTracking();
 		state.trackId += 1;
 		var nodes = collectPreloadResources(root);
 		state.trackedNodes = nodes;
@@ -7529,12 +7446,14 @@ var PageLoader = (function () {
 		});
 	}
 
-	function show(root) {
+	function show(root, shouldTrackResources) {
 		var el = getElement();
 		if (state.hideTimer) {
 			clearTimeout(state.hideTimer);
 			state.hideTimer = null;
 		}
+		clearTimeout(state.fadeTimer);
+		state.fadeTimer = null;
 		state.startTime = Date.now();
 		state.isVisible = true;
 		state.pendingHide = false;
@@ -7544,7 +7463,12 @@ var PageLoader = (function () {
 		state.trackedDone = 0;
 		state.trackedNodes = [];
 		updateProgress(0);
-		trackResources(root || document);
+		if (shouldTrackResources === false) {
+			clearResourceTracking();
+			state.trackId += 1;
+		} else {
+			trackResources(root || document);
+		}
 	}
 
 	function hide() {
@@ -7561,9 +7485,11 @@ var PageLoader = (function () {
 		var elapsedTime = Date.now() - state.startTime;
 		var remainingTime = Math.max(0, CONFIG.MIN_DISPLAY_TIME - elapsedTime);
 
+		clearTimeout(state.hideTimer);
+		clearTimeout(state.fadeTimer);
 		state.hideTimer = setTimeout(function () {
 			el.classList.add('is-hiding');
-			setTimeout(function () {
+			state.fadeTimer = setTimeout(function () {
 				el.classList.remove('is-visible');
 				el.classList.remove('is-hiding');
 				state.isVisible = false;
@@ -7576,6 +7502,8 @@ var PageLoader = (function () {
 	}
 
 	function destroy() {
+		clearResourceTracking();
+		clearTimeout(state.fadeTimer);
 		if (state.hideTimer) {
 			clearTimeout(state.hideTimer);
 			state.hideTimer = null;
@@ -7613,13 +7541,15 @@ if (typeof NProgress !== 'undefined') {
 	NProgress.configure({ showSpinner: false });
 }
 
-if (document.readyState !== 'complete') {
-	PageLoader.show(document);
-	window.addEventListener('load', function () {
+// Footer DOM + tracked first-screen resources are sufficient. Later optional
+// scripts must not keep the progress bar waiting for DOMContentLoaded.
+PageLoader.show(document);
+if (!document.body && document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', function () {
+		PageLoader.trackResources(document);
 		PageLoader.hide();
-	});
+	}, { once: true });
 } else {
-	PageLoader.show(document);
 	PageLoader.hide();
 }
 var pageTransitionTimer = null;
@@ -7700,9 +7630,12 @@ function endPageTransition() {
  *
  * @param {Array<Function>} tasks 按依赖顺序排列的任务
  * @param {Function} [onFinish] 全部完成后的回调
+ * @param {Function} [isCurrent] 本次页面是否仍然有效
+ * @returns {Function} 取消后续任务与完成回调
  */
-function runArgonPjaxInitTasks(tasks, onFinish) {
+function runArgonPjaxInitTasks(tasks, onFinish, isCurrent) {
 	var index = 0;
+	var cancelled = false;
 	var FRAME_BUDGET = 8;
 	var readClock = (window.performance && typeof window.performance.now === 'function')
 		? function () { return window.performance.now(); }
@@ -7712,8 +7645,10 @@ function runArgonPjaxInitTasks(tasks, onFinish) {
 		: function (callback) { window.setTimeout(callback, 16); };
 
 	function runChunk() {
+		if (cancelled || (isCurrent && !isCurrent())) return;
 		var startedAt = readClock();
 		while (index < tasks.length) {
+			if (cancelled || (isCurrent && !isCurrent())) return;
 			var task = tasks[index++];
 			var taskResult = null;
 			try {
@@ -7750,6 +7685,7 @@ function runArgonPjaxInitTasks(tasks, onFinish) {
 	}
 
 	schedule(runChunk);
+	return function () { cancelled = true; };
 }
 
 /**
@@ -7803,22 +7739,130 @@ function renderPjaxMath() {
 	}
 }
 
+// 网络切页与历史缓存恢复必须运行同一套初始化，避免后退后丢失懒加载、目录和交互。
+function initializeArgonPjaxPage(isHistoryRestore) {
+	var generation = argonPjaxPageGeneration;
+	var requestId = argonPjaxRequestId;
+	argonPjaxDomReplaced = false;
+	// ========== 需求 1.5, 1.6: 重新初始化所有功能模块 ==========
+	pjaxLoading = false;
+	pjaxCompleteRan = true;
+	syncArgonPjaxPageClasses();
+	syncPjaxPageInfoClasses();
+	syncPjaxPrimaryClasses();
+	// 只追踪主内容区的图片，而不是整个 document：
+	// 全文档扫描 + 逐个绑定 load/error/超时定时器在图片多的页面上开销很大。
+	PageLoader.trackResources(document.getElementById('primary') || document);
+	ArgonPjaxPrefetch.setTopProgress(82);
+
+	// 在页面切换期间，跳过卡片入场动画，避免卡片因动画初始状态（opacity: 0）而"卡死"
+	document.documentElement.classList.add('pjax-navigating');
+
+	startPageEnterTransition();
+	// 动画观察器不依赖页面脚本。慢依赖加载期间也要让新卡片保持可见。
+	if (typeof window.argonInitScrollAnimations === 'function') window.argonInitScrollAnimations();
+
+	// 重量级初始化按帧切片执行，避免单个长任务阻塞主线程导致"卡一下"。
+	// 顺序与原实现一致；仅把滚动位置恢复提前到内联脚本之后，
+	// 防止切片跨帧后出现肉眼可见的滚动跳动。
+	argonPjaxCancelInit = runArgonPjaxInitTasks([
+		// 页面脚本按顺序执行并等待依赖，再初始化功能模块。
+		function () {
+			if (isHistoryRestore) return reActivatePageScripts();
+			return executePjaxScripts(pjaxContainers);
+		},
+		function () {
+			if (pjaxScrollTop > 0) {
+				$("body,html").scrollTop(pjaxScrollTop);
+				pjaxScrollTop = 0;
+			}
+		},
+		// MathJax / KaTeX 数学公式渲染（限定在 PJAX 容器内）
+		renderPjaxMath,
+		function () {
+			if (window.ArgonMermaidLoader) return window.ArgonMermaidLoader.render(document.getElementById('primary') || document);
+		},
+		// 初始化各个功能模块（单个模块失败由 runArgonPjaxInitTasks 兜底，不影响其他模块）
+		function () { initArgonLongContentVirtualizer(); },
+		// 瀑布流保持在靠前的位置（与原实现一致）：放到队列末尾会让文章列表
+		// 先以默认流式布局渲染若干帧再突然吸附成瀑布流，出现肉眼可见的跳动。
+		function () { waterflowInit(); },
+		function () { syncPjaxPrimaryClasses(); },
+		function () { initArgonSpecialText(); },
+		function () { lazyloadInit(); },
+		function () { highlightJsRender(); },
+		function () { panguInit(); },
+		function () { clampInit(); },
+		function () { tippyInit(); },
+		function () { getGithubInfoCardContent(); },
+		function () { showPostOutdateToast(); },
+		function () { calcHumanTimesOnPage(); },
+		function () { foldLongComments(); },
+		function () { foldLongShuoshuo(); },
+		function () { handleHashNavigation(); },
+		function () { initArticleSkeletons(); },
+		function () { initPostFullBlur(); },
+		function () { argonInitCommentEditor(); },
+		function () {
+			if (typeof window.argonInitPageEnhancements === 'function') window.argonInitPageEnhancements();
+		},
+		function () {
+			if (typeof window.argonRequestLeftbarStickyStatusUpdate === 'function') {
+				window.argonRequestLeftbarStickyStatusUpdate();
+			}
+		},
+		// 原来这里是 $("html").trigger("resize")：一次同步扇出到所有 jQuery resize
+		// 处理器（瀑布流 ~2N 次强制布局、FAB、侧栏 sticky、封面小组件、移动端布局、
+		// 顶栏过渡高度）。改成只调用换页后确实需要刷新的那几个。
+		function () {
+			if (typeof window.argonRefreshToolbarTransitionHeights === 'function') {
+				window.argonRefreshToolbarTransitionHeights();
+			}
+			if (typeof window.argonRefreshLeftbarStickyWithoutSidebar === 'function') {
+				window.argonRefreshLeftbarStickyWithoutSidebar();
+			}
+			if (typeof window.argonApplyMobileLayout === 'function') {
+				window.argonApplyMobileLayout();
+			}
+			if (typeof window.argonChangeWidgetsDisplayStatus === 'function') {
+				window.argonChangeWidgetsDisplayStatus();
+			}
+		},
+		// 后续初始化（原 pjaxScriptExecution.then 中的逻辑）
+		function () { initArgonPostActions(); },
+		function () { initArgonTodoFallbacks(); },
+		function () {
+			if (typeof window.argonRefreshFloatActionButtons === 'function') {
+				window.argonRefreshFloatActionButtons();
+			}
+		},
+		function () {
+			if (typeof window.resetMobileCatalog === 'function') window.resetMobileCatalog();
+		},
+		function () { resetGT4Captcha(); },
+		// 调用用户自定义的 PJAX 加载完成回调
+		function () {
+			if (typeof (window.pjaxLoaded) == "function") {
+				window.pjaxLoaded();
+			}
+		}
+	], function () {
+		argonPjaxCancelInit = null;
+		// 新请求已经开始时，旧页面的初始化不得提前结束新请求的进度条。
+		if (requestId !== argonPjaxRequestId) return;
+		ArgonPjaxPrefetch.setTopProgress(96);
+		PageLoader.hide();
+		if (typeof NProgress !== 'undefined') NProgress.done();
+	}, function () { return generation === argonPjaxPageGeneration; });
+}
+
+// 容器脚本保留为惰性占位节点，由 executePjaxScripts 单次、按依赖顺序执行。
+$.pjax.defaults.executeScripts = false;
 $.pjax.defaults.timeout = 10000;
 $.pjax.defaults.container = pjaxContainers;
 $.pjax.defaults.fragment = pjaxContainers;
 
-/*
- * PJAX 事件处理优化说明：
- * 1. pjax:beforeReplace - 统一清理资源（LazyLoad Observer、Zoomify、Tippy）
- * 2. pjax:complete - 单次初始化所有功能模块，添加错误处理，初始化所有功能模块
- * 3. pjax:end - 只处理特定任务（移动端目录重置、GT4 验证码重置）
- * 4. 移除了重复的初始化调用，避免资源泄漏和性能问题
- * 
- * 需求映射：
- * - pjax:beforeReplace: 需求 1.1-1.4 (资源清理)
- * - pjax:complete: 需求 1.5, 1.6 (模块初始化和错误隔离)
- * - pjax:end: 需求 1.7 (特定任务处理)
- */
+// beforeReplace 使旧任务失效并清理资源；complete / 缓存 end 共用一次页面初始化。
 if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 	ArgonPjaxPrefetch.bind();
 	$(document).pjax(
@@ -7834,6 +7878,7 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 				}
 			}
 		}).on('pjax:send', function () {
+			argonPjaxRequestId += 1;
 			if (!pjaxLoading) {
 				ArgonPjaxPrefetch.beginNavigationProgress(document, 18);
 			}
@@ -7841,6 +7886,12 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 			// 提前添加 pjax-navigating 类，确保新内容插入 DOM 时卡片入场动画已被禁用
 			document.documentElement.classList.add('pjax-navigating');
 		}).on('pjax:beforeReplace', function (e, dom) {
+			argonPjaxPageGeneration += 1;
+			argonPjaxDomReplaced = true;
+			if (argonPjaxCancelInit) {
+				argonPjaxCancelInit();
+				argonPjaxCancelInit = null;
+			}
 			ArgonPjaxPrefetch.setTopProgress(72);
 			// ========== 需求 1.1-1.4: 清理旧页面的所有资源 ==========
 			// 调用统一的资源清理管理器
@@ -7860,142 +7911,19 @@ if (argonConfig.disable_pjax != true && argonConfig.disable_pjax != 'true') {
 					pjaxScrollTop = 0;
 				}
 			}
-		}).on('pjax:complete', function () {
-			// ========== 需求 1.5, 1.6: 重新初始化所有功能模块 ==========
-			pjaxLoading = false;
-			pjaxCompleteRan = true;
-			syncArgonPjaxPageClasses();
-			syncPjaxPageInfoClasses();
-			syncPjaxPrimaryClasses();
-			// 只追踪主内容区的图片，而不是整个 document：
-			// 全文档扫描 + 逐个绑定 load/error/超时定时器在图片多的页面上开销很大。
-			PageLoader.trackResources(document.getElementById('primary') || document);
-			ArgonPjaxPrefetch.setTopProgress(82);
-
-			// 在页面切换期间，跳过卡片入场动画，避免卡片因动画初始状态（opacity: 0）而"卡死"
-			document.documentElement.classList.add('pjax-navigating');
-
-			startPageEnterTransition();
-
-			// 重量级初始化按帧切片执行，避免单个长任务阻塞主线程导致"卡一下"。
-			// 顺序与原实现一致；仅把滚动位置恢复提前到内联脚本之后，
-			// 防止切片跨帧后出现肉眼可见的滚动跳动。
-			runArgonPjaxInitTasks([
-				// ========== 同步执行新页面中的内联脚本（必须在模块初始化之前）==========
-				function () { return executePjaxScripts(pjaxContainers); },
-				function () {
-					if (pjaxScrollTop > 0) {
-						$("body,html").scrollTop(pjaxScrollTop);
-						pjaxScrollTop = 0;
-					}
-				},
-				// 入场动画要尽早就绪：endPageTransition 会在约 340ms 后摘掉
-				// pjax-navigating，届时没拿到 .animate-in 的新卡片会掉回 opacity: 0 闪一下。
-				// 放在切片队列前部，确保先于该定时器完成。
-				function () {
-					if (typeof window.argonInitScrollAnimations === 'function') {
-						window.argonInitScrollAnimations();
-					}
-				},
-				// MathJax / KaTeX 数学公式渲染（限定在 PJAX 容器内）
-				renderPjaxMath,
-				// 初始化各个功能模块（单个模块失败由 runArgonPjaxInitTasks 兜底，不影响其他模块）
-				function () { initArgonLongContentVirtualizer(); },
-				// 瀑布流保持在靠前的位置（与原实现一致）：放到队列末尾会让文章列表
-				// 先以默认流式布局渲染若干帧再突然吸附成瀑布流，出现肉眼可见的跳动。
-				function () { waterflowInit(); },
-				function () { syncPjaxPrimaryClasses(); },
-				function () { initArgonSpecialText(); },
-				function () { lazyloadInit(); },
-				function () { highlightJsRender(); },
-				function () { panguInit(); },
-				function () { clampInit(); },
-				function () { tippyInit(); },
-				function () { getGithubInfoCardContent(); },
-				function () { showPostOutdateToast(); },
-				function () { calcHumanTimesOnPage(); },
-				function () { foldLongComments(); },
-				function () { foldLongShuoshuo(); },
-				function () { handleHashNavigation(); },
-				function () { initArticleSkeletons(); },
-				function () { initPostFullBlur(); },
-			function () { argonInitCommentEditor(); },
-				function () {
-					if (typeof window.argonRequestLeftbarStickyStatusUpdate === 'function') {
-						window.argonRequestLeftbarStickyStatusUpdate();
-					}
-				},
-				// 原来这里是 $("html").trigger("resize")：一次同步扇出到所有 jQuery resize
-				// 处理器（瀑布流 ~2N 次强制布局、FAB、侧栏 sticky、封面小组件、移动端布局、
-				// 顶栏过渡高度）。改成只调用换页后确实需要刷新的那几个。
-				function () {
-					if (typeof window.argonRefreshToolbarTransitionHeights === 'function') {
-						window.argonRefreshToolbarTransitionHeights();
-					}
-					if (typeof window.argonRefreshLeftbarStickyWithoutSidebar === 'function') {
-						window.argonRefreshLeftbarStickyWithoutSidebar();
-					}
-					if (typeof window.argonApplyMobileLayout === 'function') {
-						window.argonApplyMobileLayout();
-					}
-					if (typeof window.argonChangeWidgetsDisplayStatus === 'function') {
-						window.argonChangeWidgetsDisplayStatus();
-					}
-				},
-				// 后续初始化（原 pjaxScriptExecution.then 中的逻辑）
-				function () { initArgonPostActions(); },
-				function () { initArgonTodoFallbacks(); },
-				function () {
-					if (typeof window.argonRefreshFloatActionButtons === 'function') {
-						window.argonRefreshFloatActionButtons();
-					}
-				},
-				// 调用用户自定义的 PJAX 加载完成回调
-				function () {
-					if (typeof (window.pjaxLoaded) == "function") {
-						window.pjaxLoaded();
-					}
-				}
-			], function () {
-				ArgonPjaxPrefetch.setTopProgress(96);
-				PageLoader.hide();
-				NProgress.done();
-			});
+		}).on('pjax:complete', function (event, xhr, status) {
+			// complete 也会由 abort/error 触发，此时 DOM 没有替换，不能重复初始化旧页面。
+			if (!argonPjaxDomReplaced || status === 'abort' || status === 'error' || status === 'timeout') return;
+			initializeArgonPjaxPage(false);
 		}).on('pjax:error', function () {
 			ArgonPjaxPrefetch.stopNavigationProgress();
 			// 导航失败时也要移除 pjax-navigating 标记，恢复卡片动画
 			document.documentElement.classList.remove('pjax-navigating');
 		}).on('pjax:end', function () {
-			// ========== 需求 1.7: 执行特定任务 ==========
-			syncArgonPjaxPageClasses();
-			syncPjaxPageInfoClasses();
-			syncPjaxPrimaryClasses();
-
-			// ========== 修复：popstate（浏览器后退/前进）时重新激活页面脚本 ==========
-			// 浏览器后退/前进时 pjax:complete 不触发，需要在此处重新执行页面脚本
-			// 仅在 pjax:complete 未执行时才运行（避免正常导航时重复执行）
-			if (!pjaxCompleteRan) {
-				ArgonDebug.log('pjax:end without pjax:complete (popstate), re-activating page scripts');
-				// 先清理旧页面状态
-				cleanupPageSpecificState();
-				// 重新激活页面脚本
-				reActivatePageScripts();
-			}
-			// 供后注册的 pjax:end 处理器判断本次导航 pjax:complete 是否真的跑过
+			// 缓存 popstate 没有 complete；所有容器恢复后只初始化一次。
+			if (argonPjaxDomReplaced) initializeArgonPjaxPage(true);
 			window.argonLastPjaxCompleteRan = pjaxCompleteRan;
 			pjaxCompleteRan = false;
-
-			// 重置移动端目录状态
-			if (typeof window.resetMobileCatalog === 'function') {
-				try {
-					window.resetMobileCatalog();
-				} catch (err) {
-					ArgonDebug.warn('resetMobileCatalog failed:', err);
-				}
-			}
-
-			// GT4: PJAX 后确保评论页验证码已初始化
-			resetGT4Captcha();
 		});
 }
 
@@ -10145,24 +10073,11 @@ document.addEventListener("visibilitychange", function(){
 		});
 	}
 
-	// 5. PJAX 加载动画
-	function initPjaxAnimations() {
-		if (typeof jQuery === 'undefined') return;
-		jQuery(document).on('pjax:end', function () {
-			// initArticleSkeletons / initScrollAnimations 已经在 pjax:complete 的任务队列里跑过，
-			// 这里重复执行只会白白重建一次 IntersectionObserver。只有 popstate（后退/前进，
-			// pjax:complete 不触发）时才需要在这里补齐。
-			var completeRan = window.argonLastPjaxCompleteRan;
-			setTimeout(function () {
-				if (!completeRan) {
-					initArticleSkeletons();
-					initScrollAnimations();
-				}
-				initImageLoadAnimation();
-				initSmoothScroll();
-			}, 100);
-		});
-	}
+	// 与页面初始化队列一起执行，避免固定延时越过下一次导航或在请求失败后重复扫描。
+	window.argonInitPageEnhancements = function () {
+		initImageLoadAnimation();
+		initSmoothScroll();
+	};
 
 	// 7. 主题切换动画 - 已在 header.php 中通过 setDarkmode 函数处理，此处不再重复
 	function initThemeTransition() {
@@ -10205,12 +10120,13 @@ document.addEventListener("visibilitychange", function(){
 		initImageLoadAnimation();
 		initScrollAnimations();
 		initSmoothScroll();
-		initPjaxAnimations();
 		initThemeTransition();
 	}
 
-	if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); }
-	else { init(); }
+	// 核心脚本位于 footer，主题 DOM 已就绪。不要让后续公式/插件脚本
+	// 拖延卡片入场，否则它们会一直停留在 opacity: 0，看起来像白屏。
+	if (document.body) { init(); }
+	else { document.addEventListener('DOMContentLoaded', init, { once: true }); }
 })();
 /* ========== End of Modern UI Enhancements ========== */
 
