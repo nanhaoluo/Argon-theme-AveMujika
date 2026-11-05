@@ -1,0 +1,746 @@
+/* Scoped to the theme settings page, including its legacy feature controls. */
+.argon-settings {
+	--settings-accent:#53449b;
+	--settings-border:#dcdde5;
+	--settings-muted:#666674;
+	max-width:1560px;
+	margin:20px 24px 40px 0;
+	color:#252431
+}
+
+.argon-settings * {
+	box-sizing:border-box
+}
+
+.argon-settings [hidden] {
+	display:none!important
+}
+
+.argon-settings-header {
+	display:flex;
+	align-items:center;
+	justify-content:space-between;
+	gap:24px;
+	padding:6px 0 24px
+}
+
+.argon-settings-eyebrow {
+	font-size:11px;
+	font-weight:700;
+	letter-spacing:.15em;
+	color:var(--settings-accent);
+	margin:0 0 4px
+}
+
+.argon-settings h1 {
+	font-size:28px;
+	font-weight:650;
+	padding:0;
+	margin:0 0 6px
+}
+
+.argon-settings h2:before {
+	content:none
+}
+
+.argon-settings-tools {
+	display:flex;
+	gap:8px;
+	flex-shrink:0
+}
+
+.argon-settings .description {
+	color:var(--settings-muted);
+	line-height:1.7;
+	margin:8px 0 0
+}
+
+.argon-settings-toolbar {
+	position:sticky;
+	top:32px;
+	z-index:30;
+	display:flex;
+	justify-content:space-between;
+	align-items:center;
+	gap:20px;
+	padding:14px 18px;
+	background:#fff;
+	border:1px solid var(--settings-border);
+	border-radius:10px;
+	margin-bottom:22px
+}
+
+.argon-settings-search-box {
+	display:flex;
+	align-items:center;
+	gap:10px;
+	flex:1
+}
+
+.argon-settings-search-box label {
+	font-weight:600;
+	white-space:nowrap
+}
+
+.argon-settings-search-box input {
+	width:min(100%,480px);
+	min-width:80px;
+	margin:0
+}
+
+.argon-settings-save-state {
+	display:flex;
+	align-items:center;
+	gap:12px;
+	font-size:12px;
+	color:var(--settings-muted)
+}
+
+.argon-settings-layout {
+	display:grid;
+	grid-template-columns:200px minmax(0,1fr);
+	gap:24px;
+	align-items:start
+}
+
+.argon-settings-nav {
+	position:sticky;
+	top:116px;
+	max-height:calc(100vh - 144px);
+	overflow:auto;
+	display:grid;
+	gap:4px;
+	padding-right:4px
+}
+
+.argon-settings-nav>a {
+	display:flex;
+	align-items:center;
+	gap:8px;
+	padding:10px 12px;
+	color:#454450;
+	text-decoration:none;
+	border-radius:6px;
+	font-weight:500
+}
+
+.argon-settings-nav>a:hover {
+	background:#e9e7f0;
+	color:var(--settings-accent)
+}
+
+.argon-settings-nav>a.is-active {
+	background:#e5e1f2;
+	color:#443482;
+	font-weight:650
+}
+
+.argon-settings-count {
+	margin-left:auto;
+	color:#777480;
+	font-size:11px;
+	font-weight:400
+}
+
+.argon-settings-dirty-count {
+	background:var(--settings-accent);
+	color:#fff;
+	min-width:18px;
+	text-align:center;
+	font-size:11px;
+	border-radius:10px
+}
+
+.argon-settings-nav>.description {
+	font-size:12px;
+	padding:8px 12px;
+	line-height:1.8
+}
+
+.argon-settings-content {
+	min-width:0
+}
+
+.argon-settings-context {
+	display:flex;
+	align-items:center;
+	justify-content:space-between;
+	gap:16px;
+	margin:0 0 12px;
+	font-size:15px;
+	scroll-margin-top:115px
+}
+
+#argon-settings-result-count {
+	font-size:12px;
+	color:var(--settings-muted)
+}
+
+#argon-settings-outline {
+	display:flex;
+	flex-wrap:wrap;
+	gap:6px;
+	margin-bottom:16px
+}
+
+#argon-settings-outline:empty {
+	display:none
+}
+
+#argon-settings-outline a {
+	font-size:12px;
+	padding:4px 9px;
+	background:#e9e7ef;
+	border-radius:4px;
+	color:#51476d;
+	text-decoration:none
+}
+
+.argon-settings #main_form>.form-table {
+	width:100%;
+	margin:0;
+	border-collapse:separate;
+	border-spacing:0;
+	table-layout:fixed
+}
+
+.argon-settings-section {
+	background:#fff
+}
+
+.argon-settings-section>tr>th {
+	width:190px;
+	text-align:left;
+	vertical-align:top;
+	padding:22px 20px;
+	border-bottom:1px solid #eeedf2;
+	font-size:13px;
+	font-weight:600
+}
+
+.argon-settings-section>tr>th:not(.subtitle)>label {
+	display:inline-block;
+	word-break:keep-all;
+	overflow-wrap:normal;
+	line-height:1.8
+}
+
+.argon-settings-section>tr>td {
+	padding:20px 24px 20px 8px;
+	vertical-align:top;
+	border-bottom:1px solid #eeedf2;
+	overflow-wrap:anywhere
+}
+
+.argon-settings-section>tr>th.subtitle {
+	width:auto;
+	padding:22px 24px 10px;
+	border-bottom:0
+}
+
+.argon-settings-section>tr>th.subtitle h2 {
+	font-size:22px;
+	margin:4px 0 6px;
+	font-weight:650;
+	scroll-margin-top:120px
+}
+
+.argon-settings-section-heading>th>p {
+	font-weight:400;
+	color:var(--settings-muted);
+	font-size:13px;
+	margin:0 0 12px
+}
+
+.argon-settings-section>tr>th.subtitle h3 {
+	font-size:16px;
+	margin:12px 0 2px;
+	padding-top:8px;
+	color:#3c3556;
+	scroll-margin-top:120px
+}
+
+.argon-settings-section>tr>th.subtitle h4 {
+	font-size:13px;
+	margin:12px 0 0;
+	padding-left:10px;
+	border-left:3px solid #bfb7d9;
+	color:#55515f;
+	scroll-margin-top:120px
+}
+
+.argon-settings-section+.argon-settings-section>.argon-settings-section-heading>th {
+	border-top:24px solid #f0f0f1
+}
+
+.argon-settings-section>tr.is-dirty {
+	background:#faf8ff
+}
+
+.argon-settings-section>tr.is-dirty>th {
+	box-shadow:inset 3px 0 var(--settings-accent)
+}
+
+.argon-settings input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]),.argon-settings select,.argon-settings textarea {
+	max-width:100%;
+	box-sizing:border-box;
+	border-radius:5px
+}
+
+.argon-settings input[type=text],.argon-settings input[type=url],.argon-settings input[type=password] {
+	width:100%;
+	max-width:540px
+}
+
+.argon-settings textarea {
+	width:100%;
+	max-width:860px;
+	resize:vertical;
+	min-height:88px;
+	font-size:13px;
+	line-height:1.7
+}
+
+.argon-settings input[type=number] {
+	width:100px
+}
+
+.argon-settings input[type=color] {
+	padding:2px
+}
+
+.argon-settings .button {
+	white-space:nowrap
+}
+
+.argon-settings .button-primary {
+	background:var(--settings-accent);
+	border-color:var(--settings-accent)
+}
+
+.argon-settings .button:focus-visible,.argon-settings a:focus-visible {
+	outline:2px solid var(--settings-accent);
+	outline-offset:3px
+}
+
+.argon-row-actions {
+	display:none;
+	align-items:center;
+	justify-content:flex-end;
+	gap:8px;
+	margin:10px 0 0 auto;
+	width:max-content;
+	max-width:100%
+}
+
+.argon-setting-row.is-dirty>td>.argon-row-actions,.argon-setting-row[aria-busy=true]>td>.argon-row-actions,.argon-row-actions:has(.argon-row-status:not(:empty)) {
+	display:flex
+}
+
+.argon-row-status {
+	font-size:12px;
+	color:var(--settings-muted);
+	max-width:340px
+}
+
+.argon-row-status.is-success,.argon-inline-test-status.is-success {
+	color:#16703c
+}
+
+.argon-row-status.is-error,.argon-inline-test-status.is-error {
+	color:#b32d2e
+}
+
+.argon-inline-test-status {
+	display:inline-block;
+	font-size:12px;
+	margin-left:8px
+}
+
+.argon-settings-empty {
+	padding:32px;
+	background:white;
+	border:1px dashed var(--settings-border);
+	border-radius:8px;
+	text-align:center;
+	color:var(--settings-muted)
+}
+
+.argon-settings dialog {
+	width:min(760px,calc(100vw - 32px));
+	max-height:85vh;
+	overflow:auto;
+	border:1px solid var(--settings-border);
+	border-radius:12px;
+	padding:24px;
+	color:#252431;
+	box-shadow:0 16px 60px #19132930
+}
+
+.argon-settings dialog::backdrop {
+	background:#1e183f66
+}
+
+.argon-settings dialog textarea {
+	max-width:none;
+	min-height:280px;
+	font:12px/1.7 monospace;
+	margin:8px 0 16px
+}
+
+.argon-settings .radio-with-img {
+	display:inline-block;
+	vertical-align:top;
+	margin:0 16px 20px 0;
+	text-align:center;
+	max-width:100%
+}
+
+.argon-settings .radio-with-img img,.argon-settings img {
+	max-width:100%;
+	height:auto
+}
+
+.argon-settings .radio-img {
+	cursor:pointer
+}
+
+.argon-settings .radio-with-img>label {
+	display:block;
+	margin-top:6px
+}
+
+.argon-settings .radio-h>label {
+	display:inline-block;
+	margin:0 16px 8px 0
+}
+
+.argon-settings .form-table-dense {
+	table-layout:fixed;
+	width:100%
+}
+
+.argon-settings .form-table-dense th {
+	width:auto;
+	padding:10px 0
+}
+
+.argon-settings .form-table-mathrender label>div {
+	padding-left:24px;
+	font-weight:400;
+	margin-top:10px
+}
+
+.argon-settings .form-table-mathrender label>input:not(:checked)+div {
+	display:none
+}
+
+.argon-settings .article-meta-container,.argon-settings .search-filters-container {
+	width:100%;
+	margin:12px 0
+}
+
+.argon-settings .argon-ai-api-table {
+	width:100%;
+	table-layout:fixed
+}
+
+.argon-settings .argon-ai-api-table th,.argon-settings .argon-ai-api-table td {
+	padding:8px 6px;
+	font-size:12px;
+	vertical-align:top;
+	overflow-wrap:anywhere
+}
+
+.argon-settings .argon-ai-api-table td code {
+	display:block;
+	max-width:100%;
+	white-space:normal
+}
+
+.argon-settings .argon-ai-api-table .button {
+	margin-bottom:4px;
+	white-space:normal;
+	min-height:26px
+}
+
+.argon-settings #argon-unified-api-list {
+	overflow-x:auto
+}
+
+.argon-settings .argon-unified-api-status pre {
+	white-space:pre-wrap;
+	max-height:200px;
+	overflow:auto
+}
+
+.argon-settings .argon-spam-section-heading th {
+	padding-top:24px;
+	border-top:1px solid var(--settings-border)
+}
+
+.argon-settings .argon-spam-section-heading p {
+	font-size:12px;
+	font-weight:400;
+	color:var(--settings-muted)
+}
+
+.argon-settings .argon-spam-dependent-row.is-disabled {
+	opacity:.55
+}
+
+.argon-settings .argon-spam-rule-card {
+	padding:14px;
+	background:#f7f6fa;
+	border:1px solid var(--settings-border);
+	border-radius:6px;
+	max-width:100%
+}
+
+.argon-settings .gu-mirror {
+	position:fixed!important;
+	margin:0!important;
+	z-index:9999!important;
+	opacity:.8
+}
+
+.gu-hide {
+	display:none!important
+}
+
+.gu-unselectable {
+	user-select:none!important
+}
+
+.gu-transit {
+	opacity:.2
+}
+
+@media(min-width:1500px) {
+	.argon-settings-section>tr>th {
+		width:220px
+	}
+}
+
+@media(max-width:1100px) {
+	.argon-settings-layout {
+		grid-template-columns:170px minmax(0,1fr);
+		gap:16px
+	}
+	.argon-settings-section>tr>th {
+		width:150px;
+		padding-left:16px
+	}
+	.argon-settings-toolbar {
+		gap:10px
+	}
+	.argon-settings-save-state {
+		gap:6px
+	}
+	.argon-settings-search-box label {
+		display:none
+	}
+}
+
+@media(max-width:960px) {
+	.argon-settings-layout {
+		grid-template-columns:minmax(0,1fr)
+	}
+	.argon-settings-nav {
+		position:static;
+		max-height:none;
+		display:flex;
+		overflow-x:auto;
+		gap:6px;
+		padding:0 0 8px
+	}
+	.argon-settings-nav>a {
+		flex-shrink:0;
+		padding:8px 12px;
+		background:#e9e7ef
+	}
+	.argon-settings-nav>.description {
+		display:none
+	}
+	.argon-settings-header {
+		gap:12px
+	}
+	.argon-settings-toolbar {
+		top:32px;
+		flex-wrap:wrap
+	}
+	.argon-settings-search-box {
+		min-width:180px
+	}
+	.argon-settings-section>tr>th {
+		width:160px
+	}
+	.argon-settings .argon-ai-api-table {
+		min-width:640px
+	}
+}
+
+@media(max-width:782px) {
+	.argon-settings {
+		margin:12px 0 32px
+	}
+	.argon-settings-toolbar {
+		top:0;
+		padding:12px;
+		gap:10px
+	}
+	.argon-settings-header {
+		align-items:flex-start;
+		flex-direction:column;
+		padding:8px 0 16px
+	}
+	.argon-settings h1 {
+		font-size:25px
+	}
+	.argon-settings-search-box {
+		flex-basis:100%
+	}
+	.argon-settings-search-box input {
+		width:100%;
+		max-width:none
+	}
+	.argon-settings-save-state {
+		width:100%;
+		justify-content:space-between
+	}
+	.argon-settings-section>tr>th:not(.subtitle),.argon-settings-section>tr>td {
+		display:block;
+		width:100%;
+		max-width:none
+	}
+	.argon-settings-section>tr>th:not(.subtitle) {
+		padding:18px 16px 6px;
+		border-bottom:0
+	}
+	.argon-settings-section>tr>td {
+		padding:4px 16px 18px
+	}
+	.argon-settings-section>tr>th.subtitle {
+		padding:18px 16px 6px
+	}
+	.argon-settings .form-table-dense th {
+		display:block;
+		width:100%
+	}
+	.argon-row-actions {
+		flex-wrap:wrap
+	}
+	.argon-row-status {
+		flex-basis:100%;
+		max-width:100%;
+		text-align:right
+	}
+	.argon-settings-context,.argon-settings h2,.argon-settings h3,.argon-settings h4 {
+		scroll-margin-top:125px
+	}
+}
+
+@media(prefers-reduced-motion:reduce) {
+	.argon-settings * {
+		scroll-behavior:auto!important;
+		animation:none!important;
+		transition:none!important
+	}
+}
+
+.argon-settings-label-column {
+	width:210px
+}
+
+@media(max-width:1100px) {
+	.argon-settings-label-column {
+		width:170px
+	}
+}
+
+@media(max-width:782px) {
+	.argon-settings #main_form>.form-table,.argon-settings-section,.argon-settings-section>tr {
+		display:block;
+		width:100%
+	}
+	.argon-settings colgroup {
+		display:none
+	}
+}
+
+.argon-settings #effect_preview_box {
+	max-width:100%
+}
+
+@media(max-width:782px) {
+	.argon-settings #effect_preview_box {
+		width:100%!important
+	}
+	.argon-settings #effect_preview_box>div {
+		max-width:100%
+	}
+	.argon-settings .immersion-color-example-arrow {
+		display:none
+	}
+	.argon-settings .immersion-color-example {
+		max-width:100%
+	}
+}
+
+.argon-settings-table-scroll {
+	width:100%;
+	max-width:100%;
+	overflow-x:auto
+}
+
+.argon-settings-table-scroll>table {
+	min-width:540px
+}
+
+.argon-settings .panic-date-range-item {
+	display:flex;
+	flex-wrap:wrap;
+	gap:8px;
+	margin-bottom:8px
+}
+
+.argon-settings .panic-date-range-item input {
+	min-width:0;
+	flex:1 1 120px
+}
+
+.argon-settings #effect_preview_box {
+	flex-shrink:1;
+	min-width:0
+}
+
+.argon-settings-pending-filter .argon-settings-section>tr.is-dirty:not([hidden]) {
+	display:table-row!important
+}
+
+@media(max-width:782px) {
+	.argon-settings-pending-filter .argon-settings-section>tr.is-dirty:not([hidden]) {
+		display:block!important
+	}
+}
+
+.argon-settings .argon-ai-api-table th,.argon-settings .argon-ai-api-table td {
+	width:auto;
+	text-align:left
+}
+
+.argon-settings .argon-ai-api-table {
+	min-width:660px
+}
+
+.argon-settings pre {
+	max-width: 100%;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	overflow: auto;
+}
+
+.argon-settings code {
+	overflow-wrap: anywhere;
+	word-break: break-word;
+}

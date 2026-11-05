@@ -8,6 +8,29 @@ $test_options = [];
 $test_post_meta = [];
 $test_posts = [];
 $test_tags = [];
+$test_term_catalog = [10 => 'Ave Mujika', 11 => '音乐', 12 => 'WordPress', 13 => '现场演出'];
+
+function get_terms($args) {
+    global $test_term_catalog;
+    $terms = [];
+    foreach ($test_term_catalog as $id => $name) {
+        $terms[] = (object) ['term_id' => $id, 'name' => $name];
+    }
+    return $terms;
+}
+function get_term($id, $taxonomy) {
+    global $test_term_catalog;
+    return isset($test_term_catalog[$id]) ? (object) ['term_id' => $id, 'name' => $test_term_catalog[$id]] : null;
+}
+function get_term_by($field, $name, $taxonomy) {
+    global $test_term_catalog;
+    foreach ($test_term_catalog as $id => $existing_name) {
+        if (strcasecmp($name, $existing_name) === 0) return get_term($id, $taxonomy);
+    }
+    return false;
+}
+function is_wp_error($value) { return false; }
+function wp_json_encode($value) { return json_encode($value, JSON_UNESCAPED_UNICODE); }
 
 function get_option($name, $default = false) {
     global $test_options;
@@ -170,6 +193,7 @@ function test_assert($condition, $message) {
 }
 
 $root = dirname(__DIR__);
+require_once __DIR__ . '/settings-source.php';
 require_once $root . '/inc/ai-seo.php';
 
 echo ">>> 1. 测试提示词生成与约束规则...\n";
@@ -234,13 +258,26 @@ test_assert(get_post_meta($mock_post_id, 'argon_post_seo_description', true) ===
 test_assert(get_post_meta($mock_post_id, 'argon_post_seo_keywords', true) === $seo_result['keywords_str'], '文章 Meta 中关键词应保存正确');
 test_assert(!empty(get_post_meta($mock_post_id, '_argon_ai_seo_time', true)), '应记录生成时间戳');
 test_assert($test_posts[$mock_post_id]['post_excerpt'] === $seo_result['description'], '当文章原摘要为空时应同步写入 Excerpt');
-test_assert(isset($test_tags[$mock_post_id]) && in_array('Ave Mujika', $test_tags[$mock_post_id]), '应自动追加关键词为文章标签');
+test_assert(isset($test_tags[$mock_post_id]) && $test_tags[$mock_post_id] === [10], '默认仅追加已有完整标签的整数 ID，不创建专属标签');
+test_assert(count($test_term_catalog) === 4, '同步不得新建标签');
+
+// 关键词不等于文章标签：模型可将具体关键词归到更可复用的主题。
+argon_save_post_ai_seo($mock_post_id, ['keywords' => ['新的文章专属关键词'], 'tag_ids' => [11, 11, '12', 999, 12, 13, 10]], ['auto_excerpt' => false, 'auto_tags' => true]);
+test_assert($test_tags[$mock_post_id] === [10, 11, 12, 13], '模型选出的已有标签应去重、校验 ID 并限制为 3 个，保留文章原有标签');
+$before_tags = $test_tags[$mock_post_id];
+argon_save_post_ai_seo($mock_post_id, ['keywords' => ['又一个专属关键词'], 'tag_ids' => [999]], ['auto_tags' => true]);
+test_assert($test_tags[$mock_post_id] === $before_tags, '无匹配标签时不应新增或清空标签');
+$test_options['argon_ai_seo_tag_mode'] = 'allow_new';
+argon_save_post_ai_seo($mock_post_id, ['keywords' => ['用户允许的新标签']], ['auto_tags' => true]);
+test_assert(in_array('用户允许的新标签', $test_tags[$mock_post_id], true), '显式允许新建时应兼容原同步行为');
+unset($test_options['argon_ai_seo_tag_mode']);
 
 echo ">>> 5. 测试 AI 生成调用与 JSON 容错解析...\n";
 $mock_ai_response_payload = "```json\n" . json_encode([
     'description' => 'AI 自动分析生成的专业描述',
     'keywords' => ['关键词A', '关键词B', '关键词C'],
-    'title_suggestion' => '建议新标题'
+    'title_suggestion' => '建议新标题',
+    'tag_ids' => [11, 9999, '12', 11, 12, 13, 10]
 ], JSON_UNESCAPED_UNICODE) . "\n```";
 
 $ai_gen = argon_generate_ai_seo($test_posts[$mock_post_id]);
@@ -248,6 +285,7 @@ test_assert($ai_gen['success'] === true, 'AI 生成调用应成功');
 test_assert($ai_gen['description'] === 'AI 自动分析生成的专业描述', '应解析并提取 description');
 test_assert(in_array('关键词A', $ai_gen['keywords']), '应解析并提取 keywords');
 test_assert($ai_gen['title_suggestion'] === '建议新标题', '应解析并提取 title_suggestion');
+test_assert($ai_gen['tag_ids'] === [11, 12, 13], '模型标签选择应限制在已有目录内、整数 ID、去重且最多 3 项');
 
 echo ">>> 6. 测试 functions.php 契约（SEO 标签输出与 API 场景扩展）...\n";
 $functions_source = file_get_contents($root . '/functions.php');
@@ -261,7 +299,7 @@ test_assert(strpos($functions_source, "argon_ai_seo_active_api") !== false, 'arg
 test_assert(strpos($functions_source, "'seo_active' => \$seo_active") !== false, 'argon_ajax_get_all_unified_apis 必须返回 seo_active');
 
 echo ">>> 7. 测试 settings.php 契约（设置面板与保存逻辑）...\n";
-$settings_source = file_get_contents($root . '/settings.php');
+$settings_source = argon_test_settings_source($root);
 
 test_assert(strpos($settings_source, 'id="ai-seo"') !== false, 'settings.php 中必须包含 id="ai-seo" 标题');
 test_assert(strpos($settings_source, 'name="argon_ai_seo_enable"') !== false, '必须包含启用开关');
@@ -269,6 +307,8 @@ test_assert(strpos($settings_source, 'name="argon_ai_seo_active_api"') !== false
 test_assert(strpos($settings_source, 'name="argon_ai_seo_auto_mode"') !== false, '必须包含自动生成模式选择器');
 test_assert(strpos($settings_source, 'name="argon_ai_seo_sync_excerpt"') !== false, '必须包含摘要同步选项');
 test_assert(strpos($settings_source, 'name="argon_ai_seo_sync_tags"') !== false, '必须包含标签同步选项');
+test_assert(strpos($settings_source, 'name="argon_ai_seo_tag_mode"') !== false, '必须包含标签同步策略');
+test_assert(strpos($settings_source, "argon_update_option('argon_ai_seo_tag_mode')") !== false, '必须保存标签同步策略');
 test_assert(strpos($settings_source, 'name="argon_ai_seo_max_keywords"') !== false, '必须包含关键词数量上限设置');
 test_assert(strpos($settings_source, 'name="argon_ai_seo_custom_prompt"') !== false, '必须包含自定义提示词输入框');
 test_assert(strpos($settings_source, "argon_update_option_checkbox('argon_ai_seo_enable')") !== false, '设置保存函数必须保存 argon_ai_seo_enable');

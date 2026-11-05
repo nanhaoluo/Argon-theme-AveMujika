@@ -7,7 +7,8 @@
  */
 
 $root = dirname(__DIR__);
-$settings = file_get_contents($root . '/settings.php');
+require_once __DIR__ . '/settings-source.php';
+$settings = argon_test_settings_source($root);
 $functions = file_get_contents($root . '/functions.php');
 
 if ($settings === false || $functions === false) {

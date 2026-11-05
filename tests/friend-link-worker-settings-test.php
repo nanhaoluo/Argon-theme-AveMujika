@@ -7,7 +7,8 @@
  */
 
 $root = dirname(__DIR__);
-$settings_source = file_get_contents($root . '/settings.php');
+require_once __DIR__ . '/settings-source.php';
+$settings_source = argon_test_settings_source($root);
 if ($settings_source === false) {
     fwrite(STDERR, "无法读取 settings.php。\n");
     exit(1);
@@ -55,7 +56,7 @@ foreach (array(
 
 argon_worker_settings_assert(
     strpos($settings_source, ':not([data-argon-sensitive])') !== false
-    && strpos($settings_source, '.is("[data-argon-sensitive]")') !== false,
+    && strpos($settings_source, ".is('[data-argon-sensitive], [data-argon-internal]')") !== false,
     '设置导出或导入没有排除敏感字段。'
 );
 

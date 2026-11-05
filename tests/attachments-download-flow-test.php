@@ -7,10 +7,11 @@
  */
 
 $root = dirname(__DIR__);
+require_once __DIR__ . '/settings-source.php';
 $attachments_source = file_get_contents($root . '/inc/attachments.php');
 $functions_source = file_get_contents($root . '/functions.php');
 $single_source = file_get_contents($root . '/template-parts/content-single.php');
-$settings_source = file_get_contents($root . '/settings.php');
+$settings_source = argon_test_settings_source($root);
 $failures = array();
 
 function argon_attachments_test_assert($condition, $message) {

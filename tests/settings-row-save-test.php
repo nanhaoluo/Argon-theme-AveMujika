@@ -7,7 +7,8 @@
  */
 
 $root = dirname(__DIR__);
-$source = file_get_contents($root . '/settings.php');
+require_once __DIR__ . '/settings-source.php';
+$source = argon_test_settings_source($root);
 $failures = array();
 
 function argon_settings_row_assert($condition, $message) {
@@ -19,7 +20,7 @@ argon_settings_row_assert(strpos($source, 'class="submit argon-settings-submit"'
 argon_settings_row_assert(
 	strpos($source, 'argon-row-save') !== false
 	&& strpos($source, 'argon-row-undo') !== false
-	&& strpos($source, 'action", "argon_save_themeoption_row"') !== false,
+	&& strpos($source, "'action', 'argon_save_themeoption_row'") !== false,
 	'设置项没有按行提供保存、撤销或 AJAX 请求。'
 );
 argon_settings_row_assert(
@@ -29,8 +30,8 @@ argon_settings_row_assert(
 	'后端没有以部分更新模式处理逐项保存。'
 );
 argon_settings_row_assert(
-	strpos($source, '$sensitiveControls.filter(":checkbox, :radio").prop("checked", false);') !== false
-	&& strpos($source, '$sensitiveControls.not(":checkbox, :radio").val("");') !== false,
+	strpos($source, "this.checked = false; item.checked = false") !== false
+	&& strpos($source, "item.value = ''") !== false,
 	'敏感字段保存后没有分别重置动作复选框和密码输入框。'
 );
 argon_settings_row_assert(substr_count($source, 'id="section-advanced"') === 1, '高级设置仍包含重复空白标题。');
@@ -40,13 +41,13 @@ argon_settings_row_assert(
 	'设置页 subsection 没有统一为三级 h4。'
 );
 argon_settings_row_assert(
-	strpos($source, 'word-break: keep-all;') !== false
-	&& strpos($source, 'white-space: nowrap;') !== false,
+	preg_match('/word-break:\s*keep-all/', $source) === 1
+	&& preg_match('/white-space:\s*nowrap/', $source) === 1,
 	'设置项目名称仍可能在单个词或中文字符中被强制换行。'
 );
 argon_settings_row_assert(
-	strpos($source, 'margin: 10px 0 0 auto;') !== false
-	&& strpos($source, 'justify-content: flex-end;') !== false,
+	preg_match('/margin:\s*10px 0 0 auto/', $source) === 1
+	&& preg_match('/justify-content:\s*flex-end/', $source) === 1,
 	'窄屏保存与撤销按钮没有在当前设置项 td 内靠右。'
 );
 argon_settings_row_assert(
