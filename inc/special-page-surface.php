@@ -2,7 +2,7 @@
 /**
  * 自定义功能页的共享页面骨架与组件。
  *
- * `/friends/`、`/feedback` 与管理员 `/worker` 都从这里取得页面外壳、
+ * 友情链接、问题反馈、追番、AI 查询与管理员 Worker 状态页共用页面外壳、
  * 头部、卡片、徽章、表格、空状态及明暗主题规则。这些页面不是 Argon
  * 原生功能；这里只复用 Argon 的通用 card 外壳和本主题已有变量。
  *
@@ -79,14 +79,17 @@ body.argon-special-page #main {
 }
 body.argon-special-page {
 	--argon-special-page-text-main: var(--color-text-deeper);
-	--argon-special-page-text-muted: #677181;
-	--argon-special-page-text-soft: #8a93a3;
-	--argon-special-page-text-faint: #a4adba;
-	--argon-special-page-surface-soft: rgba(var(--themecolor-rgbstr), 0.05);
-	--argon-special-page-surface-hover: rgba(var(--themecolor-rgbstr), 0.08);
-	--argon-special-page-input-bg: rgba(var(--themecolor-rgbstr), 0.05);
-	--argon-special-page-input-text: var(--color-text-deeper);
-	--argon-special-page-placeholder: #99a2b1;
+	--argon-special-page-text-muted: color-mix(in srgb, var(--color-text-deeper) 80%, var(--color-foreground));
+	--argon-special-page-text-soft: color-mix(in srgb, var(--color-text-deeper) 70%, var(--color-foreground));
+	--argon-special-page-text-faint: color-mix(in srgb, var(--color-text-deeper) 65%, var(--color-foreground));
+	--argon-special-page-surface-soft: var(--m3-surface-1, rgba(var(--themecolor-rgbstr), 0.05));
+	--argon-special-page-surface-hover: var(--m3-state-hover, rgba(var(--themecolor-rgbstr), 0.08));
+	--argon-special-page-input-bg: var(--argon-text-input-bg);
+	--argon-special-page-input-text: var(--argon-text-input-color);
+	--argon-special-page-placeholder: var(--argon-text-input-placeholder);
+	--argon-special-page-gap: 20px;
+	--argon-special-page-inset: 24px;
+	--argon-special-page-radius: var(--m3-shape-lg, 16px);
 	--argon-special-page-success-bg: rgba(34, 197, 94, 0.12);
 	--argon-special-page-success-text: #15803d;
 	--argon-special-page-danger-bg: rgba(239, 68, 68, 0.12);
@@ -95,13 +98,6 @@ body.argon-special-page {
 	--argon-special-page-warning-text: #b45309;
 }
 html.darkmode body.argon-special-page {
-	--argon-special-page-text-muted: #c5c9d1;
-	--argon-special-page-text-soft: #a4aab5;
-	--argon-special-page-text-faint: #878e9b;
-	--argon-special-page-surface-soft: rgba(255, 255, 255, 0.05);
-	--argon-special-page-surface-hover: rgba(255, 255, 255, 0.08);
-	--argon-special-page-input-bg: rgba(255, 255, 255, 0.06);
-	--argon-special-page-placeholder: #858c99;
 	--argon-special-page-success-bg: rgba(74, 222, 128, 0.13);
 	--argon-special-page-success-text: #86efac;
 	--argon-special-page-danger-bg: rgba(248, 113, 113, 0.14);
@@ -109,25 +105,58 @@ html.darkmode body.argon-special-page {
 	--argon-special-page-warning-bg: rgba(251, 191, 36, 0.14);
 	--argon-special-page-warning-text: #facc15;
 }
+body.argon-special-page #main { color: var(--argon-special-page-text-main); }
+body.argon-special-page .argon-text-input {
+	min-width: 0;
+	padding: var(--argon-special-page-field-padding, 10px 12px);
+	font-size: 14px;
+	line-height: 1.5;
+	transform: none;
+}
+body.argon-special-page .argon-text-input:not(textarea) { min-height: 42px; }
+body.argon-special-page textarea.argon-text-input { height: auto; resize: vertical; }
+body.argon-special-page .btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-height: 40px;
+	font-family: var(--font);
+	line-height: 1.5;
+}
+body.argon-special-page .btn-sm { min-height: 34px; }
+body.argon-special-page :is(.btn, button, a):focus-visible {
+	outline: 2px solid var(--themecolor);
+	outline-offset: 3px;
+}
+body.argon-special-page .argon-special-page-dialog {
+	background: var(--color-foreground);
+	color: var(--argon-special-page-text-main);
+	border-radius: var(--argon-special-page-radius);
+	box-shadow: var(--shadow-4, var(--m3-elevation-4));
+	max-height: min(90vh, calc(100dvh - 32px));
+}
 .argon-special-page-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	gap: 32px;
-	padding: 22px 4px 20px;
-	margin-bottom: 16px;
+	flex-wrap: wrap;
+	gap: 16px 24px;
+	padding: 24px 0 20px;
+	margin-bottom: var(--argon-special-page-gap);
 	border-bottom: 1px solid var(--color-border-on-foreground);
 	background: transparent !important;
 	box-shadow: none !important;
 	text-align: left;
 }
-.argon-special-page-header-copy { min-width: 0; flex: 1; }
+.argon-special-page-header-copy { min-width: 0; flex: 1 1 240px; }
 .argon-special-page-title {
 	margin: 0;
 	color: var(--color-text-deeper);
-	font-size: 25px;
-	font-weight: 650;
-	line-height: 1.25;
+	font-size: 26px;
+	font-weight: 600;
+	line-height: 1.4;
+	overflow-wrap: break-word;
 	letter-spacing: 0;
 	background: none !important;
 }
@@ -137,7 +166,7 @@ html.darkmode body.argon-special-page {
 	max-width: 640px;
 	margin: 6px 0 0;
 	color: var(--argon-special-page-text-muted);
-	font-size: 13px;
+	font-size: 14px;
 	line-height: 1.6;
 }
 .argon-special-page-stats { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
@@ -147,16 +176,16 @@ html.darkmode body.argon-special-page {
 	gap: 6px;
 	padding: 8px 16px;
 	background: rgba(var(--themecolor-rgbstr), 0.08);
-	border-radius: var(--card-radius-sm);
+	border-radius: var(--m3-shape-sm, 8px);
 	font-size: 13px;
 	font-weight: 500;
 	color: var(--themecolor);
 	white-space: nowrap;
-	transition: all var(--animation-fast) var(--ease-standard);
+	transition: background-color var(--animation-fast) var(--ease-standard), color var(--animation-fast) var(--ease-standard);
 }
 .argon-special-page-stat-value { font-size: 1.05em; font-weight: 700; }
 .argon-special-page-stat:hover { background: rgba(var(--themecolor-rgbstr), 0.12); }
-.argon-special-page-header .argon-special-page-stats { align-items: center; justify-content: flex-end; flex-shrink: 0; gap: 0; flex-wrap: nowrap; }
+.argon-special-page-header .argon-special-page-stats { align-items: center; justify-content: flex-end; gap: 8px 0; max-width: 100%; }
 .argon-special-page-header .argon-special-page-stat {
 	align-items: baseline;
 	gap: 5px;
@@ -171,17 +200,20 @@ html.darkmode body.argon-special-page {
 .argon-special-page-header .argon-special-page-stat + .argon-special-page-stat { border-left: 1px solid var(--color-border-on-foreground); }
 .argon-special-page-header .argon-special-page-stat-value { color: var(--color-text-deeper); font-size: 18px; line-height: 1; }
 .argon-special-page-header .argon-special-page-stat:hover { background: transparent; color: var(--color-text-deeper); }
-.argon-special-page-list { display: flex; flex-direction: column; gap: 16px; margin-bottom: 16px; }
-.argon-special-page-card { margin-bottom: 16px; }
+.argon-special-page-list { display: flex; flex-direction: column; gap: var(--argon-special-page-gap); margin-bottom: var(--argon-special-page-gap); }
+.argon-special-page-card { min-width: 0; margin-bottom: var(--argon-special-page-gap); }
+.argon-special-page-list > .argon-special-page-card { margin-bottom: 0; }
+.argon-special-page-panel { padding: var(--argon-special-page-inset); }
 .argon-special-page-section { padding: 0; overflow: hidden; }
 .argon-special-page-section-header {
 	display: flex;
 	align-items: center;
 	gap: 12px;
-	padding: 18px 24px;
+	flex-wrap: wrap;
+	padding: 18px var(--argon-special-page-inset);
 	margin-bottom: 0;
 	border-bottom: 1px solid var(--color-border-on-foreground);
-	background: var(--argon-special-page-surface-soft);
+	background: transparent;
 }
 .argon-special-page-section-title {
 	font-size: 17px;
@@ -206,21 +238,21 @@ html.darkmode body.argon-special-page {
 	color: var(--themecolor);
 	background: rgba(var(--themecolor-rgbstr), 0.1);
 	padding: 5px 12px;
-	border-radius: var(--card-radius-sm);
+	border-radius: var(--m3-shape-sm, 8px);
 	white-space: nowrap;
 }
 .argon-special-page-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-	gap: 4px;
-	padding: 14px;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+	gap: 8px;
+	padding: 12px;
 }
 .argon-special-page-badge {
 	display: inline-flex;
 	align-items: center;
 	gap: 7px;
 	padding: 6px 10px;
-	border-radius: var(--card-radius-sm);
+	border-radius: var(--m3-shape-sm, 8px);
 	background: var(--argon-special-page-surface-hover);
 	color: var(--argon-special-page-text-muted);
 	font-size: 12px;
@@ -247,15 +279,9 @@ html.darkmode body.argon-special-page {
 .argon-special-page-metric {
 	min-height: 96px;
 	padding: 16px 18px;
-	border-radius: var(--card-radius-sm);
+	border-radius: var(--m3-shape-sm, 8px);
 	background: var(--argon-special-page-surface-soft);
-	border: 1px solid transparent;
-	transition: all var(--animation-fast) var(--ease-standard);
-}
-.argon-special-page-metric:hover {
-	background: var(--argon-special-page-surface-hover);
-	border-color: rgba(var(--themecolor-rgbstr), 0.16);
-	transform: translateY(-2px);
+	border: 1px solid var(--color-border-on-foreground);
 }
 .argon-special-page-metric-label { color: var(--argon-special-page-text-muted); font-size: 12px; overflow-wrap: break-word; word-break: normal; }
 .argon-special-page-metric-value { margin-top: 9px; color: var(--color-text-deeper); font-size: 24px; font-weight: 700; overflow-wrap: break-word; word-break: normal; }
@@ -264,7 +290,7 @@ html.darkmode body.argon-special-page {
 .argon-special-page-metric[data-state="deferred"] .argon-special-page-metric-value,
 .argon-special-page-metric[data-state="degraded"] .argon-special-page-metric-value { color: var(--argon-special-page-warning-text); }
 .argon-special-page-metric[data-state="error"] .argon-special-page-metric-value { color: var(--argon-special-page-danger-text); }
-.argon-special-page-table-wrap { width: 100%; overflow: auto; }
+.argon-special-page-table-wrap { width: 100%; overflow: auto; overscroll-behavior-x: contain; }
 .argon-special-page-table { width: 100%; min-width: 880px; border-collapse: collapse; font-size: 13px; }
 .argon-special-page-table th,
 .argon-special-page-table td {
@@ -276,15 +302,15 @@ html.darkmode body.argon-special-page {
 .argon-special-page-table th {
 	position: sticky;
 	top: 0;
-	background: var(--argon-special-page-surface-soft);
+	background: var(--color-foreground);
 	color: var(--argon-special-page-text-muted);
 	font-weight: 600;
 }
 .argon-special-page-table tr:last-child td { border-bottom: 0; }
 .argon-special-page-table td { max-width: 260px; color: var(--argon-special-page-text-main); overflow-wrap: break-word; word-break: normal; }
-.argon-special-page-empty { padding: 60px 24px; text-align: center; }
-.argon-special-page-empty i { display: block; margin-bottom: 16px; color: var(--color-border); font-size: 48px; }
-.argon-special-page-empty p { margin: 0; color: var(--argon-special-page-text-muted); font-size: 15px; }
+.argon-special-page-empty { padding: 48px var(--argon-special-page-inset); text-align: center; }
+.argon-special-page-empty i { display: block; margin-bottom: 16px; color: var(--argon-special-page-text-soft); font-size: 36px; }
+.argon-special-page-empty p { margin: 0; color: var(--argon-special-page-text-muted); font-size: 14px; }
 .argon-special-page-table .argon-special-page-empty { padding: 24px; color: var(--argon-special-page-text-muted); }
 .argon-special-page-details {
 	max-height: 520px;
@@ -297,24 +323,20 @@ html.darkmode body.argon-special-page {
 	white-space: pre-wrap;
 	overflow-wrap: break-word;
 }
-html.darkmode body.argon-special-page .argon-special-page-details {
-	background: rgba(0, 0, 0, 0.18);
-	color: #dbeafe;
-}
 @media (max-width: 768px) {
-	.argon-special-page-header { display: block; padding: 18px 2px 16px; margin-bottom: 12px; }
+	body.argon-special-page { --argon-special-page-gap: 16px; --argon-special-page-inset: 16px; }
+	.argon-special-page-header { display: block; padding: 20px 0 16px; }
 	.argon-special-page-title { font-size: 22px; }
-	.argon-special-page-subtitle { margin-top: 5px; font-size: 12px; }
+	.argon-special-page-subtitle { margin-top: 6px; font-size: 13px; }
 	.argon-special-page-header .argon-special-page-stats { justify-content: flex-start; margin-top: 15px; }
 	.argon-special-page-header .argon-special-page-stat { padding-right: 12px; padding-left: 12px; font-size: 12px; }
 	.argon-special-page-header .argon-special-page-stat:first-child { padding-left: 0; }
 	.argon-special-page-header .argon-special-page-stat:last-child { padding-right: 0; }
 	.argon-special-page-header .argon-special-page-stat-value { font-size: 16px; }
-	.argon-special-page-list { gap: 12px; }
-	.argon-special-page-section-header { padding: 15px 16px; }
+	.argon-special-page-section-header { padding: 16px var(--argon-special-page-inset); }
 	.argon-special-page-section-title { min-width: 0; font-size: 16px; }
 	.argon-special-page-grid { grid-template-columns: 1fr; }
-	.argon-special-page-meta { justify-content: center; }
+	.argon-special-page-meta { justify-content: flex-start; }
 }
 </style>
 	<main id="main" class="site-main" role="main" data-argon-special-page data-page-class="<?php echo esc_attr($page_class); ?>">

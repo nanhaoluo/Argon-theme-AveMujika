@@ -105,10 +105,10 @@ if ($rate_limit_check !== true) {
 		'subtitle' => __('通过识别码查询 AI 生成内容的详细信息，确保内容可追溯', 'argon'),
 	));
 	?>
-	<article class="post card shadow-sm bg-white border-0 argon-special-page-card ai-verify-card ai-verify-error-card" style="padding: 48px 32px; text-align: center;">
+	<article class="post card shadow-sm bg-white border-0 argon-special-page-card argon-special-page-panel ai-verify-card ai-verify-error-card" style="padding: 48px 32px; text-align: center;">
 		<div style="font-size: 48px; color: #f59e0b; margin-bottom: 20px;"><i class="fa fa-exclamation-triangle"></i></div>
 		<h2 style="font-size: 20px; font-weight: 600; color: var(--color-text-deeper); margin-bottom: 12px;"><?php _e('访问受限', 'argon'); ?></h2>
-		<p style="color: var(--color-text-muted); margin-bottom: 24px;"><?php echo esc_html($rate_limit_check); ?></p>
+		<p style="color: var(--argon-special-page-text-muted); margin-bottom: 24px;"><?php echo esc_html($rate_limit_check); ?></p>
 		<a href="<?php echo home_url('/ai-query'); ?>" class="btn btn-primary"><?php _e('返回查询页面', 'argon'); ?></a>
 	</article>
 	<?php
@@ -315,21 +315,21 @@ get_header();
 argon_special_page_surface_open('ai-verify-page');
 ?>
 <style id="ai-verify-page-style">
-.ai-verify-card { padding: 28px 32px; margin-bottom: 16px; }
+
 .ai-admin-section-title { margin: 32px 4px 16px; }
-.ai-verify-section-title { font-size: 18px; font-weight: 600; margin: 0 0 20px; color: var(--color-text-deeper); display: flex; align-items: center; gap: 10px; background: none !important; padding-bottom: 12px; border-bottom: 2px solid rgba(var(--themecolor-rgbstr), 0.1); }
+.ai-verify-section-title { font-size: 18px; font-weight: 600; margin: 0 0 20px; color: var(--color-text-deeper); display: flex; align-items: center; gap: 10px; background: none !important; padding-bottom: 12px; border-bottom: 1px solid var(--color-border-on-foreground); }
 .ai-verify-section-title::before, .ai-verify-section-title::after { display: none !important; }
 .ai-verify-section-title i { color: var(--themecolor); font-size: 18px; }
 
 .ai-query-form { margin-bottom: 24px; }
 .ai-query-form form { display: flex; gap: 12px; flex-wrap: wrap; }
-.ai-query-input { flex: 1; min-width: 200px; padding: 12px 16px; border: 2px solid var(--color-border); border-radius: var(--card-radius); font-family: 'Consolas', 'Monaco', monospace; font-size: 16px; letter-spacing: 2px; background: var(--color-foreground); color: var(--color-text); transition: all var(--animation-fast) var(--ease-standard); }
+.ai-query-input { flex: 1; min-width: 200px; padding: 12px 16px; border: 2px solid var(--color-border); border-radius: var(--card-radius); font-family: 'Consolas', 'Monaco', monospace; font-size: 16px; letter-spacing: 2px; background: var(--color-foreground); color: var(--argon-special-page-text-main); transition: all var(--animation-fast) var(--ease-standard); }
 .ai-query-input:focus { outline: none; border-color: var(--themecolor); box-shadow: 0 0 0 4px rgba(var(--themecolor-rgbstr), 0.1); }
 .ai-query-input::placeholder { letter-spacing: normal; }
 
 .ai-alert { padding: 16px 18px; border-radius: var(--card-radius); margin-bottom: 24px; display: flex; align-items: flex-start; gap: 12px; line-height: 1.7; }
-.ai-alert-warning { background: rgba(255, 193, 7, 0.12); border: 1px solid rgba(255, 193, 7, 0.35); color: var(--color-text); }
-.ai-alert-info { background: rgba(var(--themecolor-rgbstr), 0.1); border: 1px solid rgba(var(--themecolor-rgbstr), 0.25); color: var(--color-text); }
+.ai-alert-warning { background: rgba(255, 193, 7, 0.12); border: 1px solid rgba(255, 193, 7, 0.35); color: var(--argon-special-page-text-main); }
+.ai-alert-info { background: rgba(var(--themecolor-rgbstr), 0.1); border: 1px solid rgba(var(--themecolor-rgbstr), 0.25); color: var(--argon-special-page-text-main); }
 .ai-alert-icon { flex-shrink: 0; font-size: 18px; margin-top: 2px; }
 .ai-alert strong { font-weight: 600; }
 
@@ -342,8 +342,8 @@ argon_special_page_surface_open('ai-verify-page');
 .ai-info-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--color-border-on-foreground); transition: background var(--animation-fast) var(--ease-standard); }
 .ai-info-item:last-child { border-bottom: none; }
 .ai-info-item:hover { background: rgba(var(--themecolor-rgbstr), 0.05); }
-.ai-info-label { color: var(--color-text-muted); font-size: 14px; min-width: 110px; flex-shrink: 0; font-weight: 500; }
-.ai-info-value { min-width: 0; color: var(--color-text); flex: 1; overflow-wrap: break-word; word-break: normal; font-size: 14px; line-height: 1.6; }
+.ai-info-label { color: var(--argon-special-page-text-muted); font-size: 14px; min-width: 110px; flex-shrink: 0; font-weight: 500; }
+.ai-info-value { min-width: 0; color: var(--argon-special-page-text-main); flex: 1; overflow-wrap: break-word; word-break: normal; font-size: 14px; line-height: 1.6; }
 .ai-info-value-mono { font-family: 'Consolas', 'Monaco', monospace; background: rgba(var(--themecolor-rgbstr), 0.05); padding: 2px 8px; border-radius: 4px; }
 .ai-info-value-link { color: var(--themecolor); text-decoration: none; font-weight: 500; transition: opacity var(--animation-fast) var(--ease-standard); }
 .ai-info-value-link:hover { opacity: 0.75; text-decoration: underline; }
@@ -353,16 +353,16 @@ argon_special_page_surface_open('ai-verify-page');
 .ai-status-modified { background: rgba(255, 193, 7, 0.12); color: #f59e0b; border: 1px solid rgba(255, 193, 7, 0.3); }
 .ai-status-badge i { font-size: 12px; }
 
-.ai-content-box { padding: 20px; background: rgba(var(--themecolor-rgbstr), 0.04); border: 1px solid rgba(var(--themecolor-rgbstr), 0.12); border-left: 4px solid var(--themecolor); border-radius: var(--card-radius); line-height: 1.8; color: var(--color-text); margin-bottom: 24px; font-size: 14px; }
+.ai-content-box { padding: 20px; background: rgba(var(--themecolor-rgbstr), 0.04); border: 1px solid rgba(var(--themecolor-rgbstr), 0.12); border-left: 4px solid var(--themecolor); border-radius: var(--card-radius); line-height: 1.8; color: var(--argon-special-page-text-main); margin-bottom: 24px; font-size: 14px; }
 
 .ai-actions { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--color-border-on-foreground); display: flex; gap: 12px; flex-wrap: wrap; }
 
-.ai-help-list { padding-left: 24px; margin: 0; color: var(--color-text-muted); line-height: 2; }
+.ai-help-list { padding-left: 24px; margin: 0; color: var(--argon-special-page-text-muted); line-height: 2; }
 .ai-help-list li { margin-bottom: 10px; position: relative; }
 .ai-help-list li::marker { color: var(--themecolor); }
 
 @media (max-width: 768px) {
-	.ai-verify-card { padding: 24px 20px; }
+
 	.ai-code-display { font-size: 26px; letter-spacing: 3px; padding: 20px; }
 	.ai-info-label { min-width: 90px; font-size: 13px; }
 	.ai-info-item { flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px 14px; }
@@ -379,7 +379,7 @@ argon_special_page_surface_header(array(
 ));
 ?>
 
-<article class="post card shadow-sm bg-white border-0 argon-special-page-card ai-verify-card">
+<article class="post card shadow-sm bg-white border-0 argon-special-page-card argon-special-page-panel ai-verify-card">
 	<h3 class="ai-verify-section-title"><i class="fa fa-search"></i><?php _e('查询验证', 'argon'); ?></h3>
 	
 	<div class="ai-query-form">
@@ -389,7 +389,7 @@ argon_special_page_surface_header(array(
 				value="<?php echo esc_attr($query_code); ?>" 
 				placeholder="<?php _e('输入 8 位识别码', 'argon'); ?>"
 				maxlength="8"
-				class="ai-query-input"
+				class="ai-query-input argon-text-input"
 				required>
 			<button type="submit" class="btn btn-primary" style="padding: 10px 24px; white-space: nowrap;">
 				<?php _e('查询验证', 'argon'); ?>
@@ -771,11 +771,11 @@ if (current_user_can('manage_options')):
 	<?php _e('AI 请求记录', 'argon'); ?>
 </h2>
 
-<article class="post card shadow-sm bg-white border-0 argon-special-page-card ai-verify-card">
+<article class="post card shadow-sm bg-white border-0 argon-special-page-card argon-special-page-panel ai-verify-card">
 	<style>
 	.ai-records-table { width: 100%; min-width: 760px; table-layout: auto; border-collapse: collapse; }
 	.ai-records-table th { background: linear-gradient(135deg, rgba(var(--themecolor-rgbstr), 0.08) 0%, rgba(var(--themecolor-rgbstr), 0.04) 100%); padding: 14px 16px; text-align: left; font-size: 13px; font-weight: 600; color: var(--color-text-deeper); border: none; }
-	.ai-records-table td { padding: 14px 16px; font-size: 14px; color: var(--color-text); vertical-align: middle; border: none; }
+	.ai-records-table td { padding: 14px 16px; font-size: 14px; color: var(--argon-special-page-text-main); vertical-align: middle; border: none; }
 	.ai-records-table td:nth-child(2), .ai-record-code { white-space: nowrap; word-break: normal; overflow-wrap: normal; }
 	.ai-records-table tbody tr { cursor: pointer; transition: all var(--animation-fast) var(--ease-standard); }
 	.ai-records-table tbody tr:hover { background: rgba(var(--themecolor-rgbstr), 0.05); }
@@ -783,8 +783,8 @@ if (current_user_can('manage_options')):
 	.ai-record-type-summary { background: rgba(59, 130, 246, 0.12); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.25); }
 	.ai-record-type-spam { background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.25); }
 	.ai-record-code { display: inline-block; font-family: 'Consolas', 'Monaco', monospace; font-size: 13px; color: var(--themecolor); font-weight: 700; letter-spacing: 1px; background: rgba(var(--themecolor-rgbstr), 0.08); padding: 4px 10px; border-radius: 4px; }
-	.ai-record-time { color: var(--color-text-muted); font-size: 13px; }
-	.ai-record-title { display: block; min-width: 0; color: var(--color-text); font-weight: 500; overflow-wrap: break-word; word-break: normal; }
+	.ai-record-time { color: var(--argon-special-page-text-muted); font-size: 13px; }
+	.ai-record-title { display: block; min-width: 0; color: var(--argon-special-page-text-main); font-weight: 500; overflow-wrap: break-word; word-break: normal; }
 	.ai-record-title:hover { color: var(--themecolor); }
 	
 		.ai-modal { display: flex; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(var(--card-blur, 16px)); -webkit-backdrop-filter: blur(var(--card-blur, 16px)); overflow: auto; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--motion-layer-duration) var(--motion-ease-exit), visibility 0s linear var(--motion-layer-duration); }
@@ -794,7 +794,7 @@ if (current_user_can('manage_options')):
 	.ai-modal.active .ai-modal-content { opacity: 1; transform: translateY(0) scale(1); transition-timing-function: var(--motion-ease-enter); }
 	.ai-modal-header { padding: 20px 24px; border-bottom: 1px solid var(--color-border-on-foreground); display: flex; align-items: center; justify-content: space-between; }
 	.ai-modal-title { font-size: 18px; font-weight: 600; color: var(--color-text-deeper); margin: 0; }
-	.ai-modal-close { background: none; border: none; font-size: 24px; color: var(--color-text-muted); cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: all var(--animation-fast) var(--ease-standard); }
+	.ai-modal-close { background: none; border: none; font-size: 24px; color: var(--argon-special-page-text-muted); cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: all var(--animation-fast) var(--ease-standard); }
 	.ai-modal-close:hover { background: rgba(var(--themecolor-rgbstr), 0.1); color: var(--themecolor); }
 	.ai-modal-body { padding: 24px; }
 	
@@ -1076,9 +1076,9 @@ if (current_user_can('manage_options')):
 		<?php _e('AI 查询统计', 'argon'); ?>
 	</h2>
 	
-	<article class="post card shadow-sm bg-white border-0 argon-special-page-card ai-verify-card">
+	<article class="post card shadow-sm bg-white border-0 argon-special-page-card argon-special-page-panel ai-verify-card">
 		<div id="aiStatsContainer">
-			<div style="text-align: center; padding: 40px; color: var(--color-text-muted);">
+			<div style="text-align: center; padding: 40px; color: var(--argon-special-page-text-muted);">
 				<i class="fa fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 12px;"></i>
 				<p><?php _e('加载统计数据中...', 'argon'); ?></p>
 			</div>
@@ -1089,11 +1089,11 @@ if (current_user_can('manage_options')):
 		.ai-stat-card { background: linear-gradient(135deg, rgba(var(--themecolor-rgbstr), 0.08) 0%, rgba(var(--themecolor-rgbstr), 0.03) 100%); border: 1px solid rgba(var(--themecolor-rgbstr), 0.15); border-radius: var(--card-radius); padding: 20px; text-align: center; transition: all var(--animation-fast) var(--ease-standard); }
 		.ai-stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(var(--themecolor-rgbstr), 0.15); }
 		.ai-stat-value { font-size: 32px; font-weight: 700; color: var(--themecolor); margin-bottom: 8px; font-family: 'Consolas', 'Monaco', monospace; }
-		.ai-stat-label { font-size: 13px; color: var(--color-text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+		.ai-stat-label { font-size: 13px; color: var(--argon-special-page-text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
 		
 		.ai-stats-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
 		.ai-stats-table th { background: linear-gradient(135deg, rgba(var(--themecolor-rgbstr), 0.08) 0%, rgba(var(--themecolor-rgbstr), 0.04) 100%); padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: var(--color-text-deeper); border: none; }
-		.ai-stats-table td { padding: 12px 16px; font-size: 14px; color: var(--color-text); border: none; }
+		.ai-stats-table td { padding: 12px 16px; font-size: 14px; color: var(--argon-special-page-text-main); border: none; }
 		.ai-stats-table tbody tr:hover { background: rgba(var(--themecolor-rgbstr), 0.05); }
 		
 		@media (max-width: 768px) {
