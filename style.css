@@ -1422,6 +1422,9 @@ html.is-home.banner-as-cover #content {
 }
 
 #leftbar {
+	--leftbar-sticky-top: 80px;
+	--leftbar-sticky-gap: 10px;
+	--leftbar-sticky-bottom: 20px;
 
 	padding-left: 20px;
 
@@ -1626,7 +1629,7 @@ html.single-column .page-information-card {
 
 	html.triple-column #leftbar_part2.sticky {
 
-		width: 250px;
+		width: var(--leftbar-sticky-width, 250px);
 
 	}
 
@@ -2586,11 +2589,8 @@ html.darkmode.amoled-dark #leftbar_search_container {
 
 	margin-top: 10px;
 
-	/* 曾经是 transition: all —— 会把 width / height / max-height 也做补间，
-	   于是脚本每帧重算目录高度时卡片都在"生长"，看起来就是滚动时被拉到占满屏幕。
-	   这里只保留 top（Headroom 收起时的位移）和纯视觉属性。 */
-	transition: top var(--animation-normal) var(--ease-standard),
-		box-shadow var(--animation-normal) var(--ease-standard),
+	/* 布局位移由 ArgonMotion.fast + FLIP 统一处理，避免 top 过渡干扰高度预算。 */
+	transition: box-shadow var(--animation-fast) var(--ease-standard),
 		background-color var(--animation-normal) var(--ease-standard);
 
 }
@@ -2599,21 +2599,21 @@ html.darkmode.amoled-dark #leftbar_search_container {
 
 	position: fixed;
 
-	width: 240px;
+	width: var(--leftbar-sticky-width, 240px);
 
-	top: 80px;
-
-}
-
-body.leftbar-can-headroom.headroom---unpinned #leftbar_part2.sticky {
-
-	top: 10px;
+	top: var(--leftbar-sticky-top, 80px);
 
 }
 
-html.navbar-absolute #leftbar_part2.sticky {
+body.leftbar-can-headroom.headroom---unpinned #leftbar {
 
-	top: 10px !important;
+	--leftbar-sticky-top: 10px;
+
+}
+
+html.navbar-absolute #leftbar {
+
+	--leftbar-sticky-top: 10px;
 
 }
 
@@ -2640,25 +2640,33 @@ html.navbar-absolute #leftbar_part2.sticky {
 	justify-content: flex-end;
 }
 
-#leftbar_part2.sticky.leftbar-tab-catalog-active #leftbar_part2_inner {
+#leftbar_part2.sticky.leftbar-tab-catalog-active:not(.leftbar-pane-compact) #leftbar_part2_inner {
 	height: auto;
+	min-height: 0;
 	max-height: var(--leftbar-part2-inner-height, none);
 	overflow: visible;
 	display: flex;
 	flex-direction: column;
 }
 
-#leftbar_part2.sticky:not(.leftbar-tab-catalog-active) #leftbar_part2_inner {
+#leftbar_part2.sticky:not(.leftbar-tab-catalog-active) #leftbar_part2_inner,
+#leftbar_part2.sticky.leftbar-pane-compact #leftbar_part2_inner {
 	height: auto !important;
+	min-height: 0;
 	/* 非目录标签页同样受分配结果钳制：概览/功能内容超长时 inner 内部滚动，
 	   不再无上限生长把 part3 顶出视口；未钳制时变量为 none，与旧行为一致。 */
 	max-height: var(--leftbar-part2-inner-height, none);
 	overflow-y: auto;
 	overflow-x: hidden;
+	overscroll-behavior: contain;
 	display: block;
 }
 
-#leftbar_part2.sticky.leftbar-tab-catalog-active #leftbar_part2_inner>div:not(.nav-wrapper) {
+#leftbar_part2.sticky.leftbar-tab-catalog-active:not(.leftbar-pane-compact) #leftbar_part2_inner>.nav-wrapper {
+	flex: 0 0 auto;
+}
+
+#leftbar_part2.sticky.leftbar-tab-catalog-active:not(.leftbar-pane-compact) #leftbar_part2_inner>div:not(.nav-wrapper) {
 	min-height: 0;
 	flex: 0 1 auto;
 }
@@ -2670,10 +2678,10 @@ html.navbar-absolute #leftbar_part2.sticky {
 
 /* 鍙湁鏂囩珷鐩綍鏍囩闇€瑕佹粴鍔?*/
 #leftbar_part2.sticky.leftbar-tab-catalog-active #leftbar_tab_catalog {
-	/* 只给上限，不给固定 height：目录短时按内容收缩，长时才出现滚动条。
-	   30px = #leftbar_part2_inner 的上下 padding (10+10) + .tab-content 的 padding-top (10)。 */
+	/* 扣除实测的标签栏及内边距；短目录保持自然高度。极矮窗口改为整张 inner 滚动。 */
 	height: auto;
-	max-height: calc(var(--leftbar-part2-inner-height, 100vh) - var(--leftbar-tabs-height, 0px) - 30px);
+	min-height: 0;
+	max-height: var(--leftbar-catalog-max-height, none);
 	overflow-y: auto;
 	overflow-x: hidden;
 	overscroll-behavior: contain;
@@ -13109,22 +13117,6 @@ html.darkmode.amoled-dark #content:after {
 
 }
 
-@media screen and (min-width: 900px) and (max-width: 1000px) {
-
-	#leftbar_part2.sticky {
-
-		transform: translateY(-25px);
-
-	}
-
-	body.leftbar-can-headroom.headroom---unpinned #leftbar_part2.sticky {
-
-		transform: translateY(-5px);
-
-	}
-
-}
-
 @media screen and (max-width: 900px) {
 
 	/*TimeLine*/
@@ -13889,14 +13881,14 @@ html.darkmode .git-easter-egg-overlay {
 /* ===== TODO 鍒楄〃 ===== */
 #leftbar_part3 {
 	margin-top: 10px;
-	/* top 由 --leftbar-part2-height 驱动，过渡它会让 part3 滚动时"追着"part2 抖动 */
-	transition: transform 0.3s ease;
+	/* 跟随 part2 的最终布局，用共享 FLIP 动画处理可见位移。 */
+	transition: none;
 }
 
 #leftbar_part3.sticky {
 	position: fixed;
-	top: calc(80px + var(--leftbar-part2-height, 300px));
-	width: 240px;
+	top: calc(var(--leftbar-sticky-top, 80px) + var(--leftbar-part2-height, 300px));
+	width: var(--leftbar-sticky-width, 240px);
 }
 
 #leftbar_part3 .card-body {
@@ -13908,6 +13900,7 @@ html.darkmode .git-easter-egg-overlay {
 }
 
 #leftbar_part3.sticky .card-body {
+	min-height: 0;
 	max-height: var(--leftbar-part3-max-height, 50vh);
 }
 
@@ -13932,24 +13925,6 @@ html.darkmode #leftbar_part3 .card-body::-webkit-scrollbar-thumb {
 #leftbar_part3 .card-body::-webkit-scrollbar-button {
 	height: 5px;
 	pointer-events: none;
-}
-
-body.leftbar-can-headroom.headroom---unpinned #leftbar_part3.sticky {
-	top: calc(10px + var(--leftbar-part2-height, 300px));
-}
-
-html.navbar-absolute #leftbar_part3.sticky {
-	top: calc(10px + var(--leftbar-part2-height, 300px)) !important;
-}
-
-@media screen and (min-width: 900px) and (max-width: 1000px) {
-	#leftbar_part3.sticky {
-		transform: translateY(-25px);
-	}
-
-	body.leftbar-can-headroom.headroom---unpinned #leftbar_part3.sticky {
-		transform: translateY(-5px);
-	}
 }
 
 .todo-title {
@@ -19951,14 +19926,42 @@ html.darkmode {
 	--argon-text-input-placeholder: #858c99;
 }
 
+/* Comment and special-page fields share a distinct glass surface. Resolve the
+   palette here so dark/immersion colours defined on body remain effective. */
+#post_comment,
+body.argon-special-page {
+	--argon-text-input-surface: color-mix(in srgb, var(--color-widgets) 88%, var(--themecolor));
+	--argon-text-input-bg: color-mix(in srgb, var(--argon-text-input-surface) 8%, transparent);
+	--argon-text-input-bg-hover: color-mix(in srgb, var(--argon-text-input-surface) 14%, transparent);
+	--argon-text-input-radius: max(14px, calc(var(--card-radius, 10px) * 0.8));
+	--argon-text-input-color: var(--color-text-deeper);
+	--argon-text-input-placeholder: color-mix(in srgb, var(--color-text-deeper) 68%, var(--color-widgets));
+	--argon-text-input-border: rgba(var(--themecolor-rgbstr), 0.18);
+	--argon-text-input-border-hover: rgba(var(--themecolor-rgbstr), 0.28);
+	--argon-text-input-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 1px 3px rgba(0, 0, 0, 0.04);
+	/* Fade only the filtered backdrop: nested card glass otherwise adds a white
+	   veil even with a nearly transparent field fill. Text and borders stay sharp. */
+	--argon-text-input-backdrop: blur(max(36px, var(--card-blur, 20px))) saturate(120%) opacity(35%);
+}
+
+html.darkmode #post_comment,
+html.darkmode body.argon-special-page {
+	--argon-text-input-border: rgba(255, 255, 255, 0.14);
+	--argon-text-input-border-hover: rgba(255, 255, 255, 0.24);
+	--argon-text-input-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
 .argon-text-input,
 #post_comment_content_editor {
 	box-sizing: border-box;
-	border: 1px solid transparent !important;
-	border-radius: calc(var(--card-radius, 10px) * 0.6) !important;
+	border: 1px solid var(--argon-text-input-border, transparent) !important;
+	border-radius: var(--argon-text-input-radius, calc(var(--card-radius, 10px) * 0.6)) !important;
 	background: var(--argon-text-input-bg) !important;
 	color: var(--argon-text-input-color) !important;
-	box-shadow: none !important;
+	box-shadow: var(--argon-text-input-shadow, none) !important;
+	-webkit-backdrop-filter: var(--argon-text-input-backdrop, none);
+	backdrop-filter: var(--argon-text-input-backdrop, none);
+	background-clip: padding-box;
 	font-family: var(--font);
 	outline: none;
 	transition: background-color var(--animation-fast) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard), color var(--animation-fast) var(--ease-standard);
@@ -19967,6 +19970,7 @@ html.darkmode {
 .argon-text-input:hover,
 #post_comment_content_editor:hover {
 	background: var(--argon-text-input-bg-hover) !important;
+	border-color: var(--argon-text-input-border-hover, transparent) !important;
 }
 
 .argon-text-input:focus,
@@ -19986,14 +19990,21 @@ html.darkmode {
 }
 
 .argon-text-input-group {
-	border: 1px solid transparent !important;
-	border-radius: calc(var(--card-radius, 10px) * 0.6) !important;
+	border: 1px solid var(--argon-text-input-border, transparent) !important;
+	border-radius: var(--argon-text-input-radius, calc(var(--card-radius, 10px) * 0.6)) !important;
 	background: var(--argon-text-input-bg) !important;
-	box-shadow: none !important;
+	box-shadow: var(--argon-text-input-shadow, none) !important;
+	-webkit-backdrop-filter: var(--argon-text-input-backdrop, none);
+	backdrop-filter: var(--argon-text-input-backdrop, none);
+	background-clip: padding-box;
 	transition: background-color var(--animation-fast) var(--ease-standard), border-color var(--animation-fast) var(--ease-standard), box-shadow var(--animation-fast) var(--ease-standard);
 }
 
-.argon-text-input-group:hover,
+.argon-text-input-group:hover {
+	background: var(--argon-text-input-bg-hover) !important;
+	border-color: var(--argon-text-input-border-hover, transparent) !important;
+}
+
 .argon-text-input-group:focus-within {
 	background: var(--argon-text-input-bg-hover) !important;
 	border-color: rgba(var(--themecolor-rgbstr), 0.45) !important;
@@ -20007,6 +20018,12 @@ html.darkmode {
 	border-radius: 0 !important;
 	background: transparent !important;
 	box-shadow: none !important;
+	-webkit-backdrop-filter: none;
+	backdrop-filter: none;
+}
+
+.argon-text-input-group .input-group-text {
+	background: transparent !important;
 }
 
 #navbar_search_input_container:not(.open) .argon-text-input-group {

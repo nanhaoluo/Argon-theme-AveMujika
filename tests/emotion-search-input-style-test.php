@@ -14,6 +14,7 @@ $header = file_get_contents($root . '/header.php');
 $sidebar = file_get_contents($root . '/sidebar.php');
 $friendLinks = file_get_contents($root . '/friend-links.php');
 $specialPageSurface = file_get_contents($root . '/inc/special-page-surface.php');
+$comments = file_get_contents($root . '/comments.php');
 $failures = array();
 
 function argon_emotion_search_assert($condition, $message) {
@@ -24,11 +25,24 @@ function argon_emotion_search_assert($condition, $message) {
 argon_emotion_search_assert(
 	strpos($style, '.argon-text-input,') !== false
 	&& strpos($style, '#post_comment_content_editor {') !== false
-	&& strpos($specialPageSurface, '--argon-special-page-input-bg: rgba(var(--themecolor-rgbstr), 0.05)') !== false
+	&& strpos($specialPageSurface, '--argon-special-page-input-bg: var(--argon-text-input-bg)') !== false
 	&& strpos($style, '--argon-text-input-bg: rgba(var(--themecolor-rgbstr), 0.05)') !== false
 	&& strpos($style, 'background: var(--argon-text-input-bg) !important;') !== false
 	&& preg_match('/\.argon-text-input:focus\s*,[\s\S]*?#post_comment_content_editor:focus-visible\s*\{[^}]*border-color:\s*rgba\(var\(--themecolor-rgbstr\),\s*0\.45\)[^}]*box-shadow:\s*0 0 0 2px/s', $style) === 1,
 	'公共输入样式没有复用自定义功能页共享输入令牌，或缺少统一聚焦状态。'
+);
+
+foreach (array('post_comment_name', 'post_comment_email', 'post_comment_captcha', 'post_comment_link') as $field) {
+	argon_emotion_search_assert(
+		preg_match('/id="' . $field . '"[^\r\n]*class="[^"]*argon-text-input argon-text-input-embedded/', $comments) === 1,
+		$field . ' 没有使用整体玻璃表面的嵌入输入样式。'
+	);
+}
+argon_emotion_search_assert(
+	strpos($style, "#post_comment,\nbody.argon-special-page {") !== false
+	&& strpos($style, 'var(--argon-text-input-surface) 8%, transparent') !== false
+	&& strpos($style, '--argon-text-input-backdrop: blur(max(36px, var(--card-blur, 20px)))') !== false,
+	'评论和特殊页没有共用保留通透感与背景模糊的输入表面。'
 );
 
 argon_emotion_search_assert(

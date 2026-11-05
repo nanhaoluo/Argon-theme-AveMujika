@@ -57,8 +57,10 @@ const allocate = (budget, p2n, p3n) => computeLeftbarHeightAllocation({
 {
 	const r = allocate(680, 800, 400);
 	assert.strictEqual(r.clamp, true);
-	assert.strictEqual(r.part3MaxHeight, 272, 'TODO keeps a usable share of the budget');
-	assert.strictEqual(r.part2Height, 408);
+	assert.ok(r.part3MaxHeight > 250 && r.part3MaxHeight < 300, 'TODO keeps a usable share of the budget');
+	assert.strictEqual(r.part2Height + r.part3MaxHeight, 680);
+	const extreme = allocate(680, 80000, 400);
+	assert.ok(Math.abs(extreme.part3MaxHeight - r.part3MaxHeight) < 5, 'an extreme catalog must not starve TODO');
 }
 
 // part2 自然放得下、part3 超长：part2 保持自然高度，part3 拿剩余
@@ -106,6 +108,8 @@ for (let budget = 0; budget <= 1200; budget += 37) {
 				`negative allocation at budget=${budget} p2n=${p2n} p3n=${p3n}`);
 			assert.ok(r.part2Height <= budget,
 				`part2 exceeds budget at budget=${budget} p2n=${p2n} p3n=${p3n}`);
+			assert.ok(r.part2Height <= p2n && r.part3MaxHeight <= p3n,
+				`short content was stretched at budget=${budget} p2n=${p2n} p3n=${p3n}`);
 			assert.ok(r.part2Height + r.part3MaxHeight <= budget,
 				`allocation breaks budget at budget=${budget} p2n=${p2n} p3n=${p3n}`);
 			if (p2n + p3n <= budget) {
@@ -116,13 +120,25 @@ for (let budget = 0; budget <= 1200; budget += 37) {
 	}
 }
 
+// 显式的 0 下限有效；异常输入不能生成 NaN/Infinity 或负尺寸。
+assert.deepStrictEqual(computeLeftbarHeightAllocation({ budget: 100, part2NaturalHeight: 500, part3NaturalHeight: 500, minPart2Height: 0, minPart3Height: 0 }),
+	{ part2Height: 50, part3MaxHeight: 50, clamp: true });
+for (const invalid of [undefined, NaN, Infinity, -Infinity, -1]) {
+	const r = computeLeftbarHeightAllocation({ budget: invalid, part2NaturalHeight: 500, part3NaturalHeight: 300 });
+	assert.strictEqual(r.part2Height, 0);
+	assert.strictEqual(r.part3MaxHeight, 0);
+}
+assert.deepStrictEqual(computeLeftbarHeightAllocation(), { part2Height: 0, part3MaxHeight: 0, clamp: false });
+
 // ===== 源码契约断言 =====
 
-// 可用空间必须感知 Headroom 收起状态（收起后 sticky 卡片 top 80→10，预算随之放大）
-assert.match(themeScript, /document\.body\.classList\.contains\('leftbar-can-headroom'\)\s*&&\s*document\.body\.classList\.contains\('headroom---unpinned'\)/,
-	'topOffset is not aware of the headroom-unpinned state');
-assert.match(themeScript, /topOffset = \(argonConfig\.headroom === 'absolute' \|\| headroomUnpinned\) \? 20 : 90/,
-	'topOffset does not follow the real sticky top offset');
+// CSS 统一处理 Headroom/absolute 顶部基准，脚本读取最终样式来计算预算。
+assert.match(themeScript, /const top = number\(style\.top\) \+ number\(style\.marginTop\)/,
+	'budget must use the actual computed sticky top');
+assert.match(stylesheet, /body\.leftbar-can-headroom\.headroom---unpinned #leftbar\s*\{\s*--leftbar-sticky-top: 10px/,
+	'headroom must update the shared top offset');
+assert.match(stylesheet, /html\.navbar-absolute #leftbar\s*\{\s*--leftbar-sticky-top: 10px/,
+	'absolute navbar must update the shared top offset');
 
 // 空间足够时输出 'none'（不钳制），避免取整误差造成目录假性滚动条
 assert.match(themeScript, /setLeftbarRootProperty\('--leftbar-part2-inner-height', 'none'\)/,
@@ -135,12 +151,18 @@ assert.doesNotMatch(themeScript, /sharedHeight \* 0\.6/, 'obsolete 60/40 pre-spl
 assert.doesNotMatch(themeScript, /--leftbar-part3-height/, 'redundant --leftbar-part3-height output should be removed');
 
 // 非目录标签页 sticky 时也按分配结果钳制并内部滚动（不再无上限生长顶飞 part3）
-assert.match(stylesheet, /#leftbar_part2\.sticky:not\(\.leftbar-tab-catalog-active\) #leftbar_part2_inner\s*\{[^}]*max-height:\s*var\(--leftbar-part2-inner-height, none\)[^}]*overflow-y:\s*auto/s,
+assert.match(stylesheet, /#leftbar_part2\.sticky:not\(\.leftbar-tab-catalog-active\) #leftbar_part2_inner,[^{]*\{[^}]*max-height:\s*var\(--leftbar-part2-inner-height, none\)[^}]*overflow-y:\s*auto/s,
 	'non-catalog sticky inner must be clamped by the allocation variable and scroll internally');
 
-// 目录 tab 的既有钳制链路保持不变
-assert.match(stylesheet, /#leftbar_part2\.sticky\.leftbar-tab-catalog-active #leftbar_tab_catalog\s*\{[^}]*max-height:\s*calc\(var\(--leftbar-part2-inner-height, 100vh\) - var\(--leftbar-tabs-height, 0px\) - 30px\)/s,
-	'catalog pane clamp chain must stay intact');
+// 目录扣除实测 chrome，紧凑模式滚动 inner；两卡片宽度使用同一来源。
+assert.match(stylesheet, /#leftbar_part2\.sticky\.leftbar-tab-catalog-active #leftbar_tab_catalog\s*\{[^}]*max-height:\s*var\(--leftbar-catalog-max-height, none\)/s,
+	'catalog must use its measured height budget');
+assert.match(stylesheet, /#leftbar_part2\.sticky\.leftbar-pane-compact #leftbar_part2_inner\s*\{[^}]*overflow-y:\s*auto/s,
+	'compact catalog must scroll the whole inner');
+assert.match(themeScript, /pixels\(next2\.height \+ number\(style\.marginTop\) - margin3 \+ gap\)/,
+	'part3 must follow the rendered part2 height');
+assert.match(stylesheet, /#leftbar_part3\.sticky\s*\{[^}]*width:\s*var\(--leftbar-sticky-width, 240px\)/s,
+	'part3 must follow the same measured width as part2');
 assert.match(stylesheet, /#leftbar_part3\.sticky \.card-body\s*\{[^}]*max-height:\s*var\(--leftbar-part3-max-height, 50vh\)/s,
 	'part3 card-body clamp must stay intact');
 

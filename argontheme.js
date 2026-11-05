@@ -675,33 +675,38 @@ $(document).on("change", ".search-filter", function (e) {
 	});
 });
 
-/*左侧栏 part2/part3 高度分配（纯函数，sticky 布局与回归测试共用）
- * 不变量：part2Height <= budget 且 part2Height + part3MaxHeight <= budget 恒成立。
- * - 空间足够（p2n + p3n <= budget）：都按自然高度，clamp=false（调用方输出 'none'，
- *   不施加钳制，取整误差不会再造成假性滚动条）。
- * - 空间不足：通常为 TODO 预留预算的 40%，短 TODO 按自然高度保留，其余给目录；
- *   任一侧内容较短时把剩余空间让给另一侧，超矮视口按保底比例压缩，避免 TODO 消失。
+/* 按可见内容需求分配侧栏预算；先保留可操作区域，再分配剩余空间。
+ * 需求以视口预算封顶并取平方根，避免超长目录/待办独占空间。
+ * 短内容不拉伸；空间不足时按可读下限比例缩小，始终不超过预算。
  */
 function computeLeftbarHeightAllocation(options) {
-	var budget = Math.max(0, options.budget || 0);
-	var p2n = Math.max(0, options.part2NaturalHeight || 0);
-	var p3n = Math.max(0, options.part3NaturalHeight || 0);
-	var minPart2Height = options.minPart2Height || 150;
-	var minPart3Height = options.minPart3Height || 100;
-
-	if (p2n + p3n <= budget) {
-		return { part2Height: p2n, part3MaxHeight: p3n, clamp: false };
+	options = options || {};
+	function positive(value, fallback) {
+		value = Number(value);
+		return isFinite(value) ? Math.max(0, value) : fallback;
 	}
-	var p2Floor = Math.min(p2n, minPart2Height);
-	var p3Floor = Math.min(p3n, minPart3Height);
-	var todoShare = Math.min(budget - p2Floor, Math.max(p3Floor, budget * 0.4));
+	var budget = positive(options.budget, 0);
+	var p2n = positive(options.part2NaturalHeight, 0);
+	var p3n = positive(options.part3NaturalHeight, 0);
+	var p2Floor = Math.min(p2n, positive(options.minPart2Height === undefined ? 150 : options.minPart2Height, 150));
+	var p3Floor = Math.min(p3n, positive(options.minPart3Height === undefined ? 100 : options.minPart3Height, 100));
+	if (p2n + p3n <= budget) return { part2Height: p2n, part3MaxHeight: p3n, clamp: false };
 	if (p2Floor + p3Floor > budget) {
-		todoShare = budget * p3Floor / (p2Floor + p3Floor);
+		var compactPart2 = budget * p2Floor / (p2Floor + p3Floor);
+		return { part2Height: compactPart2, part3MaxHeight: budget - compactPart2, clamp: true };
 	}
-	var reservedPart3Height = Math.min(p3n, todoShare);
-	var part2Height = Math.min(p2n, Math.max(0, budget - reservedPart3Height));
-	var part3MaxHeight = Math.max(0, Math.min(p3n, budget - part2Height));
-	return { part2Height: part2Height, part3MaxHeight: part3MaxHeight, clamp: true };
+	var extra = budget - p2Floor - p3Floor;
+	var need2 = p2n - p2Floor;
+	var need3 = p3n - p3Floor;
+	var weight2 = Math.sqrt(Math.min(need2, budget));
+	var weight3 = Math.sqrt(Math.min(need3, budget));
+	var sum = weight2 + weight3;
+	var extra2 = sum ? Math.min(need2, extra * weight2 / sum) : 0;
+	var extra3 = Math.min(need3, extra - extra2);
+	extra2 = Math.min(need2, extra - extra3);
+	var part2 = Math.min(p2n, p2Floor + extra2);
+	var part3 = Math.max(0, Math.min(p3n, budget - part2));
+	return { part2Height: part2, part3MaxHeight: part3, clamp: true };
 }
 window.argonComputeLeftbarHeightAllocation = computeLeftbarHeightAllocation;
 
@@ -732,368 +737,252 @@ window.argonComputeLeftbarHeightAllocation = computeLeftbarHeightAllocation;
 		window.argonRefreshLeftbarStickyWithoutSidebar = refreshLeftbarStickyWithoutSidebar;
 		return;
 	}
-	// ≤900px 时侧栏是抽屉（.leftbar-desktop-content 整体隐藏），桌面 sticky
-	// 计算与高度测量全部空转，还会在滚动/观察者回调里强制同步布局，统一在入口短路。
-	let leftbarDesktopQuery = window.matchMedia ? window.matchMedia("(min-width: 901px)") : null;
-	function isLeftbarDesktopLayout() {
-		return !leftbarDesktopQuery || leftbarDesktopQuery.matches;
+	const desktopQuery = window.matchMedia ? window.matchMedia('(min-width: 901px)') : null;
+	const leftbar = document.getElementById('leftbar');
+	const part1 = document.getElementById('leftbar_part1');
+	const part2 = document.getElementById('leftbar_part2');
+	const part3 = document.getElementById('leftbar_part3');
+	if (!part1 || !part2) return;
+	let frame = 0;
+	let metricsDirty = true;
+	let layoutDirty = true;
+	let skipAnimation = true;
+	let part1Bottom = 0;
+	let sticky = false;
+	let canHeadroom = false;
+	let lastLayout = null;
+	let naturalCache = null;
+	let observedNodes = [];
+	let sizeObserver = null;
+	const animations = new Map();
+
+	function isDesktop() { return !desktopQuery || desktopQuery.matches; }
+	function number(value) { return parseFloat(value) || 0; }
+	function setClass(node, name, enabled) {
+		if (node && node.classList.contains(name) !== enabled) node.classList.toggle(name, enabled);
 	}
-	let $leftbarPart1 = $('#leftbar_part1');
-	let $leftbarPart2 = $('#leftbar_part2');
-	let leftbarPart1 = document.getElementById('leftbar_part1');
-	let leftbarPart2 = document.getElementById('leftbar_part2');
-	let leftbarPart3 = document.getElementById('leftbar_part3');
-
-	let part1OffsetTop = $('#leftbar_part1').offset().top;
-	let part1OuterHeight = $('#leftbar_part1').outerHeight();
-	let leftbarStickyUpdateFrame = 0;
-	let leftbarHeightObserver = null;
-	let leftbarHeightObservedNodes = [];
-	let leftbarHeightSignature = '';
-	let leftbarPart1MetricsDirty = false;
-	// 迟滞状态：sticky 和 leftbar-can-headroom 的切换在临界点附近会改变文档几何
-	// （part2 的 position:fixed ↔ static 改变文档流高度），几何变化又触发 CSS Scroll
-	// Anchoring 调整 scrollY，形成"切换→高度变→scrollY 跳→再切换"的反馈循环，表现为
-	// 用户向上滚动时页面小幅弹回、无法顺畅滚动。用迟滞区间消除临界点反复切换：
-	// 进入用阈值 A，退出用阈值 B（A > B），中间留不切换的死区。
-	var leftbarStickyActive = false;
-	var leftbarCanHeadroomActive = false;
-
 	function setLeftbarRootProperty(name, value) {
-		if (document.documentElement.style.getPropertyValue(name) !== value) {
-			document.documentElement.style.setProperty(name, value);
-		}
+		if (document.documentElement.style.getPropertyValue(name) !== value) document.documentElement.style.setProperty(name, value);
 	}
-
-	function updateLeftbarTabsHeight() {
-		let navWrapper = leftbarPart2 ? leftbarPart2.querySelector('#leftbar_part2_inner > .nav-wrapper') : null;
-		let height = navWrapper ? Math.ceil(navWrapper.getBoundingClientRect().height) : 0;
-		setLeftbarRootProperty('--leftbar-tabs-height', height + 'px');
+	function pixels(value) { return Math.max(0, Math.floor(value * 100) / 100) + 'px'; }
+	function cssNumber(style, name, fallback) {
+		const value = parseFloat(style.getPropertyValue(name));
+		return isFinite(value) ? Math.max(0, value) : fallback;
 	}
-
-	function isLeftbarCatalogActive() {
-		let catalogTab = document.getElementById('leftbar_tab_catalog');
-		return !!(catalogTab && catalogTab.classList.contains('active'));
+	function visible(node) { return !!(node && !node.hidden && node.getClientRects().length); }
+	function outerHeight(node) {
+		if (!visible(node)) return 0;
+		const style = window.getComputedStyle(node);
+		return node.getBoundingClientRect().height + number(style.marginTop) + number(style.marginBottom);
 	}
-
-	function getNaturalScrollHeight(element) {
-		if (!element) return 0;
-		let previousMaxHeight = element.style.maxHeight;
-		element.style.maxHeight = 'none';
-		let height = element.scrollHeight;
-		element.style.maxHeight = previousMaxHeight;
-		return height;
-	}
-
-	// 解除脚本钳制后，part2（文章目录卡片）的真实内容高度。
-	// 目录短时必须拿到这个值，否则卡片会被拉伸到占满整屏。
-	function measureLeftbarPart2NaturalHeight() {
-		let inner = leftbarPart2 ? leftbarPart2.querySelector('#leftbar_part2_inner') : null;
-		if (!inner) return 0;
-		let catalogPane = document.getElementById('leftbar_tab_catalog');
-		let previousPaneHeight = '';
-		let previousPaneMaxHeight = '';
-		if (catalogPane) {
-			previousPaneHeight = catalogPane.style.height;
-			previousPaneMaxHeight = catalogPane.style.maxHeight;
-			catalogPane.style.height = 'auto';
-			catalogPane.style.maxHeight = 'none';
-		}
-		let previousInnerMaxHeight = inner.style.maxHeight;
-		inner.style.maxHeight = 'none';
-		let height = Math.ceil(inner.scrollHeight);
-		inner.style.maxHeight = previousInnerMaxHeight;
-		if (catalogPane) {
-			catalogPane.style.height = previousPaneHeight;
-			catalogPane.style.maxHeight = previousPaneMaxHeight;
-		}
-		return height;
-	}
-
-	// 自然高度测量会强制同步布局，滚动时不能每帧都做；
-	// 仅在内容 / 视口 / 标签页 / sticky 状态变化后重新测量。
-	let leftbarNaturalHeightCache = { key: null, part2: 0, part3: 0 };
-
-	function invalidateLeftbarNaturalHeights() {
-		leftbarNaturalHeightCache.key = null;
-	}
-
-	function getLeftbarNaturalHeights(catalogActive) {
-		let key = (catalogActive ? 'catalog' : 'other') + '@' +
-			(leftbarPart2 && leftbarPart2.classList.contains('sticky') ? 'sticky' : 'static');
-		if (leftbarNaturalHeightCache.key === key) {
-			return leftbarNaturalHeightCache;
-		}
-		let part3Body = leftbarPart3 ? (leftbarPart3.querySelector('.card-body') || leftbarPart3) : null;
-		leftbarNaturalHeightCache.part2 = measureLeftbarPart2NaturalHeight();
-		leftbarNaturalHeightCache.part3 = part3Body ? getNaturalScrollHeight(part3Body) : 0;
-		leftbarNaturalHeightCache.key = key;
-		return leftbarNaturalHeightCache;
-	}
-
-	function addLeftbarHeightTarget(targets, element) {
-		if (element && targets.indexOf(element) === -1) {
-			targets.push(element);
-		}
-	}
-
-	function addLeftbarHeightTargetsFromSelector(targets, root, selector) {
-		if (!root) return;
-		let nodes = root.querySelectorAll(selector);
-		for (let i = 0; i < nodes.length; i++) {
-			addLeftbarHeightTarget(targets, nodes[i]);
-		}
-	}
-
-	function getLeftbarHeightTargets() {
-		let targets = [];
-		addLeftbarHeightTargetsFromSelector(targets, leftbarPart2, '#leftbar_part2_inner > *, #leftbar_catalog, #leftbar_tab_overview, #leftbar_tab_tools');
-		addLeftbarHeightTargetsFromSelector(targets, leftbarPart3, '.card-body > *');
-		return targets;
-	}
-
-	function getLeftbarHeightSignature() {
-		let targets = getLeftbarHeightTargets();
-		let signature = [];
-		for (let i = 0; i < targets.length; i++) {
-			let element = targets[i];
-			signature.push([
-				element.id || element.className || element.tagName,
-				element.scrollHeight,
-				element.offsetHeight,
-				element.childElementCount
-			].join(':'));
-		}
-		return signature.join('|');
-	}
-
-	function refreshLeftbarPart1Metrics() {
-		part1OffsetTop = $leftbarPart1.offset().top;
-		part1OuterHeight = $leftbarPart1.outerHeight();
-	}
-
-	function requestLeftbarStickyStatusUpdate() {
-		if (!isLeftbarDesktopLayout()) return;
-		if (leftbarStickyUpdateFrame) return;
-		let scheduleFrame = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function (callback) {
-			return window.setTimeout(callback, 16);
+	function activePane() { return part2.querySelector('.tab-pane.active'); }
+	function measureHeights() {
+		const inner = part2.querySelector('#leftbar_part2_inner');
+		const pane = activePane();
+		const body = visible(part3) ? part3.querySelector('.card-body') : null;
+		const key = [pane && pane.id, inner && inner.clientWidth, !!body].join(':');
+		if (naturalCache && naturalCache.key === key) return naturalCache;
+		// 仅在内容/尺寸失效时解除钳制，并在同一帧恢复分配；scrollHeight 会取整，
+		// 且嵌套滚动区的溢出可能被重复计入，不能用于推算卡片的自然高度。
+		setClass(part2, 'leftbar-tab-catalog-active', !!(pane && pane.id === 'leftbar_tab_catalog'));
+		setClass(part2, 'leftbar-pane-compact', false);
+		setLeftbarRootProperty('--leftbar-part2-inner-height', 'none');
+		setLeftbarRootProperty('--leftbar-part3-max-height', 'none');
+		setLeftbarRootProperty('--leftbar-catalog-max-height', 'none');
+		const card2Height = part2.getBoundingClientRect().height;
+		const height2 = inner ? inner.getBoundingClientRect().height : card2Height;
+		const height3 = body ? body.getBoundingClientRect().height : 0;
+		const inset2 = visible(pane) ? Math.max(0, height2 - pane.getBoundingClientRect().height) : 0;
+		const lineHeight = pane ? number(getComputedStyle(pane).lineHeight) || 22 : 22;
+		const list = body && body.querySelector('#todo-list');
+		const rows = list ? Array.from(list.children).filter(visible) : [];
+		const inset3 = visible(list) ? Math.max(0, height3 - list.getBoundingClientRect().height) : 0;
+		const readableRows = rows.slice(0, 2).reduce(function (height, row) { return height + outerHeight(row); }, 0);
+		naturalCache = {
+			key: key, inner: inner, pane: pane, body: body, part2: height2, part3: height3,
+			chrome2: Math.max(0, card2Height - height2),
+			chrome3: body ? Math.max(0, part3.getBoundingClientRect().height - height3) : 0,
+			inset2: inset2,
+			minimum2: Math.min(height2, inset2 + lineHeight * 3),
+			minimum3: Math.min(height3, list ? inset3 + readableRows : 100),
+			compactThreshold: inset2 + lineHeight
 		};
-		leftbarStickyUpdateFrame = scheduleFrame(function () {
-			leftbarStickyUpdateFrame = 0;
-			if (leftbarPart1MetricsDirty) {
-				leftbarPart1MetricsDirty = false;
-				refreshLeftbarPart1Metrics();
-			}
-			changeLeftbarStickyStatus();
-			// 只在这条（被 rAF 合并的）路径上刷新高度签名：滚动时每帧重算签名
-			// 会强制同步布局，而签名本身只是给 Resize/Mutation 观察者做变更检测、防止互相触发。
-			leftbarHeightSignature = getLeftbarHeightSignature();
+		return naturalCache;
+	}
+	function observeContent() {
+		if (typeof ResizeObserver === 'undefined') return;
+		if (!sizeObserver) sizeObserver = new ResizeObserver(function (entries) {
+			invalidate(entries.some(function (entry) { return entry.target === part1 || entry.target === leftbar; }));
 		});
+		const nodes = [leftbar, part1];
+		part2.querySelectorAll('#leftbar_part2_inner > *, .tab-pane > *').forEach(function (node) { nodes.push(node); });
+		if (part3) part3.querySelectorAll('.card-body > *').forEach(function (node) { nodes.push(node); });
+		observedNodes.forEach(function (node) { if (nodes.indexOf(node) < 0) sizeObserver.unobserve(node); });
+		nodes.forEach(function (node) { if (observedNodes.indexOf(node) < 0) sizeObserver.observe(node); });
+		observedNodes = nodes;
 	}
-
-	function requestLeftbarStickyStatusUpdateOnHeightChange() {
-		if (!isLeftbarDesktopLayout()) return;
-		refreshLeftbarHeightObservers();
-		let currentSignature = getLeftbarHeightSignature();
-		if (currentSignature === leftbarHeightSignature) {
+	function requestUpdate() {
+		if (frame) return;
+		frame = window.requestAnimationFrame(function () { frame = 0; update(); });
+	}
+	function invalidate(part1Changed, instant) {
+		naturalCache = null;
+		layoutDirty = true;
+		metricsDirty = metricsDirty || !!part1Changed;
+		skipAnimation = skipAnimation || !!instant;
+		requestUpdate();
+	}
+	function clearAnimation(node) {
+		const animation = animations.get(node);
+		if (animation) { animations.delete(node); animation.cancel(); }
+		if (window.ArgonMotion) window.ArgonMotion.fast(node, false, { className: 'leftbar-layout-flip' });
+	}
+	function previousRect(node, rect) {
+		if (!rect || !animations.has(node) || !window.DOMMatrixReadOnly) return rect;
+		const matrix = new window.DOMMatrixReadOnly(getComputedStyle(node).transform);
+		return { left: rect.left + matrix.m41, top: rect.top + matrix.m42 };
+	}
+	function animatePosition(node, before, after) {
+		if (!before || !window.ArgonMotion || !node.animate) return;
+		const dx = before.left - after.left, dy = before.top - after.top;
+		const duration = window.ArgonMotion.duration('fast');
+		if (!duration || (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5)) return;
+		window.ArgonMotion.fast(node, true, { className: 'leftbar-layout-flip' });
+		const animation = node.animate([
+			{ transform: 'translate3d(' + dx + 'px,' + dy + 'px,0)' },
+			{ transform: 'translate3d(0,0,0)' }
+		], { duration: duration, easing: window.ArgonMotion.easing('enter') });
+		animations.set(node, animation);
+		animation.onfinish = animation.oncancel = function () {
+			if (animations.get(node) !== animation) return;
+			animations.delete(node);
+			window.ArgonMotion.fast(node, false, { className: 'leftbar-layout-flip' });
+		};
+	}
+	function resetLayout() {
+		clearAnimation(part2);
+		if (part3) clearAnimation(part3);
+		setClass(part2, 'sticky', false);
+		setClass(part2, 'leftbar-tab-catalog-active', false);
+		setClass(part2, 'leftbar-pane-compact', false);
+		if (part3) setClass(part3, 'sticky', false);
+		setLeftbarRootProperty('--leftbar-part2-inner-height', 'none');
+		setLeftbarRootProperty('--leftbar-part3-max-height', 'none');
+		setLeftbarRootProperty('--leftbar-catalog-max-height', 'none');
+		lastLayout = null;
+	}
+	function allocateHeight() {
+		const previous2 = lastLayout && previousRect(part2, lastLayout.part2);
+		const previous3 = lastLayout && part3 && previousRect(part3, lastLayout.part3);
+		const scrollPositions = [part2.querySelector('#leftbar_part2_inner'), activePane(), part3 && part3.querySelector('.card-body')]
+			.filter(Boolean).map(function (node) { return { node: node, top: node.scrollTop, left: node.scrollLeft }; });
+		clearAnimation(part2);
+		if (part3) clearAnimation(part3);
+		const barStyle = getComputedStyle(leftbar);
+		const width = Math.max(0, leftbar.clientWidth - number(barStyle.paddingLeft) - number(barStyle.paddingRight));
+		setLeftbarRootProperty('--leftbar-sticky-width', pixels(width));
+		const heights = measureHeights();
+		const style = getComputedStyle(part2);
+		const top = number(style.top) + number(style.marginTop);
+		const gap = heights.body ? cssNumber(barStyle, '--leftbar-sticky-gap', 10) : 0;
+		const bottom = cssNumber(barStyle, '--leftbar-sticky-bottom', 20);
+		const viewport = Math.min(window.innerHeight, document.documentElement.clientHeight || window.innerHeight,
+			window.visualViewport ? window.visualViewport.height : window.innerHeight);
+		const allocation = computeLeftbarHeightAllocation({
+			budget: Math.max(0, viewport - top - bottom - gap - heights.chrome2 - heights.chrome3),
+			part2NaturalHeight: heights.part2,
+			part3NaturalHeight: heights.part3,
+			minPart2Height: heights.minimum2,
+			minPart3Height: heights.minimum3
+		});
+		const compact = allocation.clamp && allocation.part2Height < heights.compactThreshold;
+		setClass(part2, 'leftbar-pane-compact', compact);
+		setLeftbarRootProperty('--leftbar-part2-inner-height', allocation.clamp ? pixels(allocation.part2Height) : 'none');
+		setLeftbarRootProperty('--leftbar-part3-max-height', allocation.clamp ? pixels(allocation.part3MaxHeight) : 'none');
+		setLeftbarRootProperty('--leftbar-catalog-max-height', allocation.clamp && !compact ? pixels(allocation.part2Height - heights.inset2) : 'none');
+		const next2 = part2.getBoundingClientRect();
+		// part3 跟随最终渲染高度，包含边框、内边距和紧凑模式下的实际尺寸。
+		const margin3 = heights.body ? number(getComputedStyle(part3).marginTop) : 0;
+		setLeftbarRootProperty('--leftbar-part2-height', pixels(next2.height + number(style.marginTop) - margin3 + gap));
+		const next3 = heights.body ? part3.getBoundingClientRect() : null;
+		// 临时解除 max-height 会让浏览器清零 scrollTop；重新分配后恢复用户阅读位置。
+		scrollPositions.forEach(function (position) {
+			position.node.scrollTop = position.top;
+			position.node.scrollLeft = position.left;
+		});
+		lastLayout = { part2: next2, part3: next3 };
+		if (!skipAnimation) {
+			animatePosition(part2, previous2, next2);
+			if (next3) animatePosition(part3, previous3, next3);
+		}
+		skipAnimation = false;
+		layoutDirty = false;
+	}
+	function update() {
+		if (!isDesktop()) {
+			resetLayout(); sticky = false; canHeadroom = false;
+			setClass(document.body, 'leftbar-can-headroom', false);
+			metricsDirty = true; layoutDirty = true; naturalCache = null;
 			return;
 		}
-		leftbarHeightSignature = currentSignature;
-		invalidateLeftbarNaturalHeights();
-		requestLeftbarStickyStatusUpdate();
+		if (metricsDirty) {
+			const rect = part1.getBoundingClientRect();
+			part1Bottom = rect.bottom + window.pageYOffset;
+			metricsDirty = false;
+		}
+		const scroll = window.pageYOffset || document.documentElement.scrollTop || 0;
+		const distance = part1Bottom + 10 - scroll;
+		canHeadroom = distance <= (canHeadroom ? 40 : 20);
+		setClass(document.body, 'leftbar-can-headroom', canHeadroom);
+		const threshold = argonConfig.headroom === 'absolute' ? 18 : 90;
+		const nextSticky = distance <= threshold + (sticky ? 20 : 0);
+		if (nextSticky !== sticky) {
+			sticky = nextSticky; layoutDirty = true; naturalCache = null;
+			skipAnimation = true;
+			setClass(part2, 'sticky', sticky);
+			if (part3) setClass(part3, 'sticky', sticky);
+		}
+		if (!sticky) { resetLayout(); return; }
+		if (layoutDirty) allocateHeight();
 	}
 
-	function refreshLeftbarHeightObservers() {
-		if (typeof ResizeObserver === 'undefined') {
-			return;
-		}
-		if (!leftbarHeightObserver) {
-			leftbarHeightObserver = new ResizeObserver(requestLeftbarStickyStatusUpdateOnHeightChange);
-		}
-		let nextTargets = getLeftbarHeightTargets();
-		for (let i = 0; i < leftbarHeightObservedNodes.length; i++) {
-			if (nextTargets.indexOf(leftbarHeightObservedNodes[i]) === -1) {
-				leftbarHeightObserver.unobserve(leftbarHeightObservedNodes[i]);
-			}
-		}
-		for (let i = 0; i < nextTargets.length; i++) {
-			if (leftbarHeightObservedNodes.indexOf(nextTargets[i]) === -1) {
-				leftbarHeightObserver.observe(nextTargets[i]);
-			}
-		}
-		leftbarHeightObservedNodes = nextTargets;
-	}
-
-	function changeLeftbarStickyStatus() {
-		if (!isLeftbarDesktopLayout()) return;
-		updateLeftbarTabsHeight();
-		let scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
-		// 迟滞判定：进入 sticky 用 enterThreshold，退出用 exitThreshold（更严格），
-		// 中间留 20px 死区，避免临界点因 sticky↔static 切换改变文档高度而反复抖动。
-		var headroomOffset = (argonConfig.headroom != "absolute" ? 90 : 18);
-		var enterThreshold = headroomOffset;
-		var exitThreshold = headroomOffset + 20;
-		var distance = part1OffsetTop + part1OuterHeight + 10 - scrollTop;
-		if (!leftbarStickyActive) {
-			leftbarStickyActive = distance <= enterThreshold;
-		} else {
-			leftbarStickyActive = distance <= exitThreshold;
-		}
-		if (leftbarStickyActive) {
-			//滚动条在页面中间浮动状态
-			let wasSticky = leftbarPart2.classList.contains('sticky');
-			leftbarPart2.classList.add('sticky');
-			if (leftbarPart3) {
-				leftbarPart3.classList.add('sticky');
-			}
-			// sticky 前后卡片宽度不同，自然高度需要重新测量
-			if (!wasSticky) {
-				invalidateLeftbarNaturalHeights();
-			}
-
-			// 计算可用空间并分配给 part2 和 part3
-			let viewportHeight = window.innerHeight;
-			// topOffset 必须与 sticky 卡片的实际 top 一致：普通模式 CSS top 为 80px
-			//（+10px margin 约 90）；Headroom 收起（unpinned）或 navbar-absolute 模式下
-			// CSS top 变为 10px（约 20）。固定取 90 会让导航栏收起后的预算比实际可用
-			// 空间小约 70px——目录被多钳出滚动条，而视口下方空着。
-			let headroomUnpinned = document.body.classList.contains('leftbar-can-headroom') &&
-				document.body.classList.contains('headroom---unpinned');
-			let topOffset = (argonConfig.headroom === 'absolute' || headroomUnpinned) ? 20 : 90;
-			let availableHeight = viewportHeight - topOffset - 20; // 20px 底部边距
-			let gapBetweenParts = leftbarPart3 ? 10 : 0;
-
-			let catalogActive = isLeftbarCatalogActive();
-			leftbarPart2.classList.toggle('leftbar-tab-catalog-active', catalogActive);
-
-			// 两侧的自然内容高度（带缓存，避免滚动时反复强制同步布局）
-			let naturalHeights = getLeftbarNaturalHeights(catalogActive);
-			let part2NaturalHeight = naturalHeights.part2 || leftbarPart2.offsetHeight;
-			let part3NaturalHeight = naturalHeights.part3;
-
-			// 分配值作用于 card-body，卡片自身的边框/额外间距不能占用这份内容预算。
-			let part2Inner = leftbarPart2.querySelector("#leftbar_part2_inner");
-			let part3Body = leftbarPart3 ? leftbarPart3.querySelector(".card-body") : null;
-			let part2ChromeHeight = part2Inner ? Math.max(0, leftbarPart2.offsetHeight - part2Inner.offsetHeight) : 0;
-			let part3ChromeHeight = part3Body ? Math.max(0, leftbarPart3.offsetHeight - part3Body.offsetHeight) : 0;
-			let allocation = computeLeftbarHeightAllocation({
-				budget: Math.floor(availableHeight - gapBetweenParts - part2ChromeHeight - part3ChromeHeight),
-				part2NaturalHeight: part2NaturalHeight,
-				part3NaturalHeight: part3NaturalHeight,
-				minPart2Height: 150,
-				minPart3Height: 100
-			});
-
-			if (allocation.clamp) {
-				setLeftbarRootProperty('--leftbar-part2-inner-height', Math.ceil(allocation.part2Height) + 'px');
-				setLeftbarRootProperty('--leftbar-part3-max-height', Math.floor(allocation.part3MaxHeight) + 'px');
-			} else {
-				setLeftbarRootProperty('--leftbar-part2-inner-height', 'none');
-				setLeftbarRootProperty('--leftbar-part3-max-height', 'none');
-			}
-			setLeftbarRootProperty('--leftbar-part2-height', Math.ceil(allocation.part2Height + part2ChromeHeight + gapBetweenParts) + 'px');
-		} else {
-			//滚动条在顶部 不浮动状态
-			if (leftbarPart2.classList.contains('sticky')) {
-				invalidateLeftbarNaturalHeights();
-			}
-			leftbarPart2.classList.remove('sticky');
-			leftbarPart2.classList.remove('leftbar-tab-catalog-active');
-			if (leftbarPart3) leftbarPart3.classList.remove('sticky');
-		}
-		// leftbar-can-headroom 同样用迟滞判定，避免在临界点反复切换 body class
-	// 触发 navbar/侧栏 transform 联动而引起视觉抖动。
-	var canHeadroomDistance = part1OffsetTop + part1OuterHeight + 10 - scrollTop;
-	if (!leftbarCanHeadroomActive) {
-		leftbarCanHeadroomActive = canHeadroomDistance <= 20;
-	} else {
-		leftbarCanHeadroomActive = canHeadroomDistance <= 40;
-	}
-	if (leftbarCanHeadroomActive) {//侧栏下部分是否可以随 Headroom 一起向上移动
-		document.body.classList.add('leftbar-can-headroom');
-	} else {
-		document.body.classList.remove('leftbar-can-headroom');
-	}
-	}
-	changeLeftbarStickyStatus();
-	leftbarHeightSignature = getLeftbarHeightSignature();
-	// 使用节流优化滚动事件性能
-	const throttledChangeLeftbarStickyStatus = argonEventManager ?
-		argonEventManager.throttle(changeLeftbarStickyStatus, 16) :
-		changeLeftbarStickyStatus;
-	document.addEventListener("scroll", throttledChangeLeftbarStickyStatus, { passive: true });
-	function refreshLeftbarStickyLayout() {
-		if (!isLeftbarDesktopLayout()) return;
-		refreshLeftbarPart1Metrics();
-		invalidateLeftbarNaturalHeights();
-		changeLeftbarStickyStatus();
-		leftbarHeightSignature = getLeftbarHeightSignature();
-	}
-	$(window).resize(refreshLeftbarStickyLayout);
-	// 从移动断点切回桌面时，短路期间的度量都已过期，整体重算一次
-	if (leftbarDesktopQuery) {
-		if (leftbarDesktopQuery.addEventListener) {
-			leftbarDesktopQuery.addEventListener("change", refreshLeftbarStickyLayout);
-		} else if (leftbarDesktopQuery.addListener) {
-			leftbarDesktopQuery.addListener(refreshLeftbarStickyLayout);
-		}
-	}
-	// 只关心影响布局的属性，并且走 rAF 合并：原先 attributes: true + subtree 意味着
-	// 侧栏内任意后代的任意属性变化都会同步跑一次强制布局的 changeLeftbarStickyStatus()。
-	new MutationObserver(function () {
-		leftbarPart1MetricsDirty = true;
-		invalidateLeftbarNaturalHeights();
-		requestLeftbarStickyStatusUpdate();
-	}).observe(leftbarPart1, { attributes: true, attributeFilter: ['class', 'style', 'hidden', 'src'], childList: true, subtree: true });
-	// 监听 part2/part3 的自然内容高度，外层 sticky 高度被脚本钳住时也能立即重算。
-	refreshLeftbarHeightObservers();
+	document.addEventListener('scroll', requestUpdate, { passive: true });
+	window.addEventListener('resize', function () { invalidate(true, true); }, { passive: true });
+	if (window.visualViewport) window.visualViewport.addEventListener('resize', function () { invalidate(true, true); });
+	if (desktopQuery && desktopQuery.addEventListener) desktopQuery.addEventListener('change', function () { invalidate(true, true); });
+	else if (desktopQuery && desktopQuery.addListener) desktopQuery.addListener(function () { invalidate(true, true); });
 	if (typeof MutationObserver !== 'undefined') {
-		let leftbarHeightMutationObserver = new MutationObserver(requestLeftbarStickyStatusUpdateOnHeightChange);
-		if (leftbarPart2) leftbarHeightMutationObserver.observe(leftbarPart2, { childList: true, characterData: true, subtree: true });
-		if (leftbarPart3) leftbarHeightMutationObserver.observe(leftbarPart3, { childList: true, characterData: true, subtree: true });
-	}
-	let leftbarTabSwitchScrollTop = null;
-	function getLeftbarPageScrollTop() {
-		let scroller = document.scrollingElement || document.documentElement || document.body;
-		return scroller ? scroller.scrollTop : (window.pageYOffset || 0);
-	}
-	function restoreLeftbarPageScrollTop(scrollTop) {
-		if (scrollTop === null || scrollTop === undefined) {
-			return;
+		const layoutClasses = ['sticky', 'leftbar-tab-catalog-active', 'leftbar-pane-compact', 'leftbar-layout-flip'];
+		function contentClasses(value) {
+			return (value || '').split(/\s+/).filter(function (name) { return name && layoutClasses.indexOf(name) < 0; }).sort().join(' ');
 		}
-		let scroller = document.scrollingElement || document.documentElement || document.body;
-		if (scroller) {
-			scroller.scrollTop = scrollTop;
-		}
-		if (window.pageYOffset !== scrollTop) {
-			window.scrollTo(window.pageXOffset || 0, scrollTop);
-		}
+		const contentObserver = new MutationObserver(function (records) {
+			// 只忽略本算法写入的状态类；外部修改卡片样式/可见性仍需重新分配。
+			if (!records.some(function (record) {
+				if (record.type !== 'attributes' || (record.target !== part2 && record.target !== part3) || record.attributeName !== 'class') return true;
+				return contentClasses(record.oldValue) !== contentClasses(record.target.className);
+			})) return;
+			observeContent(); invalidate(false);
+		});
+		const contentOptions = { childList: true, characterData: true, attributes: true, attributeOldValue: true, attributeFilter: ['class', 'style', 'hidden'], subtree: true };
+		contentObserver.observe(part2, contentOptions);
+		if (part3) contentObserver.observe(part3, contentOptions);
+		new MutationObserver(function () { invalidate(true); }).observe(part1, { childList: true, characterData: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'src'], subtree: true });
+		const modeObserver = new MutationObserver(function () { invalidate(true); });
+		modeObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+		modeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+		modeObserver.observe(leftbar, { attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
 	}
-	$(document).on('show.bs.tab', '#leftbar_part2 [data-toggle="tab"]', function () {
-		leftbarTabSwitchScrollTop = getLeftbarPageScrollTop();
-	});
-	$(document).on('shown.bs.tab click', '#leftbar_part2 [data-toggle="tab"]', function () {
-		let scrollTop = leftbarTabSwitchScrollTop;
-		restoreLeftbarPageScrollTop(scrollTop);
-		refreshLeftbarHeightObservers();
-		invalidateLeftbarNaturalHeights();
-		requestLeftbarStickyStatusUpdate();
-		window.setTimeout(function () {
-			restoreLeftbarPageScrollTop(scrollTop);
-			refreshLeftbarHeightObservers();
-			invalidateLeftbarNaturalHeights();
-			requestLeftbarStickyStatusUpdate();
-			leftbarTabSwitchScrollTop = null;
-		}, 180);
-	});
-	window.argonRequestLeftbarStickyStatusUpdate = function () {
-		refreshLeftbarHeightObservers();
-		invalidateLeftbarNaturalHeights();
-		// PJAX 换页后 part1 的位置/高度也可能变了，标记为待刷新，
-		// 由 rAF 回调统一测量（原先靠 $("html").trigger("resize") 顺带完成）
-		leftbarPart1MetricsDirty = true;
-		requestLeftbarStickyStatusUpdate();
-	};
+	leftbar.addEventListener('load', function () { invalidate(true); }, true);
+	if (document.fonts) {
+		document.fonts.ready.then(function () { invalidate(true); });
+		if (document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', function () { invalidate(true); });
+	}
+	$(document).on('shown.bs.tab', '#leftbar_part2 [data-toggle="tab"]', function () { observeContent(); invalidate(false); });
+	window.argonRequestLeftbarStickyStatusUpdate = function () { observeContent(); invalidate(true); };
+	observeContent();
+	update();
+
 }();
 
 /*左侧栏滚轮焦点切换*/
@@ -1112,10 +1001,6 @@ window.argonComputeLeftbarHeightAllocation = computeLeftbarHeightAllocation;
 			deltaY *= window.innerHeight;
 		}
 		return deltaY;
-	}
-
-	function getPageScroller() {
-		return document.scrollingElement || document.documentElement || document.body;
 	}
 
 	function getMaxScrollTop(element) {
@@ -1139,11 +1024,11 @@ window.argonComputeLeftbarHeightAllocation = computeLeftbarHeightAllocation;
 		if (!element || deltaY === 0) {
 			return;
 		}
-		if (window.jQuery) {
-			jQuery(element).stop(true);
+		if (window.ArgonMotion && window.ArgonMotion.scrollBy) {
+			window.ArgonMotion.scrollBy(deltaY, { container: element });
+		} else {
+			element.scrollTop = Math.max(0, Math.min(element.scrollTop + deltaY, getMaxScrollTop(element)));
 		}
-		let maxScrollTop = getMaxScrollTop(element);
-		element.scrollTop = Math.max(0, Math.min(element.scrollTop + deltaY, maxScrollTop));
 	}
 
 	function getPart2ScrollTarget() {
@@ -1151,11 +1036,10 @@ window.argonComputeLeftbarHeightAllocation = computeLeftbarHeightAllocation;
 		if (!leftbarPart2 || !leftbarPart2.classList.contains('sticky')) {
 			return null;
 		}
-		let activePane = leftbarPart2.querySelector('.tab-pane.active.show');
-		if (!activePane) {
-			activePane = leftbarPart2.querySelector('#leftbar_tab_catalog');
-		}
-		return canScrollVertically(activePane) ? activePane : null;
+		let activePane = leftbarPart2.querySelector('.tab-pane.active');
+		if (canScrollVertically(activePane)) return activePane;
+		let inner = leftbarPart2.querySelector('#leftbar_part2_inner');
+		return canScrollVertically(inner) ? inner : null;
 	}
 
 	function getPart3ScrollTarget() {
@@ -1178,12 +1062,13 @@ window.argonComputeLeftbarHeightAllocation = computeLeftbarHeightAllocation;
 			return;
 		}
 		let deltaY = normalizeWheelDelta(event);
-		if (!deltaY) {
+		// Preserve pinch zoom, horizontal gestures and native touch scrolling.
+		if (!deltaY || event.ctrlKey || event.metaKey || Math.abs(event.deltaX || 0) > Math.abs(deltaY)) {
 			return;
 		}
 		let focusedScroller = leftbarPart2 ? getPart2ScrollTarget() : getPart3ScrollTarget();
-		let pageScroller = getPageScroller();
 		if (!canScrollBy(focusedScroller, deltaY)) {
+			if (focusedScroller && window.ArgonMotion && window.ArgonMotion.cancelScroll) window.ArgonMotion.cancelScroll(focusedScroller);
 			return;
 		}
 		event.preventDefault();
@@ -1425,12 +1310,17 @@ function argonCollapseCommentsArea($area) {
 	$area.addClass("comments-collapsed");
 }
 
-function expandPostComments() {
+function expandPostComments(options) {
 	var commentsArea = $("#comments");
 	var postCommentArea = $("#post_comment");
 	var toggleBtn = $("#comments_toggle");
-	argonExpandCommentsArea(commentsArea);
-	argonExpandCommentsArea(postCommentArea);
+	if (options && options.instant) {
+		// Navigation needs a stable destination, without expanding the document on every scroll frame.
+		commentsArea.add(postCommentArea).removeClass("comments-collapsed").addClass("comments-expand-done");
+	} else {
+		argonExpandCommentsArea(commentsArea);
+		argonExpandCommentsArea(postCommentArea);
+	}
 	if (toggleBtn.length > 0) {
 		toggleBtn.addClass("expanded");
 		toggleBtn.find("i").removeClass("fa-comments").addClass("fa-comment-o");
@@ -1851,24 +1741,15 @@ const ARGON_FABTN_INIT_MAX_ATTEMPTS = 40;
 			return;
 		}
 		var wasCollapsed = commentsArea.hasClass("comments-collapsed");
-		var toggleBtn = $("#comments_toggle");
 
-		if (wasCollapsed && toggleBtn.length > 0) {
-			// 折叠状态：先滚动到评论切换按钮位置，再展开
-			window.ArgonMotion.scrollTo(toggleBtn.offset().top - 80);
-			toggleBtn.find("i").removeClass("fa-comments").addClass("fa-comment-o");
-			toggleBtn.find(".btn-inner--text").text("折叠评论");
-			toggleBtn.addClass("expanded");
-			argonExpandCommentsArea(commentsArea);
-			setTimeout(function () {
-				argonExpandCommentsArea(postCommentArea);
-				$("#post_comment_content").focus();
-			}, 150);
-		} else {
-			// 已展开或无切换按钮：直接滚动到评论区
-			window.ArgonMotion.scrollTo(postCommentArea.offset().top - 80);
-			$("#post_comment_content").focus();
-		}
+		if (wasCollapsed) expandPostComments({ instant: true });
+		var target = postCommentArea[0];
+		// Re-evaluate the live target while comments expand or virtual sections resize.
+		window.ArgonMotion.scrollTo(target, { offset: 80 }).then(function (completed) {
+			if (!completed || target.isConnected === false) return;
+			var input = document.getElementById("post_comment_content_editor") || document.getElementById("post_comment_content");
+			if (input && !input.disabled) input.focus({ preventScroll: true });
+		});
 	});
 
 	if (localStorage['Argon_fabs_Floating_Status'] == "left") {
@@ -5140,6 +5021,7 @@ function cleanupEventListeners() {
  */
 function cleanupPjaxResources() {
 	ArgonDebug.log('开始清理 PJAX 资源...');
+	if (window.ArgonMotion && window.ArgonMotion.cancelScroll) window.ArgonMotion.cancelScroll();
 
 	// 按顺序清理各类资源
 	cleanupLazyloadObserver();
@@ -5407,12 +5289,18 @@ function shouldUnmountVirtualSection(sectionIndex, keepStart, keepEnd, scrollDir
 }
 
 function createArgonLongContentVirtualizer(content, options) {
+	options = Object.assign({ keepRange: 2, viewportBuffer: 900, targetTextLength: 1800, maxNodesPerSection: 18, maxPlainTextBlockLength: 2200 }, options);
 	var sections = [];
 	var headers = [];
 	var observer = null;
 	var scrollHandler = null;
 	var resizeHandler = null;
 	var scheduled = false;
+	var scheduledFrame = 0;
+	var sectionResizeObserver = null;
+	var mountedSections = new Set();
+	var pendingSections = [];
+	var programmaticScroll = false;
 	var destroyed = false;
 	var lastScrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
 	var scrollDirection = "none";
@@ -5471,6 +5359,7 @@ function createArgonLongContentVirtualizer(content, options) {
 		for (var i = tailLockStart; i < sections.length; i++) {
 			mountSection(sections[i]);
 		}
+		flushMountedSections();
 		for (var j = 0; j < tailLockStart; j++) {
 			if (sections[j].mounted) {
 				unmountSection(sections[j]);
@@ -5485,7 +5374,7 @@ function createArgonLongContentVirtualizer(content, options) {
 		var releasedTailStart = tailLockStart;
 		tailLockActive = false;
 		tailLockStart = -1;
-		restoreVirtualScrollAnchoring();
+		if (!programmaticScroll) restoreVirtualScrollAnchoring();
 		for (var i = releasedTailStart; i < sections.length; i++) {
 			sections[i].tailLockedHeight = null;
 			if (sections[i].mounted) {
@@ -5496,7 +5385,7 @@ function createArgonLongContentVirtualizer(content, options) {
 	}
 
 	function updateVirtualTailLock() {
-		if (!tailLockActive && isVirtualTailVisible()) {
+		if (!tailLockActive && !(programmaticScroll && scrollDirection === "up") && isVirtualTailVisible()) {
 			activateVirtualTailLock();
 			return;
 		}
@@ -5555,6 +5444,12 @@ function createArgonLongContentVirtualizer(content, options) {
 		renderShell();
 		patchHeadIndexForVirtualContent();
 		setupObserver();
+		// Form/media widgets need connected nodes for their own DOM-ready initializers.
+		for (var p = 0; p < sections.length; p++) {
+			sections[p].persistent = /<(?:iframe|video|audio|canvas|form|input|textarea|select|button)\b|\b(?:contenteditable|data-argon-virtual-keep)\s*=/i.test(sections[p].html);
+			if (sections[p].persistent) mountSection(sections[p]);
+		}
+		flushMountedSections();
 		renderAroundIndex(0, true);
 		scheduleUpdate();
 		jQuery(document).trigger("argon:longContentVirtualized");
@@ -5700,15 +5595,21 @@ function createArgonLongContentVirtualizer(content, options) {
 		if (!nodes.length) {
 			return;
 		}
+		var fragment = document.createDocumentFragment();
+		var html = nodesToHtml(nodes);
+		var nodeIds = collectNodeIds(nodes);
+		var estimatedHeight = estimateSectionHeight(nodes, textCount);
+		for (var i = 0; i < nodes.length; i++) fragment.appendChild(nodes[i]);
 		result.push({
 			index: result.length,
-			html: nodesToHtml(nodes),
+			html: html,
+			fragment: fragment,
 			headers: sectionHeaders.slice(),
-			nodeIds: collectNodeIds(nodes),
+			nodeIds: nodeIds,
 			textCount: textCount,
 			placeholder: null,
 			mounted: false,
-			estimatedHeight: estimateSectionHeight(nodes, textCount)
+			estimatedHeight: estimatedHeight
 		});
 	}
 
@@ -5786,6 +5687,8 @@ function createArgonLongContentVirtualizer(content, options) {
 		for (var i = 0; i < sections.length; i++) {
 			var placeholder = document.createElement("section");
 			placeholder.className = "argon-virtual-section";
+			// Keep floats and paragraph margins inside the measured placeholder box.
+			placeholder.style.display = "flow-root";
 			placeholder.setAttribute("data-argon-virtual-index", String(i));
 			placeholder.style.minHeight = sections[i].estimatedHeight + "px";
 			sections[i].placeholder = placeholder;
@@ -5794,22 +5697,20 @@ function createArgonLongContentVirtualizer(content, options) {
 	}
 
 	function setupObserver() {
+		if (typeof ResizeObserver !== "undefined") {
+			sectionResizeObserver = new ResizeObserver(function (entries) {
+				if (destroyed || !content.isConnected) return;
+				entries.forEach(function (entry) {
+					var section = getSectionFromNode(entry.target);
+					if (section && section.mounted) updateSectionHeight(section);
+				});
+				scheduleUpdate();
+			});
+		}
 		if ("IntersectionObserver" in window) {
 			observer = new IntersectionObserver(function (entries) {
-				for (var i = 0; i < entries.length; i++) {
-					var section = getSectionFromNode(entries[i].target);
-					if (!section) {
-						continue;
-					}
-					if (entries[i].isIntersecting && !tailLockActive) {
-						renderAroundIndex(section.index);
-					}
-				}
-				updateVirtualTailLock();
-				if (!tailLockActive) {
-					pruneSections();
-				}
-				markVirtualUpdate();
+				// One update per frame, not a render/prune/layout cycle for every entry.
+				if (entries.length) scheduleUpdate();
 			}, { rootMargin: options.rootMargin, threshold: 0 });
 
 			for (var s = 0; s < sections.length; s++) {
@@ -5820,13 +5721,17 @@ function createArgonLongContentVirtualizer(content, options) {
 			var currentScrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
 			// Tail lock disables root scroll anchoring, so movement here is safe to
 			// treat as navigation even during the normal mount/unmount freeze.
-			if (!virtualUpdateInProgress || tailLockActive) {
-				scrollDirection = getVirtualScrollDirection(lastScrollTop, currentScrollTop);
+			if (Math.abs(currentScrollTop - lastScrollTop) > 1) {
+				if (!virtualUpdateInProgress || tailLockActive) {
+					scrollDirection = getVirtualScrollDirection(lastScrollTop, currentScrollTop);
+				} else if (programmaticScroll) {
+					scrollDirection = getVirtualScrollDirection(lastScrollTop, currentScrollTop);
+				}
 			}
 			lastScrollTop = currentScrollTop;
 			updateVirtualTailLock();
 			scheduleUpdate();
-		}, 80);
+		}, 16);
 		window.addEventListener("scroll", scrollHandler, { passive: true });
 
 		resizeHandler = throttleVirtualUpdate(function () {
@@ -5842,41 +5747,39 @@ function createArgonLongContentVirtualizer(content, options) {
 	}
 
 	function scheduleUpdate() {
-		if (scheduled || destroyed) {
+		if (scheduled || destroyed || !content.isConnected) {
 			return;
 		}
 		scheduled = true;
-		requestAnimationFrame(function () {
+		scheduledFrame = requestAnimationFrame(function () {
 			scheduled = false;
-			updateVirtualTailLock();
-			if (tailLockActive) {
-				for (var tailIndex = tailLockStart; tailIndex < sections.length; tailIndex++) {
-					mountSection(sections[tailIndex]);
-				}
-				markVirtualUpdate();
-				return;
-			}
-			var index = getNearestVisibleSectionIndex();
-			renderAroundIndex(index);
-			pruneSections();
-			markVirtualUpdate();
+			scheduledFrame = 0;
+			updateViewport();
 		});
+	}
+	function updateViewport() {
+		if (destroyed || !content.isConnected) return;
+		updateVirtualTailLock();
+		if (tailLockActive) {
+			for (var i = tailLockStart; i < sections.length; i++) mountSection(sections[i]);
+			flushMountedSections();
+			return;
+		}
+		renderAroundIndex(getNearestVisibleSectionIndex());
+		pruneSections();
 	}
 
 	function getNearestVisibleSectionIndex() {
-		var viewportMid = window.innerHeight / 2;
-		var nearestIndex = 0;
-		var nearestDistance = Infinity;
-		for (var i = 0; i < sections.length; i++) {
-			var rect = sections[i].placeholder.getBoundingClientRect();
-			var sectionMid = rect.top + rect.height / 2;
-			var distance = Math.abs(sectionMid - viewportMid);
-			if (distance < nearestDistance) {
-				nearestDistance = distance;
-				nearestIndex = i;
-			}
+		return sectionAtViewportPosition(window.innerHeight / 2);
+	}
+	function sectionAtViewportPosition(position) {
+		var low = 0, high = sections.length - 1;
+		while (low < high) {
+			var middle = (low + high) >> 1;
+			if (sections[middle].placeholder.getBoundingClientRect().bottom < position) low = middle + 1;
+			else high = middle;
 		}
-		return nearestIndex;
+		return low;
 	}
 
 	function renderAroundIndex(index, forceFirst) {
@@ -5886,14 +5789,16 @@ function createArgonLongContentVirtualizer(content, options) {
 		var start = Math.max(0, index - options.keepRange);
 		var end = Math.min(sections.length - 1, index + options.keepRange);
 		var visibleRange = getViewportSectionRange();
-		start = Math.min(start, visibleRange.start);
-		end = Math.max(end, visibleRange.end);
 		if (forceFirst) {
 			end = Math.min(sections.length - 1, Math.max(end, 2));
 		}
 		for (var i = start; i <= end; i++) {
 			mountSection(sections[i]);
 		}
+		// A distant anchor and the current viewport are two windows. Filling the gap
+		// used to synchronously mount the entire article before an animated jump.
+		for (var j = visibleRange.start; j <= visibleRange.end; j++) mountSection(sections[j]);
+		flushMountedSections();
 	}
 
 	function mountSection(section) {
@@ -5904,13 +5809,32 @@ function createArgonLongContentVirtualizer(content, options) {
 		placeholder.classList.add("argon-virtual-section-mounted");
 		placeholder.style.overflowAnchor = "auto";
 		placeholder.style.minHeight = "";
-		placeholder.innerHTML = section.html;
+		if (section.fragment) placeholder.appendChild(section.fragment);
+		else placeholder.innerHTML = section.html;
 		section.mounted = true;
-		updateSectionHeight(section);
-		prepareRenderedSection(section);
+		mountedSections.add(section);
+		if (sectionResizeObserver) sectionResizeObserver.observe(placeholder);
+		pendingSections.push(section);
+	}
+	function flushMountedSections() {
+		if (!pendingSections.length) return;
+		var pending = pendingSections;
+		pendingSections = [];
+		// Complete all DOM insertions before reading their heights.
+		var heights = pending.map(function (section) { return section.placeholder.getBoundingClientRect().height; });
+		pending.forEach(function (section, index) {
+			updateSectionHeight(section, heights[index]);
+			if (!programmaticScroll) prepareRenderedSection(section);
+		});
+		markVirtualUpdate();
 	}
 
 	function prepareRenderedSection(section) {
+		if (!section.mounted || !section.placeholder.isConnected) return;
+		if (section.prepared) {
+			if (typeof lazyloadInit === "function") lazyloadInit(section.placeholder);
+			return;
+		}
 		if (window.__argonVirtualPreparing) {
 			return;
 		}
@@ -5927,6 +5851,7 @@ function createArgonLongContentVirtualizer(content, options) {
 			}
 			renderMathForVirtualSection(section.placeholder);
 			watchSectionMediaLoad(section);
+			section.prepared = true;
 		} catch (e) {
 			ArgonDebug.warn("Long content section init failed:", e);
 		}
@@ -5944,6 +5869,7 @@ function createArgonLongContentVirtualizer(content, options) {
 			}
 			media[i]._argonVirtualHeightBound = true;
 			var update = function () {
+				if (destroyed || !section.mounted || !section.placeholder.isConnected) return;
 				updateSectionHeight(section);
 				scheduleUpdate();
 			};
@@ -5968,33 +5894,18 @@ function createArgonLongContentVirtualizer(content, options) {
 		var visibleRange = getViewportSectionRange();
 		keepStart = Math.min(keepStart, visibleRange.start);
 		keepEnd = Math.max(keepEnd, visibleRange.end);
-		for (var i = 0; i < sections.length; i++) {
-			if (shouldUnmountVirtualSection(i, keepStart, keepEnd, scrollDirection)) {
-				unmountSection(sections[i]);
-			}
-		}
+		mountedSections.forEach(function (section) {
+			var i = section.index;
+			if (shouldUnmountVirtualSection(i, keepStart, keepEnd, scrollDirection)) unmountSection(section);
+		});
 	}
 
 	function getViewportSectionRange() {
 		var buffer = options.viewportBuffer || 800;
 		var topLimit = -buffer;
 		var bottomLimit = window.innerHeight + buffer;
-		var start = sections.length - 1;
-		var end = 0;
-		var found = false;
-		for (var i = 0; i < sections.length; i++) {
-			var rect = sections[i].placeholder.getBoundingClientRect();
-			if (rect.bottom >= topLimit && rect.top <= bottomLimit) {
-				start = Math.min(start, i);
-				end = Math.max(end, i);
-				found = true;
-			}
-		}
-		if (!found) {
-			var nearest = getNearestVisibleSectionIndex();
-			start = nearest;
-			end = nearest;
-		}
+		var start = sectionAtViewportPosition(topLimit);
+		var end = sectionAtViewportPosition(bottomLimit);
 		return {
 			start: Math.max(0, start - 1),
 			end: Math.min(sections.length - 1, end + 1)
@@ -6002,22 +5913,26 @@ function createArgonLongContentVirtualizer(content, options) {
 	}
 
 	function unmountSection(section) {
-		if (!section || !section.mounted) {
+		if (!section || !section.mounted || section.persistent) {
 			return;
 		}
+		var placeholder = section.placeholder;
+		// Embedded browsing/media contexts and an active editor must stay connected.
+		if (placeholder.contains(document.activeElement) || placeholder.querySelector('iframe, video, audio, canvas, input, textarea, select, [contenteditable], [data-argon-virtual-keep]')) return;
 		updateSectionHeight(section);
-		cleanupSectionRuntime(section.placeholder);
-		while (section.placeholder.firstChild) {
-			section.placeholder.removeChild(section.placeholder.firstChild);
-		}
+		if (sectionResizeObserver) sectionResizeObserver.unobserve(placeholder);
+		if (placeholder._argonLazyloadObserver) { placeholder._argonLazyloadObserver.disconnect(); placeholder._argonLazyloadObserver = null; }
+		if (!section.fragment) section.fragment = document.createDocumentFragment();
+		while (placeholder.firstChild) section.fragment.appendChild(placeholder.firstChild);
 		section.placeholder.classList.remove("argon-virtual-section-mounted");
 		section.placeholder.style.overflowAnchor = "";
 		section.placeholder.style.minHeight = section.estimatedHeight + "px";
 		section.mounted = false;
+		mountedSections.delete(section);
 	}
 
-	function updateSectionHeight(section) {
-		var height = section.placeholder.scrollHeight;
+	function updateSectionHeight(section, measuredHeight) {
+		var height = measuredHeight === undefined ? section.placeholder.getBoundingClientRect().height : measuredHeight;
 		if (height > 0) {
 			if (tailLockActive && section.index >= tailLockStart) {
 				section.tailLockedHeight = Math.max(section.tailLockedHeight || 0, section.estimatedHeight || 0, height);
@@ -6078,6 +5993,37 @@ function createArgonLongContentVirtualizer(content, options) {
 	function getHeaders() {
 		return headers.slice();
 	}
+	function beginScroll(targetTop) {
+		if (destroyed || !content.isConnected) return;
+		programmaticScroll = true;
+		scrollDirection = getVirtualScrollDirection(window.pageYOffset, targetTop);
+		releaseVirtualTailLock();
+		disableVirtualScrollAnchoring();
+		var index = sectionAtViewportPosition(targetTop - window.pageYOffset + window.innerHeight / 2);
+		var start = Math.max(0, index - options.keepRange);
+		var end = Math.min(sections.length - 1, index + options.keepRange);
+		if (index === sections.length - 1) start = Math.max(0, sections.length - tailLockWindow);
+		renderAroundIndex(index);
+		for (var i = start; i <= end; i++) mountSection(sections[i]);
+		flushMountedSections();
+		// Initialize the destination, but defer costly math/highlighting on fleeting sections.
+		for (var j = start; j <= end; j++) if (!sections[j].prepared) prepareRenderedSection(sections[j]);
+		lastScrollTop = window.pageYOffset;
+	}
+	function updateScroll() {
+		if (destroyed) return;
+		var current = window.pageYOffset;
+		if (Math.abs(current - lastScrollTop) > 1) scrollDirection = getVirtualScrollDirection(lastScrollTop, current);
+		lastScrollTop = current;
+		updateViewport();
+	}
+	function endScroll() {
+		if (destroyed) return;
+		programmaticScroll = false;
+		mountedSections.forEach(function (section) { if (!section.prepared) prepareRenderedSection(section); });
+		updateViewport();
+		if (!tailLockActive) restoreVirtualScrollAnchoring();
+	}
 
 	function getHeaderOffset(header, offset) {
 		var section = findSectionById(header.id);
@@ -6096,6 +6042,10 @@ function createArgonLongContentVirtualizer(content, options) {
 
 	function destroy(restoreContent) {
 		destroyed = true;
+		programmaticScroll = false;
+		if (scheduledFrame) cancelAnimationFrame(scheduledFrame);
+		scheduled = false;
+		pendingSections = [];
 		if (virtualUpdateTimer) {
 			clearTimeout(virtualUpdateTimer);
 			virtualUpdateTimer = null;
@@ -6109,27 +6059,43 @@ function createArgonLongContentVirtualizer(content, options) {
 			} catch (e) { }
 			observer = null;
 		}
+		if (sectionResizeObserver) sectionResizeObserver.disconnect();
 		if (scrollHandler) {
 			window.removeEventListener("scroll", scrollHandler);
+			if (scrollHandler.cancel) scrollHandler.cancel();
 			scrollHandler = null;
 		}
 		if (resizeHandler) {
 			window.removeEventListener("resize", resizeHandler);
+			if (resizeHandler.cancel) resizeHandler.cancel();
 			resizeHandler = null;
+		}
+		for (var s = 0; s < sections.length; s++) {
+			cleanupSectionRuntime(sections[s].placeholder);
+			if (sections[s].fragment) cleanupSectionRuntime(sections[s].fragment);
 		}
 		if (content && content.getAttribute("data-argon-virtual-ready") === "true") {
 			content.classList.remove("argon-long-content-virtual");
 			content.removeAttribute("data-argon-virtual-ready");
 			if (restoreContent) {
-				var restoredHtml = [];
+				var restored = document.createDocumentFragment();
 				for (var i = 0; i < sections.length; i++) {
-					restoredHtml.push(sections[i].html);
+					var section = sections[i];
+					if (section.mounted) {
+						while (section.placeholder.firstChild) restored.appendChild(section.placeholder.firstChild);
+					} else if (section.fragment) restored.appendChild(section.fragment);
+					else {
+						var template = document.createElement('template'); template.innerHTML = section.html;
+						restored.appendChild(template.content);
+					}
 				}
-				content.innerHTML = restoredHtml.join("");
+				content.innerHTML = "";
+				content.appendChild(restored);
 			} else {
 				content.innerHTML = "";
 			}
 		}
+		mountedSections.clear();
 	}
 
 	return {
@@ -6139,6 +6105,9 @@ function createArgonLongContentVirtualizer(content, options) {
 		getHeaderOffset: getHeaderOffset,
 		renderTarget: renderTarget,
 		renderAroundIndex: renderAroundIndex,
+		beginScroll: beginScroll,
+		updateScroll: updateScroll,
+		endScroll: endScroll,
 		isReady: function () { return content.getAttribute("data-argon-virtual-ready") === "true"; }
 	};
 }
@@ -6146,7 +6115,7 @@ function createArgonLongContentVirtualizer(content, options) {
 function throttleVirtualUpdate(callback, wait) {
 	var last = 0;
 	var timer = null;
-	return function () {
+	function throttled() {
 		var now = Date.now();
 		var remaining = wait - (now - last);
 		if (remaining <= 0) {
@@ -6163,7 +6132,9 @@ function throttleVirtualUpdate(callback, wait) {
 				callback();
 			}, remaining);
 		}
-	};
+	}
+	throttled.cancel = function () { if (timer) clearTimeout(timer); timer = null; };
+	return throttled;
 }
 
 	function cleanupSectionRuntime(root) {
@@ -6292,6 +6263,7 @@ function scrollCatalogItemIntoView(indexScrollBox, indexItem, centerWhenNeeded) 
 	if (!scrollNode || !itemNode) {
 		return;
 	}
+	if (window.ArgonMotion.isScrolling && window.ArgonMotion.isScrolling(scrollNode, 'wheel')) return;
 	var boxHeight = scrollBox.innerHeight();
 	var itemHeight = item.outerHeight();
 	if (boxHeight <= 0 || itemHeight <= 0) {

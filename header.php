@@ -302,6 +302,7 @@
 			$style_version = function_exists('argon_get_asset_file_version') ? argon_get_asset_file_version('style.css') : $assets_version;
 			$merged_css_version = function_exists('argon_get_asset_file_version') ? argon_get_asset_file_version('assets/argon_css_merged.css') : $assets_version;
 			$merged_js_version = function_exists('argon_get_asset_file_version') ? argon_get_asset_file_version('assets/argon_js_merged.js') : $assets_version;
+			$motion_js_version = function_exists('argon_get_asset_file_version') ? argon_get_asset_file_version('assets/js/argon-motion.js') : $assets_version;
 			
 			// CSS 加载 - 添加 media 属性确保移动端正确加载
 			wp_enqueue_style("argon_css_merged", $GLOBALS['assets_path'] . "/assets/argon_css_merged.css", array(), $merged_css_version, 'all');
@@ -309,7 +310,7 @@
 			
 			// 集成外部资源备用机制
 			wp_enqueue_script("resource_loader", $GLOBALS['assets_path'] . "/assets/vendor/external/resource-loader.js", array(), $assets_version, false);
-			wp_enqueue_script("argon_motion", $GLOBALS['assets_path'] . "/assets/js/argon-motion.js", array(), $assets_version, false);
+			wp_enqueue_script("argon_motion", $GLOBALS['assets_path'] . "/assets/js/argon-motion.js", array(), $motion_js_version, false);
 
 			if (get_option('argon_disable_googlefont') != 'true') {
 				// 使用备用机制加载Google Fonts

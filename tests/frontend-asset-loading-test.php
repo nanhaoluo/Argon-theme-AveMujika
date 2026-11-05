@@ -81,5 +81,8 @@ namespace {
 	}
 	$header = file_get_contents(dirname(__DIR__) . '/header.php');
 	check(strpos($header, 'wp_enqueue_script("mermaid"') === false, 'code highlighting still unconditionally loads diagrams');
+	check(strpos($header, "argon_get_asset_file_version('assets/js/argon-motion.js')") !== false
+		&& strpos($header, '"/assets/js/argon-motion.js", array(), $motion_js_version, false)') !== false,
+		'scroll engine updates must invalidate the cached motion asset together with theme handlers');
 	echo "Frontend asset loading contracts passed.\n";
 }

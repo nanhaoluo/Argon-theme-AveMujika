@@ -188,51 +188,150 @@
 		}
 	}
 
-	function easeOutQuart(progress) {
-		return 1 - Math.pow(1 - progress, 4);
+	var scrollAnimations = new Map();
+	function isPageScroller(scroller) {
+		return scroller === document.scrollingElement || scroller === document.documentElement || scroller === document.body;
+	}
+	function scrollLimit(scroller) {
+		return Math.max(0, scroller.scrollHeight - (isPageScroller(scroller) ? window.innerHeight : scroller.clientHeight));
+	}
+	function clampScroll(scroller, value) {
+		return Math.max(0, Math.min(scrollLimit(scroller), Number(value) || 0));
+	}
+	function finishScroll(state, completed) {
+		if (scrollAnimations.get(state.scroller) !== state) return;
+		scrollAnimations.delete(state.scroller);
+		if (state.frame) cancelFrame(state.frame);
+		if (state.virtualizer && state.virtualizer.endScroll) state.virtualizer.endScroll();
+		if (completed && state.input !== 'wheel') {
+			var target = state.target();
+			if (target !== null) setScrollPosition(state.scroller, target);
+		}
+		state.scroller.style.setProperty('scroll-behavior', state.behavior, state.behaviorPriority);
+		state.resolve(completed);
+	}
+	function cancelScroll(container) {
+		if (arguments.length) {
+			var state = scrollAnimations.get(resolveScroller(container));
+			if (state) finishScroll(state, false);
+		} else {
+			Array.from(scrollAnimations.values()).forEach(function (state) { finishScroll(state, false); });
+		}
+	}
+	function createScroll(scroller, input) {
+		cancelScroll(scroller);
+		var state = { scroller: scroller, input: input, frame: 0,
+			behavior: scroller.style.getPropertyValue('scroll-behavior'),
+			behaviorPriority: scroller.style.getPropertyPriority('scroll-behavior') };
+		state.promise = new Promise(function (resolve) { state.resolve = resolve; });
+		// A CSS/native smooth scroll must not ease each individual animation frame again.
+		scroller.style.setProperty('scroll-behavior', 'auto', 'important');
+		if (window.jQuery) window.jQuery(scroller).stop(true);
+		scrollAnimations.set(scroller, state);
+		return state;
+	}
+	function connected(scroller) {
+		return isPageScroller(scroller) || scroller.isConnected !== false;
+	}
+	function preparePageScroll(state, target) {
+		var virtualizer = isPageScroller(state.scroller) && window.ArgonLongContentVirtualizer;
+		if (virtualizer && virtualizer.beginScroll) {
+			state.virtualizer = virtualizer;
+			virtualizer.beginScroll(target);
+		}
 	}
 
 	function scrollTo(targetTop, options) {
 		options = options || {};
 		var scroller = resolveScroller(options.container);
+		var state = createScroll(scroller, 'navigation');
+		state.target = function () {
+			var value = typeof targetTop === 'function' ? targetTop() : targetTop;
+			var node = resolveElement(value);
+			if (node) {
+				if (node.isConnected === false) return null;
+				value = scrollPosition(scroller) + node.getBoundingClientRect().top;
+				if (!isPageScroller(scroller)) value -= scroller.getBoundingClientRect().top + scroller.clientTop;
+			}
+			return clampScroll(scroller, (Number(value) || 0) - (Number(options.offset) || 0));
+		};
+		var target = state.target();
+		if (target === null) { finishScroll(state, false); return state.promise; }
+		preparePageScroll(state, target);
 		var start = scrollPosition(scroller);
-		var target = Math.max(0, Number(targetTop) || 0);
-		var animationDuration = options.duration == null
+		var animationDuration = prefersReducedMotion() ? 0 : options.duration == null
 			? duration(options.compact ? 'scrollCompact' : 'scroll')
 			: Math.max(0, Number(options.duration) || 0);
-
-		if (scroller.__argonMotionScrollFrame) {
-			cancelFrame(scroller.__argonMotionScrollFrame);
-			scroller.__argonMotionScrollFrame = 0;
-			if (scroller.__argonMotionScrollResolve) scroller.__argonMotionScrollResolve(false);
+		if (options.duration == null && !options.compact && animationDuration) {
+			animationDuration += Math.min(280, Math.sqrt(Math.abs(target - start)) * 2);
 		}
-
-		return new Promise(function (resolve) {
-			scroller.__argonMotionScrollResolve = resolve;
-			if (animationDuration === 0 || Math.abs(target - start) < 1) {
-				setScrollPosition(scroller, target);
-				scroller.__argonMotionScrollResolve = null;
-				resolve(true);
-				return;
-			}
-
-			var startedAt = null;
-			var distance = target - start;
-			function tick(timestamp) {
-				if (startedAt === null) startedAt = timestamp;
-				var progress = Math.min(1, (timestamp - startedAt) / animationDuration);
-				setScrollPosition(scroller, start + distance * easeOutQuart(progress));
-				if (progress < 1) {
-					scroller.__argonMotionScrollFrame = frame(tick);
-					return;
-				}
-				scroller.__argonMotionScrollFrame = 0;
-				scroller.__argonMotionScrollResolve = null;
-				resolve(true);
-			}
-			scroller.__argonMotionScrollFrame = frame(tick);
-		});
+		if (!animationDuration || Math.abs(target - start) < 1) {
+			setScrollPosition(scroller, state.target());
+			finishScroll(state, true);
+			return state.promise;
+		}
+		var startedAt = null;
+		function tick(timestamp) {
+			if (!connected(scroller)) { finishScroll(state, false); return; }
+			var currentTarget = state.target();
+			if (currentTarget === null) { finishScroll(state, false); return; }
+			if (startedAt === null) startedAt = timestamp;
+			var progress = Math.min(1, (timestamp - startedAt) / animationDuration);
+			// Gentle acceleration avoids the huge first-frame jump on very long articles.
+			var eased = progress * progress * (3 - 2 * progress);
+			setScrollPosition(scroller, start + (currentTarget - start) * eased);
+			if (state.virtualizer && state.virtualizer.updateScroll) state.virtualizer.updateScroll();
+			if (progress < 1) state.frame = frame(tick);
+			else finishScroll(state, true);
+		}
+		state.frame = frame(tick);
+		return state.promise;
 	}
+
+	function scrollBy(delta, options) {
+		options = options || {};
+		var scroller = resolveScroller(options.container);
+		delta = Number(delta) || 0;
+		var state = scrollAnimations.get(scroller);
+		if (state && state.input === 'wheel') {
+			var position = scrollPosition(scroller);
+			state.destination = clampScroll(scroller, (delta * (state.destination - position) < 0 ? position : state.destination) + delta);
+			return state.promise;
+		}
+		state = createScroll(scroller, 'wheel');
+		state.destination = clampScroll(scroller, scrollPosition(scroller) + delta);
+		if (prefersReducedMotion()) {
+			setScrollPosition(scroller, state.destination); finishScroll(state, true); return state.promise;
+		}
+		var lastTime = null;
+		var damping = Math.max(16, duration('fast') / 4);
+		function tick(timestamp) {
+			if (!connected(scroller)) { finishScroll(state, false); return; }
+			state.destination = clampScroll(scroller, state.destination);
+			var remaining = state.destination - scrollPosition(scroller);
+			var elapsed = lastTime === null ? 16 : Math.min(64, Math.max(1, timestamp - lastTime));
+			lastTime = timestamp;
+			if (Math.abs(remaining) < 0.5) {
+				setScrollPosition(scroller, state.destination); finishScroll(state, true); return;
+			}
+			var step = remaining * (1 - Math.exp(-elapsed / damping));
+			// Integer scrollTop implementations must still make progress near the target.
+			if (Math.abs(step) < 1) step = Math.sign(remaining) * Math.min(1, Math.abs(remaining));
+			setScrollPosition(scroller, scrollPosition(scroller) + step);
+			state.frame = frame(tick);
+		}
+		state.frame = frame(tick);
+		return state.promise;
+	}
+	// Manual gestures interrupt a navigation; consecutive wheel events share one animation.
+	document.addEventListener('wheel', function () {
+		Array.from(scrollAnimations.values()).forEach(function (state) { if (state.input !== 'wheel') finishScroll(state, false); });
+	}, { capture: true, passive: true });
+	document.addEventListener('touchstart', function () { cancelScroll(); }, { capture: true, passive: true });
+	document.addEventListener('pointerdown', function () { cancelScroll(); }, { capture: true, passive: true });
+	document.addEventListener('keydown', function (event) {
+		if (/^(ArrowUp|ArrowDown|PageUp|PageDown|Home|End| |Escape)$/.test(event.key)) cancelScroll();
+	}, true);
 
 	window.ArgonMotion = {
 		duration: duration,
@@ -241,6 +340,12 @@
 		isOutsideClick: isOutsideClick,
 		prefersReducedMotion: prefersReducedMotion,
 		scrollTo: scrollTo,
+		scrollBy: scrollBy,
+		cancelScroll: cancelScroll,
+		isScrolling: function (container, input) {
+			var state = scrollAnimations.get(resolveScroller(container));
+			return !!(state && (!input || state.input === input));
+		},
 		nextFrame: function (callback) {
 			frame(function () { frame(callback); });
 		}

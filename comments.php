@@ -341,7 +341,7 @@ function resetGeetestCaptcha() {
 				<div class="col-md-12">
 					<div id="post_comment_content_editor_wrap" class="post-comment-content-editor-wrap">
 						<div id="post_comment_content_editor" class="form-control form-control-alternative post-comment-content-editor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="<?php echo esc_attr(apply_filters("argon_comment_textarea_placeholder", __('评论内容', 'argon'))); ?>"></div>
-						<textarea id="post_comment_content" class="form-control form-control-alternative" placeholder="<?php echo apply_filters("argon_comment_textarea_placeholder", __('评论内容', 'argon'));?>" name="comment" style="height: 80px; display: none;"></textarea>
+						<textarea id="post_comment_content" class="form-control form-control-alternative argon-text-input" placeholder="<?php echo apply_filters("argon_comment_textarea_placeholder", __('评论内容', 'argon'));?>" name="comment" style="height: 80px; display: none;"></textarea>
 					</div>
 				</div>
 				<div class="col-md-12" style="height: 0;overflow: hidden;">
@@ -372,21 +372,21 @@ function resetGeetestCaptcha() {
 			<div class="row hide-on-comment-editing" style="margin-bottom: -10px;">
 				<div class="<?php echo $col1_class;?>">
 					<div class="form-group">
-						<div class="input-group input-group-alternative mb-4">
+						<div class="input-group input-group-alternative argon-text-input-group mb-4">
 							<div class="input-group-prepend">
 								<span class="input-group-text"><i class="fa fa-user-circle"></i></span>
 							</div>
-							<input id="post_comment_name" class="form-control" placeholder="<?php _e('昵称', 'argon');?>" type="text" name="author" value="<?php if (is_user_logged_in()) {echo (wp_get_current_user() -> user_login);} else {echo htmlspecialchars($current_commenter['comment_author']);} ?>">
+							<input id="post_comment_name" class="form-control argon-text-input argon-text-input-embedded" placeholder="<?php _e('昵称', 'argon');?>" type="text" name="author" value="<?php if (is_user_logged_in()) {echo (wp_get_current_user() -> user_login);} else {echo htmlspecialchars($current_commenter['comment_author']);} ?>">
 						</div>
 					</div>
 				</div>
 				<div class="<?php echo $col2_class;?>">
 					<div class="form-group">
-						<div class="input-group input-group-alternative mb-4">
+						<div class="input-group input-group-alternative argon-text-input-group mb-4">
 							<div class="input-group-prepend">
 								<span class="input-group-text"><i class="fa fa-envelope"></i></span>
 							</div>
-							<input id="post_comment_email" class="form-control" placeholder="<?php _e('邮箱', 'argon');?><?php if ($enable_qq_avatar == 'true'){echo __(' / QQ 号', 'argon');} ?>" type="email" name="email" value="<?php if (is_user_logged_in()) {echo (wp_get_current_user() -> user_email);} else {echo htmlspecialchars($current_commenter['comment_author_email']);} ?>">
+							<input id="post_comment_email" class="form-control argon-text-input argon-text-input-embedded" placeholder="<?php _e('邮箱', 'argon');?><?php if ($enable_qq_avatar == 'true'){echo __(' / QQ 号', 'argon');} ?>" type="email" name="email" value="<?php if (is_user_logged_in()) {echo (wp_get_current_user() -> user_email);} else {echo htmlspecialchars($current_commenter['comment_author_email']);} ?>">
 						</div>
 					</div>
 				</div>
@@ -402,11 +402,11 @@ function resetGeetestCaptcha() {
 							<input type="hidden" id="geetest_gen_time" name="gen_time" value="">
 						<?php } elseif ($captcha_enabled) { ?>
 							<!-- 原有的数学验证码 -->
-							<div class="input-group input-group-alternative mb-4 post-comment-captcha-container" captcha="<?php echo esc_attr(get_comment_captcha($commentCaptchaSeed));?>">
+							<div class="input-group input-group-alternative argon-text-input-group mb-4 post-comment-captcha-container" captcha="<?php echo esc_attr(get_comment_captcha($commentCaptchaSeed));?>">
 								<div class="input-group-prepend">
 									<span class="input-group-text"><i class="fa fa-key"></i></span>
 								</div>
-								<input id="post_comment_captcha" class="form-control" placeholder="<?php _e('验证码', 'argon');?>" type="text" name="comment_captcha" <?php if (current_user_can('level_7')) {echo('value="' . get_comment_captcha_answer(get_comment_captcha_seed()) . '" disabled');}?>>
+								<input id="post_comment_captcha" class="form-control argon-text-input argon-text-input-embedded" placeholder="<?php _e('验证码', 'argon');?>" type="text" name="comment_captcha" <?php if (current_user_can('level_7')) {echo('value="' . get_comment_captcha_answer(get_comment_captcha_seed()) . '" disabled');}?>>
 								<style>
 									.post-comment-captcha-container:before{
 										content: attr(captcha);
@@ -439,11 +439,11 @@ function resetGeetestCaptcha() {
 			<div class="row hide-on-comment-editing" id="post_comment_extra_input" style="display: none;">
 				<div class="col-md-12" style="margin-bottom: -10px;">
 					<div class="form-group">
-						<div class="input-group input-group-alternative mb-4 post-comment-link-container">
+						<div class="input-group input-group-alternative argon-text-input-group mb-4 post-comment-link-container">
 							<div class="input-group-prepend">
 								<span class="input-group-text"><i class="fa fa-link"></i></span>
 							</div>
-							<input id="post_comment_link" class="form-control" placeholder="<?php _e('网站', 'argon'); ?>" type="text" name="url" value="<?php echo htmlspecialchars($current_commenter['comment_author_url']); ?>">
+							<input id="post_comment_link" class="form-control argon-text-input argon-text-input-embedded" placeholder="<?php _e('网站', 'argon'); ?>" type="text" name="url" value="<?php echo htmlspecialchars($current_commenter['comment_author_url']); ?>">
 						</div>
 					</div>
 				</div>
