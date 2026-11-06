@@ -127,8 +127,8 @@
 		}
 		stream.style.left = Math.max(0, Math.min(100, left)) + '%';
 		stream.style.top = Math.max(0, Math.min(100, top)) + '%';
-		stream.style.setProperty('--stream-width', (diffuse ? between(88, 115) : between(50, 83)) + 'vmax');
-		stream.style.setProperty('--stream-height', (diffuse ? between(47, 65) : between(24, 41)) + 'vmax');
+		stream.style.setProperty('--stream-width', diffuse ? between(1.32, 1.55) : between(0.92, 1.22));
+		stream.style.setProperty('--stream-height', diffuse ? between(1.12, 1.34) : between(0.84, 1.10));
 		stream.style.setProperty('--stream-tilt', between(-36, 18) + 'deg');
 		stream.style.setProperty('--stream-facing', Math.random() < 0.5 ? -1 : 1);
 		sky.appendChild(stream);

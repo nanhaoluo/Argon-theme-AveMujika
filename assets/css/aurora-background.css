@@ -58,8 +58,8 @@ html.darkmode.amoled-dark body.argon-404 { --aurora-paper: #08090d; }
 }
 .argon-aurora-stream {
 	position: absolute;
-	width: var(--stream-width);
-	height: var(--stream-height);
+	width: calc((65vw + 35vmax) * var(--stream-width));
+	height: calc((76vh + 24vmax) * var(--stream-height));
 	translate: -50% -50%;
 	color: var(--stream-tint, var(--aurora-color));
 }
@@ -75,21 +75,22 @@ html.darkmode.amoled-dark body.argon-404 { --aurora-paper: #08090d; }
 }
 .argon-aurora-stream::before {
 	background:
-		radial-gradient(ellipse 42% 38% at 47% 49%, color-mix(in srgb, var(--highlight) 56%, transparent), transparent 100%),
-		radial-gradient(ellipse 48% 44% at 49% 52%, color-mix(in srgb, var(--glow) 47%, transparent), transparent 100%),
-		radial-gradient(ellipse 30% 31% at 67% 38%, color-mix(in srgb, var(--glow) 23%, transparent), transparent 100%);
-	filter: blur(clamp(20px, 3vmin, 40px));
+		radial-gradient(ellipse 42% 43% at 46% 46%, color-mix(in srgb, var(--highlight) 48%, transparent),
+			color-mix(in srgb, var(--highlight) 30%, transparent) 32%, transparent 100%),
+		radial-gradient(ellipse 50% 49% at 50% 50%, color-mix(in srgb, var(--glow) 66%, transparent),
+			color-mix(in srgb, var(--tint) 46%, transparent) 38%, color-mix(in srgb, var(--tint) 17%, transparent) 72%, transparent 100%);
+	filter: blur(clamp(10px, 2vmin, 26px));
 }
 
 .argon-aurora-stream.is-diffuse::before {
 	opacity: .56;
-	filter: blur(clamp(38px, 5.5vmin, 74px));
+	filter: blur(clamp(24px, 4vmin, 52px));
 }
 
 /* A feathered fold moves within the halo while its parent follows a straight line. */
 .argon-aurora-stream:not(.is-diffuse)::after {
-	background: linear-gradient(95deg, transparent 3%, color-mix(in srgb, var(--highlight) 40%, transparent) 34%,
-		color-mix(in srgb, var(--glow) 32%, transparent) 64%, transparent 97%);
+	background: linear-gradient(95deg, transparent 3%, color-mix(in srgb, var(--highlight) 26%, transparent) 34%,
+		color-mix(in srgb, var(--glow) 22%, transparent) 64%, transparent 97%);
 	-webkit-mask: url("../img/ill/aurora-wave.svg") center / 100% 100% no-repeat;
 	mask: url("../img/ill/aurora-wave.svg") center / 100% 100% no-repeat;
 }
